@@ -8,7 +8,13 @@ const { getJwtSecret } = require('./config/jwtSecret');
 
 const JWT_SECRET = getJwtSecret();
 
-const ADMIN_2FA_SETUP_PATHS = new Set(['/2fa-setup', '/2fa-verify']);
+/** Enrollment + profile TOTP setup paths (req.path under /api/admin). */
+const ADMIN_2FA_SETUP_PATHS = new Set([
+  '/2fa-setup',
+  '/2fa-verify',
+  '/2fa-setup-enrollment',
+  '/verify-2fa',
+]);
 
 /** Normalize JWT/string role claims (handles "Admin" vs "admin"). */
 function normRoleClaim(v) {
@@ -245,70 +251,124 @@ const verifyAdminApiAuth = async (req, res, next) => {
 
 /**
  * Scope non–super-admin roles from sensitive admin API areas.
+ * Uses dynamic AdminRole.permissions when seeded; falls back to legacy path rules.
  * super_admin bypasses all checks.
  */
 const adminRoleGate = (req, res, next) => {
   if (!req.user || req.user.isAdmin !== true) return next();
-  const role = req.user.adminRole || 'super_admin';
+  const role = String(req.user.adminRole || 'super_admin').trim().toLowerCase() || 'super_admin';
   if (role === 'super_admin') return next();
+
   const p = req.path || '';
+  const rbac = require('./services/adminRbac');
 
-  if (
-    p.includes('/settings/') ||
-    p.includes('/maintenance') ||
-    p.includes('/cleanup/')
-  ) {
-    return res.status(403).json({ error: 'Only Super-Admin can access system settings and maintenance.' });
-  }
+  Promise.resolve()
+    .then(async () => {
+      const needed = rbac.permissionForApiPath(p);
+      if (needed) {
+        const ok = await rbac.roleHas(role, needed);
+        if (!ok) {
+          return res.status(403).json({
+            error: 'Your admin role cannot access this resource.',
+            requiredPermission: needed,
+          });
+        }
+      }
 
-  // Match /user CRUD only — NOT paths like /messages/users (substring "/user" inside "/users").
-  const userMgmtRe = /^\/user(\/|$|\?)/;
+      // Legacy deny-lists for known system roles (custom roles rely on permission keys above)
+      const userMgmtRe = /^\/user(\/|$|\?)/;
+      if (role === 'admin_qa') {
+        if (
+          /\/payment|\/dispense|\/teachers-weekly-salaries|teacher-pipeline|teachers-list|teachers-filter-list|students-list|admins-list|\/referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+            p
+          ) ||
+          userMgmtRe.test(p)
+        ) {
+          return res.status(403).json({ error: 'Your admin role (QA) cannot access this resource.' });
+        }
+      }
+      if (role === 'admin_accounting') {
+        if (
+          /\/issues|issue-reports|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$/.test(p) ||
+          userMgmtRe.test(p)
+        ) {
+          return res.status(403).json({ error: 'Your admin role (Accounting) cannot access this resource.' });
+        }
+      }
+      if (role === 'admin_hr') {
+        if (
+          /\/issues|issue-reports|payment|dispense|teachers-weekly-salaries|classroom-recordings|referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+            p
+          )
+        ) {
+          return res.status(403).json({ error: 'Your admin role (HR) cannot access this resource.' });
+        }
+      }
+      if (role === 'admin_marketing') {
+        if (
+          /\/payment|\/dispense|teachers-weekly-salaries|\/issues|issue-reports|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$|classroom-recordings|global-rate|save-global-rate|update-global-rate/.test(
+            p
+          ) ||
+          userMgmtRe.test(p)
+        ) {
+          return res.status(403).json({ error: 'Your admin role (Marketing) cannot access this resource.' });
+        }
+      }
 
-  if (role === 'admin_qa') {
-    if (
-      /\/payment|\/dispense|\/teachers-weekly-salaries|teacher-pipeline|teachers-list|teachers-filter-list|students-list|admins-list|\/referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
-        p
-      ) ||
-      userMgmtRe.test(p)
-    ) {
-      return res.status(403).json({ error: 'Your admin role (QA) cannot access this resource.' });
-    }
-  }
-  if (role === 'admin_accounting') {
-    if (
-      /\/issues|issue-reports|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$/.test(p) ||
-      userMgmtRe.test(p)
-    ) {
-      return res.status(403).json({ error: 'Your admin role (Accounting) cannot access this resource.' });
-    }
-  }
-  if (role === 'admin_hr') {
-    if (
-      /\/issues|issue-reports|payment|dispense|teachers-weekly-salaries|classroom-recordings|referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
-        p
-      )
-    ) {
-      return res.status(403).json({ error: 'Your admin role (HR) cannot access this resource.' });
-    }
-  }
-  if (role === 'admin_marketing') {
-    if (
-      /\/payment|\/dispense|teachers-weekly-salaries|\/issues|issue-reports|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$|classroom-recordings|global-rate|save-global-rate|update-global-rate/.test(
-        p
-      ) ||
-      userMgmtRe.test(p)
-    ) {
-      return res.status(403).json({ error: 'Your admin role (Marketing) cannot access this resource.' });
-    }
-  }
-  return next();
+      // Custom roles: if API path needs a permission and they lack it, already returned above.
+      // Block settings/maintenance without system:settings
+      if (/\/settings\/|\/maintenance|\/cleanup\//.test(p)) {
+        const okSettings = await rbac.roleHas(role, 'system:settings');
+        if (!okSettings) {
+          return res.status(403).json({ error: 'Only Super-Admin can access system settings and maintenance.' });
+        }
+      }
+
+      return next();
+    })
+    .catch((err) => {
+      console.error('adminRoleGate:', err);
+      return res.status(500).json({ error: 'Authorization check failed.' });
+    });
 };
 
-/** Classroom recording admin routes (mounted separately) — QA + Super-Admin only. */
+/** Factory: require a specific permission key (super_admin always passes). */
+const requirePermission = (permissionKey) => (req, res, next) => {
+  if (!req.user || req.user.isAdmin !== true) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+  const role = String(req.user.adminRole || 'super_admin').trim().toLowerCase();
+  if (role === 'super_admin') return next();
+  const rbac = require('./services/adminRbac');
+  rbac
+    .roleHas(role, permissionKey)
+    .then((ok) => {
+      if (!ok) {
+        return res.status(403).json({
+          error: 'Missing permission.',
+          requiredPermission: permissionKey,
+        });
+      }
+      next();
+    })
+    .catch((err) => {
+      console.error('requirePermission:', err);
+      res.status(500).json({ error: 'Authorization check failed.' });
+    });
+};
+
+/** Classroom recording admin routes (mounted separately) — QA recordings permission or Super-Admin. */
 const requireAdminQaOrSuper = (req, res, next) => {
   const role = req.user && (req.user.adminRole || 'super_admin');
-  if (role === 'super_admin' || role === 'admin_qa') return next();
-  return res.status(403).json({ error: 'Your admin role cannot access lesson recordings.' });
+  if (role === 'super_admin') return next();
+  const rbac = require('./services/adminRbac');
+  rbac
+    .roleHas(role, 'qa:recordings_view')
+    .then((ok) => {
+      if (ok || role === 'admin_qa') return next();
+      return res.status(403).json({ error: 'Your admin role cannot access lesson recordings.' });
+    })
+    .catch(() => res.status(403).json({ error: 'Your admin role cannot access lesson recordings.' }));
 };
 
 const requireSuperAdminDb = async (req, res, next) => {
@@ -558,6 +618,7 @@ module.exports = {
   requireAdminTwoFactorSatisfied,
   requireAdminSessionValid,
   adminRoleGate,
+  requirePermission,
   requireAdminQaOrSuper,
   requireSuperAdminDb,
   requireTeacher,

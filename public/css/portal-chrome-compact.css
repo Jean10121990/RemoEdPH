@@ -822,6 +822,57 @@ body[class*="page-teacher-"].has-teacher-page-header .remoed-content {
 }
 
 
+/* Admin Messages: fill viewport under fixed header — no page scroll to reach composer */
+@media (min-width: 769px) {
+  html body.page-admin-messages {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  html body.page-admin-messages .remoed-main {
+    min-height: 0 !important;
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  html body.page-admin-messages.has-admin-page-header .remoed-content,
+  html body.page-admin-messages .remoed-content {
+    margin-top: 56px !important;
+    height: calc(100vh - 56px);
+    height: calc(100dvh - 56px);
+    max-height: calc(100dvh - 56px);
+    padding: 12px 16px !important;
+    box-sizing: border-box;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+  }
+  html body.page-admin-messages .messenger {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100%;
+    flex: 1 1 auto;
+    align-self: stretch;
+  }
+  html body.page-admin-messages .chat-list,
+  html body.page-admin-messages .chat-pane {
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  html body.page-admin-messages .chat-scroll {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Keep short threads near the composer so chats are immediately readable */
+  html body.page-admin-messages .chat-scroll:has(.message-wrap) {
+    justify-content: flex-end;
+  }
+}
+
 /* Admin portal fixed top bar (Teacher SoT parity) */
 body[class*="page-admin-"].has-admin-page-header .nav-header {
   position: fixed;

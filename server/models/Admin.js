@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+/** Legacy system role slugs (still seeded). Custom roles may use any slug. */
 const ADMIN_ROLES = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
 
 /** Staff admin account (portal “admin user”). Includes TOTP 2FA fields for RBAC sign-in. */
@@ -15,11 +16,15 @@ const adminSchema = new mongoose.Schema({
     unique: true
   },
   email: { type: String, default: null },
-  /** Portal RBAC: super_admin has full access; others are scoped in admin router. */
+  /**
+   * Portal RBAC role slug → AdminRole.slug.
+   * System values: super_admin, admin_hr, admin_accounting, admin_qa, admin_marketing.
+   * Custom roles allowed (no Mongoose enum) — validated against AdminRole on assign.
+   */
   adminRole: {
     type: String,
-    enum: ADMIN_ROLES,
     default: 'super_admin',
+    trim: true,
   },
   /** Bcrypt hash — preferred field (never store plaintext). */
   passwordHash: {
@@ -89,4 +94,5 @@ const adminSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('Admin', adminSchema); 
+module.exports = mongoose.model('Admin', adminSchema);
+module.exports.ADMIN_ROLES = ADMIN_ROLES;

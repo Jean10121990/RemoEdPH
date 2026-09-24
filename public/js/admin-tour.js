@@ -42,6 +42,13 @@
         position: 'right',
       },
       {
+        element: '[data-nav="admin-fee"]',
+        title: 'Admin Fee',
+        content:
+          'View 1% of subscription sales per cutoff, attendance eligibility, and print your admin fee payslip. Clock in/out from the top header or Dashboard — not on this page.',
+        position: 'right',
+      },
+      {
         element: '[data-nav="marketing"]',
         title: 'Marketing Hub',
         content:

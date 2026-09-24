@@ -38,6 +38,11 @@ const {
 const { decryptTotpSecret, encryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
+const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
+
+function adminLoginPublicPath() {
+  return `/${getAdminLoginPathSegment()}`;
+}
 const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 
 // TOTP tolerance window (number of 30s steps allowed before/after).
@@ -606,6 +611,11 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
   }
 });
 
+/** Public path for the obfuscated admin login page (legacy /admin-login.html returns 404). */
+router.get('/admin-login-path', (req, res) => {
+  res.json({ success: true, path: adminLoginPublicPath() });
+});
+
 /** First-time password for admins created without a password (Super-Admin receives one-time token). */
 router.post('/admin-first-setup', authRegisterLimiter, async (req, res) => {
   try {
@@ -646,6 +656,7 @@ router.post('/admin-first-setup', authRegisterLimiter, async (req, res) => {
     res.json({
       success: true,
       message: 'Password saved. You can sign in from the admin login page.',
+      loginPath: adminLoginPublicPath(),
     });
   } catch (err) {
     console.error('admin-first-setup:', err);

@@ -39,10 +39,60 @@
       <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Save password</button>
     </form>
     <div style="text-align: center; margin-top: 1.25rem;">
-      <a href="admin-login.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">Admin login</a>
+      <a id="admin-login-link" href="#" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">Admin login</a>
     </div>
   </div>
   <script>
+    function rememberAndGo(loginPath) {
+      var path = String(loginPath || '').trim();
+      if (!path || path.charAt(0) !== '/') {
+        if (window.RemoedAdminSession && typeof RemoedAdminSession.redirectToAdminLogin === 'function') {
+          RemoedAdminSession.redirectToAdminLogin();
+          return;
+        }
+        path = '/';
+      }
+      try {
+        localStorage.setItem('remoedAdminEntryPath', path);
+      } catch (e) {}
+      window.location.href = path;
+    }
+
+    function resolveAdminLoginPath() {
+      if (window.RemoedAdminSession && typeof RemoedAdminSession.getLoginPath === 'function') {
+        var remembered = RemoedAdminSession.getLoginPath();
+        if (remembered) return Promise.resolve(remembered);
+      }
+      return fetch('/api/auth/admin-login-path', { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (res.ok && res.j && res.j.path) {
+            try { localStorage.setItem('remoedAdminEntryPath', res.j.path); } catch (e) {}
+            return res.j.path;
+          }
+          return '';
+        })
+        .catch(function () { return ''; });
+    }
+
+    resolveAdminLoginPath().then(function (path) {
+      var link = document.getElementById('admin-login-link');
+      if (link && path) {
+        link.href = path;
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          rememberAndGo(path);
+        });
+      } else if (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (window.RemoedAdminSession && RemoedAdminSession.redirectToAdminLogin) {
+            RemoedAdminSession.redirectToAdminLogin();
+          }
+        });
+      }
+    });
+
     document.getElementById('setup-form').onsubmit = async function (e) {
       e.preventDefault();
       var err = document.getElementById('setup-error');
@@ -71,7 +121,14 @@
         if (r.ok && data.success) {
           ok.textContent = data.message || 'Success. Redirecting to login…';
           ok.style.display = 'block';
-          setTimeout(function () { window.location.href = 'admin-login.html'; }, 1500);
+          var loginPath = data.loginPath || '';
+          setTimeout(function () {
+            if (loginPath) {
+              rememberAndGo(loginPath);
+            } else {
+              resolveAdminLoginPath().then(function (p) { rememberAndGo(p); });
+            }
+          }, 1200);
         } else {
           err.textContent = data.message || 'Setup failed.';
           err.style.display = 'block';

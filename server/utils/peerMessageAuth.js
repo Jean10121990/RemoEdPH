@@ -16,7 +16,15 @@ async function resolvePeerRole(rawId) {
   if (id.startsWith('admin:')) {
     const username = id.slice(6).trim();
     if (!username) return null;
-    const admin = await Admin.findOne({ username }).select('_id username').lean();
+    const admin = await Admin.findOne({
+      $or: [
+        { username },
+        { username: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        { email: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      ],
+    })
+      .select('_id username')
+      .lean();
     return admin ? 'admin' : null;
   }
 
@@ -52,7 +60,7 @@ async function teacherMayMessageRecipient(recipientId) {
 
 /** Canonical peerId for an admin account used in PeerMessage / notifications. */
 function adminPeerId(username) {
-  return 'admin:' + String(username || '').trim();
+  return 'admin:' + String(username || '').trim().toLowerCase();
 }
 
 module.exports = {

@@ -775,11 +775,13 @@
         
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
-        <script src="js/student-sidebar.js?v=app-shell-9"></script>
-        <script src="js/student-page-header.js?v=header-actions-2"></script>
+        <script src="js/student-eco-drops.js?v=garden-1"></script>
+        <script src="js/student-sidebar.js?v=garden-1"></script>
+        <script src="js/student-page-header.js?v=garden-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
             StudentPageHeader.polishExisting('dashboard');
+            if (window.RemoEdEcoDrops) RemoEdEcoDrops.checkAndCelebrate();
         </script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
             <ul id="upcoming-classes-list" class="notification-list upcoming-classes-list" hidden></ul>

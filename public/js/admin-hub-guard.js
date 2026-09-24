@@ -1,6 +1,6 @@
 /**
- * Restrict HR / QA / Accounting / Marketing hub pages by adminRole (JWT → localStorage.adminRole).
- * super_admin: no redirect. Legacy tokens without role: allow.
+ * Backward-compatible hub guard. Delegates to admin-access-guard.js
+ * (permission-based + legacy role fallback).
  */
 (function () {
     'use strict';
@@ -9,31 +9,9 @@
         var sc = document.currentScript;
         hub = (sc && sc.getAttribute('data-hub')) || '';
     } catch (e) {}
-    hub = String(hub || '').toLowerCase();
 
-    var role = '';
-    try {
-        role = String(localStorage.getItem('adminRole') || '').trim();
-    } catch (e2) {}
-
-    if (!hub || !role || role === 'super_admin') return;
-
-    var blocked = false;
-    if (hub === 'hr') {
-        blocked = role === 'admin_qa' || role === 'admin_accounting' || role === 'admin_marketing';
-    } else if (hub === 'qa') {
-        blocked = role === 'admin_hr' || role === 'admin_accounting' || role === 'admin_marketing';
-    } else if (hub === 'accounting') {
-        blocked = role === 'admin_hr' || role === 'admin_qa' || role === 'admin_marketing';
-    } else if (hub === 'marketing') {
-        blocked = role === 'admin_hr' || role === 'admin_qa';
-    }
-
-    if (blocked) {
-        try {
-            window.location.replace('admin-dashboard.html');
-        } catch (e3) {
-            window.location.href = 'admin-dashboard.html';
-        }
-    }
+    var s = document.createElement('script');
+    s.src = 'js/admin-access-guard.js?v=rbac-1';
+    if (hub) s.setAttribute('data-hub', hub);
+    document.head.appendChild(s);
 })();

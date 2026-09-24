@@ -6,6 +6,12 @@ const TrainingModule = require('./models/TrainingModule');
 const TeacherTrainingProgress = require('./models/TeacherTrainingProgress');
 const Teacher = require('./models/Teacher');
 const { verifyToken, requireTeacher } = require('./authMiddleware');
+const {
+  findUpload,
+  openDownloadStream,
+  normalizeRelativePath,
+  mimeFromPath,
+} = require('./services/uploadStore');
 
 const router = express.Router();
 
@@ -48,14 +54,54 @@ function mimeForExt(ext) {
   return 'application/octet-stream';
 }
 
+function setInlineHeaders(res, displayName, contentType) {
+  const safeName = String(displayName || 'material').replace(/"/g, '');
+  res.setHeader('Content-Type', contentType || 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'inline; filename="' + safeName + '"');
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+}
+
 /** Stream training material for in-browser preview only (no attachment disposition). */
 function sendInlineFile(res, absolutePath, displayName) {
   const ext = fileExt(displayName || absolutePath);
-  res.setHeader('Content-Type', mimeForExt(ext));
-  res.setHeader('Content-Disposition', 'inline; filename="' + String(displayName || 'material').replace(/"/g, '') + '"');
-  res.setHeader('Cache-Control', 'private, no-store');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
+  setInlineHeaders(res, displayName || path.basename(absolutePath), mimeForExt(ext));
   fs.createReadStream(absolutePath).pipe(res);
+}
+
+/**
+ * Production training uploads live in GridFS (see adminTrainingRoutes + gridFsMulterStorage).
+ * Disk-only lookup 404s after deploy; fall back to the uploads bucket.
+ */
+async function sendInlineUpload(res, storedPath, publicUrl, displayName) {
+  const abs = resolveUnderUploads(storedPath, publicUrl);
+  if (abs) {
+    sendInlineFile(res, abs, displayName);
+    return true;
+  }
+  const rel =
+    normalizeRelativePath(publicUrl) ||
+    normalizeRelativePath(storedPath);
+  if (!rel) return false;
+  const doc = await findUpload(rel);
+  if (!doc) return false;
+  const name = displayName || path.basename(rel);
+  setInlineHeaders(
+    res,
+    name,
+    doc.contentType || mimeFromPath(name) || mimeForExt(fileExt(name))
+  );
+  if (Number.isFinite(Number(doc.length))) {
+    res.setHeader('Content-Length', String(doc.length));
+  }
+  const stream = openDownloadStream(doc._id);
+  stream.on('error', (err) => {
+    console.error('training GridFS stream:', (err && err.message) || err);
+    if (!res.headersSent) res.status(404).json({ success: false, message: 'File not found' });
+    else res.destroy();
+  });
+  stream.pipe(res);
+  return true;
 }
 
 function publicCourseFields(course) {
@@ -87,7 +133,7 @@ function publicModuleFields(mod, progress) {
     durationMinutes: mod.durationMinutes,
     published: mod.published,
     hasVideo: !!mod.videoUrl,
-    hasAsset: !!(mod.assetUrl || (mod.type === 'asset' && mod.assetName)),
+    hasAsset: !!mod.assetUrl,
     assetName: mod.assetName || '',
     assetExt: ext,
     progress: progress || { status: 'not_started', watchSeconds: 0 }
@@ -187,9 +233,13 @@ router.get('/courses/:id/presentation', async (req, res) => {
     if (!course || !course.published) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-    const abs = resolveUnderUploads(course.presentationPath, course.presentationUrl);
-    if (!abs) return res.status(404).json({ success: false, message: 'Presentation file not found' });
-    sendInlineFile(res, abs, course.presentationName || path.basename(abs));
+    const ok = await sendInlineUpload(
+      res,
+      course.presentationPath,
+      course.presentationUrl,
+      course.presentationName || 'presentation'
+    );
+    if (!ok) return res.status(404).json({ success: false, message: 'Presentation file not found' });
   } catch (e) {
     console.error('GET presentation:', e);
     res.status(500).json({ success: false, message: e.message });
@@ -207,9 +257,16 @@ router.get('/modules/:id/asset', async (req, res) => {
     if (!course || !course.published) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-    const abs = resolveUnderUploads(null, mod.assetUrl);
-    if (!abs) return res.status(404).json({ success: false, message: 'Asset file not found' });
-    sendInlineFile(res, abs, mod.assetName || path.basename(abs));
+    if (!mod.assetUrl) {
+      return res.status(404).json({ success: false, message: 'Asset file not found' });
+    }
+    const ok = await sendInlineUpload(
+      res,
+      null,
+      mod.assetUrl,
+      mod.assetName || path.basename(String(mod.assetUrl))
+    );
+    if (!ok) return res.status(404).json({ success: false, message: 'Asset file not found' });
   } catch (e) {
     console.error('GET module asset:', e);
     res.status(500).json({ success: false, message: e.message });
@@ -227,9 +284,13 @@ router.get('/modules/:id/video', async (req, res) => {
     if (!course || !course.published) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-    const abs = resolveUnderUploads(null, mod.videoUrl);
-    if (!abs) return res.status(404).json({ success: false, message: 'Video file not found' });
-    sendInlineFile(res, abs, path.basename(abs));
+    const ok = await sendInlineUpload(
+      res,
+      null,
+      mod.videoUrl,
+      path.basename(String(mod.videoUrl))
+    );
+    if (!ok) return res.status(404).json({ success: false, message: 'Video file not found' });
   } catch (e) {
     console.error('GET module video:', e);
     res.status(500).json({ success: false, message: e.message });

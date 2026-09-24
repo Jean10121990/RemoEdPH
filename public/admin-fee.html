@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=3"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Fee - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/portal-header-actions.css">
+    <style>
+        body.page-admin-fee { background: #f6fbff; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body.page-admin-fee .remoed-content { padding: 16px 20px 40px; }
+        .af-wrap { max-width: 1100px; margin: 0 auto; }
+        .af-intro { margin: 0 0 16px; color: #64748b; font-size: 0.92rem; line-height: 1.45; }
+        .af-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+        @media (max-width: 860px) { .af-grid { grid-template-columns: 1fr; } }
+        .af-card {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+            padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .af-card h2 { margin: 0 0 10px; font-size: 1.05rem; color: #0f172a; }
+        .af-muted { color: #64748b; font-size: 0.85rem; }
+        .af-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .af-stats { grid-template-columns: 1fr 1fr; } }
+        .af-stat {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px;
+        }
+        .af-stat .lbl { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+        .af-stat .val { font-size: 1.35rem; font-weight: 700; color: #0f172a; margin-top: 4px; }
+        .af-stat .val.ok { color: #15803d; }
+        .af-stat .val.warn { color: #b45309; }
+        .af-clock-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+        .af-btn {
+            border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; color: #fff;
+        }
+        .af-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .af-btn-in { background: #16a34a; }
+        .af-btn-in:hover:not(:disabled) { background: #15803d; }
+        .af-btn-out { background: #ea580c; }
+        .af-btn-out:hover:not(:disabled) { background: #c2410c; }
+        .af-btn-sec { background: #1ca7e7; }
+        .af-btn-sec:hover:not(:disabled) { background: #0284c7; }
+        .af-btn-ghost { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
+        .af-status-pill {
+            display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+            background: #e2e8f0; color: #334155;
+        }
+        .af-status-pill.on { background: #dcfce7; color: #166534; }
+        .af-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+        .af-toolbar label { font-size: 0.85rem; font-weight: 600; color: #334155; }
+        .af-toolbar select {
+            border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 0.9rem; background: #fff;
+        }
+        .af-table-wrap { overflow-x: auto; }
+        table.af-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        table.af-table th, table.af-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        table.af-table th { background: #f8fafc; color: #475569; font-weight: 600; }
+        .badge-ok { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+        .badge-warn { background: #ffedd5; color: #9a3412; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+        .badge-info { background: #e0f2fe; color: #075985; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+        .af-toast {
+            position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #fff;
+            padding: 12px 16px; border-radius: 10px; z-index: 9999; display: none; max-width: 320px;
+        }
+        .af-modal-backdrop {
+            display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 10000;
+            align-items: center; justify-content: center; padding: 16px;
+        }
+        .af-modal-backdrop.open { display: flex; }
+        .af-modal {
+            background: #fff; border-radius: 12px; max-width: 720px; width: 100%; max-height: 90vh;
+            overflow: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+        .af-modal-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #e5e7eb; }
+        .payslip {
+            padding: 28px 32px; color: #0f172a; font-size: 13px; line-height: 1.45;
+        }
+        .payslip-header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 18px; }
+        .payslip-header img { width: 56px; height: 56px; object-fit: contain; }
+        .payslip-header h1 { margin: 0; font-size: 1.35rem; }
+        .payslip-header p { margin: 2px 0 0; color: #64748b; }
+        .payslip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 16px; }
+        .payslip-section { margin: 16px 0; }
+        .payslip-section h3 { margin: 0 0 8px; font-size: 0.95rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        .payslip-row { display: flex; justify-content: space-between; padding: 4px 0; }
+        .payslip-total { margin-top: 12px; padding-top: 10px; border-top: 2px solid #0f172a; font-size: 1.1rem; font-weight: 700; display: flex; justify-content: space-between; }
+        .af-note { font-size: 0.8rem; color: #64748b; margin-top: 8px; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            #af-payslip-print, #af-payslip-print * { visibility: visible !important; }
+            #af-payslip-print {
+                position: absolute !important; left: 0; top: 0; width: 100%;
+                padding: 12mm; box-shadow: none !important; border: none !important;
+            }
+            .af-modal-backdrop { display: block !important; position: static !important; background: none !important; padding: 0 !important; }
+            .af-modal { box-shadow: none !important; max-height: none !important; overflow: visible !important; }
+            .af-modal-actions, .remoed-sidebar, .nav-header, #remoed-mobile-shell, #remoed-more-sheet { display: none !important; }
+            @page { size: A4; margin: 12mm; }
+        }
+    </style>
+</head>
+<body class="page-admin-fee">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/payroll-withdraw-modal.js?v=1"></script>
+        <script src="js/admin-page-header.js"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-13"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'admin-fee');</script>
+        <div class="remoed-content">
+            <div class="af-wrap">
+                <p class="af-intro">View your <strong>1% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.</p>
+
+                <div class="af-toolbar">
+                    <label for="af-period">Pay period</label>
+                    <select id="af-period" aria-label="Pay period"></select>
+                    <button type="button" class="af-btn af-btn-sec" id="af-refresh">Refresh</button>
+                    <button type="button" class="af-btn af-btn-ghost" id="af-open-payslip">Generate Payslip</button>
+                    <button type="button" class="af-btn" id="af-withdraw-btn" style="display:none;background:#16a34a;color:#fff;">Withdraw (MariBank)</button>
+                </div>
+                <p id="af-payout-status" class="af-muted" style="margin:0 0 12px;"></p>
+
+                <div class="af-stats" id="af-stats">
+                    <div class="af-stat"><div class="lbl">Gross subscription sales</div><div class="val" id="af-gross">₱0</div></div>
+                    <div class="af-stat"><div class="lbl">1% Admin share</div><div class="val" id="af-share">₱0</div></div>
+                    <div class="af-stat"><div class="lbl">Hours worked</div><div class="val" id="af-hours">0</div></div>
+                    <div class="af-stat"><div class="lbl">Estimated payout</div><div class="val" id="af-payout">₱0</div></div>
+                </div>
+
+                <div class="af-grid">
+                    <div class="af-card">
+                        <h2>Period eligibility</h2>
+                        <p class="af-muted" id="af-period-label">—</p>
+                        <p style="margin:10px 0 0;font-size:0.95rem;" id="af-elig-text">—</p>
+                        <p class="af-note" id="af-admin-meta"></p>
+                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Completed 8-hour shifts in this period unlock the 1% fee.</p>
+                    </div>
+                    <div class="af-card">
+                        <h2>How payout works</h2>
+                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff after at least one completed 8-hour shift. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
+                        <p class="af-note">Need MariBank? <a href="https://maribank.ph/c/earnfreemoney?referralCode=KB740303" target="_blank" rel="noopener noreferrer">Open MariBank</a>.</p>
+                    </div>
+                </div>
+
+                <div class="af-card">
+                    <h2>Attendance history</h2>
+                    <div class="af-table-wrap">
+                        <table class="af-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time In</th>
+                                    <th>Time Out</th>
+                                    <th>Total Hours</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="af-history-body">
+                                <tr><td colspan="5" class="af-muted">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="af-modal-backdrop" id="af-payslip-modal" role="dialog" aria-modal="true" aria-labelledby="af-payslip-title">
+        <div class="af-modal">
+            <div class="payslip" id="af-payslip-print">
+                <div class="payslip-header">
+                    <img src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src='remoed-logo.png'">
+                    <div>
+                        <h1 id="af-payslip-title">Admin Fee Payslip</h1>
+                        <p>RemoEdPH · Admin Compensation</p>
+                    </div>
+                </div>
+                <div class="payslip-grid" id="af-payslip-admin"></div>
+                <div class="payslip-section">
+                    <h3>Shift summary</h3>
+                    <div id="af-payslip-shifts"></div>
+                </div>
+                <div class="payslip-section">
+                    <h3>Subscription sales &amp; commission</h3>
+                    <div id="af-payslip-sales"></div>
+                </div>
+                <div class="payslip-total" id="af-payslip-net"></div>
+                <p class="af-note" id="af-payslip-foot"></p>
+            </div>
+            <div class="af-modal-actions">
+                <button type="button" class="af-btn af-btn-ghost" id="af-payslip-close">Close</button>
+                <button type="button" class="af-btn af-btn-sec" id="af-payslip-save">Save record</button>
+                <button type="button" class="af-btn af-btn-in" id="af-payslip-print-btn">Print / Save as PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="af-toast" id="af-toast"></div>
+
+    <script>
+(function () {
+    function token() {
+        return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken && RemoedAdminSession.getAuthToken()) ||
+            localStorage.getItem('remoed_admin_token') ||
+            localStorage.getItem('remoed_admin_auth') ||
+            localStorage.getItem('adminToken') ||
+            localStorage.getItem('token') ||
+            '';
+    }
+
+    function toast(msg) {
+        var el = document.getElementById('af-toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.style.display = 'block';
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { el.style.display = 'none'; }, 3200);
+    }
+
+    function peso(n) {
+        var v = Number(n) || 0;
+        return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function periodOptions() {
+        var sel = document.getElementById('af-period');
+        if (!sel) return;
+        var now = new Date();
+        var y = now.getFullYear();
+        var m = now.getMonth() + 1;
+        var half = now.getDate() <= 15 ? 1 : 2;
+        var opts = [];
+        for (var n = 0; n < 8; n++) {
+            var key = y + '-' + String(m).padStart(2, '0') + '-' + half;
+            var label = half === 1
+                ? (String(m).padStart(2, '0') + '/' + y + ' · Period 1 (1st–15th)')
+                : (String(m).padStart(2, '0') + '/' + y + ' · Period 2 (16th–end)');
+            opts.push({ key: key, label: label });
+            if (half === 2) {
+                half = 1;
+            } else {
+                half = 2;
+                m -= 1;
+                if (m < 1) { m = 12; y -= 1; }
+            }
+        }
+        sel.innerHTML = opts.map(function (o) {
+            return '<option value="' + o.key + '">' + esc(o.label) + '</option>';
+        }).join('');
+    }
+
+    async function api(url, init) {
+        var tok = token();
+        if (!tok) {
+            window.location.href = (window.RemoedAdminSession && RemoedAdminSession.getLoginPath && RemoedAdminSession.getLoginPath()) || 'admin-login.html';
+            throw new Error('Not signed in');
+        }
+        var opts = Object.assign({}, init || {});
+        opts.headers = Object.assign({}, (init && init.headers) || {}, { Authorization: 'Bearer ' + tok });
+        if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(opts.body);
+        }
+        var r = await fetch(url, opts);
+        var d = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(d.message || d.error || ('Request failed (' + r.status + ')'));
+        return d;
+    }
+
+    function statusBadge(row) {
+        if (row.metEightHours || row.status === 'completed') return '<span class="badge-ok">8h met</span>';
+        if (row.status === 'clocked_in') return '<span class="badge-info">In progress</span>';
+        if (row.status === 'short_shift') return '<span class="badge-warn">Under 8h</span>';
+        return '<span class="badge-warn">Incomplete</span>';
+    }
+
+    var lastSummary = null;
+
+    async function loadSummary() {
+        var period = document.getElementById('af-period').value;
+        var d = await api('/api/admin/admin-fee/summary?period=' + encodeURIComponent(period));
+        lastSummary = d;
+        document.getElementById('af-gross').textContent = peso(d.grossSales);
+        document.getElementById('af-share').textContent = peso(d.adminShareAmount);
+        document.getElementById('af-hours').textContent = String(d.totalEligibleHours || 0);
+        var payEl = document.getElementById('af-payout');
+        payEl.textContent = peso(d.estimatedPayout);
+        payEl.className = 'val ' + (d.eligible ? 'ok' : 'warn');
+        document.getElementById('af-period-label').textContent = d.periodLabel || period;
+        var statusEl = document.getElementById('af-payout-status');
+        var wBtn = document.getElementById('af-withdraw-btn');
+        if (statusEl) {
+            statusEl.textContent = d.payoutLifecycleLabel
+                ? ('Payout status: ' + d.payoutLifecycleLabel)
+                : '';
+        }
+        if (wBtn) {
+            if (d.canWithdraw && d.payoutId) {
+                wBtn.style.display = 'inline-block';
+                wBtn.setAttribute('data-payout-id', d.payoutId);
+                wBtn.setAttribute('data-amount', String(d.estimatedPayout || 0));
+            } else {
+                wBtn.style.display = 'none';
+                wBtn.removeAttribute('data-payout-id');
+            }
+        }
+        document.getElementById('af-elig-text').innerHTML = d.eligible
+            ? '<strong style="color:#15803d">Eligible</strong> — ' + (d.completedShifts || 0) + ' completed 8h shift(s) this period.'
+            : '<strong style="color:#b45309">Not yet eligible</strong> — complete at least one full 8-hour shift this period to unlock the 1% fee.';
+        if (d.admin) {
+            document.getElementById('af-admin-meta').textContent =
+                (d.admin.name || '') + ' · ' + (d.admin.roleLabel || '') + (d.admin.email ? ' · ' + d.admin.email : '');
+        }
+        var body = document.getElementById('af-history-body');
+        var rows = d.attendance || [];
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="5" class="af-muted">No attendance records for this period yet.</td></tr>';
+        } else {
+            body.innerHTML = rows.map(function (r) {
+                return '<tr>' +
+                    '<td>' + esc(r.date) + '</td>' +
+                    '<td>' + esc(r.timeInLabel || '—') + '</td>' +
+                    '<td>' + esc(r.timeOutLabel || '—') + '</td>' +
+                    '<td>' + esc(r.totalHours != null ? r.totalHours : '—') + '</td>' +
+                    '<td>' + statusBadge(r) + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+    }
+
+    function fillPayslip(ps) {
+        var a = ps.admin || {};
+        document.getElementById('af-payslip-admin').innerHTML =
+            '<div><strong>Name</strong><br>' + esc(a.name) + '</div>' +
+            '<div><strong>Role</strong><br>' + esc(a.role) + '</div>' +
+            '<div><strong>Email</strong><br>' + esc(a.email || '—') + '</div>' +
+            '<div><strong>Pay period</strong><br>' + esc(ps.periodLabel || ps.periodKey) + '</div>';
+        var sh = ps.shiftSummary || {};
+        document.getElementById('af-payslip-shifts').innerHTML =
+            '<div class="payslip-row"><span>Total shifts</span><span>' + esc(sh.totalShifts) + '</span></div>' +
+            '<div class="payslip-row"><span>Completed 8h shifts</span><span>' + esc(sh.completedShifts) + '</span></div>' +
+            '<div class="payslip-row"><span>Total hours worked</span><span>' + esc(sh.totalHours) + '</span></div>' +
+            '<div class="payslip-row"><span>Eligibility</span><span>' + (sh.eligible ? 'Eligible' : 'Not eligible') + '</span></div>';
+        var s = ps.sales || {};
+        document.getElementById('af-payslip-sales').innerHTML =
+            '<div class="payslip-row"><span>Gross subscription sales pool</span><span>' + peso(s.grossSubscriptionSales) + '</span></div>' +
+            '<div class="payslip-row"><span>Purchases counted</span><span>' + esc(s.purchaseCount) + '</span></div>' +
+            '<div class="payslip-row"><span>Commission rate</span><span>' + esc(s.commissionRate) + '%</span></div>' +
+            '<div class="payslip-row"><span>1% commission</span><span>' + peso(s.commissionAmount) + '</span></div>';
+        document.getElementById('af-payslip-net').innerHTML =
+            '<span>Total net payout</span><span>' + peso(ps.netPayout) + '</span>';
+        document.getElementById('af-payslip-foot').textContent =
+            'Generated ' + new Date(ps.generatedAt || Date.now()).toLocaleString() +
+            ' · Payout requires at least one completed 8-hour shift in the period.';
+    }
+
+    async function openPayslip() {
+        var period = document.getElementById('af-period').value;
+        try {
+            var d = await api('/api/admin/admin-fee/payslip?period=' + encodeURIComponent(period));
+            fillPayslip(d.payslip || {});
+            document.getElementById('af-payslip-modal').classList.add('open');
+        } catch (e) {
+            toast(e.message || 'Could not generate payslip');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!token()) {
+            window.location.href = (window.RemoedAdminSession && RemoedAdminSession.getLoginPath && RemoedAdminSession.getLoginPath()) || 'admin-login.html';
+            return;
+        }
+        periodOptions();
+        document.getElementById('af-period').addEventListener('change', function () {
+            loadSummary().catch(function (e) { toast(e.message); });
+        });
+        document.getElementById('af-refresh').addEventListener('click', function () {
+            loadSummary().catch(function (e) { toast(e.message); });
+        });
+        document.getElementById('af-open-payslip').addEventListener('click', openPayslip);
+        var afWithdraw = document.getElementById('af-withdraw-btn');
+        if (afWithdraw) {
+            afWithdraw.addEventListener('click', function () {
+                var id = afWithdraw.getAttribute('data-payout-id');
+                var amt = Number(afWithdraw.getAttribute('data-amount') || 0);
+                if (!id) {
+                    toast('No released payout for this period');
+                    return;
+                }
+                if (!window.RemoedPayrollWithdraw) {
+                    toast('Withdraw UI failed to load');
+                    return;
+                }
+                RemoedPayrollWithdraw.open({
+                    recordId: id,
+                    amount: amt,
+                    submitUrl: '/api/admin/admin-fee/withdraw',
+                    idField: 'payoutId',
+                    getToken: token,
+                    onSuccess: function () {
+                        loadSummary().catch(function (e) { toast(e.message); });
+                    }
+                });
+            });
+        }
+        document.getElementById('af-payslip-close').addEventListener('click', function () {
+            document.getElementById('af-payslip-modal').classList.remove('open');
+        });
+        document.getElementById('af-payslip-print-btn').addEventListener('click', function () {
+            window.print();
+        });
+        document.getElementById('af-payslip-save').addEventListener('click', async function () {
+            try {
+                var period = document.getElementById('af-period').value;
+                await api('/api/admin/admin-fee/record-payout', { method: 'POST', body: { periodKey: period } });
+                toast('Payslip record saved');
+            } catch (e) {
+                toast(e.message || 'Save failed');
+            }
+        });
+        loadSummary().catch(function (e) { toast(e.message); });
+    });
+})();
+    </script>
+</body>
+</html>

@@ -111,6 +111,20 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
+  const wasAlreadyCompleted = !!(existing && existing.status === 'completed');
+  if (normalizedStatus === 'completed' && !wasAlreadyCompleted) {
+    try {
+      const ecoDropGardenService = require('./ecoDropGardenService');
+      await ecoDropGardenService.grantEcoDropForLessonComplete({
+        studentId,
+        lessonId,
+        bookingId: booking._id,
+      });
+    } catch (ecoErr) {
+      console.warn('ecoDrop grant after lesson complete:', ecoErr && ecoErr.message);
+    }
+  }
+
   return { progress };
 }
 

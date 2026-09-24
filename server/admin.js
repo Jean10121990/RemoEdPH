@@ -13,6 +13,17 @@ const Notification = require('./models/Notification');
 const PeerMessage = require('./models/PeerMessage');
 const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
+const { syncAdminAttendanceFromTimeLog } = require('./services/adminAttendanceSync');
+const {
+  isReleased,
+  isDisbursed,
+  isWithdrawRequested,
+  isCompleted,
+  uiLifecycleLabel,
+  validateMariBankWithdrawBody,
+  sendWithdrawalEmailToAccounting,
+  ALLOWED_BANK,
+} = require('./services/payrollWithdrawService');
 const Referral = require('./models/Referral');
 const AdminAuditLog = require('./models/AdminAuditLog');
 const { decryptPiiString } = require('./utils/piiCrypto');
@@ -82,11 +93,38 @@ function currentMonthDateBounds() {
   return { startStr, endStr, year: y, month: m + 1 };
 }
 
-/** All PeerMessage id variants for a teacher or student (admin thread + read receipts). */
+/** All PeerMessage id variants for a teacher, student, or admin (admin thread + read receipts). */
 async function peerMessageLookupKeysForUser(raw) {
   const s = String(raw || '').trim();
   const keys = new Set();
   if (s) keys.add(s);
+
+  if (s.toLowerCase().startsWith('admin:')) {
+    const uname = s.slice(6).trim();
+    if (uname) {
+      keys.add('admin:' + uname);
+      keys.add('admin:' + uname.toLowerCase());
+      const adminByUser = await Admin.findOne({
+        $or: [
+          { username: uname },
+          { username: new RegExp(`^${escapeRegexForSearch(uname)}$`, 'i') },
+          { email: new RegExp(`^${escapeRegexForSearch(uname)}$`, 'i') },
+        ],
+      })
+        .select('username email')
+        .lean();
+      if (adminByUser) {
+        if (adminByUser.username) {
+          keys.add('admin:' + String(adminByUser.username));
+          keys.add('admin:' + String(adminByUser.username).toLowerCase());
+        }
+        if (adminByUser.email) {
+          keys.add('admin:' + String(adminByUser.email).trim().toLowerCase());
+        }
+      }
+    }
+    return Array.from(keys).filter(Boolean);
+  }
 
   const t = await Teacher.findOne({
     $or: [
@@ -116,12 +154,43 @@ async function peerMessageLookupKeysForUser(raw) {
     if (st.email) keys.add(String(st.email).trim().toLowerCase());
   }
 
+  const admin = await Admin.findOne({
+    $or: [
+      { username: s },
+      { email: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+      { username: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+    ],
+  })
+    .select('username email')
+    .lean();
+  if (admin && admin.username) {
+    keys.add('admin:' + String(admin.username));
+    keys.add('admin:' + String(admin.username).toLowerCase());
+    if (admin.email) keys.add('admin:' + String(admin.email).trim().toLowerCase());
+  }
+
   return Array.from(keys).filter(Boolean);
 }
 
-/** Canonical id stored in PeerMessage (teacherId for teachers, username for students). */
+/** Canonical id stored in PeerMessage (teacherId for teachers, username for students, admin:username for admins). */
 async function canonicalPeerRecipientId(raw) {
   const s = String(raw || '').trim();
+  if (!s) return s;
+  if (s.toLowerCase().startsWith('admin:')) {
+    return 'admin:' + s.slice(6).trim().toLowerCase();
+  }
+  const admin = await Admin.findOne({
+    $or: [
+      { username: s },
+      { email: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+      { username: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+    ],
+  })
+    .select('username')
+    .lean();
+  if (admin && admin.username) {
+    return 'admin:' + String(admin.username).trim().toLowerCase();
+  }
   const t = await Teacher.findOne({
     $or: [
       { teacherId: s },
@@ -375,11 +444,18 @@ router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (re
   try {
     const io = getIo();
     let activeSocketConnections = 0;
-    let studentsOnline = 0;
+    const studentKeys = new Set();
+    const teacherKeys = new Set();
+    const adminKeys = new Set();
     if (io && io.sockets && io.sockets.sockets) {
       activeSocketConnections = io.sockets.sockets.size;
       for (const s of io.sockets.sockets.values()) {
-        if (s && s.userType === 'student') studentsOnline += 1;
+        if (!s) continue;
+        const type = String(s.userType || '').toLowerCase();
+        const key = s.presenceKey || `${type}:${s.id}`;
+        if (type === 'student') studentKeys.add(key);
+        else if (type === 'teacher') teacherKeys.add(key);
+        else if (type === 'admin') adminKeys.add(key);
       }
     }
 
@@ -404,7 +480,9 @@ router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (re
       live: {
         activeSocketConnections,
         ongoingClasses,
-        studentsOnline,
+        studentsOnline: studentKeys.size,
+        teachersOnline: teacherKeys.size,
+        adminsOnline: adminKeys.size,
       },
       api: {
         averageLatencyMs: getAverageApiLatencyMs(),
@@ -1129,6 +1207,12 @@ router.post('/time-tracking/clock-in', verifyAdminApiAuth, requireAdmin, async (
       status: 'clocked-in'
     });
 
+    try {
+      await syncAdminAttendanceFromTimeLog(timeLog, req.user.username);
+    } catch (syncErr) {
+      console.warn('Admin attendance sync (clock-in):', syncErr && syncErr.message);
+    }
+
     await createNotification(req.user.username, 'time-tracking', `Admin clocked in at ${currentTime}`);
 
     res.json({ success: true, message: 'Successfully clocked in', timeLog });
@@ -1161,6 +1245,12 @@ router.post('/time-tracking/clock-out', verifyAdminApiAuth, requireAdmin, async 
     timeLog.totalHours = Math.round(totalHours * 100) / 100;
     timeLog.status = 'clocked-out';
     await timeLog.save();
+
+    try {
+      await syncAdminAttendanceFromTimeLog(timeLog, req.user.username);
+    } catch (syncErr) {
+      console.warn('Admin attendance sync (clock-out):', syncErr && syncErr.message);
+    }
 
     await createNotification(req.user.username, 'time-tracking', `Admin clocked out at ${currentTime} (${timeLog.totalHours} hours)`);
 
@@ -1238,6 +1328,192 @@ router.get('/time-tracking/history', verifyAdminApiAuth, requireAdmin, async (re
   } catch (err) {
     console.error('Admin time history error:', err);
     res.status(500).json({ error: 'Failed to fetch time log history' });
+  }
+});
+
+function adminUsernameFromWorkerId(teacherId) {
+  const s = String(teacherId || '');
+  if (s.toLowerCase().startsWith('admin:')) return s.slice(6);
+  return s;
+}
+
+/** Build a Date for Asia/Manila from YYYY-MM-DD + HH:MM[:SS] (24h). */
+function phDateTimeFromYmdAndHm(ymd, hm) {
+  const parts = String(hm || '').trim().split(':').map((x) => Number(x));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || '')) || parts.length < 2 || parts.some((n) => Number.isNaN(n))) {
+    return null;
+  }
+  const h = Math.min(23, Math.max(0, parts[0]));
+  const m = Math.min(59, Math.max(0, parts[1]));
+  const sec = parts.length >= 3 ? Math.min(59, Math.max(0, parts[2] || 0)) : 0;
+  return new Date(
+    `${ymd}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}+08:00`
+  );
+}
+
+function formatPhTime12FromDate(date) {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Super-Admin: list any admin's time logs (accidental Time Out corrections, audits).
+ * Query: username (optional), startDate, endDate
+ */
+router.get('/time-tracking/manage', verifyAdminApiAuth, requireAdmin, requireSuperAdminDb, async (req, res) => {
+  try {
+    const { startDate, endDate, username } = req.query;
+    const query = { logOwnerType: 'admin' };
+    if (username && String(username).trim()) {
+      query.teacherId = adminTimeWorkerId(String(username).trim());
+    }
+    if (startDate && endDate) {
+      query.date = { $gte: String(startDate), $lte: String(endDate) };
+    }
+    const timeLogs = await TimeLog.find(query)
+      .sort({ date: -1, 'clockIn.timestamp': -1 })
+      .limit(100)
+      .lean();
+    const rows = timeLogs.map((log) => ({
+      ...log,
+      adminUsername: adminUsernameFromWorkerId(log.teacherId),
+    }));
+    res.json({ success: true, timeLogs: rows });
+  } catch (err) {
+    console.error('Admin time manage list error:', err);
+    res.status(500).json({ error: 'Failed to fetch admin time logs' });
+  }
+});
+
+/**
+ * Super-Admin: correct an admin TimeLog after accidental Time Out (or wrong times).
+ * Body: { action: 'reopen' | 'edit', clockIn?: 'HH:MM', clockOut?: 'HH:MM'|null, note?: string }
+ * - reopen: clears clock-out so the admin can continue / Time Out again today
+ * - edit: set In/Out times on the log's business date (omit clockOut or null to leave open)
+ */
+router.patch('/time-tracking/logs/:id', verifyAdminApiAuth, requireAdmin, requireSuperAdminDb, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid log id' });
+    }
+    const timeLog = await TimeLog.findById(id);
+    if (!timeLog || timeLog.logOwnerType !== 'admin') {
+      return res.status(404).json({ success: false, error: 'Admin time log not found' });
+    }
+
+    const action = String(req.body.action || 'edit').trim().toLowerCase();
+    const note = String(req.body.note || '').trim();
+    const targetUsername = adminUsernameFromWorkerId(timeLog.teacherId);
+    const ymd = timeLog.date;
+
+    if (action === 'reopen') {
+      const reopenNote = `Reopened by Super-Admin ${req.user.username} at ${getPhilippineTimeStringAdmin()}` +
+        (note ? ` — ${note}` : '');
+      const notes = [timeLog.notes, reopenNote].filter(Boolean).join('\n').slice(0, 2000);
+      await TimeLog.updateOne(
+        { _id: timeLog._id },
+        {
+          $unset: { clockOut: 1 },
+          $set: { totalHours: 0, status: 'clocked-in', notes },
+        }
+      );
+      const fresh = await TimeLog.findById(timeLog._id);
+      try {
+        await syncAdminAttendanceFromTimeLog(fresh, targetUsername);
+      } catch (syncErr) {
+        console.warn('Admin attendance sync (reopen):', syncErr && syncErr.message);
+      }
+      return res.json({
+        success: true,
+        message: `Shift reopened for ${targetUsername}. They can Time Out when finished.`,
+        timeLog: fresh,
+      });
+    }
+
+    // edit
+    let clockInTs = timeLog.clockIn && timeLog.clockIn.timestamp
+      ? new Date(timeLog.clockIn.timestamp)
+      : null;
+    if (req.body.clockIn != null && String(req.body.clockIn).trim() !== '') {
+      clockInTs = phDateTimeFromYmdAndHm(ymd, req.body.clockIn);
+      if (!clockInTs || Number.isNaN(clockInTs.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid clockIn time (use HH:MM)' });
+      }
+      timeLog.clockIn = { time: formatPhTime12FromDate(clockInTs), timestamp: clockInTs };
+    }
+
+    const clearOut =
+      req.body.clockOut === null ||
+      req.body.clockOut === '' ||
+      String(req.body.clockOut || '').toLowerCase() === 'null';
+
+    const editNote = `Edited by Super-Admin ${req.user.username} at ${getPhilippineTimeStringAdmin()}` +
+      (note ? ` — ${note}` : '');
+    const notes = [timeLog.notes, editNote].filter(Boolean).join('\n').slice(0, 2000);
+
+    if (clearOut) {
+      await TimeLog.updateOne(
+        { _id: timeLog._id },
+        {
+          $unset: { clockOut: 1 },
+          $set: {
+            clockIn: timeLog.clockIn,
+            totalHours: 0,
+            status: 'clocked-in',
+            notes,
+          },
+        }
+      );
+      const freshOpen = await TimeLog.findById(timeLog._id);
+      try {
+        await syncAdminAttendanceFromTimeLog(freshOpen, targetUsername);
+      } catch (syncErr) {
+        console.warn('Admin attendance sync (edit open):', syncErr && syncErr.message);
+      }
+      return res.json({
+        success: true,
+        message: `Time log updated for ${targetUsername}`,
+        timeLog: freshOpen,
+      });
+    }
+
+    if (req.body.clockOut != null && String(req.body.clockOut).trim() !== '') {
+      const clockOutTs = phDateTimeFromYmdAndHm(ymd, req.body.clockOut);
+      if (!clockOutTs || Number.isNaN(clockOutTs.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid clockOut time (use HH:MM)' });
+      }
+      if (clockInTs && clockOutTs < clockInTs) {
+        return res.status(400).json({ success: false, error: 'Clock out must be after clock in' });
+      }
+      const hours = clockInTs ? (clockOutTs - clockInTs) / (1000 * 60 * 60) : 0;
+      timeLog.clockOut = { time: formatPhTime12FromDate(clockOutTs), timestamp: clockOutTs };
+      timeLog.totalHours = Math.round(hours * 100) / 100;
+      timeLog.status = 'clocked-out';
+    }
+
+    timeLog.notes = notes;
+    await timeLog.save();
+
+    try {
+      await syncAdminAttendanceFromTimeLog(timeLog, targetUsername);
+    } catch (syncErr) {
+      console.warn('Admin attendance sync (edit):', syncErr && syncErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Time log updated for ${targetUsername}`,
+      timeLog,
+    });
+  } catch (err) {
+    console.error('Admin time log patch error:', err);
+    res.status(500).json({ success: false, error: 'Failed to update time log', details: err.message });
   }
 });
 
@@ -2766,11 +3042,25 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
     baseWeeklyFee + studentAbsentPayment + bonus - lateDeductions - teacherAbsentDeductions
   );
   let paymentStatus = 'Pending';
+  let paymentId = null;
+  let payoutLifecycle = 'pending';
   if (teacher.paymentHistory && teacher.paymentHistory.length > 0) {
     const currentWeekPayment = teacher.paymentHistory.find(
-      (payment) => payment.duration === `${startDate} - ${endDate}` && payment.status === 'Success'
+      (payment) =>
+        payment.duration === `${startDate} - ${endDate}` && isReleased(payment.status)
     );
-    if (currentWeekPayment) paymentStatus = 'Paid';
+    if (currentWeekPayment) {
+      paymentId = currentWeekPayment._id ? String(currentWeekPayment._id) : null;
+      payoutLifecycle = isCompleted(currentWeekPayment.status)
+        ? 'completed'
+        : isWithdrawRequested(currentWeekPayment.status)
+          ? 'withdrawal_requested'
+          : isDisbursed(currentWeekPayment.status)
+            ? 'disbursed'
+            : 'released';
+      // Accounting "Paid" / dispense-locked once released (any post-dispense state)
+      paymentStatus = 'Paid';
+    }
   }
   return {
     teacherId: teacher._id,
@@ -2788,6 +3078,17 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
     teacherAbsentDeductions,
     weeklySalary: netPayableAmount,
     paymentStatus,
+    paymentId,
+    payoutLifecycle,
+    payoutLifecycleLabel: uiLifecycleLabel(
+      payoutLifecycle === 'completed'
+        ? 'COMPLETED'
+        : payoutLifecycle === 'withdrawal_requested'
+          ? 'WITHDRAWAL_REQUESTED'
+          : payoutLifecycle === 'disbursed'
+            ? 'DISBURSED'
+            : ''
+    ),
   };
 }
 
@@ -2882,8 +3183,13 @@ router.post('/dispense-salaries', async (req, res) => {
       const weeklySalary = row.weeklySalary;
 
       if (weeklySalary > 0) {
-        // Create payment record (you might want to create a Payment model)
-        // For now, we'll just mark it as paid in the teacher's record
+        // Release funds for MariBank withdraw (DISBURSED — not bank-final COMPLETED)
+        const already = (teacher.paymentHistory || []).find(
+          (p) => p.duration === `${startDate} - ${endDate}` && isReleased(p.status)
+        );
+        if (already) {
+          continue;
+        }
         await Teacher.findByIdAndUpdate(teacher._id, {
           $push: {
             paymentHistory: {
@@ -2891,9 +3197,10 @@ router.post('/dispense-salaries', async (req, res) => {
               issueDate: issueDate,
               amount: weeklySalary,
               remark: 0,
-              paymentMethod: 'HSBC_PayPal',
+              paymentMethod: ALLOWED_BANK,
               account: teacher.username,
-              status: 'Success',
+              status: 'DISBURSED',
+              disbursedAt: new Date(),
               breakdown: {
                 completedClasses: row.completedClasses,
                 studentAbsentClasses: row.studentAbsentClasses,
@@ -2917,7 +3224,7 @@ router.post('/dispense-salaries', async (req, res) => {
           await createNotification(
             teacher.teacherId,
             'salary',
-            `Your salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been credited.`
+            `Your salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been released. Open Teaching Fee → Withdraw via MariBank.`
           );
         } catch (notifError) {
           console.error('❌ Error creating salary notification for teacher:', teacher.teacherId, notifError);
@@ -2945,6 +3252,49 @@ router.post('/dispense-salaries', async (req, res) => {
       success: false,
       message: 'Error dispensing salaries'
     });
+  }
+});
+
+/**
+ * POST /api/admin/payroll/complete
+ * Accounting marks a teacher payment COMPLETED after MariBank transfer.
+ * Body: { paymentId }
+ */
+router.post('/payroll/complete', async (req, res) => {
+  try {
+    const paymentId = String(req.body.paymentId || req.body.id || '').trim();
+    if (!paymentId || !mongoose.isValidObjectId(paymentId)) {
+      return res.status(400).json({ success: false, message: 'paymentId is required' });
+    }
+    const teacher = await Teacher.findOne({ 'paymentHistory._id': paymentId });
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+    const payment = teacher.paymentHistory.id(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+    if (!isWithdrawRequested(payment.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only WITHDRAWAL_REQUESTED payments can be marked completed.',
+      });
+    }
+    payment.status = 'COMPLETED';
+    payment.completedAt = new Date();
+    payment.paymentStatus = 'Completed';
+    await teacher.save();
+    try {
+      await createNotification(
+        teacher.teacherId,
+        'salary',
+        `Your MariBank payout of ₱${Number(payment.amount || 0).toFixed(2)} (${payment.duration || ''}) is complete.`
+      );
+    } catch (_n) { /* ignore */ }
+    res.json({ success: true, message: 'Payment marked completed', paymentId });
+  } catch (error) {
+    console.error('Error completing teacher payroll:', error);
+    res.status(500).json({ success: false, message: 'Error completing payment' });
   }
 });
 
@@ -3456,7 +3806,7 @@ router.get('/admins-list', async (req, res) => {
   }
 });
 
-// Admin messages directory — search only (min 2 chars); no full user list scan
+// Admin messages directory — search teachers, students, and other admins (min 2 chars)
 router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const q = String((req.query && req.query.q) || '').trim();
@@ -3469,8 +3819,9 @@ router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res)
     }
 
     const rx = new RegExp(escapeRegexForSearch(q), 'i');
+    const meAdminId = getAdminMessengerId(req);
 
-    const [teachers, students] = await Promise.all([
+    const [teachers, students, admins] = await Promise.all([
       Teacher.find({
         $or: [
           { username: rx },
@@ -3488,6 +3839,18 @@ router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res)
         $or: [{ username: rx }, { email: rx }, { firstName: rx }, { lastName: rx }],
       })
         .select('username firstName lastName email profilePicture')
+        .limit(40)
+        .lean(),
+      Admin.find({
+        status: { $ne: 'suspended' },
+        $or: [
+          { username: rx },
+          { email: rx },
+          { firstName: rx },
+          { lastName: rx },
+        ],
+      })
+        .select('username email firstName lastName adminRole profilePicturePath')
         .limit(40)
         .lean(),
     ]);
@@ -3525,7 +3888,32 @@ router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res)
       };
     });
 
-    const rows = teacherRows.concat(studentRows);
+    const adminRows = admins
+      .map((a) => {
+        const uname = String(a.username || '').trim();
+        if (!uname) return null;
+        const userId = 'admin:' + uname.toLowerCase();
+        if (userId === meAdminId) return null;
+        const displayName = (
+          `${a.firstName || ''} ${a.lastName || ''}`.trim() ||
+          uname ||
+          'Admin'
+        ).trim();
+        const roleLabel = String(a.adminRole || 'admin').replace(/_/g, ' ');
+        const displayHandle = [uname, a.email, roleLabel].filter(Boolean).join(' • ');
+        return {
+          userType: 'admin',
+          userId,
+          username: uname,
+          name: displayName,
+          email: String(a.email || ''),
+          displayHandle,
+          profilePicture: a.profilePicturePath || null,
+        };
+      })
+      .filter(Boolean);
+
+    const rows = teacherRows.concat(studentRows).concat(adminRows);
     const userKeys = rows.map((u) => u.userId).filter(Boolean);
     const keySet = new Set(userKeys);
 
@@ -3661,7 +4049,14 @@ router.post(
       try {
         const io = getIo();
         if (io) {
-          io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          if (recipientId.startsWith('admin:')) {
+            io.to(`admin-msg:${recipientId.slice(6)}`).emit('peer-message:new', messageRecord);
+          } else if (String(req.body?.userType || '').toLowerCase() === 'student') {
+            io.to(`student-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          } else {
+            io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+            io.to(`student-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          }
           if (adminId.startsWith('admin:')) {
             io.to(`admin-msg:${adminId.slice(6)}`).emit('peer-message:new', messageRecord);
           }
@@ -4587,11 +4982,24 @@ router.post('/user', async (req, res) => {
         if (!creator || (creator.adminRole || 'super_admin') !== 'super_admin') {
           return res.status(403).json({ error: 'Only Super-Admin can create admin accounts.' });
         }
-        const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
         const roleNorm = String(requestedAdminRole || '')
           .trim()
           .toLowerCase();
-        const assignedRole = allowedRoles.includes(roleNorm) ? roleNorm : 'admin_hr';
+        let assignedRole = 'admin_hr';
+        try {
+          const { seedAdminRbac } = require('./services/adminRbac');
+          const AdminRole = require('./models/AdminRole');
+          await seedAdminRbac().catch(() => {});
+          const roleDoc = await AdminRole.findOne({ slug: roleNorm }).lean();
+          if (roleDoc) assignedRole = roleDoc.slug;
+          else if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+            assignedRole = roleNorm;
+          }
+        } catch (roleErr) {
+          if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+            assignedRole = roleNorm;
+          }
+        }
 
         const hasPassword = password && String(password).trim().length > 0;
         if (hasPassword) {
@@ -4866,9 +5274,21 @@ router.put('/user/:userId', async (req, res) => {
       if (studentFirstName) user.firstName = studentFirstName;
       if (studentLastName) user.lastName = studentLastName;
     } else if (userType === 'admin' && bodyAdminRolePut) {
-      const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
-      if (allowedRoles.includes(String(bodyAdminRolePut))) {
-        user.adminRole = String(bodyAdminRolePut);
+      const roleNorm = String(bodyAdminRolePut).trim().toLowerCase();
+      try {
+        const { seedAdminRbac } = require('./services/adminRbac');
+        const AdminRole = require('./models/AdminRole');
+        await seedAdminRbac().catch(() => {});
+        const roleDoc = await AdminRole.findOne({ slug: roleNorm }).lean();
+        if (roleDoc) {
+          user.adminRole = roleDoc.slug;
+        } else if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+          user.adminRole = roleNorm;
+        }
+      } catch (e) {
+        if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+          user.adminRole = roleNorm;
+        }
       }
     }
 
@@ -5280,6 +5700,7 @@ router.get('/payment-history', async (req, res) => {
           _id: '$paymentHistory._id',
           teacherId: '$_id',
           teacherEmail: '$email',
+          teacherUsername: '$username',
           teacherName: {
             $let: {
               vars: {
@@ -5299,6 +5720,10 @@ router.get('/payment-history', async (req, res) => {
           issueDate: '$paymentHistory.issueDate',
           amount: '$paymentHistory.amount',
           status: '$paymentHistory.status',
+          payoutReference: '$paymentHistory.payoutReference',
+          withdrawalRequestedAt: '$paymentHistory.withdrawalRequestedAt',
+          completedAt: '$paymentHistory.completedAt',
+          disbursedAt: '$paymentHistory.disbursedAt',
         },
       },
       { $sort: { issueDate: -1 } }

@@ -2715,6 +2715,86 @@ router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
 // ——— RemoEdKids growth badges & quarterly progress ———
 const studentBadgeService = require('./services/studentBadgeService');
 const ProgressReport = require('./models/ProgressReport');
+const ecoDropGardenService = require('./services/ecoDropGardenService');
+
+function gardenStudentKey(req) {
+  if (req.student && req.student.username) return String(req.student.username);
+  return req.user.username || req.user.studentId || '';
+}
+
+router.get('/eco-drops', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = gardenStudentKey(req);
+    const bal = await ecoDropGardenService.getEcoDropBalance(studentId);
+    res.json({ success: true, ...bal });
+  } catch (error) {
+    console.error('GET /api/student/eco-drops:', error);
+    res.status(500).json({ success: false, error: 'Failed to load Eco-Drops' });
+  }
+});
+
+router.get('/garden', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = gardenStudentKey(req);
+    const ack =
+      req.query.ackCelebration === '1' ||
+      req.query.ackCelebration === 'true' ||
+      req.query.ack === '1';
+    const state = await ecoDropGardenService.getGardenState(studentId, {
+      ackCelebration: !!ack,
+    });
+    res.json(state);
+  } catch (error) {
+    console.error('GET /api/student/garden:', error);
+    const status = error.status || 500;
+    res.status(status).json({
+      success: false,
+      error: error.message || 'Failed to load garden',
+    });
+  }
+});
+
+router.post('/garden/action', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = gardenStudentKey(req);
+    const result = await ecoDropGardenService.gardenAction(studentId, req.body || {});
+    res.json(result);
+  } catch (error) {
+    console.error('POST /api/student/garden/action:', error);
+    const status = error.status || 500;
+    res.status(status).json({
+      success: false,
+      error: error.message || 'Garden action failed',
+      code: error.code || undefined,
+    });
+  }
+});
+
+/** Backfill Eco-Drop if lesson already completed — does not force-complete. */
+router.post('/lessons/complete', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = gardenStudentKey(req);
+    const lessonId = req.body && (req.body.lessonId || req.body.lesson_id);
+    const bookingId = req.body && (req.body.bookingId || req.body.booking_id);
+    if (!lessonId) {
+      return res.status(400).json({ success: false, error: 'lessonId is required' });
+    }
+    const result = await ecoDropGardenService.ensureEcoDropForCompletedLesson(
+      studentId,
+      lessonId,
+      bookingId
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('POST /api/student/lessons/complete:', error);
+    const status = error.status || 500;
+    res.status(status).json({
+      success: false,
+      error: error.message || 'Could not sync lesson Eco-Drop',
+      code: error.code || undefined,
+    });
+  }
+});
 
 router.get('/badges', verifyToken, requireStudent, async (req, res) => {
   try {

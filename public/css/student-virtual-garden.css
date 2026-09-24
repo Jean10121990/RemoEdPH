@@ -1,0 +1,391 @@
+/* Virtual Garden — stay inside remoed-content (respects sidebar offset). Do NOT set max-width:none. */
+body.page-student-virtual-garden {
+  overflow-x: hidden;
+}
+
+body.page-student-virtual-garden .remoed-content {
+  box-sizing: border-box !important;
+  width: auto !important;
+  /* Keep portal-layout max-width: calc(100vw - sidebar); only tighten padding */
+  padding: 10px 14px 20px !important;
+  overflow-x: hidden !important;
+}
+
+.page-student-virtual-garden .vg-page {
+  --vg-ink: #0f172a;
+  --vg-sky: #e0f2fe;
+  --vg-grass: #86efac;
+  --vg-soil: #92400e;
+  --vg-done: #00a82d;
+  --vg-blue: #00aeef;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: calc(100vh - 110px);
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.vg-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: linear-gradient(120deg, #ecfdf5, #e0f2fe);
+  border: 1px solid #a7f3d0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.vg-banner p {
+  margin: 0;
+  color: #065f46;
+  font-weight: 600;
+  font-size: 0.92rem;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.vg-banner a {
+  display: inline-block;
+  background: var(--vg-blue);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.vg-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.vg-stat {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.vg-stat h3 {
+  margin: 0 0 4px;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.vg-stat .vg-val {
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  font-weight: 800;
+  color: var(--vg-ink);
+}
+
+.vg-stat .vg-val--drops {
+  color: #0284c7;
+}
+
+/* Garden + shop share one row; both columns can shrink (minmax 0). */
+.vg-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 280px);
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.vg-canvas-wrap {
+  background: linear-gradient(180deg, #bae6fd 0%, #bbf7d0 55%, #4ade80 100%);
+  border-radius: 16px;
+  border: 2px solid #86efac;
+  padding: 12px;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.vg-canvas-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38%;
+  background: linear-gradient(180deg, transparent, rgba(120, 53, 15, 0.35));
+  pointer-events: none;
+}
+
+.vg-canvas-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: #0f172a;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.vg-plots {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 220px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.vg-plot {
+  min-height: 72px;
+  height: 100%;
+  min-width: 0;
+  background: rgba(120, 53, 15, 0.55);
+  border: 2px dashed rgba(254, 243, 199, 0.55);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.vg-plot:hover,
+.vg-plot.selected {
+  transform: translateY(-2px);
+  border-color: #fde68a;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.15);
+}
+
+.vg-plot.selected {
+  outline: 2px solid #00aeef;
+}
+
+.vg-plant {
+  font-size: clamp(1.35rem, 2.8vw, 2.4rem);
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
+  transition: transform 0.35s ease;
+}
+
+.vg-plot.vg-anim-plant .vg-plant {
+  animation: vgPlantIn 0.55s ease;
+}
+
+.vg-plot.vg-anim-water .vg-plant {
+  animation: vgWaterBounce 0.65s ease;
+}
+
+@keyframes vgPlantIn {
+  from {
+    transform: scale(0.2) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes vgWaterBounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25) rotate(-6deg);
+  }
+  70% {
+    transform: scale(1.1) rotate(4deg);
+  }
+}
+
+.vg-plot-label {
+  font-size: 0.65rem;
+  color: #fef3c7;
+  font-weight: 700;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.vg-shop {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vg-shop h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: var(--vg-ink);
+}
+
+.vg-shop-hint {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0 0 10px;
+}
+
+.vg-shop-btn {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  text-align: left;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.vg-shop-btn:hover:not(:disabled) {
+  background: #ecfdf5;
+  border-color: #34d399;
+}
+
+.vg-shop-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vg-shop-btn strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.vg-shop-btn span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.vg-milestones {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  min-width: 0;
+}
+
+.vg-milestones h3 {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.vg-milestone {
+  font-size: 0.75rem;
+  padding: 5px 6px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #f1f5f9;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.vg-milestone.unlocked {
+  background: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.vg-msg {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #b91c1c;
+  min-height: 1.2em;
+}
+
+.vg-msg.ok {
+  color: #047857;
+}
+
+/* Stack shop under garden before content overflows */
+@media (max-width: 1100px) {
+  .vg-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .vg-shop {
+    height: auto;
+  }
+
+  .vg-plots {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  body.page-student-virtual-garden .remoed-content {
+    padding: 10px 12px 88px !important;
+  }
+
+  .page-student-virtual-garden .vg-page {
+    min-height: auto;
+  }
+
+  .vg-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .vg-plots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(72px, 1fr));
+    min-height: 320px;
+  }
+}

@@ -21,10 +21,20 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Landing culture / about | `public/index.html` (`#who-we-are` … `#vision-mission`), `public/landing-brand.css` (`.remo-culture*`) |
 | Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
 | Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
-| Admin Marketing role (`admin_marketing`) | `server/models/Admin.js` (`ADMIN_ROLES`), `server/admin.js` create/update `allowedRoles`, `server/authMiddleware.js` `adminRoleGate`, `public/admin-users.html` role select, `public/js/admin-sidebar.js` `MARKETING_NAV_IDS`, hub-guard, `public/js/portal-layout.js` bottom-tab fallback |
-| Admin first-time password setup | `public/admin-first-setup.html`, `POST /api/auth/admin-first-setup`, create-admin blank password → one-time `setupToken` (7 days) |
-| Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
+| Admin Marketing role (`admin_marketing`) | Seeded in `server/services/adminRbac.js`; assign via Settings → Admin Roles / HR Users; ops helper `scripts/ensure-admin-marketing.js` |
+| Admin login / first-setup | `server/utils/adminRouteConfig.js`, `ADMIN_LOGIN_PATH` in `.env`, `public/admin-login.html` (served only at obfuscated path), `public/admin-first-setup.html`, `public/js/admin-session.js`, `GET /api/auth/admin-login-path` + `POST /api/auth/admin-first-setup` in `server/auth.js` |
+| Admin HR staff documents | `public/admin-hr-documents.html`, `GET/PATCH /api/admin/hr-documents*` in `server/admin.js`; teacher NBI: `Teacher.nbiClearanceStatus` + `documents.nbiClearances` |
+| Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
+| Student My Level / CEFR guides | `public/student-assessment.html`, `public/images/cefr/remoed-kids-cefr-guide.jpg`, `public/images/cefr/remoed-teens-cefr-guide.jpg` |
+| Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + **Admin Payroll** + Student Subscriptions); Admin Payroll UI: `public/admin-admin-payroll.html` |
+| Admin Fee & Attendance | `public/admin-fee.html` (no Time In/Out), `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; clock via Dashboard / header `public/js/admin-time-tracking.js` + `/api/admin/time-tracking/*` in `server/admin.js` |
+| Admin Roles (dynamic RBAC) | `public/admin-settings.html` (Admin Roles and Access), `server/services/adminRbac.js`, `server/adminRbacRoutes.js` (RBAC paths only — skip enrollment), `AdminRole` / `AdminPermission`, `public/js/admin-access-guard.js`, `public/admin-403.html` |
+| Admin Messages | `public/admin-messages.html`, `GET/POST /api/admin/messages/*` — teachers, students, **and admins**; desktop viewport-fit messenger |
+| System monitor (Super-Admin) | `public/super-monitor.html`, `GET /api/admin/system-stats` — live unique students / teachers / admins via Socket.IO `userType` + `presenceKey` |
+| Virtual Garden / Eco-Drops | [`SKILLS.md`](../SKILLS.md), `public/student-virtual-garden.html`, `public/css/student-virtual-garden.css`, `server/services/ecoDropGardenService.js`, `GET/POST /api/student/garden*`; grant on first `LessonProgress` → completed |
+| Lesson slide generation (L2M1+) | [`reference.md`](../reference.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md), `docs/lesson-references/build_l2m1_lessons_*.py` → repo `docs/lesson-references/lessons/` **and** laptop `Level {1–4}` folders |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
+| MariBank payroll withdraw | `public/js/payroll-withdraw-modal.js`, `server/services/payrollWithdrawService.js`; teacher `POST /api/teacher/payroll/withdraw`; admin `POST /api/admin/admin-fee/withdraw` + `/complete`; Accounting `POST /api/admin/payroll/complete` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 | Ensure marketing admin (ops) | `scripts/ensure-admin-marketing.js` (create/update `adminmktg@remoedph.com` → `admin_marketing` + fresh setup token) |
 
@@ -89,13 +99,27 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Admin hubs / Marketing role
 
-- [ ] Sidebar order includes **Accounting Hub** then **Marketing Hub** (Marketing Hub directly below Accounting).
-- [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
+- [ ] Sidebar order includes **Accounting Hub** → **Admin Fee** → **Marketing Hub**.
+- [ ] Super-Admin **Settings → Admin Roles and Access** is visible and can Save Permissions for a non–Super-Admin role. Non–Super-Admin accounts do **not** see that card (or System Settings / System Monitor in the sidebar).
+- [ ] **System monitor → Live platform** shows Students / Teachers / Admins online (unique `presenceKey` counts; refreshes with other stats).
+- [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); Eco-Drop badge in sidebar/header; stats load (not “Student not found”); shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works; completing a lesson awards +1 once.
+- [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll matches teacher payroll UX (soft rounded `.btn`, period nav, Load + Dispense release, Payment History + **Mark Completed** after MariBank withdraw).
+- [ ] After Accounting **Dispense**, Teaching Fee / Admin Fee show **Withdraw (MariBank)** (Open MariBank link works). Submit → Processing; email to support; Accounting Mark Completed → Completed. Legacy Success/paid rows have no Withdraw.
+- [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
+- [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
-- [ ] Super-Admin → Admins role dropdown includes **Admin — Marketing** (`admin_marketing`). Creating with blank password shows a one-time setup token; first-time setup page is `admin-first-setup.html`.
-- [ ] `admin_marketing` login sidebar shows only: Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout (no HR / QA / Accounting hubs; no Settings / System monitor).
-- [ ] `admin_marketing` opening HR / QA / Accounting hub URLs redirects to Dashboard; Unique Link APIs work; payroll / user-mgmt / pipeline / issues / recordings APIs return 403.
+- [ ] Super-Admin → Admins / Roles can assign **Admin — Marketing** (`admin_marketing`). Creating with blank password shows a one-time setup token; first-time setup page is `admin-first-setup.html`.
+- [ ] `admin_marketing` sidebar matches its RBAC seed (Dashboard, Marketing Hub, shared ops — not HR/QA/Accounting hubs; no Settings / System monitor unless Super-Admin). Forbidden hub URLs redirect; Unique Link APIs work; payroll / user-mgmt style APIs stay gated.
+- [ ] **Admin Fee** has **no** Time In/Out buttons (status/eligibility/attendance/payslip only). Clock from **header** or **Dashboard** card; both Dashboard header mini and middle card Time In/Out/View Logs work; login does **not** auto clock-in. Time Out shows a confirm. Super-Admin **View Logs** lists any admin and can **Reopen shift** (clear accidental Time Out) or **Edit times** (HH:MM PHT); other roles only see their own history.
+- [ ] **Messages:** search finds other admins (e.g. `adminmktg@…`); can open thread and send. Desktop: conversation + composer visible without scrolling the page.
+
+### Admin login / first-time password
+
+- [ ] Root `/admin-login` and `/admin-login.html` return **404 Not found** (intentional). Login works only at `/${ADMIN_LOGIN_PATH}` (or the default segment from `adminRouteConfig.js`).
+- [ ] After **First-time password setup** succeeds, the browser redirects to that obfuscated login path — **not** to `/admin-login.html`.
+- [ ] “Admin login” on `admin-first-setup.html` and idle/logout via `RemoedAdminSession.redirectToAdminLogin()` also land on the obfuscated path (`GET /api/auth/admin-login-path` when `remoedAdminEntryPath` is missing).
+- [ ] First-time **2FA QR enroll** (`require2FASetup`): scan + 6-digit code succeeds via `POST /api/admin/verify-2fa` (must **not** return **403** from RBAC). Delete any old RemoEdPH Admin authenticator entry before scanning a new QR.
 
 ### Deploy hygiene
 
@@ -152,7 +176,7 @@ Working phone layout after the snap/scroll regressions. Extend around it; do not
 
 - Phone (`max-width: 768`): hide `nav.remoed-sidebar`. Chrome is a titled top bar (`#remoed-mobile-shell`) + 4 tabs (`#remoed-bottom-nav`) + More sheet (`#remoed-more-sheet` on `document.body`). Classroom keeps `#lc-mobile-dock` (Lesson / Camera / Chat) — skip `page-live-classroom`.
 - **Adopt header actions only when `isMobile()`.** `adoptHeaderActions()` moves `.nav-right` into `#remoed-app-actions`. On ≥769 the shell is `display: none`, so adopting on desktop **hides Time In, the bell, and the calendar**. `releaseHeaderActions()` must run on the `matchMedia('(max-width: 768px)')` change to desktop/tablet.
-- `remoedSetNavDropdownOpen` hoists `.nav-dropdown` onto `document.body` so a 40px chip cannot clip the panel. Keep `public/css/portal-header-actions.css`.
+- `remoedSetNavDropdownOpen` hoists `.nav-dropdown` onto `document.body` so a 40px chip cannot clip the panel. After hoist, **`remoedPositionNavDropdown` / `positionNavDropdown` must set `position: fixed` from the trigger’s `getBoundingClientRect`** (under the bell/calendar). Do **not** rely on `top: 100%` while the panel is on `body` — that anchors to the bottom of the page. Keep `public/css/portal-header-actions.css` (`body > .nav-dropdown` is fixed; in-icon panels stay absolute). Mirror the same open/position helpers in `public/js/remoed-notifications.js` when portal-layout is absent.
 - Do not wrap `portal-layout.js` in a way that drops `onclick` handlers on host pages. Do not add a hamburger drawer or a second teacher drawer at 992 (`z-index: 9999`).
 - Cache-bust **both** `js/portal-layout.js?v=` **and** the sidebar loader (`teacher-sidebar.js` / `student-sidebar.js` / `admin-sidebar.js` `?v=`) in the HTML that loads them. Bumping only the inner script leaves browsers on the old loader.
 
@@ -219,45 +243,102 @@ RemoEd upholds the biblical distinction of gender (male and female). Profile UIs
 
 ## Admin Marketing Hub — Unique Link Commissions
 
-Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **directly below Accounting Hub**.
+Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **below Admin Fee** (Admin Fee sits directly under Accounting Hub).
 
 - Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
-- Sidebar: `public/js/admin-sidebar.js` item `marketing` (label **Marketing Hub**) after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
-- Visibility: `super_admin`, `admin_accounting`, and **`admin_marketing`**. HR/QA (and marketing on non-marketing hubs) redirected by `admin-hub-guard.js` (`data-hub="marketing"|"hr"|"qa"|"accounting"`).
+- Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`; `admin-fee.html` → `admin-fee`.
+- Default seed for **`admin_marketing`** (editable in Settings → Admin Roles and Access): Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings. Settings / System monitor remain Super-Admin (`nav:settings` / `nav:super_monitor`). Example account: `adminmktg@remoedph.com` (ops: `scripts/ensure-admin-marketing.js`).
+- Visibility is driven by **dynamic RBAC** (`GET /api/admin/me/permissions`); legacy hub-guard still falls back to role slug checks if permissions fail to load.
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
-- Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
+- Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (parity with teacher payroll UX + soft buttons), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
 
-### Role `admin_marketing` (do not widen casually)
+## Virtual Garden & Eco-Drops
 
-Specialty admin for Unique Link / Marketing Hub work. Keep sidebar whitelist, hub-guard, and `adminRoleGate` in sync when extending.
+Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** stay separate from Eco-Drops.
 
-**Assign / create**
+- Page: [`public/student-virtual-garden.html`](../public/student-virtual-garden.html) + [`public/css/student-virtual-garden.css`](../public/css/student-virtual-garden.css) (`?v=garden-3+`). Sidebar id `garden` in `student-sidebar.js`; header Eco-Drop chip in `student-page-header.js`.
+- APIs (`server/student.js`, student Bearer): `GET /api/student/eco-drops`, `GET /api/student/garden`, `POST /api/student/garden/action`, `POST /api/student/lessons/complete` (backfill only).
+- Identity: routes must use **`gardenStudentKey(req)`** → `req.student.username` (from `requireStudent`). Do **not** pass JWT `studentId` (Mongo `_id`) alone into garden lookup — that caused **404 Student not found**. `findStudentDoc` also accepts `_id` / email / username / `studentCode`.
+- Award hook: first `LessonProgress` → `completed` in `upsertLessonProgressFromBooking` (+ direct `POST /api/lessons/progress/update`). Idempotent via `EcoDropLedger`.
+- **Layout (100% zoom):** keep portal `remoed-content` max-width `calc(100vw - sidebar)`. Never set `max-width: none` on garden content (overflows past the rail). Use `minmax(0, 1fr)`, `overflow-x: hidden`, and stack shop under the plot ≤1100px.
 
-- Enum: `server/models/Admin.js` `ADMIN_ROLES` includes `admin_marketing`.
-- Super-Admin create/update: `server/admin.js` `allowedRoles` arrays must include `admin_marketing`.
-- UI: `public/admin-users.html` select option **Admin — Marketing** (`value="admin_marketing"`). Role labels also in `admin-legal-accept.js`, profile/settings/view-user/hr-documents maps, leaderboard `ADMIN_ROLE_CLAIMS`.
-- Example account: `adminmktg@remoedph.com`. Ops helper: `scripts/ensure-admin-marketing.js` (sets role + fresh setup token).
-- HR Hub embeds Admins via `admin-users.html?adminEmbed=1&embedVer=…` — bump `embedVer` when the role dropdown changes so Super-Admin does not see a cached iframe without Marketing.
+## Admin Fee & Attendance
 
-**Sidebar whitelist** (`MARKETING_NAV_IDS` in `admin-sidebar.js`)
+- Page: `public/admin-fee.html` — bi-monthly 1% of subscription `creditHistory` purchases, eligibility, attendance history, printable payslip. **No Time In/Out UI on Admin Fee** (clock only from top header or Admin Dashboard via `/api/admin/time-tracking/*`). Login must **never** auto clock-in.
+- Admin dashboard Time In (header mini **and** middle card): `public/js/admin-time-tracking.js` (`?v=tt-4+`; also loaded from `admin-page-header.js`). Singleton + document capture + inline `onclick` on card buttons. Status poll is read-only — it does not POST clock-in.
+- **One punch per business day** (7 AM PHT cutoff): after Time Out, status is **Daily Time Log Completed** until the next business day. **Time Out must confirm** before POST (accidental outs lock the day).
+- **Super-Admin time-log correction** (Dashboard → **View Logs** only; gated by `requireSuperAdminDb`):
+  - `GET /api/admin/time-tracking/manage?username=&startDate=&endDate=` — all `logOwnerType: 'admin'` logs (filter by admin).
+  - `PATCH /api/admin/time-tracking/logs/:id` — `{ action: 'reopen' }` clears `clockOut` / sets `clocked-in` so the admin can continue; `{ action: 'edit', clockIn, clockOut }` sets HH:MM Philippine time (`clockOut: null` = leave open). Always re-sync `AdminAttendance` via `syncAdminAttendanceFromTimeLog`.
+  - UI: admin filter + **Reopen shift** / **Edit times**. Non–Super-Admin still use `GET /api/admin/time-tracking/history` (own logs only) with no edit actions.
+  - Do **not** remove Super-Admin-only guards or expose PATCH to other roles.
+- Models: `TimeLog` (`teacherId` = `admin:<username>`, `logOwnerType: 'admin'`), `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches sync from TimeLog.
+- APIs (Admin Fee): `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`**, **`/payment-history`**, **`/admins-filter-list`** in `server/adminFeeRoutes.js`.
+- Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales. Ineligible rows stay listed at ₱0; dispense skips them server-side.
+- **Payroll withdraw (MariBank only):** Accounting **Dispense** writes `DISBURSED` / `disbursed` (release — not bank-final). Teacher Teaching Fee / Admin Fee show **Withdraw (MariBank)** → `WITHDRAWAL_REQUESTED` / `withdrawal_requested` with masked `payoutReference` only. Full account details email to `support@remoedph.com` via `sendRawEmail`. Accounting **Mark Completed** → `COMPLETED` / `completed`. Legacy `Success` / `paid` = Completed (no Withdraw). Open MariBank link: `https://maribank.ph/c/earnfreemoney?referralCode=KB740303`. Shared UI: `public/js/payroll-withdraw-modal.js`. APIs: `POST /api/teacher/payroll/withdraw`, `POST /api/admin/admin-fee/withdraw`, `POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`. Service: `server/services/payrollWithdrawService.js`.
+- **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`, iframe `embedVer` bump on UI changes): mirror teacher **Payroll Management** (`public/admin-payroll.html` / `page-admin-payroll`):
+  - Soft rounded buttons (`.btn` `border-radius: 6px`, primary/success/danger colors) — do not leave square/edgy browser defaults.
+  - Period nav (`Sep 16 - Sep 30`), **Load Admins** + red **Dispense All Admin Fees** (same enable rule as teachers: stay enabled until at least one row is **Paid**/released; gray **Fees Dispensed** after. Do **not** replace with “No Pending Fees” when everyone is Ineligible).
+  - `payroll-table` list + **Payment History Management** (filter / Load Records / Export CSV / **Mark Completed** on withdrawal-requested rows).
+  - Dispense marks eligible `AdminPayout` `disbursed` and notifies each admin. Same bi-monthly `periodKey` as teacher payroll.
+- Header notification bell: `public/js/admin-notifications.js` (delegated click; opens via `remoedSetNavDropdownOpen`). Panel is body-mounted and **fixed under `#admin-notifications-icon`** — do not re-append the dropdown into the 40px chip or inject `position:absolute; top:calc(100% + 8px)` for the open state. Wire via `admin-page-header.js`.
 
-- Shown: Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout.
-- Hidden: HR Hub, QA Hub, Accounting Hub, Settings, System monitor (same Super-Admin-only rule as other specialty roles).
-- Phone bottom tabs: `portal-layout.js` `pickTabLis` falls back to **Profile settings** when Settings is hidden for this role.
+## Admin Roles and Access (dynamic RBAC)
 
-**API gate** (`adminRoleGate` in `authMiddleware.js`)
+Super-Admin configures page/feature permissions per role instead of hardcoded deny-lists only.
 
-- Marketing may use Unique Link / referral commission APIs (not blocked like HR).
-- Marketing is blocked from: payroll/dispense/salaries, issues, teacher pipeline, teachers/students/admins lists, user CRUD (`/^\/user/`), classroom recordings, global-rate maintenance, system settings/cleanup (shared Super-Admin block).
+| Piece | Location |
+|-------|----------|
+| Settings UI | [public/admin-settings.html](public/admin-settings.html) card **Admin Roles and Access** (Super-Admin only) |
+| Models | `AdminRole` collection `roles`, `AdminPermission` collection `permissions` |
+| Service / seeds | [server/services/adminRbac.js](server/services/adminRbac.js) — catalog + five system role seeds matching legacy access |
+| APIs | [server/adminRbacRoutes.js](server/adminRbacRoutes.js): `GET /me/permissions`, `GET /roles`, `POST /roles`, `PUT /roles/:id/permissions`, `GET /permissions/catalog`, `GET /roles/options` — **must not** apply blanket `verifyAdminApiAuth` to all `/api/admin/*` (use `next('router')` for non-RBAC paths). Otherwise first-time `POST /verify-2fa` with an enrollment JWT returns **403** and QR setup fails. |
+| Sidebar | [public/js/admin-sidebar.js](public/js/admin-sidebar.js) filters by `nav` from `/me/permissions` (sessionStorage cache); legacy role branches if fetch fails |
+| Page guard | [public/js/admin-access-guard.js](public/js/admin-access-guard.js) → [public/admin-403.html](public/admin-403.html); [public/js/admin-hub-guard.js](public/js/admin-hub-guard.js) delegates here |
+| API gate | [server/authMiddleware.js](server/authMiddleware.js) `adminRoleGate` + `requirePermission(key)`; Super-Admin always bypasses |
+| Assign role | HR User Management loads options from `GET /roles/options`; `Admin.adminRole` is a free slug validated against `AdminRole` |
 
-**Login / JWT**
+**Rules:**
 
-- Login returns `adminRole`; client stores `localStorage.adminRole`. After role change, the user must **sign out and sign in again** so sidebar/JWT match.
+- Do **not** remove Super-Admin full bypass. Super-Admin matrix is read-only full access.
+- **Admin Roles and Access** (`#rbac-roles-card` on `admin-settings.html`) is **Super-Admin only** — hide the card for everyone else; sidebar **Settings** / **System monitor** ignore RBAC grants (`nav:settings` / `nav:super_monitor` are stripped for non–Super-Admin on save and at `getPermissionsForRole`).
+- System roles (`super_admin`, `admin_hr`, `admin_qa`, `admin_accounting`, `admin_marketing`) are seeded once; their permissions are editable (except Super-Admin). Custom roles can be created from Settings.
+- Prefer extending the permission catalog + seeds when adding new admin pages — do not reintroduce hard-only role checks without also adding a permission key.
+- JWT still carries `adminRole` slug; permissions are resolved from DB on each request (not frozen in the token).
 
-### Admin first-time password setup (blank password on create)
+## Admin login path (obfuscated) + first-time setup
 
-When Super-Admin creates an admin with **password left blank**, the API returns a one-time **`setupToken`** (valid 7 days, shown once in the create alert). The new admin opens **Admin login → First-time password setup** (`admin-first-setup.html`), enters username + token + new password (`POST /api/auth/admin-first-setup`), then signs in normally. If a password is set in the create/edit form, there is no setup token. Lost tokens: set a password via Edit, or re-issue via ops script / a new create flow — the hash is not recoverable from the DB.
+Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login page is `public/admin-login.html` served only at `GET /${ADMIN_LOGIN_PATH}`.
+
+- Path source: `getAdminLoginPathSegment()` in `server/utils/adminRouteConfig.js`. Set `ADMIN_LOGIN_PATH` in production `.env` (8–128 chars: `a-zA-Z0-9_-`). If unset, the coded default segment is used (same value the server logs at startup as `Admin login page path`).
+- Register the route in `server/index.js` **before** static: root `/admin-login` + `/admin-login.html` → 404; `/${segment}` → `sendFile(admin-login.html)`.
+- Client must **never** hardcode redirects to `/admin-login.html` or `/admin/admin-login.html` for sign-in. Use:
+  - `localStorage.remoedAdminEntryPath` (set when visiting the obfuscated login URL via `RemoedAdminSession.rememberCurrentPathAsAdminEntry()`), or
+  - `GET /api/auth/admin-login-path` → `{ path: "/…" }`, or
+  - `loginPath` on successful `POST /api/auth/admin-first-setup`.
+- First-time setup UI: `public/admin-first-setup.html` (public). After save, redirect with `loginPath` / API path and remember it in `remoedAdminEntryPath`.
+- **Forced 2FA enroll:** password OK + `isTwoFactorEnabled !== true` → login returns `require2FASetup` + QR; client confirms via `POST /api/admin/verify-2fa` with enrollment Bearer (not a full admin JWT). Enrollment handlers in [server/admin.js](server/admin.js) must stay **before** `adminRouterRbac`, and [server/adminRbacRoutes.js](server/adminRbacRoutes.js) must skip non-RBAC paths so enrollment is not 403’d.
+- Idle logout / session expiry: `public/js/admin-session.js` → `redirectToAdminLogin()` (API fallback; do not restore the `/admin/admin-login.html` fallback).
+- `admin-login.html` sets `window.__REMOED_ADMIN_LOGIN_HTML__ = true` before `security-guard.js` so the obfuscated path is not treated as a protected `/admin-*` portal page.
+- **Scoped roles (QA / HR / Accounting / Marketing):** dashboard `adminApiFetch` must **not** treat every HTTP 403 as logout. Role gates return plain 403 (“cannot access this resource”); only `401` or `403` with `ADMIN_2FA_REQUIRED` / `WRONG_PORTAL_TOKEN` / `ADMIN_SESSION_REVOKED` should clear the session. Otherwise QA login → dashboard → `teachers-list` 403 → instant logout loop.
+- **Admin Messages** (`GET /api/admin/messages/users`): search must include **teachers, students, and other admins** (peer id `admin:{username}`). Do not search teachers/students only — Super-Admin chatting marketing staff depends on Admin collection matches.
+- Admin Messages desktop layout: messenger fills the viewport under the fixed header (`portal-chrome-compact.css`); do not use `min-height: 100vh` on `.messenger` without subtracting the header — that forces page scroll to reach the composer. Short threads use `justify-content: flex-end` so bubbles sit near the input.
+
+## Admin HR Staff Documents + teacher NBI
+
+- Page: `public/admin-hr-documents.html` (HR Hub Documents; Super-Admin / HR).
+- Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
+- Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
+
+## Student family / emergency (admin View Profile)
+
+- Student profile: Parent/Guardian name, contact, **email**; Emergency contact **person** + **number** (`parentEmail`, `emergencyContactPerson`, `emergencyContactNumber`; legacy `emergencyContact` still synced as combined text).
+- Admin **View Profile** (`admin-view-user-profile.html?type=student`) shows birthday, parent fields, and emergency person/number. Do not strip these from `GET /api/admin/user/:id?type=student`.
+
+## Student My Level — CEFR alignment images
+
+- `public/student-assessment.html` intro + results show RemoEd Kids / RemoEd Teens guides (`public/images/cefr/*-cefr-guide.jpg`) with tab switch + lightbox. Keep both images; do not remove the guides section when editing assessment copy.
 
 ## Teaching Fee — Bonus / Incentive (Accounting)
 
@@ -269,6 +350,25 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 - **APIs:** `PUT /api/admin/teacher-period-incentive`; teacher `GET /api/teacher/period-incentive?startDate=YYYY-MM-DD`.
 - **Net payable:** period fee + bonus/incentive + issue payments − deductions. Included in salary dispense `breakdown.bonusIncentive` and payslip line when &gt; 0.
 - Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
+
+## Lesson slide generation — laptop Level folders
+
+After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop copy under the matching **Level** folder (not only the repo).
+
+| Piece | Location |
+|-------|----------|
+| Brief / character rules | [`reference.md`](../reference.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md) |
+| In-repo canonical | `docs/lesson-references/lessons/L2M1-Lesson-{N}/` (+ flat copy under `docs/lesson-references/`) |
+| Build / chrome | `docs/lesson-references/build_l2m1_lessons_7_9.py` (`build_lesson`), `build_l2m1_lessons_10_12.py`, `build_l2m1_lessons_13_15.py` |
+| **Laptop download (required)** | `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Level {1\|2\|3\|4}\` |
+| Filename pattern | `RemoEd L2M1-Lesson-{N}-{Title}.pptx` (Level 2 Sprouts Month 1; other levels use their own prefix) |
+
+**Rules:**
+
+- Save **per Level folder** (`Level 1` … `Level 4`) — do not dump all levels into one flat directory.
+- `build_lesson` in `build_l2m1_lessons_7_9.py` copies to the laptop `Level {N}` path automatically (`lesson["level"]`, default **2**). If the desktop path is missing, log a warning but still write the repo copy.
+- Optional Drive upload remains manual ([Drive – Level 2 Month 1](https://drive.google.com/drive/u/0/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk)); laptop Level folders are the day-to-day download destination.
+- Style / chrome: green Remo, Filipino Ed/Sofie/Teacher Grace, no Teacher Scripts, `SPROUTS! MONTH 1` footer + logo overlays — see remoed-lesson-creation skill.
 
 ## Known product gates (not bugs)
 

@@ -520,6 +520,8 @@ app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
 // admin.js RBAC fallthrough (which can break PUT/POST under some tunnel setups).
 const adminApiCombined = express.Router();
 adminApiCombined.use('/training', adminTrainingRoutes);
+adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
+adminApiCombined.use(require('./adminRbacRoutes'));
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
@@ -693,6 +695,7 @@ const protectedHtmlFiles = new Set([
   'teacher-dashboard.html',
   'student-profile.html',
   'student-learning-journey.html',
+  'student-virtual-garden.html',
   'teacher-profile.html',
   'teacher-view-profile.html',
 ]);
@@ -2006,6 +2009,23 @@ io.on('connection', socket => {
         }
     });
 
+    socket.on('join-admin-messages', (data = {}) => {
+        try {
+            const username = String(data.username || data.userId || '')
+                .trim()
+                .toLowerCase()
+                .replace(/^admin:/, '');
+            if (!username) return;
+            const roomName = `admin-msg:${username}`;
+            socket.join(roomName);
+            socket.userType = 'admin';
+            socket.presenceKey = `admin:${username}`;
+            console.log(`💬 Socket ${socket.id} joined admin message room: ${roomName}`);
+        } catch (e) {
+            console.warn('join-admin-messages error:', e.message);
+        }
+    });
+
     socket.on('join-student-messages', (data = {}) => {
         try {
             const username = String(data.username || '').trim();
@@ -2025,13 +2045,19 @@ io.on('connection', socket => {
                 const teacherId = String(data.teacherId || data.userId || '').trim();
                 if (!teacherId) return;
                 socket.join(`notif:teacher:${teacherId}`);
+                socket.userType = 'teacher';
+                socket.presenceKey = `teacher:${teacherId}`;
             } else if (role === 'student') {
                 const username = String(data.username || data.userId || '').trim();
                 if (!username) return;
                 socket.join(`notif:student:${username}`);
+                socket.userType = 'student';
+                socket.presenceKey = `student:${username}`;
             } else if (role === 'admin') {
                 const username = String(data.username || data.userId || 'admin').trim();
                 socket.join(`notif:admin:${username}`);
+                socket.userType = 'admin';
+                socket.presenceKey = `admin:${username}`;
             }
         } catch (e) {
             console.warn('join-notifications error:', e.message);
@@ -2077,6 +2103,9 @@ io.on('connection', socket => {
         socket.room = room;
         socket.userType = userType;
         socket.username = username;
+        if (userType && (userId || username)) {
+            socket.presenceKey = `${String(userType).toLowerCase()}:${String(userId || username).trim()}`;
+        }
         
         console.log(`🔧 Socket properties set for ${socket.id}:`);
         console.log(`  - room: ${socket.room}`);
@@ -2306,6 +2335,9 @@ io.on('connection', socket => {
         socket.room = room;
         socket.userType = userType;
         socket.username = username;
+        if (userType && (userId || username)) {
+            socket.presenceKey = `${String(userType).toLowerCase()}:${String(userId || username).trim()}`;
+        }
         
         console.log(`🔧 Socket properties set for ${socket.id}:`);
         console.log(`  - room: ${socket.room}`);

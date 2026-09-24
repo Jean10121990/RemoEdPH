@@ -71,11 +71,13 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Landing culture /
 
 ## Admin Marketing Hub
 
-Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing Hub.
+Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing Hub and § Admin Roles and Access.
 
-- Sidebar **Marketing Hub** sits **below Accounting Hub** and owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
+- Sidebar order: **Accounting Hub** → **Admin Fee** → **Marketing Hub**. Marketing Hub owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
+- Accounting Hub tabs: Payroll Management, **Admin Payroll** (dispense admin fees), Student Subscriptions.
 - `admin-unique-link-commission.html` standalone → `admin-marketing-hub.html`.
-- Role **`admin_marketing`**: sidebar whitelist only (Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout). Do not grant Settings / System monitor. Keep hub-guard + `adminRoleGate` in sync when extending.
+- Role access is **dynamic RBAC** (Settings → Admin Roles and Access — **Super-Admin only**). Default seed for `admin_marketing` matches the former whitelist (no Settings / System monitor). `nav:settings` / `nav:super_monitor` / `system:settings` are never grantable to other roles. Extend via permission keys in `server/services/adminRbac.js`, not hardcoded sidebar branches alone.
+- Keep `adminRoleGate` / `requirePermission` / `admin-access-guard.js` in sync when adding admin pages.
 
 ## Teaching Fee bonus / incentive
 

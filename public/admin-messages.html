@@ -10,18 +10,19 @@
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-5">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-5">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-6">
 </head>
 <body class="page-admin-messages">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
         <script src="js/admin-sidebar.js?v=app-shell-4"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'messages');</script>
         <div class="remoed-content">
             <div class="messenger" id="messenger">
                 <aside class="chat-list">
-                    <div class="chat-search"><input id="msg-search" type="search" placeholder="Search by name, username, or email…" autocomplete="off" /></div>
+                    <div class="chat-search"><input id="msg-search" type="search" placeholder="Search teachers, students, or admins…" autocomplete="off" /></div>
                     <div id="msg-status" style="padding:8px 16px;color:#64748b;font-size:0.82rem;">Type at least 2 characters to find a user.</div>
                     <div class="chat-items" id="chat-items">
                         <div style="padding:16px;color:#64748b;">No search yet. Enter a name or email above.</div>
@@ -212,12 +213,15 @@
                 var headers = { Authorization: 'Bearer ' + token };
                 var responses = await Promise.all([
                     fetch('/api/admin/teachers-list', { headers: headers }),
-                    fetch('/api/admin/students-list', { headers: headers })
+                    fetch('/api/admin/students-list', { headers: headers }),
+                    fetch('/api/admin/admins-list', { headers: headers })
                 ]);
                 var tRes = responses[0];
                 var sRes = responses[1];
+                var aRes = responses[2];
                 var teachers = tRes.ok ? await tRes.json().catch(function () { return []; }) : [];
                 var students = sRes.ok ? await sRes.json().catch(function () { return []; }) : [];
+                var admins = aRes.ok ? await aRes.json().catch(function () { return []; }) : [];
 
                 var rows = [];
                 (Array.isArray(teachers) ? teachers : []).forEach(function (t) {
@@ -242,6 +246,23 @@
                         name: name,
                         email: s.email || '',
                         displayHandle: [s.username, s.email].filter(Boolean).join(' • '),
+                        lastMessage: '',
+                        lastMessageAt: null
+                    });
+                });
+                (Array.isArray(admins) ? admins : []).forEach(function (a) {
+                    var uname = String(a.username || '').trim();
+                    if (!uname) return;
+                    var userId = 'admin:' + uname.toLowerCase();
+                    if (userId === me) return;
+                    var name = uname;
+                    rows.push({
+                        userType: 'admin',
+                        userId: userId,
+                        username: uname,
+                        name: name,
+                        email: a.email || '',
+                        displayHandle: [uname, a.email].filter(Boolean).join(' • '),
                         lastMessage: '',
                         lastMessageAt: null
                     });
@@ -279,10 +300,12 @@
 
             async function openConversation(user) {
                 activeUser = user;
+                var messengerEl = document.getElementById('messenger');
+                if (messengerEl) messengerEl.classList.add('show-chat');
                 paneNameEl.textContent = user.name || user.userId;
                 paneSubEl.textContent = (user.userType || 'user') + ' • ' + (user.displayHandle || user.email || user.username || user.userId || '');
                 paneAvatarEl.textContent = (user.name || user.userId || 'U')[0].toUpperCase();
-                composerEl.style.display = '';
+                composerEl.style.display = 'flex';
                 clearPendingAttach();
                 renderUserList(users);
 
@@ -292,6 +315,9 @@
                 var data = await res.json().catch(function () { return {}; });
                 if (!res.ok) throw new Error(data.message || data.error || 'Failed to load messages');
                 renderMessages(Array.isArray(data.messages) ? data.messages : []);
+                requestAnimationFrame(function () {
+                    if (chatScrollEl) chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+                });
             }
 
             async function sendMessage() {

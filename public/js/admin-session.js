@@ -63,8 +63,27 @@
       global.location.replace(p);
       return;
     }
-    // Safe fallback for admin pages served under /admin/* static.
-    global.location.replace('/admin/admin-login.html');
+    // Legacy /admin-login.html is intentionally 404; resolve obfuscated path from API.
+    fetch('/api/auth/admin-login-path', { credentials: 'same-origin' })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          return { ok: r.ok, j: j };
+        });
+      })
+      .then(function (res) {
+        var path = res.ok && res.j && res.j.path ? String(res.j.path) : '';
+        if (path && path.charAt(0) === '/') {
+          try {
+            localStorage.setItem('remoedAdminEntryPath', path);
+          } catch (e) {}
+          global.location.replace(path);
+          return;
+        }
+        global.location.replace('/');
+      })
+      .catch(function () {
+        global.location.replace('/');
+      });
   }
 
   /** Call from admin-login.html on load (before or after login UI). */

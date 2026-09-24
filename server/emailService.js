@@ -888,6 +888,44 @@ async function sendEmail(to, template, data) {
   }
 }
 
+/** Send arbitrary HTML/text (payroll withdrawal notices, ops alerts). */
+async function sendRawEmail(to, subject, html, text) {
+  try {
+    if (!isEmailConfigured) {
+      return {
+        success: false,
+        error: 'Email service not configured.',
+        fallback: true,
+      };
+    }
+    const target = String(to || '').trim();
+    if (!target) return { success: false, error: 'Missing recipient' };
+
+    if (activeEmailService === 'mailgun') {
+      const result = await sendEmailViaMailgun(target, subject, html, text || '');
+      return result;
+    }
+    if (activeEmailService === 'smtp') {
+      if (!transporterVerified) {
+        await transporter.verify();
+        transporterVerified = true;
+      }
+      const info = await smtpSendMail({
+        to: target,
+        subject: String(subject || ''),
+        html: html || '',
+        text: text || '',
+      });
+      return { success: true, messageId: info.messageId };
+    }
+    return { success: false, error: 'No email service configured' };
+  } catch (error) {
+    const errorMessage = error.message || String(error);
+    console.error('❌ sendRawEmail failed:', errorMessage.replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***'));
+    return { success: false, error: errorMessage };
+  }
+}
+
 // Send teacher registration email
 async function sendTeacherRegistrationEmail(email, username, password, firstName, lastName) {
   try {
@@ -1487,6 +1525,7 @@ module.exports = {
   sendCreditExpiryEmail,
   sendNotificationDigestEmail,
   sendEmail,
+  sendRawEmail,
   getEmailConfigStatus,
   testEmailSending
 };

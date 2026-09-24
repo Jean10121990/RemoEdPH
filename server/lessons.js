@@ -1465,7 +1465,9 @@ router.post('/progress/update', authenticateToken, requireTeacher, async (req, r
     const existingProgress = await LessonProgress.findOne({
       studentId: { $in: aliasList },
       lessonId,
-    }).select('_id');
+    });
+
+    const wasCompleted = existingProgress && existingProgress.status === 'completed';
 
     const progress = await LessonProgress.findOneAndUpdate(
       existingProgress ? { _id: existingProgress._id } : { studentId: canonicalSid, lessonId },
@@ -1481,6 +1483,19 @@ router.post('/progress/update', authenticateToken, requireTeacher, async (req, r
       },
       { upsert: true, new: true }
     );
+
+    if (normalizedStatus === 'completed' && !wasCompleted) {
+      try {
+        const ecoDropGardenService = require('./services/ecoDropGardenService');
+        await ecoDropGardenService.grantEcoDropForLessonComplete({
+          studentId: canonicalSid,
+          lessonId,
+          bookingId: bookingId || null,
+        });
+      } catch (ecoErr) {
+        console.warn('ecoDrop grant (progress/update):', ecoErr && ecoErr.message);
+      }
+    }
 
     res.json({ message: 'Progress updated successfully', progress });
   } catch (error) {

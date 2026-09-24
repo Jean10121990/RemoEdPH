@@ -61,6 +61,10 @@
         list:
             '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
             '<path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>' +
+            '</svg>',
+        sprout:
+            '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+            '<path d="M12 22v-7h-1.5c-1.4 0-2.5-1.1-2.5-2.5V10c-2.8.3-5 2.7-5 5.5C3 18.5 5.5 21 8.5 21H12zm1.5-7V10c2.8.3 5 2.7 5 5.5 0 3-2.5 5.5-5.5 5.5H13v-6h.5zM12 2C9.5 4.5 9 7.5 10 10c1.2-1.5 3-2.5 5-2.5.2-2.8-1.2-5.2-3-5.5z"/>' +
             '</svg>'
     };
 
@@ -85,6 +89,7 @@
         schedule: { title: 'My Schedule', icon: 'calendar' },
         games: { title: 'Play & Learn', icon: 'gamepad' },
         journey: { title: 'My Learning Journey', icon: 'path' },
+        garden: { title: 'Virtual Garden', icon: 'sprout' },
         leaderboard: { title: 'Leaderboard', icon: 'target' },
         book: { title: 'Book a Class', icon: 'plus' },
         classes: { title: 'My Classes', icon: 'list' },
@@ -104,12 +109,20 @@
     }
 
     function ensureHeaderActionStyles() {
-        if (document.getElementById('remoed-header-actions-css')) return;
-        var l = document.createElement('link');
-        l.id = 'remoed-header-actions-css';
-        l.rel = 'stylesheet';
-        l.href = 'css/portal-header-actions.css?v=header-actions-2';
-        document.head.appendChild(l);
+        if (!document.getElementById('remoed-header-actions-css')) {
+            var l = document.createElement('link');
+            l.id = 'remoed-header-actions-css';
+            l.rel = 'stylesheet';
+            l.href = 'css/portal-header-actions.css?v=header-actions-2';
+            document.head.appendChild(l);
+        }
+        if (!document.getElementById('student-eco-drops-css')) {
+            var e = document.createElement('link');
+            e.id = 'student-eco-drops-css';
+            e.rel = 'stylesheet';
+            e.href = 'css/student-eco-drops.css?v=garden-1';
+            document.head.appendChild(e);
+        }
     }
 
     /**
@@ -137,6 +150,7 @@
             if (!existing.querySelector('#upcoming-classes-icon')) {
                 bindNotificationBell(existing);
             }
+            bindEcoDropChip(existing);
             return existing;
         }
 
@@ -151,6 +165,7 @@
             '</span></h1>' +
             '</div>' +
             '<div class="nav-right">' +
+            '  <button type="button" id="student-eco-chip" title="Eco-Drops — Virtual Garden" onclick="window.location.href=\'student-virtual-garden.html\'">💧 <span id="student-eco-chip-count">0</span></button>' +
             '  <div class="nav-icon" onclick="window.location.href=\'student-profile.html\'" title="My Profile">' +
             ACTION.person +
             '  </div>' +
@@ -178,6 +193,7 @@
 
         document.body.classList.add('has-student-page-header');
         bindNotificationBell(header);
+        bindEcoDropChip(header);
         return header;
     }
 
@@ -199,6 +215,7 @@
         if (!header.querySelector('#upcoming-classes-icon')) {
             bindNotificationBell(header);
         }
+        bindEcoDropChip(header);
         return header;
     }
 
@@ -223,6 +240,49 @@
         } catch (_e2) {
             return '';
         }
+    }
+
+    function bindEcoDropChip(header) {
+        global.RemoEdEcoDropsBadge = global.RemoEdEcoDropsBadge || {
+            update: function (n) {
+                var el = document.getElementById('student-eco-chip-count');
+                if (el) el.textContent = n > 99 ? '99+' : String(Math.max(0, Number(n) || 0));
+                var badge = document.getElementById('menu-eco-badge');
+                if (badge) {
+                    badge.textContent = n > 99 ? '99+' : String(Math.max(0, Number(n) || 0));
+                    badge.style.display = 'inline-flex';
+                }
+            },
+        };
+        var chip = document.getElementById('student-eco-chip');
+        if (!chip && header) {
+            var right = header.querySelector('.nav-right');
+            if (right && !right.querySelector('#student-eco-chip')) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = 'student-eco-chip';
+                btn.title = 'Eco-Drops — Virtual Garden';
+                btn.onclick = function () {
+                    window.location.href = 'student-virtual-garden.html';
+                };
+                btn.innerHTML = '💧 <span id="student-eco-chip-count">0</span>';
+                right.insertBefore(btn, right.firstChild);
+            }
+        }
+        var tok = studentAuthToken();
+        if (!tok) return;
+        fetch('/api/student/eco-drops', {
+            headers: { Authorization: 'Bearer ' + tok },
+            credentials: 'include',
+        })
+            .then(function (r) {
+                return r.ok ? r.json() : null;
+            })
+            .then(function (data) {
+                if (!data) return;
+                global.RemoEdEcoDropsBadge.update(Number(data.ecoDropsBalance) || 0);
+            })
+            .catch(function () {});
     }
 
     function bindNotificationBell(header) {

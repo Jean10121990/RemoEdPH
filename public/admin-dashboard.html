@@ -838,7 +838,7 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-page-header.js"></script>
-        <script src="js/admin-notifications.js"></script>
+        <script src="js/admin-notifications.js?v=notif-3"></script>
         <script src="js/admin-sidebar.js?v=app-shell-4"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="margin-top:60px;">
@@ -871,10 +871,10 @@
                                     Session Duration: <span id="duration-display">00:00:00</span>
                                 </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
-                                <button type="button" id="time-in-btn" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Time In</button>
-                                <button type="button" id="time-out-btn" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: none;">Time Out</button>
-                                <button type="button" id="view-log-btn" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">View Logs</button>
+                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; position: relative; z-index: 2;">
+                                <button type="button" id="time-in-btn" onclick="return window.remoedAdminTimeInClick && window.remoedAdminTimeInClick(event);" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">Time In</button>
+                                <button type="button" id="time-out-btn" onclick="return window.remoedAdminTimeOutClick && window.remoedAdminTimeOutClick(event);" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: none; pointer-events: auto;">Time Out</button>
+                                <button type="button" id="view-log-btn" onclick="return window.remoedAdminViewLogsClick && window.remoedAdminViewLogsClick(event);" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">View Logs</button>
                             </div>
                         </div>
                         <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; display: none; padding: 8px; border-radius: 4px;"></div>
@@ -1186,13 +1186,22 @@
                     <option value="month">This month</option>
                     <option value="all">All (recent 50)</option>
                 </select>
+                <span id="admin-log-manage-filters" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <label style="font-weight:600;color:#374151;">Admin:</label>
+                    <select id="admin-log-username-filter" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;min-width:160px;">
+                        <option value="">All admins</option>
+                    </select>
+                </span>
                 <button type="button" id="admin-apply-filter" style="padding:8px 16px;background:#667eea;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Apply</button>
             </div>
+            <p id="admin-log-super-hint" style="display:none;margin:0 0 12px;font-size:0.82rem;color:#64748b;">
+                Super-Admin: use <strong>Reopen shift</strong> after an accidental Time Out so the admin can continue today. Use <strong>Edit times</strong> to correct In/Out (Philippine time).
+            </p>
             <div id="admin-time-log-content"></div>
         </div>
     </div>
 
-    <script src="js/admin-time-tracking.js"></script>
+    <script src="js/admin-time-tracking.js?v=tt-4"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -1258,8 +1267,20 @@
             cfg.headers = headers;
             cfg.credentials = 'include';
             const res = await fetch(url, cfg);
-            if (res.status === 401 || res.status === 403) {
+            // Role-scoped 403s (e.g. QA blocked from teachers-list) must NOT force logout.
+            // Only session/auth failures should send the user back to login.
+            if (res.status === 401) {
                 redirectToAdminLogin();
+                return res;
+            }
+            if (res.status === 403) {
+                try {
+                    const j = await res.clone().json();
+                    const code = j && j.code ? String(j.code) : '';
+                    if (code === 'ADMIN_2FA_REQUIRED' || code === 'WRONG_PORTAL_TOKEN' || code === 'ADMIN_SESSION_REVOKED') {
+                        redirectToAdminLogin();
+                    }
+                } catch (_e) { /* ignore non-JSON body */ }
             }
             return res;
         }

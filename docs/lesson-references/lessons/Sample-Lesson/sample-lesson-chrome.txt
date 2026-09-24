@@ -1,0 +1,45 @@
+slide_size_in: 13.333 x 7.5
+
+=== SLIDE 1 DETAIL ===
+Picture name='Picture 1' pos=(0.0,0.0) size=(13.333x7.5) 
+Shape name='Rounded Rectangle 2' pos=(0.25,0.2) size=(4.2x0.45) fill_type=SOLID (1) fill_rgb=FFFFFF 
+Shape name='TextBox 3' pos=(0.35,0.22) size=(4.0x0.4) fill_type=BACKGROUND (5) size=14.0pt bold=True name=Arial Rounded MT Bold color=1A5696 text='Lesson 6 – I am Happy!'
+Shape name='Rounded Rectangle 4' pos=(11.55,0.2) size=(1.5x0.45) fill_type=SOLID (1) fill_rgb=5A67D8 
+Shape name='TextBox 5' pos=(11.55,0.22) size=(1.5x0.4) fill_type=BACKGROUND (5) size=14.0pt bold=True name=Arial Rounded MT Bold color=FFFFFF text='1 / 15'
+Shape name='Rounded Rectangle 6' pos=(9.3,6.55) size=(3.8x0.75) fill_type=SOLID (1) fill_rgb=FFFFFF 
+Shape name='TextBox 7' pos=(9.4,6.58) size=(2.4x0.35) fill_type=BACKGROUND (5) size=12.0pt bold=True name=Arial Rounded MT Bold color=228B22 text='SPROUTS! MONTH 1'
+Picture name='Picture 8' pos=(11.85,6.52) size=(0.7x0.7) 
+Shape name='Rounded Rectangle 9' pos=(1.5,2.6) size=(10.3x1.6) fill_type=SOLID (1) fill_rgb=FFFFFF 
+Shape name='TextBox 10' pos=(1.6,2.7) size=(10.1x1.4) fill_type=BACKGROUND (5) size=54.0pt bold=True name=Arial Rounded MT Bold color=1A5696 text='Lesson 6 – I am Happy!'
+Shape name='Rounded Rectangle 11' pos=(4.5,4.5) size=(4.3x0.7) fill_type=SOLID (1) fill_rgb=FAD648 
+Shape name='TextBox 12' pos=(4.5,4.55) size=(4.3x0.6) fill_type=BACKGROUND (5) size=28.0pt bold=True name=Arial Rounded MT Bold color=1E3A5F text='Hello!'
+PIC slide=1 pic=1 slide-01-pic-1.jpg bytes=269671 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=1 pic=2 slide-01-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=2 pic=1 slide-02-pic-1.jpg bytes=134502 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=2 pic=2 slide-02-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=3 pic=1 slide-03-pic-1.jpg bytes=167349 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=3 pic=2 slide-03-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=4 pic=1 slide-04-pic-1.jpg bytes=165449 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=4 pic=2 slide-04-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=5 pic=1 slide-05-pic-1.jpg bytes=169442 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=5 pic=2 slide-05-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=6 pic=1 slide-06-pic-1.jpg bytes=138428 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=6 pic=2 slide-06-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=7 pic=1 slide-07-pic-1.jpg bytes=274120 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=7 pic=2 slide-07-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=8 pic=1 slide-08-pic-1.jpg bytes=263607 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=8 pic=2 slide-08-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=9 pic=1 slide-09-pic-1.jpg bytes=237916 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=9 pic=2 slide-09-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=10 pic=1 slide-10-pic-1.jpg bytes=149067 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=10 pic=2 slide-10-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=11 pic=1 slide-11-pic-1.jpg bytes=190715 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=11 pic=2 slide-11-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=12 pic=1 slide-12-pic-1.jpg bytes=191879 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=12 pic=2 slide-12-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=13 pic=1 slide-13-pic-1.jpg bytes=135388 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=13 pic=2 slide-13-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=14 pic=1 slide-14-pic-1.jpg bytes=185977 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=14 pic=2 slide-14-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)
+PIC slide=15 pic=1 slide-15-pic-1.jpg bytes=312509 pos=(0.0,0.0) size=(13.333x7.5)
+PIC slide=15 pic=2 slide-15-pic-2.jpg bytes=196565 pos=(11.85,6.52) size=(0.7x0.7)

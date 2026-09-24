@@ -22,6 +22,7 @@
         'hr-hub': 'HR Hub',
         'qa-hub': 'QA Hub',
         'accounting-hub': 'Accounting Hub',
+        'admin-fee': 'Admin Fee',
         marketing: 'Marketing Hub',
         leaderboard: 'Leaderboard',
         announcements: 'Announcements',
@@ -137,7 +138,8 @@
     }
 
     function wireNotifications(header) {
-        ensureScript('js/admin-notifications.js', function () {
+        ensureStylesheet('css/portal-header-actions.css?v=header-actions-3');
+        ensureScript('js/admin-notifications.js?v=notif-3', function () {
             if (global.AdminNotifications && typeof global.AdminNotifications.init === 'function') {
                 global.AdminNotifications.init();
             }
@@ -145,7 +147,7 @@
     }
 
     function ensureTimeTracking() {
-        ensureScript('js/admin-time-tracking.js', function () {
+        ensureScript('js/admin-time-tracking.js?v=tt-4', function () {
             if (typeof global.initAdminTimeTracking === 'function') {
                 global.initAdminTimeTracking();
             }
