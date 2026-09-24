@@ -568,6 +568,78 @@ router.post('/dispense', async (req, res) => {
   }
 });
 
+/**
+ * Payment history for Admin Payroll (mirrors teacher payment-history filters).
+ * Query: username (optional), status=paid|pending|all (optional).
+ */
+router.get('/payment-history', async (req, res) => {
+  try {
+    const usernameFilter = String(req.query.username || req.query.adminUsername || '').trim();
+    const statusFilter = String(req.query.status || '').trim().toLowerCase();
+    const q = {};
+    if (usernameFilter) {
+      q.adminUsername = new RegExp(
+        '^' + usernameFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$',
+        'i'
+      );
+    }
+    if (statusFilter === 'paid' || statusFilter === 'success') {
+      q.status = 'paid';
+    } else if (statusFilter === 'pending') {
+      q.status = { $in: ['draft', 'generated'] };
+    } else if (statusFilter === 'void') {
+      q.status = 'void';
+    }
+
+    const rows = await AdminPayout.find(q).sort({ periodKey: -1, paidAt: -1, updatedAt: -1 }).limit(200).lean();
+    const payments = rows.map((p) => {
+      const paid = p.status === 'paid';
+      return {
+        _id: String(p._id),
+        adminUsername: p.adminUsername,
+        period: p.periodKey,
+        periodKey: p.periodKey,
+        periodStart: p.periodStart,
+        periodEnd: p.periodEnd,
+        amount: Number(p.totalAmount) || 0,
+        grossSales: Number(p.grossSales) || 0,
+        completedShifts: Number(p.completedShifts) || 0,
+        totalHours: Number(p.totalHours) || 0,
+        status: paid ? 'Success' : p.status === 'void' ? 'Void' : 'Pending',
+        issueDate: p.paidAt || p.generatedAt || p.updatedAt || p.createdAt,
+        paidBy: p.paidBy || '',
+        notes: p.notes || '',
+      };
+    });
+
+    res.json({ success: true, payments });
+  } catch (e) {
+    console.error('GET /admin-fee/payment-history', e);
+    res.status(500).json({ success: false, message: e.message || 'Failed to load payment history' });
+  }
+});
+
+/** Lightweight admin list for payment-history filter dropdown. */
+router.get('/admins-filter-list', async (req, res) => {
+  try {
+    const admins = await Admin.find({ status: { $ne: 'suspended' } })
+      .select('username email firstName lastName adminRole')
+      .sort({ username: 1 })
+      .lean();
+    res.json({
+      success: true,
+      admins: admins.map((a) => ({
+        username: a.username,
+        email: a.email || '',
+        name: adminDisplayName(a),
+        role: roleLabel(a.adminRole),
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message || 'Failed to load admins' });
+  }
+});
+
 module.exports = router;
 module.exports.getCurrentPayPeriodKey = getCurrentPayPeriodKey;
 module.exports.parsePayPeriodKey = parsePayPeriodKey;

@@ -100,7 +100,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Super-Admin **Settings → Admin Roles and Access** is visible and can Save Permissions for a non–Super-Admin role. Non–Super-Admin accounts do **not** see that card (or System Settings / System Monitor in the sidebar).
 - [ ] **System monitor → Live platform** shows Students / Teachers / Admins online (unique `presenceKey` counts; refreshes with other stats).
 - [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); Eco-Drop badge in sidebar/header; stats load (not “Student not found”); shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works; completing a lesson awards +1 once.
-- [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll can Load Admins and Dispense fees for the cutoff.
+- [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll matches teacher payroll UX (period nav, Load Admins + Dispense, table, Payment History Load/Export).
 - [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
@@ -263,7 +263,7 @@ Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** st
 - Models: `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches also sync from `TimeLog`.
 - APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales.
-- **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`): lists all admins for the cutoff and **Dispense All Admin Fees** (marks `AdminPayout` `paid`, notifies each admin). Same bi-monthly period keys as teacher payroll.
+- **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`): same UX pattern as teacher **Payroll Management** — period nav (`Sep 16 - Sep 30`), **Load Admins** + **Dispense All Admin Fees**, `payroll-table` list, plus **Payment History Management** (filter / Load Records / Export CSV via `GET /api/admin/admin-fee/payment-history`). Lists all admins for the cutoff; Dispense marks `AdminPayout` `paid` and notifies each admin. Same bi-monthly period keys as teacher payroll.
 - Header notification bell: `public/js/admin-notifications.js` (delegated click; opens via `remoedSetNavDropdownOpen`). Panel is body-mounted and **fixed under `#admin-notifications-icon`** — do not re-append the dropdown into the 40px chip or inject `position:absolute; top:calc(100% + 8px)` for the open state. Wire via `admin-page-header.js`.
 
 ## Admin Roles and Access (dynamic RBAC)

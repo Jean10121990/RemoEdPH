@@ -12,6 +12,33 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Match teacher Payroll Management table look (page-admin-payroll .payroll-table). */
+        body.page-admin-admin-payroll .payroll-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            background: #fff;
+        }
+        body.page-admin-admin-payroll .payroll-table thead th {
+            background: #e8f4fd;
+            color: #1a365d;
+            font-weight: 700;
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 2px solid #bee3f8;
+            white-space: nowrap;
+        }
+        body.page-admin-admin-payroll .payroll-table tbody td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+        body.page-admin-admin-payroll .payroll-table tbody tr:hover {
+            background: #f8fbff;
+        }
+    </style>
 </head>
 <body class="page-admin-admin-payroll">
     <div class="remoed-main">
@@ -21,56 +48,77 @@
         <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'accounting-hub'); }</script>
         <div class="remoed-content">
             <div class="remoed-section">
-                <div class="remoed-section-title">Admin Fee Disbursement</div>
+                <div class="remoed-section-title">Bi-weekly Admin Fee Disbursement</div>
                 <div style="margin: 6px 0 14px 0; color: #64748b; font-size: 0.85rem;">
-                    Each eligible admin earns <strong>1%</strong> of subscription gross sales for the cutoff.
-                    Eligible = at least one completed <strong>8-hour</strong> shift in the period.
-                    Pay periods: <strong>1st–15th</strong> and <strong>16th–end</strong>.
+                    Pay periods start on the <strong>1st</strong> and <strong>16th</strong> of each month.
+                    Eligible admins (at least one completed <strong>8-hour</strong> shift) each earn <strong>1%</strong> of subscription gross sales for the cutoff.
                 </div>
 
                 <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary" id="ap-prev">← Previous Period</button>
+                    <button type="button" class="btn btn-primary" id="ap-prev" style="padding: 8px 16px; font-size: 14px;">← Previous Period</button>
                     <div style="text-align: center; flex: 1; min-width: 200px;">
                         <strong>Selected Period:</strong> <span id="ap-period-label">Loading…</span>
                     </div>
-                    <button type="button" class="btn btn-primary" id="ap-next">Next Period →</button>
-                    <button type="button" class="btn btn-success" id="ap-current" style="background:#28a745;">📅 Current Period</button>
+                    <button type="button" class="btn btn-primary" id="ap-next" style="padding: 8px 16px; font-size: 14px;">Next Period →</button>
+                    <button type="button" class="btn btn-success" id="ap-current" style="padding: 8px 16px; font-size: 14px; background: #28a745;">📅 Current Period</button>
                 </div>
 
                 <button type="button" class="btn btn-success" id="ap-load">Load Admins</button>
-                <button type="button" class="btn btn-danger" id="ap-dispense" style="display:none;">Dispense All Admin Fees</button>
-                <div id="ap-status" style="margin-top:10px;font-weight:600;"></div>
-                <div id="ap-summary" style="margin-top:12px;font-size:0.9rem;color:#475569;"></div>
+                <button type="button" class="btn btn-danger" id="ap-dispense" style="display: none;">Dispense All Admin Fees</button>
+                <div id="ap-status" style="margin-top: 10px; font-weight: 600;"></div>
+                <div id="ap-summary" style="margin-top: 8px; font-size: 0.88rem; color: #64748b;"></div>
 
-                <div id="ap-table-wrap" style="margin-top:20px;display:none;overflow-x:auto;">
-                    <h3 style="color:#1ca7e7;margin-bottom:12px;">Admin fees this period</h3>
-                    <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-                        <thead>
-                            <tr style="background:#f8fafc;text-align:left;">
-                                <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Admin</th>
-                                <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Role</th>
-                                <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Hours</th>
-                                <th style="padding:10px;border-bottom:1px solid #e2e8f0;">8h shifts</th>
-                                <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Fee (1%)</th>
-                                <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ap-tbody"></tbody>
-                    </table>
+                <div id="ap-table-wrap" style="margin-top: 20px; display: none;">
+                    <h3 style="color: #1ca7e7; margin-bottom: 15px;">Admins Bi-weekly Fees</h3>
+                    <div id="ap-table" style="overflow-x: auto;"></div>
                 </div>
+            </div>
+
+            <div class="remoed-section">
+                <div class="remoed-section-title">Payment History Management</div>
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label for="admin-filter" style="font-weight: 600; color: #333;">Filter by Admin:</label>
+                        <select id="admin-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; min-width: 200px;">
+                            <option value="">All Admins</option>
+                        </select>
+                        <label for="status-filter" style="font-weight: 600; color: #333;">Filter by Status:</label>
+                        <select id="status-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;">
+                            <option value="">All Status</option>
+                            <option value="Success">Paid</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                        <button type="button" class="btn btn-primary" id="ap-load-history">🔍 Load Records</button>
+                        <button type="button" class="btn btn-success" id="ap-export-history">📊 Export CSV</button>
+                    </div>
+                </div>
+                <div id="ap-history-container" style="margin-top: 20px; display: none;">
+                    <h3 style="color: #1ca7e7; margin-bottom: 15px;">Payment Records</h3>
+                    <div id="ap-history-list" style="overflow-x: auto;"></div>
+                </div>
+                <div id="ap-history-status" style="margin-top: 10px; font-weight: 600;"></div>
             </div>
         </div>
     </div>
     <script>
 (function () {
-    var selectedPeriodKey = '';
+    var selectedPeriodKey = null;
+    var lastHistoryRows = [];
+    var listLoaded = false;
 
     function adminApiFetch(url, init) {
         init = init || {};
         var headers = new Headers(init.headers || {});
-        var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
+        var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+            ? RemoedAdminSession.getAuthToken()
+            : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || ''));
         if (token) headers.set('Authorization', 'Bearer ' + token);
         return fetch(url, Object.assign({}, init, { credentials: 'include', headers: headers }));
+    }
+
+    function apiErrorMessage(data, fallback) {
+        if (!data || typeof data !== 'object') return fallback || 'Request failed';
+        return data.message || data.error || fallback || 'Request failed';
     }
 
     function getPeriodKeyForDate(d) {
@@ -83,31 +131,31 @@
     function parsePeriodKey(key) {
         var m = String(key || '').match(/^(\d{4})-(\d{2})-(1|2)$/);
         if (!m) return null;
-        return { y: +m[1], mo: +m[2], half: +m[3] };
+        return { year: Number(m[1]), month: Number(m[2]), half: Number(m[3]) };
     }
 
-    function boundsLabel(key) {
+    function getPeriodBounds(key) {
         var p = parsePeriodKey(key);
-        if (!p) return key;
-        if (p.half === 1) return p.mo + '/' + p.y + ' · 1–15';
-        var last = new Date(p.y, p.mo, 0).getDate();
-        return p.mo + '/' + p.y + ' · 16–' + last;
+        if (!p) return null;
+        var start = new Date(p.year, p.month - 1, p.half === 1 ? 1 : 16);
+        var end = p.half === 1
+            ? new Date(p.year, p.month - 1, 15)
+            : new Date(p.year, p.month, 0);
+        return { start: start, end: end };
     }
 
-    function shiftPeriod(deltaHalf) {
-        var p = parsePeriodKey(selectedPeriodKey) || parsePeriodKey(getPeriodKeyForDate(new Date()));
-        var half = p.half;
-        var mo = p.mo;
-        var y = p.y;
-        if (deltaHalf > 0) {
-            if (half === 1) half = 2;
-            else { half = 1; mo += 1; if (mo > 12) { mo = 1; y += 1; } }
-        } else {
-            if (half === 2) half = 1;
-            else { half = 2; mo -= 1; if (mo < 1) { mo = 12; y -= 1; } }
+    function displayCurrentPeriod() {
+        if (!selectedPeriodKey) selectedPeriodKey = getPeriodKeyForDate(new Date());
+        var bounds = getPeriodBounds(selectedPeriodKey);
+        if (!bounds) {
+            document.getElementById('ap-period-label').textContent = 'Invalid period';
+            return;
         }
-        selectedPeriodKey = y + '-' + String(mo).padStart(2, '0') + '-' + half;
-        document.getElementById('ap-period-label').textContent = boundsLabel(selectedPeriodKey);
+        var display =
+            bounds.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+            ' - ' +
+            bounds.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        document.getElementById('ap-period-label').textContent = display;
     }
 
     function peso(n) {
@@ -115,84 +163,315 @@
     }
 
     function esc(s) {
-        return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function previousPeriod() {
+        if (!selectedPeriodKey) selectedPeriodKey = getPeriodKeyForDate(new Date());
+        var p = parsePeriodKey(selectedPeriodKey);
+        if (!p) return;
+        if (p.half === 2) {
+            selectedPeriodKey = p.year + '-' + String(p.month).padStart(2, '0') + '-1';
+        } else {
+            var prev = new Date(p.year, p.month - 2, 1);
+            selectedPeriodKey = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0') + '-2';
+        }
+        displayCurrentPeriod();
+        if (listLoaded) loadAdmins();
+    }
+
+    function nextPeriod() {
+        if (!selectedPeriodKey) selectedPeriodKey = getPeriodKeyForDate(new Date());
+        var p = parsePeriodKey(selectedPeriodKey);
+        if (!p) return;
+        if (p.half === 1) {
+            selectedPeriodKey = p.year + '-' + String(p.month).padStart(2, '0') + '-2';
+        } else {
+            var next = new Date(p.year, p.month, 1);
+            selectedPeriodKey = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') + '-1';
+        }
+        displayCurrentPeriod();
+        if (listLoaded) loadAdmins();
+    }
+
+    function goToCurrentPeriod() {
+        selectedPeriodKey = getPeriodKeyForDate(new Date());
+        displayCurrentPeriod();
+        if (listLoaded) loadAdmins();
+    }
+
+    function displayAdminsList(admins, meta) {
+        var container = document.getElementById('ap-table');
+        if (!admins || !admins.length) {
+            container.innerHTML = '<p style="text-align: center; color: #888;">No admins found</p>';
+            return;
+        }
+        container.innerHTML =
+            '<table class="payroll-table">' +
+            '<thead><tr>' +
+            '<th>Admin Account</th>' +
+            '<th>Role</th>' +
+            '<th>Hours Worked</th>' +
+            '<th>8h Shifts</th>' +
+            '<th>Gross Sales Pool</th>' +
+            '<th>Fee (1%)</th>' +
+            '<th>Status</th>' +
+            '</tr></thead><tbody>' +
+            admins.map(function (a) {
+                var paid = a.paymentStatus === 'Paid';
+                var pending = a.paymentStatus === 'Pending';
+                var statusText = paid ? '✓ Paid' : pending ? 'Pending' : 'Ineligible';
+                var statusColor = paid ? '#27ae60' : pending ? '#888' : '#94a3b8';
+                var feeColor = pending || paid ? '#27ae60' : '#94a3b8';
+                return (
+                    '<tr>' +
+                    '<td><strong>' + esc(a.name || a.username) + '</strong><br><span style="color:#94a3b8;font-size:0.78rem;">' + esc(a.username) + '</span></td>' +
+                    '<td>' + esc(a.role || '') + '</td>' +
+                    '<td>' + esc(a.totalHours) + '</td>' +
+                    '<td>' + esc(a.completedShifts) + ' / ' + esc(a.totalShifts) + '</td>' +
+                    '<td>' + peso(meta.grossSales) + '</td>' +
+                    '<td style="font-weight:600;color:' + feeColor + ';">' + peso(a.feeAmount) + '</td>' +
+                    '<td style="color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
+                    '</tr>'
+                );
+            }).join('') +
+            '</tbody></table>' +
+            '<p style="margin:10px 0 0;color:#64748b;font-size:0.82rem;">' +
+            'Eligible admins each receive <strong>1%</strong> of the period\'s subscription gross sales after at least one completed 8-hour shift. Use <strong>Dispense All Admin Fees</strong> when ready (same flow as teacher salaries).' +
+            '</p>';
     }
 
     async function loadAdmins() {
+        var loadBtn = document.getElementById('ap-load');
         var status = document.getElementById('ap-status');
-        status.textContent = 'Loading…';
-        status.style.color = '#64748b';
+        var dispenseBtn = document.getElementById('ap-dispense');
         try {
-            var r = await adminApiFetch('/api/admin/admin-fee/payroll?period=' + encodeURIComponent(selectedPeriodKey));
-            var d = await r.json().catch(function () { return {}; });
-            if (!r.ok || !d.success) throw new Error(d.message || d.error || 'Load failed');
-            document.getElementById('ap-period-label').textContent = d.weekPeriod || boundsLabel(selectedPeriodKey);
-            document.getElementById('ap-summary').textContent =
-                'Gross subscription sales: ' + peso(d.grossSales) +
-                ' · 1% pool per eligible admin: ' + peso(d.commissionPool) +
-                ' · Purchases: ' + (d.purchaseCount || 0);
-            var body = document.getElementById('ap-tbody');
-            var rows = d.admins || [];
-            if (!rows.length) {
-                body.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#64748b;">No admins found.</td></tr>';
-            } else {
-                body.innerHTML = rows.map(function (a) {
-                    var stColor = a.paymentStatus === 'Paid' ? '#15803d' : a.paymentStatus === 'Pending' ? '#b45309' : '#94a3b8';
-                    return '<tr>' +
-                        '<td style="padding:10px;border-bottom:1px solid #f1f5f9;"><strong>' + esc(a.name) + '</strong><br><span style="color:#94a3b8;font-size:0.75rem;">' + esc(a.username) + '</span></td>' +
-                        '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">' + esc(a.role) + '</td>' +
-                        '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">' + esc(a.totalHours) + '</td>' +
-                        '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">' + esc(a.completedShifts) + '/' + esc(a.totalShifts) + '</td>' +
-                        '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">' + peso(a.feeAmount) + '</td>' +
-                        '<td style="padding:10px;border-bottom:1px solid #f1f5f9;font-weight:700;color:' + stColor + ';">' + esc(a.paymentStatus) + '</td>' +
-                        '</tr>';
-                }).join('');
+            if (!selectedPeriodKey) selectedPeriodKey = getPeriodKeyForDate(new Date());
+            if (loadBtn) {
+                loadBtn.disabled = true;
+                loadBtn.textContent = 'Loading…';
             }
+            status.textContent = 'Loading admin payroll…';
+            status.style.color = '#64748b';
+
+            var response = await adminApiFetch('/api/admin/admin-fee/payroll?period=' + encodeURIComponent(selectedPeriodKey));
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || !data.success) {
+                throw new Error(apiErrorMessage(data, 'Please sign in again or refresh.'));
+            }
+
+            displayCurrentPeriod();
+            document.getElementById('ap-summary').textContent =
+                'Gross subscription sales: ' + peso(data.grossSales) +
+                ' · 1% pool per eligible admin: ' + peso(data.commissionPool) +
+                ' · Purchases: ' + (data.purchaseCount || 0);
+
+            displayAdminsList(data.admins || [], {
+                grossSales: data.grossSales,
+                commissionPool: data.commissionPool
+            });
             document.getElementById('ap-table-wrap').style.display = 'block';
-            var pending = rows.filter(function (a) { return a.paymentStatus === 'Pending'; }).length;
-            var btn = document.getElementById('ap-dispense');
-            btn.style.display = pending ? 'inline-block' : 'none';
-            btn.disabled = !pending;
-            btn.textContent = pending ? 'Dispense All Admin Fees' : 'All fees dispensed';
-            status.textContent = 'Loaded ' + rows.length + ' admin(s).';
-            status.style.color = '#15803d';
+            listLoaded = true;
+
+            dispenseBtn.style.display = 'inline-block';
+            var pending = (data.admins || []).filter(function (a) { return a.paymentStatus === 'Pending'; });
+            var paid = (data.admins || []).filter(function (a) { return a.paymentStatus === 'Paid'; });
+            if (pending.length === 0 && paid.length > 0) {
+                dispenseBtn.disabled = true;
+                dispenseBtn.textContent = 'Fees Dispensed';
+                dispenseBtn.style.background = '#95a5a6';
+            } else if (pending.length === 0) {
+                dispenseBtn.disabled = true;
+                dispenseBtn.textContent = 'No Pending Fees';
+                dispenseBtn.style.background = '#95a5a6';
+            } else {
+                dispenseBtn.disabled = false;
+                dispenseBtn.textContent = 'Dispense All Admin Fees';
+                dispenseBtn.style.background = '#e74c3c';
+            }
+
+            status.textContent = 'Loaded ' + (data.admins || []).length + ' admins';
+            status.style.color = '#27ae60';
+            setTimeout(function () {
+                if (status.textContent.indexOf('Loaded') === 0) status.textContent = '';
+            }, 3000);
         } catch (e) {
+            console.error(e);
             status.textContent = e.message || 'Failed to load';
             status.style.color = '#b91c1c';
+            alert('Error loading admins: ' + (e.message || 'Please try again.'));
+        } finally {
+            if (loadBtn) {
+                loadBtn.disabled = false;
+                loadBtn.textContent = 'Load Admins';
+            }
         }
     }
 
     async function dispense() {
         if (!confirm('Dispense admin fees for this period to all eligible admins? This cannot be undone.')) return;
         var status = document.getElementById('ap-status');
+        var dispenseBtn = document.getElementById('ap-dispense');
         try {
-            var r = await adminApiFetch('/api/admin/admin-fee/dispense', {
+            if (dispenseBtn) dispenseBtn.disabled = true;
+            var response = await adminApiFetch('/api/admin/admin-fee/dispense', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ period: selectedPeriodKey })
             });
-            var d = await r.json().catch(function () { return {}; });
-            if (!r.ok || !d.success) throw new Error(d.message || d.error || 'Dispense failed');
-            status.textContent = 'Dispensed to ' + (d.dispensedAdmins || []).length + ' admin(s).';
-            status.style.color = '#15803d';
-            await loadAdmins();
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || !data.success) {
+                throw new Error(apiErrorMessage(data, 'Dispense failed'));
+            }
+            status.textContent = 'Successfully dispensed fees to ' + (data.dispensedAdmins || []).length + ' admin(s)!';
+            status.style.color = '#27ae60';
+            dispenseBtn.disabled = true;
+            dispenseBtn.textContent = 'Fees Dispensed';
+            dispenseBtn.style.background = '#95a5a6';
+            setTimeout(function () { loadAdmins(); }, 800);
+            setTimeout(function () {
+                if (status.textContent.indexOf('Successfully dispensed') === 0) status.textContent = '';
+            }, 5000);
         } catch (e) {
             alert(e.message || 'Dispense failed');
+            if (dispenseBtn) dispenseBtn.disabled = false;
         }
     }
 
+    async function loadAdminFilterOptions() {
+        try {
+            var response = await adminApiFetch('/api/admin/admin-fee/admins-filter-list');
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || !data.success) return;
+            var sel = document.getElementById('admin-filter');
+            sel.innerHTML = '<option value="">All Admins</option>';
+            (data.admins || []).forEach(function (a) {
+                var opt = document.createElement('option');
+                opt.value = a.username;
+                opt.textContent = a.username + (a.role ? ' (' + a.role + ')' : '');
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            console.warn('Admin filter load failed', e);
+        }
+    }
+
+    async function loadPaymentHistory() {
+        var btn = document.getElementById('ap-load-history');
+        var status = document.getElementById('ap-history-status');
+        try {
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Loading…';
+            }
+            status.textContent = 'Loading payment records…';
+            status.style.color = '#64748b';
+
+            var params = new URLSearchParams();
+            var username = document.getElementById('admin-filter').value;
+            var st = document.getElementById('status-filter').value;
+            if (username) params.append('username', username);
+            if (st) params.append('status', st);
+
+            var url = '/api/admin/admin-fee/payment-history' + (params.toString() ? '?' + params.toString() : '');
+            var response = await adminApiFetch(url);
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || !data.success) {
+                throw new Error(apiErrorMessage(data, 'Failed to load payment history'));
+            }
+            lastHistoryRows = data.payments || [];
+            displayPaymentHistory(lastHistoryRows);
+            document.getElementById('ap-history-container').style.display = 'block';
+            status.textContent = 'Loaded ' + lastHistoryRows.length + ' payment records';
+            status.style.color = '#27ae60';
+            setTimeout(function () {
+                if (status.textContent.indexOf('Loaded') === 0) status.textContent = '';
+            }, 3000);
+        } catch (e) {
+            alert(e.message || 'Error loading payment history');
+            status.textContent = e.message || 'Failed';
+            status.style.color = '#b91c1c';
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '🔍 Load Records';
+            }
+        }
+    }
+
+    function displayPaymentHistory(payments) {
+        var container = document.getElementById('ap-history-list');
+        if (!payments || !payments.length) {
+            container.innerHTML = '<p style="text-align: center; color: #888;">No payment records found</p>';
+            return;
+        }
+        container.innerHTML =
+            '<table class="payroll-table"><thead><tr>' +
+            '<th>Admin</th><th>Period</th><th>Issue Date</th><th>Amount</th><th>Status</th>' +
+            '</tr></thead><tbody>' +
+            payments.map(function (p) {
+                var paid = p.status === 'Success';
+                var statusText = paid ? '✅ Paid' : p.status === 'Void' ? 'Void' : '⏳ Pending';
+                var statusColor = paid ? '#27ae60' : p.status === 'Void' ? '#94a3b8' : '#f39c12';
+                var issue = p.issueDate
+                    ? new Date(p.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : 'N/A';
+                return (
+                    '<tr>' +
+                    '<td>' + esc(p.adminUsername || 'N/A') + '</td>' +
+                    '<td>' + esc(p.period || p.periodKey || 'N/A') + '</td>' +
+                    '<td>' + esc(issue) + '</td>' +
+                    '<td style="font-weight:600;color:#e74c3c;">' + peso(p.amount) + '</td>' +
+                    '<td style="color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
+                    '</tr>'
+                );
+            }).join('') +
+            '</tbody></table>';
+    }
+
+    function exportPaymentHistory() {
+        if (!lastHistoryRows.length) {
+            alert('Load payment records first.');
+            return;
+        }
+        var lines = ['Admin,Period,Issue Date,Amount,Status'];
+        lastHistoryRows.forEach(function (p) {
+            var issue = p.issueDate ? new Date(p.issueDate).toISOString().slice(0, 10) : '';
+            lines.push(
+                [
+                    JSON.stringify(String(p.adminUsername || '')),
+                    JSON.stringify(String(p.period || p.periodKey || '')),
+                    issue,
+                    Number(p.amount) || 0,
+                    p.status || ''
+                ].join(',')
+            );
+        });
+        var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'admin-fee-payment-history.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+            AdminSidebar.applyGreetingFromStorage();
+        }
         selectedPeriodKey = getPeriodKeyForDate(new Date());
-        document.getElementById('ap-period-label').textContent = boundsLabel(selectedPeriodKey);
-        document.getElementById('ap-prev').onclick = function () { shiftPeriod(-1); };
-        document.getElementById('ap-next').onclick = function () { shiftPeriod(1); };
-        document.getElementById('ap-current').onclick = function () {
-            selectedPeriodKey = getPeriodKeyForDate(new Date());
-            document.getElementById('ap-period-label').textContent = boundsLabel(selectedPeriodKey);
-        };
+        displayCurrentPeriod();
+        loadAdminFilterOptions();
+        document.getElementById('ap-prev').onclick = previousPeriod;
+        document.getElementById('ap-next').onclick = nextPeriod;
+        document.getElementById('ap-current').onclick = goToCurrentPeriod;
         document.getElementById('ap-load').onclick = loadAdmins;
         document.getElementById('ap-dispense').onclick = dispense;
-        loadAdmins();
+        document.getElementById('ap-load-history').onclick = loadPaymentHistory;
+        document.getElementById('ap-export-history').onclick = exportPaymentHistory;
     });
 })();
     </script>
