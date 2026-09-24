@@ -20,7 +20,34 @@ const {
 
 const router = express.Router();
 
-router.use(verifyAdminApiAuth, requireAdmin, requireAdminTwoFactorSatisfied, requireAdminSessionValid);
+/**
+ * Only own RBAC paths. This router is mounted at /api/admin *before* admin.js;
+ * a blanket router.use(verifyAdminApiAuth) would run on every /api/admin/* request
+ * (including POST /verify-2fa enrollment) and 403 enrollment JWTs that lack isAdmin.
+ */
+function isAdminRbacPath(p) {
+  const path = String(p || '');
+  return (
+    path === '/me/permissions' ||
+    path === '/permissions/catalog' ||
+    path === '/roles' ||
+    path === '/roles/options' ||
+    path.startsWith('/roles/')
+  );
+}
+
+router.use((req, res, next) => {
+  if (!isAdminRbacPath(req.path)) {
+    return next('router');
+  }
+  return verifyAdminApiAuth(req, res, () => {
+    requireAdmin(req, res, () => {
+      requireAdminTwoFactorSatisfied(req, res, () => {
+        requireAdminSessionValid(req, res, next);
+      });
+    });
+  });
+});
 
 router.get('/me/permissions', async (req, res) => {
   try {

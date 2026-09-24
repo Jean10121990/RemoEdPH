@@ -14,7 +14,7 @@ const mongoose = require('mongoose');
 
 const USERNAME = String(process.argv[2] || '').trim();
 const NEW_PASSWORD = String(process.argv[3] || '');
-const FORCE_ROLE = String(process.env.FORCE_ROLE || 'admin_qa').trim();
+const FORCE_ROLE = String(process.env.FORCE_ROLE || '').trim();
 
 (async () => {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI missing');

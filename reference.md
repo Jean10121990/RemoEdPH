@@ -164,7 +164,23 @@ Source: `docs/lesson-references/L2M1-Sprouts-Month-1.pdf`
 
 ---
 
-## Active lesson brief (Batch D — Lessons 10–12)
+## Active lesson brief (Batch E — Lessons 13–15)
+
+| Field | Lesson 13 | Lesson 14 | Lesson 15 |
+|-------|-----------|-----------|-----------|
+| Level / footer | Level 2 – Sprouts · `SPROUTS! MONTH 1` | same | same |
+| Title | **Lesson 13 – Goodnight, Moon** | **Lesson 14 – Tracing Curves for C** | **Lesson 15 – The Creative Cat Review** |
+| Pages | 1–15 | 1–15 | 1–15 |
+| Mode | New from scratch · PowerPoint | same | same |
+| Vocab | Night, Moon, Stars · night routines | Curves, Cc, Trace · “Around we go.” | C, Kind, Night (review) |
+| Sentence | “It is night.” | “Around we go.” | Review: “C,” “Kind,” “Night.” |
+| Design world | Moonbeam Bedroom | Curve Playground | Creative Cat Carnival |
+| Outline | `docs/lesson-references/lessons/L2M1-Lesson-13/L2M1-Lesson-13-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-14/L2M1-Lesson-14-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-15/L2M1-Lesson-15-outline.txt` |
+| Deliverable | `docs/lesson-references/lessons/L2M1-Lesson-13/L2M1-Lesson-13-Goodnight-Moon.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-14/L2M1-Lesson-14-Tracing-Curves-for-C.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-15/L2M1-Lesson-15-The-Creative-Cat-Review.pptx` |
+
+Prior batches (done): Lessons 7–9, 10–12. Do not copy those layouts.
+
+## Previous brief (Batch D — Lessons 10–12, completed)
 
 | Field | Lesson 10 | Lesson 11 | Lesson 12 |
 |-------|-----------|-----------|-----------|

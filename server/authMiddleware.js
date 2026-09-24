@@ -8,7 +8,13 @@ const { getJwtSecret } = require('./config/jwtSecret');
 
 const JWT_SECRET = getJwtSecret();
 
-const ADMIN_2FA_SETUP_PATHS = new Set(['/2fa-setup', '/2fa-verify']);
+/** Enrollment + profile TOTP setup paths (req.path under /api/admin). */
+const ADMIN_2FA_SETUP_PATHS = new Set([
+  '/2fa-setup',
+  '/2fa-verify',
+  '/2fa-setup-enrollment',
+  '/verify-2fa',
+]);
 
 /** Normalize JWT/string role claims (handles "Admin" vs "admin"). */
 function normRoleClaim(v) {

@@ -277,7 +277,17 @@
         return;
       }
       if (errorDiv) {
-        errorDiv.textContent = vdata.message || 'Verification failed.';
+        var enrollMsg = vdata.message || vdata.error || 'Verification failed.';
+        if (response && response.status === 403) {
+          enrollMsg =
+            'Setup blocked by the server (403). Deploy the latest admin RBAC fix, then sign in again. ' +
+            'Delete any old “RemoEdPH Admin” entry in Google Authenticator and scan the new QR only.';
+        } else if (!vdata.success) {
+          enrollMsg =
+            enrollMsg +
+            ' Tip: delete any old RemoEdPH Admin entry in your authenticator, scan this QR again, then enter a fresh 6-digit code.';
+        }
+        errorDiv.textContent = enrollMsg;
         errorDiv.style.display = 'block';
       }
       btn.disabled = false;
