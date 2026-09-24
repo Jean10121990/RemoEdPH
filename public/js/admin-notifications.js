@@ -36,11 +36,11 @@
         var style = document.createElement('style');
         style.id = 'admin-notif-dropdown-css';
         style.textContent =
-            '#admin-notifications-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;' +
-            'width:min(360px,calc(100vw - 24px));max-height:420px;overflow:auto;background:#fff;' +
-            'border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.16);' +
-            'z-index:var(--z-dropdown,400);}' +
+            '#admin-notifications-dropdown{display:none;width:min(360px,calc(100vw - 24px));' +
+            'max-height:420px;overflow:auto;background:#fff;border:1px solid #e2e8f0;' +
+            'border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.16);z-index:var(--z-dropdown,400);}' +
             '#admin-notifications-dropdown.show{display:block!important;}' +
+            'body>#admin-notifications-dropdown{position:fixed;left:auto;bottom:auto;}' +
             '#admin-notifications-icon{cursor:pointer;position:relative;}' +
             '#admin-notifications-badge{pointer-events:none;}';
         document.head.appendChild(style);
@@ -209,12 +209,6 @@
                         event.stopPropagation();
                         dropdown = document.getElementById('admin-notifications-dropdown');
                         if (!dropdown) return;
-                        // Keep dropdown under the icon if layout moved the chip
-                        if (dropdown.parentElement !== icon) {
-                            try {
-                                icon.appendChild(dropdown);
-                            } catch (_e2) {}
-                        }
                         var open = !dropdown.classList.contains('show');
                         setDropdownOpen(dropdown, open);
                         if (open) loadAdminNotifications();

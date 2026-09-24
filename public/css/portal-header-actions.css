@@ -81,7 +81,6 @@ body[class*="page-admin-"] .nav-right .nav-icon > svg {
 
 .nav-right .nav-dropdown,
 #remoed-app-actions .nav-dropdown,
-body > .nav-dropdown,
 #notifications-dropdown,
 #admin-notifications-dropdown,
 #upcoming-classes-dropdown {
@@ -103,6 +102,18 @@ body > .nav-dropdown,
   display: none;
   pointer-events: auto;
   box-sizing: border-box;
+}
+
+/* remoedSetNavDropdownOpen moves the panel to body — pin with fixed + JS top/right */
+body > .nav-dropdown,
+body > #notifications-dropdown,
+body > #admin-notifications-dropdown,
+body > #upcoming-classes-dropdown {
+  position: fixed;
+  top: 0;
+  right: 12px;
+  left: auto;
+  bottom: auto;
 }
 
 .nav-right .nav-dropdown.show,

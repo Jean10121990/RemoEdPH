@@ -38,6 +38,59 @@
     document.head.appendChild(l);
   }
 
+  function findNavDropdownTrigger(dropdown) {
+    if (!dropdown) return null;
+    var homeParent = dropdown.__remoedHome && dropdown.__remoedHome.parent;
+    if (homeParent && homeParent.classList && homeParent.classList.contains('nav-icon')) {
+      return homeParent;
+    }
+    var id = dropdown.id || '';
+    if (id === 'admin-notifications-dropdown') {
+      return document.getElementById('admin-notifications-icon');
+    }
+    if (id === 'notifications-dropdown') {
+      return document.getElementById('notifications-icon');
+    }
+    if (id === 'upcoming-classes-dropdown') {
+      return document.getElementById('upcoming-classes-icon');
+    }
+    var byControls = document.querySelector('[aria-controls="' + id + '"]');
+    if (byControls) return byControls;
+    return homeParent || null;
+  }
+
+  function clearNavDropdownPosition(dropdown) {
+    if (!dropdown || !dropdown.style) return;
+    dropdown.style.position = '';
+    dropdown.style.top = '';
+    dropdown.style.right = '';
+    dropdown.style.left = '';
+    dropdown.style.bottom = '';
+    dropdown.style.width = '';
+    dropdown.style.maxWidth = '';
+  }
+
+  /** Pin body-mounted panel under the bell/calendar trigger (not at body bottom). */
+  function positionNavDropdown(dropdown) {
+    if (!dropdown) return;
+    var trigger = findNavDropdownTrigger(dropdown);
+    if (!trigger || !trigger.getBoundingClientRect) {
+      clearNavDropdownPosition(dropdown);
+      return;
+    }
+    var rect = trigger.getBoundingClientRect();
+    var gap = 8;
+    var maxW = Math.min(360, Math.max(260, window.innerWidth - 24));
+    var right = Math.max(12, window.innerWidth - rect.right);
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = Math.round(rect.bottom + gap) + 'px';
+    dropdown.style.right = Math.round(right) + 'px';
+    dropdown.style.left = 'auto';
+    dropdown.style.bottom = 'auto';
+    dropdown.style.width = maxW + 'px';
+    dropdown.style.maxWidth = 'calc(100vw - 24px)';
+  }
+
   /** Move the panel onto document.body so a 40px bell chip cannot shrink it. */
   function setNavDropdownOpen(dropdown, open) {
     if (!dropdown) return false;
@@ -56,8 +109,10 @@
         document.body.appendChild(dropdown);
       }
       dropdown.classList.add('show');
+      positionNavDropdown(dropdown);
     } else {
       dropdown.classList.remove('show');
+      clearNavDropdownPosition(dropdown);
       var home = dropdown.__remoedHome;
       if (home && home.parent && dropdown.parentNode !== home.parent) {
         if (home.next && home.next.parentNode === home.parent) {
@@ -70,6 +125,7 @@
     return !!open;
   }
   global.remoedSetNavDropdownOpen = setNavDropdownOpen;
+  global.remoedPositionNavDropdown = positionNavDropdown;
 
   function isMobile() {
     return global.matchMedia && global.matchMedia(MQ_MOBILE).matches;
