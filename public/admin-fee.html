@@ -113,7 +113,7 @@
         <script>AdminSidebar.render('admin-sidebar-root', 'admin-fee');</script>
         <div class="remoed-content">
             <div class="af-wrap">
-                <p class="af-intro">Track your daily 8-hour shifts and view your <strong>1% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end).</p>
+                <p class="af-intro">View your <strong>1% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.</p>
 
                 <div class="af-toolbar">
                     <label for="af-period">Pay period</label>
@@ -131,20 +131,16 @@
 
                 <div class="af-grid">
                     <div class="af-card">
-                        <h2>Time tracking</h2>
-                        <p class="af-muted" id="af-clock-meta">Server time (Asia/Manila business day)</p>
-                        <div class="af-clock-row">
-                            <span class="af-status-pill" id="af-clock-status">Loading…</span>
-                            <button type="button" class="af-btn af-btn-in" id="af-time-in">Time In</button>
-                            <button type="button" class="af-btn af-btn-out" id="af-time-out" disabled>Time Out</button>
-                        </div>
-                        <p class="af-note">A completed shift requires <strong>8 hours</strong> between Time In and Time Out. At least one completed shift in the period is required for the 1% fee payout.</p>
-                    </div>
-                    <div class="af-card">
                         <h2>Period eligibility</h2>
                         <p class="af-muted" id="af-period-label">—</p>
                         <p style="margin:10px 0 0;font-size:0.95rem;" id="af-elig-text">—</p>
                         <p class="af-note" id="af-admin-meta"></p>
+                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Completed 8-hour shifts in this period unlock the 1% fee.</p>
+                    </div>
+                    <div class="af-card">
+                        <h2>How payout works</h2>
+                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff, paid when you have at least one completed 8-hour shift.</p>
+                        <p class="af-note">Attendance below is synced from your dashboard / header time logs — there is no separate Time In on this page.</p>
                     </div>
                 </div>
 
@@ -203,7 +199,6 @@
 
     <div class="af-toast" id="af-toast"></div>
 
-    <script src="js/admin-time-tracking.js"></script>
     <script>
 (function () {
     function token() {
@@ -323,45 +318,6 @@
         }
     }
 
-    async function loadClockStatus() {
-        var d = await api('/api/admin/time-tracking/status');
-        var pill = document.getElementById('af-clock-status');
-        var btnIn = document.getElementById('af-time-in');
-        var btnOut = document.getElementById('af-time-out');
-        var meta = document.getElementById('af-clock-meta');
-        if (meta && d.phDate) meta.textContent = 'Business date (PH): ' + d.phDate;
-        if (d.isClockedIn) {
-            pill.textContent = 'Clocked in';
-            pill.className = 'af-status-pill on';
-            btnIn.disabled = true;
-            btnOut.disabled = !d.canTimeOut;
-        } else if (d.dailyCompleted) {
-            pill.textContent = 'Shift completed today';
-            pill.className = 'af-status-pill on';
-            btnIn.disabled = true;
-            btnOut.disabled = true;
-        } else {
-            pill.textContent = 'Not clocked in';
-            pill.className = 'af-status-pill';
-            btnIn.disabled = !d.canTimeIn;
-            btnOut.disabled = true;
-        }
-    }
-
-    async function clock(action) {
-        try {
-            await api('/api/admin/time-tracking/' + action, { method: 'POST', body: {} });
-            toast(action === 'clock-in' ? 'Timed in successfully' : 'Timed out successfully');
-            await loadClockStatus();
-            await loadSummary();
-            if (window.AdminTimeTracking && typeof window.AdminTimeTracking.refresh === 'function') {
-                window.AdminTimeTracking.refresh();
-            }
-        } catch (e) {
-            toast(e.message || 'Time tracking failed');
-        }
-    }
-
     function fillPayslip(ps) {
         var a = ps.admin || {};
         document.getElementById('af-payslip-admin').innerHTML =
@@ -409,10 +365,8 @@
             loadSummary().catch(function (e) { toast(e.message); });
         });
         document.getElementById('af-refresh').addEventListener('click', function () {
-            Promise.all([loadClockStatus(), loadSummary()]).catch(function (e) { toast(e.message); });
+            loadSummary().catch(function (e) { toast(e.message); });
         });
-        document.getElementById('af-time-in').addEventListener('click', function () { clock('clock-in'); });
-        document.getElementById('af-time-out').addEventListener('click', function () { clock('clock-out'); });
         document.getElementById('af-open-payslip').addEventListener('click', openPayslip);
         document.getElementById('af-payslip-close').addEventListener('click', function () {
             document.getElementById('af-payslip-modal').classList.remove('open');
@@ -429,7 +383,7 @@
                 toast(e.message || 'Save failed');
             }
         });
-        Promise.all([loadClockStatus(), loadSummary()]).catch(function (e) { toast(e.message); });
+        loadSummary().catch(function (e) { toast(e.message); });
     });
 })();
     </script>

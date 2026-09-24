@@ -871,10 +871,10 @@
                                     Session Duration: <span id="duration-display">00:00:00</span>
                                 </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
-                                <button type="button" id="time-in-btn" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Time In</button>
-                                <button type="button" id="time-out-btn" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: none;">Time Out</button>
-                                <button type="button" id="view-log-btn" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">View Logs</button>
+                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; position: relative; z-index: 2;">
+                                <button type="button" id="time-in-btn" onclick="return window.remoedAdminTimeInClick && window.remoedAdminTimeInClick(event);" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">Time In</button>
+                                <button type="button" id="time-out-btn" onclick="return window.remoedAdminTimeOutClick && window.remoedAdminTimeOutClick(event);" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: none; pointer-events: auto;">Time Out</button>
+                                <button type="button" id="view-log-btn" onclick="return window.remoedAdminViewLogsClick && window.remoedAdminViewLogsClick(event);" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">View Logs</button>
                             </div>
                         </div>
                         <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; display: none; padding: 8px; border-radius: 4px;"></div>
@@ -1192,7 +1192,7 @@
         </div>
     </div>
 
-    <script src="js/admin-time-tracking.js"></script>
+    <script src="js/admin-time-tracking.js?v=tt-3"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');

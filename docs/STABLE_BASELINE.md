@@ -253,7 +253,8 @@ Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** st
 
 ## Admin Fee & Attendance
 
-- Page: `public/admin-fee.html` — Time In/Out (reuses `/api/admin/time-tracking/*`), bi-monthly 1% of subscription `creditHistory` purchases, printable payslip.
+- Page: `public/admin-fee.html` — bi-monthly 1% of subscription `creditHistory` purchases, eligibility, attendance history, printable payslip. **No Time In/Out UI on Admin Fee** (clock only from top header or Admin Dashboard via `/api/admin/time-tracking/*`). Login must **never** auto clock-in.
+- Admin dashboard Time In (header mini **and** middle card): `public/js/admin-time-tracking.js` (singleton + document capture + inline `onclick` on card buttons). Status poll is read-only — it does not POST clock-in.
 - Models: `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches also sync from `TimeLog`.
 - APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales.
@@ -299,6 +300,7 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 - `admin-login.html` sets `window.__REMOED_ADMIN_LOGIN_HTML__ = true` before `security-guard.js` so the obfuscated path is not treated as a protected `/admin-*` portal page.
 - **Scoped roles (QA / HR / Accounting / Marketing):** dashboard `adminApiFetch` must **not** treat every HTTP 403 as logout. Role gates return plain 403 (“cannot access this resource”); only `401` or `403` with `ADMIN_2FA_REQUIRED` / `WRONG_PORTAL_TOKEN` / `ADMIN_SESSION_REVOKED` should clear the session. Otherwise QA login → dashboard → `teachers-list` 403 → instant logout loop.
 - **Admin Messages** (`GET /api/admin/messages/users`): search must include **teachers, students, and other admins** (peer id `admin:{username}`). Do not search teachers/students only — Super-Admin chatting marketing staff depends on Admin collection matches.
+- Admin Messages desktop layout: messenger fills the viewport under the fixed header (`portal-chrome-compact.css`); do not use `min-height: 100vh` on `.messenger` without subtracting the header — that forces page scroll to reach the composer. Short threads use `justify-content: flex-end` so bubbles sit near the input.
 
 ## Admin HR Staff Documents + teacher NBI
 

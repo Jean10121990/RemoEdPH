@@ -1,8 +1,18 @@
 /**
- * Admin dashboard time tracking (mirrors teacher flow; uses remoed_admin_token / adminToken + /api/admin/time-tracking/*).
+ * Admin portal time tracking (header mini + dashboard card).
+ * Singleton — safe if AdminPageHeader and the page both load this file.
+ * Never auto clock-in on login; only POST clock-in/out on explicit button click.
  */
 (function () {
     'use strict';
+
+    if (window.__REMOED_ADMIN_TT__) {
+        if (typeof window.initAdminTimeTracking === 'function') {
+            window.initAdminTimeTracking();
+        }
+        return;
+    }
+    window.__REMOED_ADMIN_TT__ = true;
 
     function getToken() {
         if (typeof RemoedAdminSession !== 'undefined' && RemoedAdminSession.getAuthToken) {
@@ -19,15 +29,17 @@
     function showAdminTimeMessage(message, type) {
         var bg = type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : '#2196F3';
         var div = document.createElement('div');
-        div.style.cssText = 'position:fixed;top:20px;right:20px;background:' + bg + ';color:white;padding:12px 20px;border-radius:8px;z-index:2000;font-weight:600;max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+        div.style.cssText = 'position:fixed;top:20px;right:20px;background:' + bg + ';color:white;padding:12px 20px;border-radius:8px;z-index:10050;font-weight:600;max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
         div.textContent = message;
         document.body.appendChild(div);
-        setTimeout(function () { if (div.parentNode) div.parentNode.removeChild(div); }, 3000);
+        setTimeout(function () { if (div.parentNode) div.parentNode.removeChild(div); }, 3500);
     }
 
     var timeInSession = null;
     var sessionTimer = null;
     var isClockedIn = false;
+    var statusPollStarted = false;
+    var clockDisplayStarted = false;
 
     window.adminTimeTrackingStatus = {};
 
@@ -45,12 +57,13 @@
         if (!token) return;
         try {
             var res = await fetch('/api/admin/time-tracking/status', {
-                headers: { Authorization: 'Bearer ' + token }
+                headers: { Authorization: 'Bearer ' + token },
+                credentials: 'include'
             });
             if (!res.ok) return;
             var data = await res.json();
-            isClockedIn = data.isClockedIn;
-            if (data.isClockedIn && data.currentLog) {
+            isClockedIn = !!data.isClockedIn;
+            if (data.isClockedIn && data.currentLog && data.currentLog.clockIn) {
                 timeInSession = new Date(data.currentLog.clockIn.timestamp);
                 startSessionTimer();
             } else {
@@ -79,13 +92,15 @@
             btnMini.textContent = 'Time In';
             btnMini.className = 'time-btn-mini clock-in';
             btnMini.disabled = true;
+            btnMini.setAttribute('aria-disabled', 'true');
             btnMini.style.opacity = '0.55';
             btnMini.style.cursor = 'not-allowed';
             return;
         }
         btnMini.disabled = false;
+        btnMini.removeAttribute('aria-disabled');
         btnMini.style.opacity = '';
-        btnMini.style.cursor = '';
+        btnMini.style.cursor = 'pointer';
 
         if (isClockedIn) {
             statusMini.textContent = 'Clocked In';
@@ -98,16 +113,11 @@
             btnMini.textContent = 'Time In';
             btnMini.className = 'time-btn-mini clock-in primary';
         }
-
-        var clone = btnMini.cloneNode(true);
-        btnMini.parentNode.replaceChild(clone, btnMini);
-        clone.addEventListener('click', function () {
-            if (isClockedIn) adminTimeOut();
-            else adminTimeIn();
-        });
     }
 
     function updateAdminTimeTrackingUI() {
+        updateCurrentTimeDisplay();
+
         var statusSpan = document.getElementById('current-status');
         var timeInBtn = document.getElementById('time-in-btn');
         var timeOutBtn = document.getElementById('time-out-btn');
@@ -122,8 +132,11 @@
                 statusSpan.textContent = 'Clocked In';
                 statusSpan.style.color = '#4CAF50';
                 timeInBtn.style.display = 'none';
+                timeInBtn.disabled = true;
                 timeOutBtn.style.display = 'inline-block';
-                timeOutBtn.disabled = !status.canTimeOut;
+                timeOutBtn.disabled = status.canTimeOut === false;
+                timeOutBtn.style.pointerEvents = 'auto';
+                timeOutBtn.style.cursor = timeOutBtn.disabled ? 'not-allowed' : 'pointer';
                 sessionTimeDiv.style.display = 'block';
                 statusMessage.style.display = 'none';
             } else if (status.dailyCompleted) {
@@ -145,10 +158,11 @@
                 statusSpan.textContent = 'Not Clocked In';
                 statusSpan.style.color = '#FF5722';
                 timeInBtn.style.display = 'inline-block';
-                timeInBtn.disabled = !status.canTimeIn;
+                timeInBtn.disabled = status.canTimeIn === false;
                 timeInBtn.textContent = 'Time In';
                 timeInBtn.style.background = '#28a745';
-                timeInBtn.style.cursor = 'pointer';
+                timeInBtn.style.cursor = timeInBtn.disabled ? 'not-allowed' : 'pointer';
+                timeInBtn.style.pointerEvents = 'auto';
                 timeOutBtn.style.display = 'none';
                 sessionTimeDiv.style.display = 'none';
                 statusMessage.style.display = 'none';
@@ -184,10 +198,16 @@
             showAdminTimeMessage('Daily time log is already completed. It will refresh at 7 AM Philippine time.', 'warning');
             return;
         }
+        if (st.isClockedIn) {
+            showAdminTimeMessage('Already clocked in. Use Time Out when finished.', 'warning');
+            return;
+        }
         try {
             var res = await fetch('/api/admin/time-tracking/clock-in', {
                 method: 'POST',
-                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: '{}'
             });
             var data = await res.json().catch(function () { return {}; });
             if (res.ok && data.success) {
@@ -198,9 +218,9 @@
                 showAdminTimeMessage('Successfully clocked in!', 'success');
                 document.dispatchEvent(new CustomEvent('admin-refresh-notifications'));
             } else if (res.status === 404) {
-                showAdminTimeMessage((data && data.error) || 'Time tracking API not found. Restart the Node server and hard-refresh the page.', 'error');
+                showAdminTimeMessage((data && data.error) || 'Time tracking API not found. Restart the Node server and hard-refresh.', 'error');
             } else {
-                showAdminTimeMessage((data && data.error) || 'Failed to clock in', 'error');
+                showAdminTimeMessage((data && (data.error || data.message)) || 'Failed to clock in', 'error');
             }
         } catch (e) {
             showAdminTimeMessage('Error clocking in.', 'error');
@@ -209,11 +229,16 @@
 
     window.adminTimeOut = async function adminTimeOut() {
         var token = getToken();
-        if (!token) return;
+        if (!token) {
+            showAdminTimeMessage('Please log in again.', 'error');
+            return;
+        }
         try {
             var res = await fetch('/api/admin/time-tracking/clock-out', {
                 method: 'POST',
-                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: '{}'
             });
             var data = await res.json().catch(function () { return {}; });
             if (res.ok && data.success) {
@@ -224,12 +249,13 @@
                     sessionTimer = null;
                 }
                 await loadAdminTimeTrackingStatus();
-                showAdminTimeMessage('Clocked out! Session: ' + (data.timeLog && data.timeLog.totalHours) + ' hours', 'success');
+                var hrs = data.timeLog && data.timeLog.totalHours != null ? data.timeLog.totalHours : '';
+                showAdminTimeMessage(hrs !== '' ? ('Clocked out! Session: ' + hrs + ' hours') : 'Clocked out!', 'success');
                 document.dispatchEvent(new CustomEvent('admin-refresh-notifications'));
             } else if (res.status === 404) {
                 showAdminTimeMessage((data && data.error) || 'Time tracking API not found. Restart the Node server.', 'error');
             } else {
-                showAdminTimeMessage((data && data.error) || 'Failed to clock out', 'error');
+                showAdminTimeMessage((data && (data.error || data.message)) || 'Failed to clock out', 'error');
             }
         } catch (e) {
             showAdminTimeMessage('Error clocking out.', 'error');
@@ -271,9 +297,6 @@
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
                 break;
-            case 'all':
-                startDate = endDate = null;
-                break;
             default:
                 startDate = endDate = null;
         }
@@ -282,7 +305,7 @@
         var url = '/api/admin/time-tracking/history';
         if (startDate && endDate) url += '?startDate=' + startDate + '&endDate=' + endDate;
         try {
-            var res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+            var res = await fetch(url, { headers: { Authorization: 'Bearer ' + token }, credentials: 'include' });
             var data = await res.json();
             if (res.ok && data.timeLogs) {
                 content.innerHTML = renderAdminTimeLogRows(data.timeLogs);
@@ -301,7 +324,10 @@
 
     window.showAdminTimeLogModal = function () {
         var modal = document.getElementById('admin-time-log-modal');
-        if (!modal) return;
+        if (!modal) {
+            showAdminTimeMessage('Time log modal is missing on this page.', 'error');
+            return;
+        }
         modal.style.display = 'flex';
         var ft = document.getElementById('admin-filter-type');
         if (ft) ft.value = 'week';
@@ -313,61 +339,143 @@
         if (modal) modal.style.display = 'none';
     };
 
+    /** Public helpers for inline onclick on the dashboard card. */
+    window.remoedAdminTimeInClick = function (ev) {
+        if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+        }
+        var btn = document.getElementById('time-in-btn');
+        if (btn && btn.disabled) return false;
+        window.adminTimeIn();
+        return false;
+    };
+    window.remoedAdminTimeOutClick = function (ev) {
+        if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+        }
+        var btn = document.getElementById('time-out-btn');
+        if (btn && btn.disabled) return false;
+        window.adminTimeOut();
+        return false;
+    };
+    window.remoedAdminViewLogsClick = function (ev) {
+        if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+        }
+        window.showAdminTimeLogModal();
+        return false;
+    };
+
+    function wireDelegatedClicksOnce() {
+        if (document.body.getAttribute('data-admin-tt-delegated') === '1') return;
+        document.body.setAttribute('data-admin-tt-delegated', '1');
+
+        document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+
+            var mini = t.closest('#time-btn-mini');
+            if (mini) {
+                if (mini.disabled) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var st = window.adminTimeTrackingStatus || {};
+                if (st.isClockedIn || isClockedIn) window.adminTimeOut();
+                else window.adminTimeIn();
+                return;
+            }
+
+            if (t.closest('#time-in-btn')) {
+                window.remoedAdminTimeInClick(e);
+                return;
+            }
+            if (t.closest('#time-out-btn')) {
+                window.remoedAdminTimeOutClick(e);
+                return;
+            }
+            if (t.closest('#view-log-btn')) {
+                window.remoedAdminViewLogsClick(e);
+            }
+        }, true);
+    }
+
+    function wireCardModalOnce() {
+        if (document.body.getAttribute('data-admin-tt-modal') === '1') return;
+        if (!document.getElementById('admin-time-log-modal')) return;
+        document.body.setAttribute('data-admin-tt-modal', '1');
+
+        var closeBtn = document.getElementById('admin-close-time-log');
+        if (closeBtn) closeBtn.addEventListener('click', window.hideAdminTimeLogModal);
+
+        var applyBtn = document.getElementById('admin-apply-filter');
+        if (applyBtn) applyBtn.addEventListener('click', loadAdminTimeLogsWithFilter);
+
+        var modal = document.getElementById('admin-time-log-modal');
+        if (modal) {
+            window.hideAdminTimeLogModal();
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) window.hideAdminTimeLogModal();
+            });
+            var panel = document.getElementById('admin-time-log-modal-panel');
+            if (panel) {
+                panel.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+            }
+        }
+
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Escape') return;
+            var m = document.getElementById('admin-time-log-modal');
+            if (adminTimeLogModalIsOpen(m)) window.hideAdminTimeLogModal();
+        });
+    }
+
     window.initAdminTimeTracking = function () {
-        if (document.body.getAttribute('data-admin-tt-init') === '1') return;
         var hasCard = !!document.getElementById('admin-time-tracking-card');
         var hasMini = !!document.getElementById('time-btn-mini');
         if (!hasCard && !hasMini) return;
-        document.body.setAttribute('data-admin-tt-init', '1');
 
-        if (hasCard) {
+        wireDelegatedClicksOnce();
+        wireCardModalOnce();
+
+        if (!clockDisplayStarted) {
+            clockDisplayStarted = true;
             updateCurrentTimeDisplay();
-            setInterval(updateCurrentTimeDisplay, 5000);
-
-            var timeInBtn = document.getElementById('time-in-btn');
-            var timeOutBtn = document.getElementById('time-out-btn');
-            var viewBtn = document.getElementById('view-log-btn');
-            if (timeInBtn) timeInBtn.addEventListener('click', function () { window.adminTimeIn(); });
-            if (timeOutBtn) timeOutBtn.addEventListener('click', function () { window.adminTimeOut(); });
-            if (viewBtn) viewBtn.addEventListener('click', function () { window.showAdminTimeLogModal(); });
-
-            var closeBtn = document.getElementById('admin-close-time-log');
-            if (closeBtn) closeBtn.addEventListener('click', window.hideAdminTimeLogModal);
-
-            var applyBtn = document.getElementById('admin-apply-filter');
-            if (applyBtn) applyBtn.addEventListener('click', loadAdminTimeLogsWithFilter);
-
-            var modal = document.getElementById('admin-time-log-modal');
-            if (modal) {
-                window.hideAdminTimeLogModal();
-                modal.addEventListener('click', function (e) {
-                    if (e.target === modal) window.hideAdminTimeLogModal();
-                });
-                var panel = document.getElementById('admin-time-log-modal-panel');
-                if (panel) {
-                    panel.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                    });
-                }
-            }
-
-            document.addEventListener('keydown', function (ev) {
-                if (ev.key !== 'Escape') return;
-                var m = document.getElementById('admin-time-log-modal');
-                if (adminTimeLogModalIsOpen(m)) window.hideAdminTimeLogModal();
-            });
+            setInterval(updateCurrentTimeDisplay, 1000);
+        } else {
+            updateCurrentTimeDisplay();
         }
 
-        loadAdminTimeTrackingStatus();
-        setInterval(loadAdminTimeTrackingStatus, 5 * 60 * 1000);
+        if (!statusPollStarted) {
+            statusPollStarted = true;
+            // Status only — never auto clock-in.
+            loadAdminTimeTrackingStatus();
+            setInterval(loadAdminTimeTrackingStatus, 5 * 60 * 1000);
+        } else {
+            updateAdminTimeTrackingUI();
+            wireCardModalOnce();
+        }
     };
 
-    document.addEventListener('DOMContentLoaded', function () {
-        if (typeof window.initAdminTimeTracking === 'function') {
-            window.initAdminTimeTracking();
-        }
-    });
-    if (document.readyState !== 'loading' && typeof window.initAdminTimeTracking === 'function') {
+    window.AdminTimeTracking = {
+        refresh: loadAdminTimeTrackingStatus,
+        init: window.initAdminTimeTracking
+    };
+
+    function boot() {
         window.initAdminTimeTracking();
+        // Card/modal may appear after header early-load.
+        setTimeout(window.initAdminTimeTracking, 0);
+        setTimeout(window.initAdminTimeTracking, 400);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
     }
 })();

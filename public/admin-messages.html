@@ -10,12 +10,13 @@
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-5">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-5">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-6">
 </head>
 <body class="page-admin-messages">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
         <script src="js/admin-sidebar.js?v=app-shell-4"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'messages');</script>
         <div class="remoed-content">
@@ -299,10 +300,12 @@
 
             async function openConversation(user) {
                 activeUser = user;
+                var messengerEl = document.getElementById('messenger');
+                if (messengerEl) messengerEl.classList.add('show-chat');
                 paneNameEl.textContent = user.name || user.userId;
                 paneSubEl.textContent = (user.userType || 'user') + ' • ' + (user.displayHandle || user.email || user.username || user.userId || '');
                 paneAvatarEl.textContent = (user.name || user.userId || 'U')[0].toUpperCase();
-                composerEl.style.display = '';
+                composerEl.style.display = 'flex';
                 clearPendingAttach();
                 renderUserList(users);
 
@@ -312,6 +315,9 @@
                 var data = await res.json().catch(function () { return {}; });
                 if (!res.ok) throw new Error(data.message || data.error || 'Failed to load messages');
                 renderMessages(Array.isArray(data.messages) ? data.messages : []);
+                requestAnimationFrame(function () {
+                    if (chatScrollEl) chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+                });
             }
 
             async function sendMessage() {
