@@ -29,7 +29,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Admin Fee & Attendance | `public/admin-fee.html`, `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; sidebar **Admin Fee** under Accounting Hub |
 | Admin Roles (dynamic RBAC) | `public/admin-settings.html` (Admin Roles and Access), `server/services/adminRbac.js`, `server/adminRbacRoutes.js`, `AdminRole` / `AdminPermission`, `public/js/admin-access-guard.js`, `public/admin-403.html` |
 | System monitor (Super-Admin) | `public/super-monitor.html`, `GET /api/admin/system-stats` — live unique students / teachers / admins via Socket.IO `userType` + `presenceKey` |
-| Virtual Garden / Eco-Drops | [`SKILLS.md`](../SKILLS.md), `public/student-virtual-garden.html`, `server/services/ecoDropGardenService.js`, grant on first `LessonProgress` → completed |
+| Virtual Garden / Eco-Drops | [`SKILLS.md`](../SKILLS.md), `public/student-virtual-garden.html`, `public/css/student-virtual-garden.css`, `server/services/ecoDropGardenService.js`, `GET/POST /api/student/garden*`; grant on first `LessonProgress` → completed |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 
@@ -97,7 +97,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Sidebar order includes **Accounting Hub** → **Admin Fee** → **Marketing Hub**.
 - [ ] Super-Admin **Settings → Admin Roles and Access** is visible and can Save Permissions for a non–Super-Admin role. Non–Super-Admin accounts do **not** see that card (or System Settings / System Monitor in the sidebar).
 - [ ] **System monitor → Live platform** shows Students / Teachers / Admins online (unique `presenceKey` counts; refreshes with other stats).
-- [ ] Student **Virtual Garden** loads; Eco-Drop badge shows in sidebar/header; completing a lesson awards +1 once; shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works.
+- [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); Eco-Drop badge in sidebar/header; stats load (not “Student not found”); shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works; completing a lesson awards +1 once.
 - [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll can Load Admins and Dispense fees for the cutoff.
 - [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
@@ -240,6 +240,16 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
 - Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (admin fee dispense), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
+
+## Virtual Garden & Eco-Drops
+
+Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** stay separate from Eco-Drops.
+
+- Page: [`public/student-virtual-garden.html`](../public/student-virtual-garden.html) + [`public/css/student-virtual-garden.css`](../public/css/student-virtual-garden.css) (`?v=garden-3+`). Sidebar id `garden` in `student-sidebar.js`; header Eco-Drop chip in `student-page-header.js`.
+- APIs (`server/student.js`, student Bearer): `GET /api/student/eco-drops`, `GET /api/student/garden`, `POST /api/student/garden/action`, `POST /api/student/lessons/complete` (backfill only).
+- Identity: routes must use **`gardenStudentKey(req)`** → `req.student.username` (from `requireStudent`). Do **not** pass JWT `studentId` (Mongo `_id`) alone into garden lookup — that caused **404 Student not found**. `findStudentDoc` also accepts `_id` / email / username / `studentCode`.
+- Award hook: first `LessonProgress` → `completed` in `upsertLessonProgressFromBooking` (+ direct `POST /api/lessons/progress/update`). Idempotent via `EcoDropLedger`.
+- **Layout (100% zoom):** keep portal `remoed-content` max-width `calc(100vw - sidebar)`. Never set `max-width: none` on garden content (overflows past the rail). Use `minmax(0, 1fr)`, `overflow-x: hidden`, and stack shop under the plot ≤1100px.
 
 ## Admin Fee & Attendance
 
