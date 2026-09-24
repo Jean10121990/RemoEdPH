@@ -300,8 +300,19 @@
                     </thead>
                     <tbody>
                         ${teachers.map(teacher => {
-                            const statusText = teacher.paymentStatus === 'Paid' ? '✓ Paid' : 'Pending';
-                            const statusColor = teacher.paymentStatus === 'Paid' ? '#27ae60' : '#888';
+                            const life = teacher.payoutLifecycle || '';
+                            let statusText = 'Pending';
+                            let statusColor = '#888';
+                            if (life === 'disbursed') {
+                                statusText = 'Released';
+                                statusColor = '#1ca7e7';
+                            } else if (life === 'withdrawal_requested') {
+                                statusText = 'Processing withdraw';
+                                statusColor = '#f59e0b';
+                            } else if (life === 'completed' || teacher.paymentStatus === 'Paid') {
+                                statusText = life === 'completed' ? '✓ Completed' : '✓ Released';
+                                statusColor = '#27ae60';
+                            }
                             const totalDeductions = (teacher.lateDeductions || 0) + (teacher.teacherAbsentDeductions || 0);
                             const bonus = Number(teacher.bonusIncentive) || 0;
                             const tid = teacher.teacherCode || teacher.email || '';
@@ -547,13 +558,28 @@
                     </thead>
                     <tbody>
                         ${payments.map(payment => {
-                            const statusText = payment.status === 'Success' ? '✅ Paid' : '⏳ Pending';
-                            const statusColor = payment.status === 'Success' ? '#27ae60' : '#f39c12';
+                            const st = String(payment.status || '');
+                            let statusText = '⏳ Pending';
+                            let statusColor = '#f39c12';
+                            if (st === 'Success' || st === 'COMPLETED' || st === 'Completed') {
+                                statusText = '✅ Completed';
+                                statusColor = '#27ae60';
+                            } else if (st === 'DISBURSED' || st === 'Disbursed') {
+                                statusText = 'Released';
+                                statusColor = '#1ca7e7';
+                            } else if (st === 'WITHDRAWAL_REQUESTED' || st === 'WithdrawalRequested') {
+                                statusText = 'Processing withdraw';
+                                statusColor = '#f59e0b';
+                            }
+                            const canComplete = st === 'WITHDRAWAL_REQUESTED' || st === 'WithdrawalRequested';
+                            const masked = payment.payoutReference && payment.payoutReference.maskedAccountNumber
+                                ? payment.payoutReference.maskedAccountNumber
+                                : '';
                             
                             return `
                                 <tr>
-                                    <td>${payment.teacherEmail || 'N/A'}</td>
-                                    <td>${payment.period || payment.duration || 'N/A'}</td>
+                                    <td>${payment.teacherEmail || payment.teacherUsername || 'N/A'}</td>
+                                    <td>${payment.period || payment.duration || 'N/A'}${masked ? '<br><span style="font-size:0.75rem;color:#94a3b8;">MariBank ' + masked + '</span>' : ''}</td>
                                     <td>${payment.issueDate ? new Date(payment.issueDate).toLocaleDateString('en-US', { 
                                         month: 'short', 
                                         day: 'numeric', 
@@ -562,6 +588,7 @@
                                     <td style="font-weight: 600; color: #e74c3c;">₱${(payment.amount || 0).toFixed(2)}</td>
                                     <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
                                     <td>
+                                        ${canComplete ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 12px; margin-right: 5px; border-radius:6px;" onclick="completeTeacherPayment('${payment._id}')">Mark Completed</button>` : ''}
                                         <button class="btn btn-primary" style="padding: 4px 8px; font-size: 12px; margin-right: 5px;" onclick="editPayment('${payment._id}')">✏️ Edit</button>
                                         <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="deletePayment('${payment._id}')">🗑️ Delete</button>
                                     </td>
@@ -573,6 +600,25 @@
             `;
             
             container.innerHTML = tableHTML;
+        }
+
+        async function completeTeacherPayment(paymentId) {
+            if (!confirm('Mark this MariBank payout as completed? Only do this after the bank transfer is done.')) return;
+            try {
+                const response = await adminApiFetch('/api/admin/payroll/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success) {
+                    throw new Error(apiErrorMessage(data, 'Could not mark completed'));
+                }
+                alert(data.message || 'Marked completed');
+                if (typeof loadPaymentHistory === 'function') loadPaymentHistory();
+            } catch (e) {
+                alert(e.message || 'Complete failed');
+            }
         }
 
         async function editPayment(paymentId) {

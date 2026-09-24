@@ -14,6 +14,16 @@ const PeerMessage = require('./models/PeerMessage');
 const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
 const { syncAdminAttendanceFromTimeLog } = require('./services/adminAttendanceSync');
+const {
+  isReleased,
+  isDisbursed,
+  isWithdrawRequested,
+  isCompleted,
+  uiLifecycleLabel,
+  validateMariBankWithdrawBody,
+  sendWithdrawalEmailToAccounting,
+  ALLOWED_BANK,
+} = require('./services/payrollWithdrawService');
 const Referral = require('./models/Referral');
 const AdminAuditLog = require('./models/AdminAuditLog');
 const { decryptPiiString } = require('./utils/piiCrypto');
@@ -3032,11 +3042,25 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
     baseWeeklyFee + studentAbsentPayment + bonus - lateDeductions - teacherAbsentDeductions
   );
   let paymentStatus = 'Pending';
+  let paymentId = null;
+  let payoutLifecycle = 'pending';
   if (teacher.paymentHistory && teacher.paymentHistory.length > 0) {
     const currentWeekPayment = teacher.paymentHistory.find(
-      (payment) => payment.duration === `${startDate} - ${endDate}` && payment.status === 'Success'
+      (payment) =>
+        payment.duration === `${startDate} - ${endDate}` && isReleased(payment.status)
     );
-    if (currentWeekPayment) paymentStatus = 'Paid';
+    if (currentWeekPayment) {
+      paymentId = currentWeekPayment._id ? String(currentWeekPayment._id) : null;
+      payoutLifecycle = isCompleted(currentWeekPayment.status)
+        ? 'completed'
+        : isWithdrawRequested(currentWeekPayment.status)
+          ? 'withdrawal_requested'
+          : isDisbursed(currentWeekPayment.status)
+            ? 'disbursed'
+            : 'released';
+      // Accounting "Paid" / dispense-locked once released (any post-dispense state)
+      paymentStatus = 'Paid';
+    }
   }
   return {
     teacherId: teacher._id,
@@ -3054,6 +3078,17 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
     teacherAbsentDeductions,
     weeklySalary: netPayableAmount,
     paymentStatus,
+    paymentId,
+    payoutLifecycle,
+    payoutLifecycleLabel: uiLifecycleLabel(
+      payoutLifecycle === 'completed'
+        ? 'COMPLETED'
+        : payoutLifecycle === 'withdrawal_requested'
+          ? 'WITHDRAWAL_REQUESTED'
+          : payoutLifecycle === 'disbursed'
+            ? 'DISBURSED'
+            : ''
+    ),
   };
 }
 
@@ -3148,8 +3183,13 @@ router.post('/dispense-salaries', async (req, res) => {
       const weeklySalary = row.weeklySalary;
 
       if (weeklySalary > 0) {
-        // Create payment record (you might want to create a Payment model)
-        // For now, we'll just mark it as paid in the teacher's record
+        // Release funds for MariBank withdraw (DISBURSED — not bank-final COMPLETED)
+        const already = (teacher.paymentHistory || []).find(
+          (p) => p.duration === `${startDate} - ${endDate}` && isReleased(p.status)
+        );
+        if (already) {
+          continue;
+        }
         await Teacher.findByIdAndUpdate(teacher._id, {
           $push: {
             paymentHistory: {
@@ -3157,9 +3197,10 @@ router.post('/dispense-salaries', async (req, res) => {
               issueDate: issueDate,
               amount: weeklySalary,
               remark: 0,
-              paymentMethod: 'HSBC_PayPal',
+              paymentMethod: ALLOWED_BANK,
               account: teacher.username,
-              status: 'Success',
+              status: 'DISBURSED',
+              disbursedAt: new Date(),
               breakdown: {
                 completedClasses: row.completedClasses,
                 studentAbsentClasses: row.studentAbsentClasses,
@@ -3183,7 +3224,7 @@ router.post('/dispense-salaries', async (req, res) => {
           await createNotification(
             teacher.teacherId,
             'salary',
-            `Your salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been credited.`
+            `Your salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been released. Open Teaching Fee → Withdraw via MariBank.`
           );
         } catch (notifError) {
           console.error('❌ Error creating salary notification for teacher:', teacher.teacherId, notifError);
@@ -3211,6 +3252,49 @@ router.post('/dispense-salaries', async (req, res) => {
       success: false,
       message: 'Error dispensing salaries'
     });
+  }
+});
+
+/**
+ * POST /api/admin/payroll/complete
+ * Accounting marks a teacher payment COMPLETED after MariBank transfer.
+ * Body: { paymentId }
+ */
+router.post('/payroll/complete', async (req, res) => {
+  try {
+    const paymentId = String(req.body.paymentId || req.body.id || '').trim();
+    if (!paymentId || !mongoose.isValidObjectId(paymentId)) {
+      return res.status(400).json({ success: false, message: 'paymentId is required' });
+    }
+    const teacher = await Teacher.findOne({ 'paymentHistory._id': paymentId });
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+    const payment = teacher.paymentHistory.id(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+    if (!isWithdrawRequested(payment.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only WITHDRAWAL_REQUESTED payments can be marked completed.',
+      });
+    }
+    payment.status = 'COMPLETED';
+    payment.completedAt = new Date();
+    payment.paymentStatus = 'Completed';
+    await teacher.save();
+    try {
+      await createNotification(
+        teacher.teacherId,
+        'salary',
+        `Your MariBank payout of ₱${Number(payment.amount || 0).toFixed(2)} (${payment.duration || ''}) is complete.`
+      );
+    } catch (_n) { /* ignore */ }
+    res.json({ success: true, message: 'Payment marked completed', paymentId });
+  } catch (error) {
+    console.error('Error completing teacher payroll:', error);
+    res.status(500).json({ success: false, message: 'Error completing payment' });
   }
 });
 
@@ -5616,6 +5700,7 @@ router.get('/payment-history', async (req, res) => {
           _id: '$paymentHistory._id',
           teacherId: '$_id',
           teacherEmail: '$email',
+          teacherUsername: '$username',
           teacherName: {
             $let: {
               vars: {
@@ -5635,6 +5720,10 @@ router.get('/payment-history', async (req, res) => {
           issueDate: '$paymentHistory.issueDate',
           amount: '$paymentHistory.amount',
           status: '$paymentHistory.status',
+          payoutReference: '$paymentHistory.payoutReference',
+          withdrawalRequestedAt: '$paymentHistory.withdrawalRequestedAt',
+          completedAt: '$paymentHistory.completedAt',
+          disbursedAt: '$paymentHistory.disbursedAt',
         },
       },
       { $sort: { issueDate: -1 } }

@@ -33,6 +33,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Virtual Garden / Eco-Drops | [`SKILLS.md`](../SKILLS.md), `public/student-virtual-garden.html`, `public/css/student-virtual-garden.css`, `server/services/ecoDropGardenService.js`, `GET/POST /api/student/garden*`; grant on first `LessonProgress` → completed |
 | Lesson slide generation (L2M1+) | [`reference.md`](../reference.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md), `docs/lesson-references/build_l2m1_lessons_*.py` → repo `docs/lesson-references/lessons/` **and** laptop `Level {1–4}` folders |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
+| MariBank payroll withdraw | `public/js/payroll-withdraw-modal.js`, `server/services/payrollWithdrawService.js`; teacher `POST /api/teacher/payroll/withdraw`; admin `POST /api/admin/admin-fee/withdraw` + `/complete`; Accounting `POST /api/admin/payroll/complete` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 
 ## Feature-add rule of thumb
@@ -100,7 +101,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Super-Admin **Settings → Admin Roles and Access** is visible and can Save Permissions for a non–Super-Admin role. Non–Super-Admin accounts do **not** see that card (or System Settings / System Monitor in the sidebar).
 - [ ] **System monitor → Live platform** shows Students / Teachers / Admins online (unique `presenceKey` counts; refreshes with other stats).
 - [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); Eco-Drop badge in sidebar/header; stats load (not “Student not found”); shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works; completing a lesson awards +1 once.
-- [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll matches teacher payroll UX (soft rounded `.btn` like `page-admin-payroll`, period nav, **Load Admins** + red **Dispense All Admin Fees** until Paid — do not rename to “No Pending Fees” when all ineligible, table, Payment History Load/Export).
+- [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll matches teacher payroll UX (soft rounded `.btn`, period nav, Load + Dispense release, Payment History + **Mark Completed** after MariBank withdraw).
+- [ ] After Accounting **Dispense**, Teaching Fee / Admin Fee show **Withdraw (MariBank)** (Open MariBank link works). Submit → Processing; email to support; Accounting Mark Completed → Completed. Legacy Success/paid rows have no Withdraw.
 - [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
@@ -269,11 +271,12 @@ Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** st
 - Models: `TimeLog` (`teacherId` = `admin:<username>`, `logOwnerType: 'admin'`), `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches sync from TimeLog.
 - APIs (Admin Fee): `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`**, **`/payment-history`**, **`/admins-filter-list`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales. Ineligible rows stay listed at ₱0; dispense skips them server-side.
+- **Payroll withdraw (MariBank only):** Accounting **Dispense** writes `DISBURSED` / `disbursed` (release — not bank-final). Teacher Teaching Fee / Admin Fee show **Withdraw (MariBank)** → `WITHDRAWAL_REQUESTED` / `withdrawal_requested` with masked `payoutReference` only. Full account details email to `support@remoedph.com` via `sendRawEmail`. Accounting **Mark Completed** → `COMPLETED` / `completed`. Legacy `Success` / `paid` = Completed (no Withdraw). Open MariBank link: `https://maribank.ph/c/earnfreemoney?referralCode=KB740303`. Shared UI: `public/js/payroll-withdraw-modal.js`. APIs: `POST /api/teacher/payroll/withdraw`, `POST /api/admin/admin-fee/withdraw`, `POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`. Service: `server/services/payrollWithdrawService.js`.
 - **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`, iframe `embedVer` bump on UI changes): mirror teacher **Payroll Management** (`public/admin-payroll.html` / `page-admin-payroll`):
   - Soft rounded buttons (`.btn` `border-radius: 6px`, primary/success/danger colors) — do not leave square/edgy browser defaults.
-  - Period nav (`Sep 16 - Sep 30`), **Load Admins** + red **Dispense All Admin Fees** (same enable rule as teachers: stay enabled until at least one row is **Paid**; gray **Fees Dispensed** after. Do **not** replace with “No Pending Fees” when everyone is Ineligible).
-  - `payroll-table` list + **Payment History Management** (filter / Load Records / Export CSV).
-  - Dispense marks eligible `AdminPayout` `paid` and notifies each admin. Same bi-monthly `periodKey` as teacher payroll.
+  - Period nav (`Sep 16 - Sep 30`), **Load Admins** + red **Dispense All Admin Fees** (same enable rule as teachers: stay enabled until at least one row is **Paid**/released; gray **Fees Dispensed** after. Do **not** replace with “No Pending Fees” when everyone is Ineligible).
+  - `payroll-table` list + **Payment History Management** (filter / Load Records / Export CSV / **Mark Completed** on withdrawal-requested rows).
+  - Dispense marks eligible `AdminPayout` `disbursed` and notifies each admin. Same bi-monthly `periodKey` as teacher payroll.
 - Header notification bell: `public/js/admin-notifications.js` (delegated click; opens via `remoedSetNavDropdownOpen`). Panel is body-mounted and **fixed under `#admin-notifications-icon`** — do not re-append the dropdown into the 40px chip or inject `position:absolute; top:calc(100% + 8px)` for the open state. Wire via `admin-page-header.js`.
 
 ## Admin Roles and Access (dynamic RBAC)

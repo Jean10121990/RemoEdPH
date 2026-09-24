@@ -15,6 +15,16 @@ const {
   requireAdminSessionValid,
 } = require('./authMiddleware');
 const { REQUIRED_SHIFT_HOURS, syncAdminAttendanceFromTimeLog } = require('./services/adminAttendanceSync');
+const {
+  isReleased,
+  isDisbursed,
+  isWithdrawRequested,
+  isCompleted,
+  uiLifecycleLabel,
+  validateMariBankWithdrawBody,
+  sendWithdrawalEmailToAccounting,
+  ALLOWED_BANK,
+} = require('./services/payrollWithdrawService');
 
 const router = express.Router();
 
@@ -185,6 +195,11 @@ router.get('/summary', async (req, res) => {
       eligible: stats.eligible,
       estimatedPayout,
       payoutStatus: existingPayout ? existingPayout.status : 'none',
+      payoutId: existingPayout ? String(existingPayout._id) : null,
+      canWithdraw: !!(existingPayout && isDisbursed(existingPayout.status) && estimatedPayout > 0),
+      payoutLifecycleLabel: existingPayout
+        ? uiLifecycleLabel(existingPayout.status)
+        : 'Pending Admin Release',
       admin: admin
         ? {
             username: admin.username,
@@ -415,7 +430,18 @@ router.get('/payroll', async (req, res) => {
       const stats = summarizeAttendanceRows(attendance);
       const amount = stats.eligible ? commissionPool : 0;
       const prev = byUser[String(a.username).toLowerCase()];
-      const paymentStatus = prev && prev.status === 'paid' ? 'Paid' : amount > 0 ? 'Pending' : 'Ineligible';
+      let paymentStatus = 'Ineligible';
+      let payoutLifecycle = 'pending';
+      if (prev && isReleased(prev.status)) {
+        paymentStatus = 'Paid'; // dispense-locked
+        payoutLifecycle = isCompleted(prev.status)
+          ? 'completed'
+          : isWithdrawRequested(prev.status)
+            ? 'withdrawal_requested'
+            : 'disbursed';
+      } else if (amount > 0) {
+        paymentStatus = 'Pending';
+      }
       rows.push({
         adminId: String(a._id),
         username: a.username,
@@ -431,8 +457,18 @@ router.get('/payroll', async (req, res) => {
         commissionRate: COMMISSION_RATE,
         feeAmount: amount,
         paymentStatus,
+        payoutLifecycle,
+        payoutLifecycleLabel: uiLifecycleLabel(
+          payoutLifecycle === 'completed'
+            ? 'completed'
+            : payoutLifecycle === 'withdrawal_requested'
+              ? 'withdrawal_requested'
+              : payoutLifecycle === 'disbursed'
+                ? 'disbursed'
+                : ''
+        ),
         payoutId: prev ? String(prev._id) : null,
-        paidAt: prev && prev.paidAt ? prev.paidAt : null,
+        paidAt: prev && (prev.paidAt || prev.disbursedAt) ? prev.paidAt || prev.disbursedAt : null,
       });
     }
 
@@ -457,7 +493,7 @@ router.get('/payroll', async (req, res) => {
 });
 
 /**
- * Dispense admin fees for the period — marks eligible rows paid (like teacher dispense).
+ * Dispense admin fees for the period — releases funds (disbursed) for MariBank withdraw.
  */
 router.post('/dispense', async (req, res) => {
   try {
@@ -497,8 +533,8 @@ router.post('/dispense', async (req, res) => {
         periodKey,
       });
 
-      if (existing && existing.status === 'paid') {
-        skipped.push({ username: a.username, reason: 'already_paid', amount: existing.totalAmount });
+      if (existing && isReleased(existing.status)) {
+        skipped.push({ username: a.username, reason: 'already_released', amount: existing.totalAmount });
         continue;
       }
       if (amount <= 0) {
@@ -506,6 +542,7 @@ router.post('/dispense', async (req, res) => {
         continue;
       }
 
+      const now = new Date();
       const doc = await AdminPayout.findOneAndUpdate(
         { adminUsername: a.username, periodKey },
         {
@@ -522,11 +559,12 @@ router.post('/dispense', async (req, res) => {
             totalShifts: stats.totalShifts,
             completedShifts: stats.completedShifts,
             eligible: true,
-            status: 'paid',
-            generatedAt: existing && existing.generatedAt ? existing.generatedAt : new Date(),
-            paidAt: new Date(),
+            status: 'disbursed',
+            generatedAt: existing && existing.generatedAt ? existing.generatedAt : now,
+            disbursedAt: now,
+            paidAt: now,
             paidBy,
-            notes: `Dispensed by ${paidBy}`,
+            notes: `Disbursed (released for MariBank withdraw) by ${paidBy}`,
           },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -537,7 +575,7 @@ router.post('/dispense', async (req, res) => {
           await notifyTeacher(
             a.username,
             'salary',
-            `Your admin fee of ₱${amount.toFixed(2)} for ${startYmd} – ${endYmd} has been dispensed.`
+            `Your admin fee of ₱${amount.toFixed(2)} for ${startYmd} – ${endYmd} has been released. Open Admin Fee → Withdraw via MariBank.`
           );
         } catch (nErr) {
           console.warn('Admin fee notify failed:', a.username, nErr && nErr.message);
@@ -560,11 +598,126 @@ router.post('/dispense', async (req, res) => {
       commissionPool,
       dispensedAdmins: dispensed,
       skipped,
-      message: `Dispensed to ${dispensed.length} admin(s).`,
+      message: `Released fees for ${dispensed.length} admin(s).`,
     });
   } catch (e) {
     console.error('POST /admin-fee/dispense', e);
     res.status(500).json({ success: false, message: e.message || 'Failed to dispense admin fees' });
+  }
+});
+
+/**
+ * Admin self-serve MariBank withdraw for a disbursed AdminPayout.
+ * Body: { payoutId, accountName, accountNumber }
+ */
+router.post('/withdraw', async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const payoutId = String(req.body.payoutId || req.body.id || '').trim();
+    const validated = validateMariBankWithdrawBody(req.body);
+    if (!validated.ok) {
+      return res.status(400).json({ success: false, message: validated.message });
+    }
+    if (!payoutId || !mongoose.Types.ObjectId.isValid(payoutId)) {
+      return res.status(400).json({ success: false, message: 'payoutId is required' });
+    }
+
+    const username = String(req.user.username || '').trim();
+    const payout = await AdminPayout.findById(payoutId);
+    if (!payout) {
+      return res.status(404).json({ success: false, message: 'Payout not found' });
+    }
+    if (String(payout.adminUsername || '').toLowerCase() !== username.toLowerCase()) {
+      return res.status(403).json({ success: false, message: 'You can only withdraw your own fees.' });
+    }
+    if (!isDisbursed(payout.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Funds are not available for withdrawal or have already been requested.',
+      });
+    }
+
+    const now = new Date();
+    payout.status = 'withdrawal_requested';
+    payout.withdrawalRequestedAt = now;
+    payout.payoutReference = {
+      bankName: ALLOWED_BANK,
+      accountName: validated.accountName,
+      maskedAccountNumber: validated.maskedAccountNumber,
+    };
+    payout.notes = [payout.notes, `Withdrawal requested ${now.toISOString()}`].filter(Boolean).join('\n').slice(0, 2000);
+    await payout.save();
+
+    const admin = await Admin.findOne({
+      username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+    })
+      .select('username email firstName lastName adminRole')
+      .lean();
+
+    await sendWithdrawalEmailToAccounting({
+      roleLabel: 'Admin',
+      displayName: adminDisplayName(admin || { username }),
+      username,
+      email: (admin && admin.email) || '',
+      amount: payout.totalAmount,
+      periodLabel: payout.periodKey,
+      bankName: ALLOWED_BANK,
+      accountName: validated.accountName,
+      accountNumber: validated.accountNumber,
+    });
+
+    res.json({
+      success: true,
+      message: `Withdrawal request submitted for ${ALLOWED_BANK}. Accounting will process your funds shortly.`,
+      payoutId: String(payout._id),
+      status: payout.status,
+    });
+  } catch (e) {
+    console.error('POST /admin-fee/withdraw', e);
+    res.status(500).json({ success: false, message: e.message || 'Withdrawal failed' });
+  }
+});
+
+/**
+ * Accounting marks admin payout completed after MariBank transfer.
+ * Body: { payoutId }
+ */
+router.post('/complete', async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const payoutId = String(req.body.payoutId || req.body.id || '').trim();
+    if (!payoutId || !mongoose.Types.ObjectId.isValid(payoutId)) {
+      return res.status(400).json({ success: false, message: 'payoutId is required' });
+    }
+    const payout = await AdminPayout.findById(payoutId);
+    if (!payout) {
+      return res.status(404).json({ success: false, message: 'Payout not found' });
+    }
+    if (!isWithdrawRequested(payout.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only withdrawal_requested payouts can be marked completed.',
+      });
+    }
+    payout.status = 'completed';
+    payout.completedAt = new Date();
+    payout.paidAt = payout.paidAt || new Date();
+    payout.notes = [payout.notes, `Completed by ${req.user.username}`].filter(Boolean).join('\n').slice(0, 2000);
+    await payout.save();
+
+    try {
+      const notifyTeacher = require('./services/notifyService').notifyTeacher;
+      await notifyTeacher(
+        payout.adminUsername,
+        'salary',
+        `Your MariBank admin fee of ₱${Number(payout.totalAmount || 0).toFixed(2)} (${payout.periodKey}) is complete.`
+      );
+    } catch (_n) { /* ignore */ }
+
+    res.json({ success: true, message: 'Admin fee marked completed', payoutId: String(payout._id) });
+  } catch (e) {
+    console.error('POST /admin-fee/complete', e);
+    res.status(500).json({ success: false, message: e.message || 'Complete failed' });
   }
 });
 
@@ -583,17 +736,25 @@ router.get('/payment-history', async (req, res) => {
         'i'
       );
     }
-    if (statusFilter === 'paid' || statusFilter === 'success') {
-      q.status = 'paid';
+    if (statusFilter === 'paid' || statusFilter === 'success' || statusFilter === 'completed') {
+      q.status = { $in: ['paid', 'completed'] };
     } else if (statusFilter === 'pending') {
-      q.status = { $in: ['draft', 'generated'] };
+      q.status = { $in: ['draft', 'generated', 'disbursed', 'withdrawal_requested'] };
+    } else if (statusFilter === 'withdrawal_requested' || statusFilter === 'processing') {
+      q.status = 'withdrawal_requested';
+    } else if (statusFilter === 'disbursed') {
+      q.status = 'disbursed';
     } else if (statusFilter === 'void') {
       q.status = 'void';
     }
 
     const rows = await AdminPayout.find(q).sort({ periodKey: -1, paidAt: -1, updatedAt: -1 }).limit(200).lean();
     const payments = rows.map((p) => {
-      const paid = p.status === 'paid';
+      let statusLabel = 'Pending';
+      if (isCompleted(p.status)) statusLabel = 'Success';
+      else if (isWithdrawRequested(p.status)) statusLabel = 'WithdrawalRequested';
+      else if (isDisbursed(p.status)) statusLabel = 'Disbursed';
+      else if (p.status === 'void') statusLabel = 'Void';
       return {
         _id: String(p._id),
         adminUsername: p.adminUsername,
@@ -605,10 +766,13 @@ router.get('/payment-history', async (req, res) => {
         grossSales: Number(p.grossSales) || 0,
         completedShifts: Number(p.completedShifts) || 0,
         totalHours: Number(p.totalHours) || 0,
-        status: paid ? 'Success' : p.status === 'void' ? 'Void' : 'Pending',
-        issueDate: p.paidAt || p.generatedAt || p.updatedAt || p.createdAt,
+        status: statusLabel,
+        rawStatus: p.status,
+        payoutReference: p.payoutReference || null,
+        issueDate: p.paidAt || p.disbursedAt || p.generatedAt || p.updatedAt || p.createdAt,
         paidBy: p.paidBy || '',
         notes: p.notes || '',
+        canMarkCompleted: isWithdrawRequested(p.status),
       };
     });
 

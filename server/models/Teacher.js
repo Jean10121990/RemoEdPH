@@ -274,7 +274,10 @@ const teacherSchema = new mongoose.Schema({
     remark: { type: Number, default: 0 },
     paymentMethod: { type: String },
     account: { type: String },
-    /** Dispersed / pending / failed — indexed with teacherId for fee views */
+    /**
+     * Lifecycle: Pending (no row) → DISBURSED (Accounting release) →
+     * WITHDRAWAL_REQUESTED → COMPLETED. Legacy paid rows use Success.
+     */
     status: { type: String },
     /** Optional mirror for admin queries (defaults unset; use status if blank) */
     paymentStatus: { type: String },
@@ -282,6 +285,15 @@ const teacherSchema = new mongoose.Schema({
     studentName: { type: String },
     /** Snapshot of class counts / deductions at dispense (for stable payslips) */
     breakdown: { type: mongoose.Schema.Types.Mixed, default: null },
+    disbursedAt: { type: Date, default: null },
+    withdrawalRequestedAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    /** Masked MariBank audit only — never store full account number here */
+    payoutReference: {
+      bankName: { type: String, default: '' },
+      accountName: { type: String, default: '' },
+      maskedAccountNumber: { type: String, default: '' },
+    },
   }],
   
   // Original fields

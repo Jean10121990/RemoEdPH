@@ -4926,6 +4926,94 @@ router.get('/payment-history', verifyToken, requireTeacher, async (req, res) => 
   }
 });
 
+/**
+ * POST /api/teacher/payroll/withdraw
+ * MariBank withdraw for a DISBURSED paymentHistory row (own only).
+ * Body: { paymentId, accountName, accountNumber }
+ */
+router.post('/payroll/withdraw', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const {
+      isDisbursed,
+      validateMariBankWithdrawBody,
+      sendWithdrawalEmailToAccounting,
+      ALLOWED_BANK,
+    } = require('./services/payrollWithdrawService');
+
+    const paymentId = String(req.body.paymentId || req.body.id || '').trim();
+    const validated = validateMariBankWithdrawBody(req.body);
+    if (!validated.ok) {
+      return res.status(400).json({ success: false, message: validated.message });
+    }
+    if (!paymentId || !mongoose.isValidObjectId(paymentId)) {
+      return res.status(400).json({ success: false, message: 'paymentId is required' });
+    }
+
+    const teacherId = req.user.teacherId;
+    const teacher = await Teacher.findOne({ teacherId });
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+    const payment = teacher.paymentHistory.id(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+    if (!isDisbursed(payment.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Funds are not available for withdrawal or have already been requested.',
+      });
+    }
+
+    const now = new Date();
+    payment.status = 'WITHDRAWAL_REQUESTED';
+    payment.withdrawalRequestedAt = now;
+    payment.paymentMethod = ALLOWED_BANK;
+    payment.payoutReference = {
+      bankName: ALLOWED_BANK,
+      accountName: validated.accountName,
+      maskedAccountNumber: validated.maskedAccountNumber,
+    };
+    await teacher.save();
+
+    const displayName =
+      (teacher.name && String(teacher.name).trim()) ||
+      [teacher.firstName, teacher.lastName].filter(Boolean).join(' ').trim() ||
+      teacher.username ||
+      teacherId;
+
+    await sendWithdrawalEmailToAccounting({
+      roleLabel: 'Teacher',
+      displayName,
+      username: teacher.username || teacherId,
+      email: teacher.email || '',
+      amount: payment.amount,
+      periodLabel: payment.duration || '',
+      bankName: ALLOWED_BANK,
+      accountName: validated.accountName,
+      accountNumber: validated.accountNumber,
+    });
+
+    try {
+      await createNotification(
+        teacherId,
+        'salary',
+        `Withdrawal of ₱${Number(payment.amount || 0).toFixed(2)} submitted. Accounting will process your MariBank transfer.`
+      );
+    } catch (_n) { /* ignore */ }
+
+    res.json({
+      success: true,
+      message: `Withdrawal request submitted for ${ALLOWED_BANK}. Your funds will be processed shortly.`,
+      paymentId,
+      status: payment.status,
+    });
+  } catch (error) {
+    console.error('Teacher payroll withdraw error:', error);
+    res.status(500).json({ success: false, message: 'Server error during withdrawal request.' });
+  }
+});
+
 // Update teacher settings (email, username, password)
 router.post('/update-settings', verifyToken, requireTeacher, async (req, res) => {
   try {

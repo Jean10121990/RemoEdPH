@@ -108,6 +108,7 @@
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
+        <script src="js/payroll-withdraw-modal.js?v=1"></script>
         <script src="js/admin-page-header.js"></script>
         <script src="js/admin-sidebar.js?v=app-shell-13"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'admin-fee');</script>
@@ -120,7 +121,9 @@
                     <select id="af-period" aria-label="Pay period"></select>
                     <button type="button" class="af-btn af-btn-sec" id="af-refresh">Refresh</button>
                     <button type="button" class="af-btn af-btn-ghost" id="af-open-payslip">Generate Payslip</button>
+                    <button type="button" class="af-btn" id="af-withdraw-btn" style="display:none;background:#16a34a;color:#fff;">Withdraw (MariBank)</button>
                 </div>
+                <p id="af-payout-status" class="af-muted" style="margin:0 0 12px;"></p>
 
                 <div class="af-stats" id="af-stats">
                     <div class="af-stat"><div class="lbl">Gross subscription sales</div><div class="val" id="af-gross">₱0</div></div>
@@ -139,8 +142,8 @@
                     </div>
                     <div class="af-card">
                         <h2>How payout works</h2>
-                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff, paid when you have at least one completed 8-hour shift.</p>
-                        <p class="af-note">Attendance below is synced from your dashboard / header time logs — there is no separate Time In on this page.</p>
+                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff after at least one completed 8-hour shift. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
+                        <p class="af-note">Need MariBank? <a href="https://maribank.ph/c/earnfreemoney?referralCode=KB740303" target="_blank" rel="noopener noreferrer">Open MariBank</a>.</p>
                     </div>
                 </div>
 
@@ -294,6 +297,23 @@
         payEl.textContent = peso(d.estimatedPayout);
         payEl.className = 'val ' + (d.eligible ? 'ok' : 'warn');
         document.getElementById('af-period-label').textContent = d.periodLabel || period;
+        var statusEl = document.getElementById('af-payout-status');
+        var wBtn = document.getElementById('af-withdraw-btn');
+        if (statusEl) {
+            statusEl.textContent = d.payoutLifecycleLabel
+                ? ('Payout status: ' + d.payoutLifecycleLabel)
+                : '';
+        }
+        if (wBtn) {
+            if (d.canWithdraw && d.payoutId) {
+                wBtn.style.display = 'inline-block';
+                wBtn.setAttribute('data-payout-id', d.payoutId);
+                wBtn.setAttribute('data-amount', String(d.estimatedPayout || 0));
+            } else {
+                wBtn.style.display = 'none';
+                wBtn.removeAttribute('data-payout-id');
+            }
+        }
         document.getElementById('af-elig-text').innerHTML = d.eligible
             ? '<strong style="color:#15803d">Eligible</strong> — ' + (d.completedShifts || 0) + ' completed 8h shift(s) this period.'
             : '<strong style="color:#b45309">Not yet eligible</strong> — complete at least one full 8-hour shift this period to unlock the 1% fee.';
@@ -368,6 +388,31 @@
             loadSummary().catch(function (e) { toast(e.message); });
         });
         document.getElementById('af-open-payslip').addEventListener('click', openPayslip);
+        var afWithdraw = document.getElementById('af-withdraw-btn');
+        if (afWithdraw) {
+            afWithdraw.addEventListener('click', function () {
+                var id = afWithdraw.getAttribute('data-payout-id');
+                var amt = Number(afWithdraw.getAttribute('data-amount') || 0);
+                if (!id) {
+                    toast('No released payout for this period');
+                    return;
+                }
+                if (!window.RemoedPayrollWithdraw) {
+                    toast('Withdraw UI failed to load');
+                    return;
+                }
+                RemoedPayrollWithdraw.open({
+                    recordId: id,
+                    amount: amt,
+                    submitUrl: '/api/admin/admin-fee/withdraw',
+                    idField: 'payoutId',
+                    getToken: token,
+                    onSuccess: function () {
+                        loadSummary().catch(function (e) { toast(e.message); });
+                    }
+                });
+            });
+        }
         document.getElementById('af-payslip-close').addEventListener('click', function () {
             document.getElementById('af-payslip-modal').classList.remove('open');
         });

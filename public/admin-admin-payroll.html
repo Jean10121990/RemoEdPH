@@ -239,8 +239,23 @@
             admins.map(function (a) {
                 var paid = a.paymentStatus === 'Paid';
                 var pending = a.paymentStatus === 'Pending';
-                var statusText = paid ? '✓ Paid' : pending ? 'Pending' : 'Ineligible';
-                var statusColor = paid ? '#27ae60' : pending ? '#888' : '#94a3b8';
+                var life = a.payoutLifecycle || '';
+                var statusText = paid
+                    ? (life === 'withdrawal_requested'
+                        ? 'Processing withdraw'
+                        : life === 'disbursed'
+                          ? 'Released'
+                          : life === 'completed'
+                            ? '✓ Completed'
+                            : '✓ Released')
+                    : pending
+                      ? 'Pending'
+                      : 'Ineligible';
+                var statusColor = paid
+                    ? (life === 'withdrawal_requested' ? '#f59e0b' : life === 'disbursed' ? '#1ca7e7' : '#27ae60')
+                    : pending
+                      ? '#888'
+                      : '#94a3b8';
                 var feeColor = pending || paid ? '#27ae60' : '#94a3b8';
                 return (
                     '<tr>' +
@@ -423,26 +438,71 @@
         }
         container.innerHTML =
             '<table class="payroll-table"><thead><tr>' +
-            '<th>Admin</th><th>Period</th><th>Issue Date</th><th>Amount</th><th>Status</th>' +
+            '<th>Admin</th><th>Period</th><th>Issue Date</th><th>Amount</th><th>Status</th><th>Actions</th>' +
             '</tr></thead><tbody>' +
             payments.map(function (p) {
-                var paid = p.status === 'Success';
-                var statusText = paid ? '✅ Paid' : p.status === 'Void' ? 'Void' : '⏳ Pending';
-                var statusColor = paid ? '#27ae60' : p.status === 'Void' ? '#94a3b8' : '#f39c12';
+                var st = String(p.status || '');
+                var statusText = '⏳ Pending';
+                var statusColor = '#f39c12';
+                if (st === 'Success' || st === 'Completed') {
+                    statusText = '✅ Completed';
+                    statusColor = '#27ae60';
+                } else if (st === 'Disbursed') {
+                    statusText = 'Released';
+                    statusColor = '#1ca7e7';
+                } else if (st === 'WithdrawalRequested') {
+                    statusText = 'Processing withdraw';
+                    statusColor = '#f59e0b';
+                } else if (st === 'Void') {
+                    statusText = 'Void';
+                    statusColor = '#94a3b8';
+                }
                 var issue = p.issueDate
                     ? new Date(p.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : 'N/A';
+                var masked = p.payoutReference && p.payoutReference.maskedAccountNumber
+                    ? '<br><span style="font-size:0.75rem;color:#94a3b8;">MariBank ' + esc(p.payoutReference.maskedAccountNumber) + '</span>'
+                    : '';
+                var actions = p.canMarkCompleted
+                    ? '<button type="button" class="btn btn-success" style="padding:4px 8px;font-size:12px;border-radius:6px;" data-complete-id="' + esc(p._id) + '">Mark Completed</button>'
+                    : '—';
                 return (
                     '<tr>' +
                     '<td>' + esc(p.adminUsername || 'N/A') + '</td>' +
-                    '<td>' + esc(p.period || p.periodKey || 'N/A') + '</td>' +
+                    '<td>' + esc(p.period || p.periodKey || 'N/A') + masked + '</td>' +
                     '<td>' + esc(issue) + '</td>' +
                     '<td style="font-weight:600;color:#e74c3c;">' + peso(p.amount) + '</td>' +
                     '<td style="color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
+                    '<td>' + actions + '</td>' +
                     '</tr>'
                 );
             }).join('') +
             '</tbody></table>';
+
+        container.querySelectorAll('[data-complete-id]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                completeAdminPayout(btn.getAttribute('data-complete-id'));
+            });
+        });
+    }
+
+    async function completeAdminPayout(payoutId) {
+        if (!confirm('Mark this MariBank admin fee as completed after bank transfer?')) return;
+        try {
+            var response = await adminApiFetch('/api/admin/admin-fee/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payoutId: payoutId })
+            });
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || !data.success) {
+                throw new Error(apiErrorMessage(data, 'Complete failed'));
+            }
+            alert(data.message || 'Marked completed');
+            loadPaymentHistory();
+        } catch (e) {
+            alert(e.message || 'Complete failed');
+        }
     }
 
     function exportPaymentHistory() {

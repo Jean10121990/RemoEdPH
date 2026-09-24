@@ -14,6 +14,7 @@
   <script src="js/user-session.js"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <script src="js/teacher-payout-settings.js"></script>
+  <script src="js/payroll-withdraw-modal.js?v=1"></script>
   <style>
     .fee-cancel-tooltip-wrap { position: relative; display: inline-flex; align-items: center; align-self: flex-end; margin-bottom: 2px; }
     .fee-cancel-q-btn {
@@ -392,6 +393,9 @@
                 <button type="button" id="open-payslip-btn" onclick="openCurrentPayslip()"
                   style="background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:0.9rem;">
                   Print Payslip
+                </button>
+                <button type="button" id="teacher-withdraw-btn" style="display:none;margin-top:8px;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:0.9rem;width:100%;">
+                  Withdraw (MariBank)
                 </button>
                 <div style="font-size:0.75rem;color:#64748b;margin-top:6px;max-width:220px;">Official cut-off statement for bank / legal use (Save as PDF)</div>
               </div>
@@ -1992,6 +1996,7 @@
     
     // Check payment status for a specific week
     async function checkPaymentStatus(startDate, endDate) {
+      window.__teacherFeePeriod = { startDate: startDate, endDate: endDate };
       try {
         const token = teacherAuthToken();
         const response = await fetch(`/api/teacher/profile`, {
@@ -2002,24 +2007,44 @@
         
         if (response.ok) {
           const data = await response.json();
+          const withdrawBtn = document.getElementById('teacher-withdraw-btn');
+          window.__teacherWithdrawPayment = null;
           if (data.profile && data.profile.paymentHistory) {
-            // Check if there's a payment record for this week
             const weekPayment = data.profile.paymentHistory.find(payment => {
-              return payment.duration === `${startDate} - ${endDate}` && payment.status === 'Success';
+              return payment.duration === `${startDate} - ${endDate}`;
             });
             
-            // Update payment status display
             const statusElement = document.getElementById('payment-status-badge')
               || document.querySelector('.service-remark .value');
             if (!statusElement) return;
-            if (weekPayment) {
-              statusElement.textContent = 'Success';
-              statusElement.classList.remove('is-pending');
-              statusElement.classList.add('is-success');
-            } else {
-              statusElement.textContent = 'Pending';
+
+            const st = String((weekPayment && weekPayment.status) || '').toUpperCase();
+            if (!weekPayment) {
+              statusElement.textContent = 'Pending Admin Release';
               statusElement.classList.remove('is-success');
               statusElement.classList.add('is-pending');
+              if (withdrawBtn) withdrawBtn.style.display = 'none';
+            } else if (st === 'DISBURSED') {
+              statusElement.textContent = 'Released — withdraw';
+              statusElement.classList.remove('is-pending');
+              statusElement.classList.add('is-success');
+              window.__teacherWithdrawPayment = weekPayment;
+              if (withdrawBtn) withdrawBtn.style.display = 'block';
+            } else if (st === 'WITHDRAWAL_REQUESTED') {
+              statusElement.textContent = 'Processing payout';
+              statusElement.classList.remove('is-pending');
+              statusElement.classList.add('is-success');
+              if (withdrawBtn) withdrawBtn.style.display = 'none';
+            } else if (st === 'COMPLETED' || st === 'SUCCESS' || st === 'PAID') {
+              statusElement.textContent = 'Completed';
+              statusElement.classList.remove('is-pending');
+              statusElement.classList.add('is-success');
+              if (withdrawBtn) withdrawBtn.style.display = 'none';
+            } else {
+              statusElement.textContent = weekPayment.status || 'Pending';
+              statusElement.classList.remove('is-success');
+              statusElement.classList.add('is-pending');
+              if (withdrawBtn) withdrawBtn.style.display = 'none';
             }
           }
         }
@@ -2027,6 +2052,38 @@
         console.error('Error checking payment status:', error);
       }
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var wBtn = document.getElementById('teacher-withdraw-btn');
+      if (wBtn) {
+        wBtn.addEventListener('click', function () {
+          var p = window.__teacherWithdrawPayment;
+          if (!p || !p._id) {
+            alert('No released payment for this cut-off yet.');
+            return;
+          }
+          if (!window.RemoedPayrollWithdraw) {
+            alert('Withdraw UI failed to load. Hard-refresh the page.');
+            return;
+          }
+          RemoedPayrollWithdraw.open({
+            recordId: String(p._id),
+            amount: p.amount,
+            submitUrl: '/api/teacher/payroll/withdraw',
+            idField: 'paymentId',
+            getToken: teacherAuthToken,
+            onSuccess: function () {
+              var p = window.__teacherFeePeriod;
+              if (p && typeof checkPaymentStatus === 'function') {
+                checkPaymentStatus(p.startDate, p.endDate);
+              } else {
+                location.reload();
+              }
+            }
+          });
+        });
+      }
+    });
     
     // Load profile picture and update sidebar from backend
     async function loadProfilePicture(teacherId) {
