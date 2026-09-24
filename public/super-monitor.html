@@ -78,7 +78,9 @@
         <div class="monitor-grid">
           <div class="monitor-card"><h3>Socket connections</h3><div class="val" id="m-sockets">—</div><div class="sub">Socket.IO (default namespace)</div></div>
           <div class="monitor-card"><h3>Ongoing classes</h3><div class="val" id="m-classes">—</div><div class="sub">Socket.IO rooms with a teacher and a student connected now</div></div>
-          <div class="monitor-card"><h3>Students online</h3><div class="val" id="m-students">—</div><div class="sub">Connected sockets tagged student</div></div>
+          <div class="monitor-card"><h3>Students online</h3><div class="val" id="m-students">—</div><div class="sub">Unique students with an open portal or classroom socket</div></div>
+          <div class="monitor-card"><h3>Teachers online</h3><div class="val" id="m-teachers">—</div><div class="sub">Unique teachers with an open portal or classroom socket</div></div>
+          <div class="monitor-card"><h3>Admins online</h3><div class="val" id="m-admins">—</div><div class="sub">Unique admins with an open portal socket</div></div>
         </div>
 
         <h2 style="font-size:1rem;margin:20px 0 10px;color:#334155;">API latency</h2>
@@ -237,6 +239,8 @@
           document.getElementById('m-sockets').textContent = live.activeSocketConnections != null ? live.activeSocketConnections : '—';
           document.getElementById('m-classes').textContent = live.ongoingClasses != null ? live.ongoingClasses : '—';
           document.getElementById('m-students').textContent = live.studentsOnline != null ? live.studentsOnline : '—';
+          document.getElementById('m-teachers').textContent = live.teachersOnline != null ? live.teachersOnline : '—';
+          document.getElementById('m-admins').textContent = live.adminsOnline != null ? live.adminsOnline : '—';
 
           var api = j.api || {};
           var lat = api.averageLatencyMs;

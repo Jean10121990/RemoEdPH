@@ -376,11 +376,18 @@ router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (re
   try {
     const io = getIo();
     let activeSocketConnections = 0;
-    let studentsOnline = 0;
+    const studentKeys = new Set();
+    const teacherKeys = new Set();
+    const adminKeys = new Set();
     if (io && io.sockets && io.sockets.sockets) {
       activeSocketConnections = io.sockets.sockets.size;
       for (const s of io.sockets.sockets.values()) {
-        if (s && s.userType === 'student') studentsOnline += 1;
+        if (!s) continue;
+        const type = String(s.userType || '').toLowerCase();
+        const key = s.presenceKey || `${type}:${s.id}`;
+        if (type === 'student') studentKeys.add(key);
+        else if (type === 'teacher') teacherKeys.add(key);
+        else if (type === 'admin') adminKeys.add(key);
       }
     }
 
@@ -405,7 +412,9 @@ router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (re
       live: {
         activeSocketConnections,
         ongoingClasses,
-        studentsOnline,
+        studentsOnline: studentKeys.size,
+        teachersOnline: teacherKeys.size,
+        adminsOnline: adminKeys.size,
       },
       api: {
         averageLatencyMs: getAverageApiLatencyMs(),

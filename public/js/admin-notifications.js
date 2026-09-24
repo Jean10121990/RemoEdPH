@@ -125,8 +125,44 @@
         }
     }
 
+    function joinAdminPresence() {
+        try {
+            if (global.__remoedAdminPresenceJoined) return;
+            var username =
+                localStorage.getItem('adminUsername') ||
+                localStorage.getItem('username') ||
+                'admin';
+            function emitJoin() {
+                try {
+                    if (!global.io || typeof global.io !== 'function') return false;
+                    var socket = global.__remoedNotifSocket;
+                    if (!socket) {
+                        socket = global.io({ transports: ['websocket', 'polling'] });
+                        global.__remoedNotifSocket = socket;
+                    }
+                    socket.emit('join-notifications', { role: 'admin', username: username });
+                    global.__remoedAdminPresenceJoined = true;
+                    return true;
+                } catch (_e) {
+                    return false;
+                }
+            }
+            if (emitJoin()) return;
+            if (!document.querySelector('script[src*="socket.io"]')) {
+                var s = document.createElement('script');
+                s.src = '/socket.io/socket.io.js';
+                s.async = true;
+                s.onload = function () {
+                    emitJoin();
+                };
+                document.head.appendChild(s);
+            }
+        } catch (_e2) {}
+    }
+
     function init() {
         ensureDropdownCss();
+        joinAdminPresence();
 
         // Ensure portal dropdown helper is available when possible
         if (typeof global.remoedSetNavDropdownOpen !== 'function') {

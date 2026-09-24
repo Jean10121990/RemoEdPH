@@ -2027,13 +2027,19 @@ io.on('connection', socket => {
                 const teacherId = String(data.teacherId || data.userId || '').trim();
                 if (!teacherId) return;
                 socket.join(`notif:teacher:${teacherId}`);
+                socket.userType = 'teacher';
+                socket.presenceKey = `teacher:${teacherId}`;
             } else if (role === 'student') {
                 const username = String(data.username || data.userId || '').trim();
                 if (!username) return;
                 socket.join(`notif:student:${username}`);
+                socket.userType = 'student';
+                socket.presenceKey = `student:${username}`;
             } else if (role === 'admin') {
                 const username = String(data.username || data.userId || 'admin').trim();
                 socket.join(`notif:admin:${username}`);
+                socket.userType = 'admin';
+                socket.presenceKey = `admin:${username}`;
             }
         } catch (e) {
             console.warn('join-notifications error:', e.message);
@@ -2079,6 +2085,9 @@ io.on('connection', socket => {
         socket.room = room;
         socket.userType = userType;
         socket.username = username;
+        if (userType && (userId || username)) {
+            socket.presenceKey = `${String(userType).toLowerCase()}:${String(userId || username).trim()}`;
+        }
         
         console.log(`🔧 Socket properties set for ${socket.id}:`);
         console.log(`  - room: ${socket.room}`);
@@ -2308,6 +2317,9 @@ io.on('connection', socket => {
         socket.room = room;
         socket.userType = userType;
         socket.username = username;
+        if (userType && (userId || username)) {
+            socket.presenceKey = `${String(userType).toLowerCase()}:${String(userId || username).trim()}`;
+        }
         
         console.log(`🔧 Socket properties set for ${socket.id}:`);
         console.log(`  - room: ${socket.room}`);
