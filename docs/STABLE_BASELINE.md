@@ -113,7 +113,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
-- [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
+- [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in **Available to Withdraw**.
 - [ ] Super-Admin → Admins / Roles can assign **Admin — Marketing** (`admin_marketing`). Creating with blank password shows a one-time setup token; first-time setup page is `admin-first-setup.html`.
 - [ ] `admin_marketing` sidebar matches its RBAC seed (Dashboard, Marketing Hub, shared ops — not HR/QA/Accounting hubs; no Settings / System monitor unless Super-Admin). Forbidden hub URLs redirect; Unique Link APIs work; payroll / user-mgmt style APIs stay gated.
 - [ ] **Admin Fee** has **no** Time In/Out buttons (status/eligibility/attendance/payslip only). Clock from **header** or **Dashboard** card; both Dashboard header mini and middle card Time In/Out/View Logs work; login does **not** auto clock-in. Time Out shows a confirm. Super-Admin **View Logs** lists any admin and can **Reopen shift** (clear accidental Time Out) or **Edit times** (HH:MM PHT); other roles only see their own history.
@@ -366,7 +366,7 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 - **What it is:** Founder's discretion — e.g. successful student plan purchase referral bonus, internet aid, or other one-off incentives. Amount can be ₱0.
 - **Storage:** `Teacher.periodIncentives[]` `{ periodKey, amount, note, updatedAt, updatedBy }`.
 - **APIs:** `PUT /api/admin/teacher-period-incentive`; teacher `GET /api/teacher/period-incentive?startDate=YYYY-MM-DD`.
-- **Net payable / withdrawable:** period fee + bonus/incentive + issue payments − deductions for **that cut-off only**. 1st cut-off is 1–15 (salary date the 15th); 2nd cut-off is 16–end of month (salary date the last day). Payslip and Teaching Fee show only the amount the teacher can withdraw for the selected dispense period.
+- **Available to Withdraw:** shown in the Teaching Fee wallet block (not “Payment Summary” / “Net Payable”). Header **Total Earnings** is always this cut-off’s earned net. Pending Earnings = not yet released; Withdrawn = already taken out (then Available is ₱0.00).
 - Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
 
 ## Lesson slide generation — laptop Level folders

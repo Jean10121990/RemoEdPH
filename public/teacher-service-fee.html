@@ -201,7 +201,7 @@
               </svg>
             </div>
             <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 3px; color: #333;" id="summary-net-amount">₱0</div>
-            <div style="font-size: 0.8rem; color: #666;">Net Payable</div>
+            <div style="font-size: 0.8rem; color: #666;">Total Earnings</div>
           </div>
         </div>
 
@@ -374,19 +374,31 @@
             </div>
           </div>
 
-          <!-- Net Payable Card — spans full row so it does not leave an empty grid cell -->
+          <!-- Available to Withdraw — teacher-facing wallet, not accounting "net payable" -->
           <div class="service-section payment-summary-card" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
             <div class="service-section-title" style="color: #333; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #27ae60;">
                 <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
               </svg>
-              Payment Summary
+              Available to Withdraw
             </div>
 
             <div class="payment-summary-body">
               <div class="service-summary" style="background: #e8f5e8; padding: 12px 14px; border-radius: 8px; border: 2px solid #c8e6c9;">
-                <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Withdrawable this cut-off:</div>
+                <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Ready for MariBank</div>
                 <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                <div style="background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
+                  <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Pending Earnings</div>
+                  <div id="fee-pending-earnings" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
+                  <div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;">Earned, not yet released</div>
+                </div>
+                <div style="background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
+                  <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Withdrawn</div>
+                  <div id="fee-withdrawn-amount" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
+                  <div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;">Already taken out</div>
+                </div>
               </div>
 
               <div class="payment-summary-print">
@@ -1172,8 +1184,19 @@
       
       const totalDeductions = lateDeductions + absentDeductions + cancelledDeductions;
       const earnedNet = baseSum + bonusIncentive + totalIssuePayment - totalDeductions;
-      const withdrawn = !!window.__teacherFeeAlreadyWithdrawn;
-      const netAmount = withdrawn ? 0 : earnedNet;
+      const kind = String(window.__teacherFeePayoutKind || 'pending');
+      const withdrawn = kind === 'withdrawn';
+      let available = 0;
+      let pendingEarn = 0;
+      let withdrawnAmt = 0;
+      if (kind === 'available') {
+        available = earnedNet;
+      } else if (kind === 'withdrawn') {
+        withdrawnAmt = Math.max(0, earnedNet);
+      } else {
+        pendingEarn = Math.max(0, earnedNet);
+      }
+      const netAmount = available;
       
       // Update display
       document.getElementById('total-deductions').textContent = '₱' + totalDeductions.toFixed(2);
@@ -1186,18 +1209,21 @@
         netAmountElement.style.color = '#2e7d32'; // Green for positive
       }
         
-      // Update summary stats
+      // Update summary stats — header shows Total Earnings (not accounting "net payable")
       document.getElementById('summary-completed-classes').textContent = document.getElementById('completed-classes').textContent;
       document.getElementById('summary-student-absent').textContent = document.getElementById('student-absent-classes').textContent;
       document.getElementById('summary-deductions').textContent = '₱' + totalDeductions.toFixed(2);
       const summaryNetAmountElement = document.getElementById('summary-net-amount');
-      summaryNetAmountElement.textContent = '₱' + netAmount.toFixed(2);
-      // Style negative amounts in red for summary
-      if (netAmount < 0) {
-        summaryNetAmountElement.style.color = '#dc3545'; // Red for negative
+      summaryNetAmountElement.textContent = '₱' + earnedNet.toFixed(2);
+      if (earnedNet < 0) {
+        summaryNetAmountElement.style.color = '#dc3545';
       } else {
-        summaryNetAmountElement.style.color = '#333'; // Default color for positive
+        summaryNetAmountElement.style.color = '#333';
       }
+      const pendingEl = document.getElementById('fee-pending-earnings');
+      if (pendingEl) pendingEl.textContent = '₱' + pendingEarn.toFixed(2);
+      const withdrawnEl = document.getElementById('fee-withdrawn-amount');
+      if (withdrawnEl) withdrawnEl.textContent = '₱' + withdrawnAmt.toFixed(2);
       
       // Log the calculation for debugging
       console.log(`💰 NET AMOUNT CALCULATION:`);
@@ -2014,6 +2040,7 @@
           const withdrawBtn = document.getElementById('teacher-withdraw-btn');
           window.__teacherWithdrawPayment = null;
           window.__teacherFeeAlreadyWithdrawn = false;
+          window.__teacherFeePayoutKind = 'pending';
           if (data.profile && data.profile.paymentHistory) {
             const weekPayment = data.profile.paymentHistory.find(payment => {
               return payment.duration === `${startDate} - ${endDate}`;
@@ -2021,7 +2048,6 @@
             
             const statusElement = document.getElementById('payment-status-badge')
               || document.querySelector('.service-remark .value');
-            if (!statusElement) return;
 
             const st = String((weekPayment && weekPayment.status) || '').toUpperCase();
             window.__teacherFeeAlreadyWithdrawn =
@@ -2029,6 +2055,17 @@
               st === 'COMPLETED' ||
               st === 'SUCCESS' ||
               st === 'PAID';
+            if (window.__teacherFeeAlreadyWithdrawn) {
+              window.__teacherFeePayoutKind = 'withdrawn';
+            } else if (st === 'DISBURSED') {
+              window.__teacherFeePayoutKind = 'available';
+            } else {
+              window.__teacherFeePayoutKind = 'pending';
+            }
+            if (!statusElement) {
+              if (typeof calculateNetAmount === 'function') calculateNetAmount();
+              return;
+            }
             if (!weekPayment) {
               statusElement.textContent = 'Pending Admin Release';
               statusElement.classList.remove('is-success');
@@ -2057,6 +2094,8 @@
               if (withdrawBtn) withdrawBtn.style.display = 'none';
             }
             if (typeof calculateNetAmount === 'function') calculateNetAmount();
+          } else if (typeof calculateNetAmount === 'function') {
+            calculateNetAmount();
           }
         }
       } catch (error) {
