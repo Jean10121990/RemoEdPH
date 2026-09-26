@@ -366,7 +366,7 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 - **What it is:** Founder's discretion — e.g. successful student plan purchase referral bonus, internet aid, or other one-off incentives. Amount can be ₱0.
 - **Storage:** `Teacher.periodIncentives[]` `{ periodKey, amount, note, updatedAt, updatedBy }`.
 - **APIs:** `PUT /api/admin/teacher-period-incentive`; teacher `GET /api/teacher/period-incentive?startDate=YYYY-MM-DD`.
-- **Available to Withdraw:** shown in the Teaching Fee wallet block (not “Payment Summary” / “Net Payable”). Header **Total Earnings** is always this cut-off’s earned net. Pending Earnings = not yet released; Withdrawn = already taken out (then Available is ₱0.00).
+- **Available to Withdraw:** Teaching Fee keeps the cut-off amount visible. After the teacher withdraws, the **Withdrawable this cut-off** label changes to **Withdrawn** (amount is not reset to ₱0.00). Header **Total Earnings** is this cut-off’s earned net. Pending Earnings = not yet released.
 - Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
 
 ## Lesson slide generation — laptop Level folders

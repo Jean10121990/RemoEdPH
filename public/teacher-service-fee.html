@@ -374,18 +374,18 @@
             </div>
           </div>
 
-          <!-- Available to Withdraw — teacher-facing wallet, not accounting "net payable" -->
+          <!-- Cut-off wallet: amount stays; label becomes Withdrawn after payout -->
           <div class="service-section payment-summary-card" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <div class="service-section-title" style="color: #333; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <div class="service-section-title" id="fee-wallet-section-title" style="color: #333; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #27ae60;">
                 <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
               </svg>
-              Available to Withdraw
+              <span id="fee-wallet-section-title-text">Available to Withdraw</span>
             </div>
 
             <div class="payment-summary-body">
-              <div class="service-summary" style="background: #e8f5e8; padding: 12px 14px; border-radius: 8px; border: 2px solid #c8e6c9;">
-                <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Ready for MariBank</div>
+              <div class="service-summary" id="fee-wallet-amount-box" style="background: #e8f5e8; padding: 12px 14px; border-radius: 8px; border: 2px solid #c8e6c9;">
+                <div class="label" id="fee-wallet-amount-label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Withdrawable this cut-off</div>
                 <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
@@ -1186,27 +1186,49 @@
       const earnedNet = baseSum + bonusIncentive + totalIssuePayment - totalDeductions;
       const kind = String(window.__teacherFeePayoutKind || 'pending');
       const withdrawn = kind === 'withdrawn';
-      let available = 0;
       let pendingEarn = 0;
       let withdrawnAmt = 0;
-      if (kind === 'available') {
-        available = earnedNet;
-      } else if (kind === 'withdrawn') {
+      if (kind === 'withdrawn') {
         withdrawnAmt = Math.max(0, earnedNet);
-      } else {
+      } else if (kind === 'pending') {
         pendingEarn = Math.max(0, earnedNet);
       }
-      const netAmount = available;
+      const netAmount = earnedNet;
       
-      // Update display
+      // Update display — keep cut-off amount; only the label changes after withdraw
       document.getElementById('total-deductions').textContent = '₱' + totalDeductions.toFixed(2);
       const netAmountElement = document.getElementById('net-amount');
       netAmountElement.textContent = '₱' + netAmount.toFixed(2);
-      // Style negative amounts in red
-      if (netAmount < 0) {
-        netAmountElement.style.color = '#dc3545'; // Red for negative
+      const walletLabel = document.getElementById('fee-wallet-amount-label');
+      const walletBox = document.getElementById('fee-wallet-amount-box');
+      const sectionTitle = document.getElementById('fee-wallet-section-title-text');
+      if (kind === 'withdrawn') {
+        if (walletLabel) walletLabel.textContent = 'Withdrawn';
+        if (sectionTitle) sectionTitle.textContent = 'Withdrawn';
+        if (walletBox) {
+          walletBox.style.background = '#f1f5f9';
+          walletBox.style.borderColor = '#cbd5e1';
+        }
+        if (walletLabel) walletLabel.style.color = '#475569';
+        netAmountElement.style.color = '#0f172a';
+      } else if (kind === 'available') {
+        if (walletLabel) walletLabel.textContent = 'Withdrawable this cut-off';
+        if (sectionTitle) sectionTitle.textContent = 'Available to Withdraw';
+        if (walletBox) {
+          walletBox.style.background = '#e8f5e8';
+          walletBox.style.borderColor = '#c8e6c9';
+        }
+        if (walletLabel) walletLabel.style.color = '#2e7d32';
+        netAmountElement.style.color = netAmount < 0 ? '#dc3545' : '#2e7d32';
       } else {
-        netAmountElement.style.color = '#2e7d32'; // Green for positive
+        if (walletLabel) walletLabel.textContent = 'Pending Earnings';
+        if (sectionTitle) sectionTitle.textContent = 'Available to Withdraw';
+        if (walletBox) {
+          walletBox.style.background = '#fffbeb';
+          walletBox.style.borderColor = '#fde68a';
+        }
+        if (walletLabel) walletLabel.style.color = '#b45309';
+        netAmountElement.style.color = netAmount < 0 ? '#dc3545' : '#92400e';
       }
         
       // Update summary stats — header shows Total Earnings (not accounting "net payable")
@@ -1237,8 +1259,7 @@
       console.log(`   Total issue payments: ₱${totalIssuePayment.toFixed(2)}`);
       console.log(`   Total deductions: ₱${totalDeductions.toFixed(2)}`);
       console.log(`   Earned net: ₱${earnedNet.toFixed(2)}`);
-      console.log(`   Already withdrawn: ${withdrawn}`);
-      console.log(`   Withdrawable shown: ₱${netAmount.toFixed(2)}`);
+      console.log(`   Payout kind: ${kind}`);
     }
     
     // Note: Rate and completed lessons inputs are disabled for teachers
