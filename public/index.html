@@ -515,12 +515,12 @@
               />
             </div>
             <div class="form-group">
-              <label>Contact Number</label>
+              <label>Phone Number</label>
               <input
                 type="tel"
                 id="contact-number"
                 required
-                placeholder="Enter contact number"
+                placeholder="Enter phone number"
               />
             </div>
             <button type="submit" class="assessment-btn">
@@ -840,10 +840,31 @@
         .getElementById("assessment-form")
         .addEventListener("submit", async function (e) {
           e.preventDefault();
-
-          const childName = document.getElementById("child-name").value;
-          const parentEmail = document.getElementById("parent-email").value;
-          const contactNumber = document.getElementById("contact-number").value;
+          const childEl = document.getElementById("child-name");
+          const emailEl = document.getElementById("parent-email");
+          const contactEl = document.getElementById("contact-number");
+          const childName = childEl.value.trim();
+          const parentEmail = emailEl.value.trim();
+          const contactNumber = contactEl.value.trim();
+          [childEl, emailEl, contactEl].forEach((el) => el.setCustomValidity(""));
+          if (!childName) {
+            childEl.setCustomValidity("Required");
+            childEl.reportValidity();
+            childEl.focus();
+            return;
+          }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
+            emailEl.setCustomValidity("Enter a valid email address");
+            emailEl.reportValidity();
+            emailEl.focus();
+            return;
+          }
+          if (!contactNumber) {
+            contactEl.setCustomValidity("Required");
+            contactEl.reportValidity();
+            contactEl.focus();
+            return;
+          }
 
           assessmentData = { childName, parentEmail, contactNumber };
 
@@ -978,6 +999,15 @@
             form.reportValidity();
             return;
           }
+          const signupEmailEl = document.getElementById("signup-email");
+          const signupEmail = String(signupEmailEl.value || "").trim();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail)) {
+            signupEmailEl.setCustomValidity("Enter a valid email address");
+            signupEmailEl.reportValidity();
+            signupEmailEl.focus();
+            return;
+          }
+          signupEmailEl.setCustomValidity("");
           if (!selectedPlan) {
             alert("Please select a learning plan first.");
             return;

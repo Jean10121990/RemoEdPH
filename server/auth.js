@@ -1107,6 +1107,9 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
   if (!email) {
     return res.status(400).json({ success: false, message: 'Email address is required' });
   }
+  if (!looksLikeEmail(email)) {
+    return res.status(400).json({ success: false, message: 'Enter a valid email address' });
+  }
 
   // Check if database is connected
   if (mongoose.connection.readyState !== 1) {
@@ -1369,53 +1372,115 @@ router.post('/complete-checkout-profile', authRegisterLimiter, async (req, res) 
   }
 });
 
-// Unified forgot password — Student and/or Teacher by email or username
-async function resetPasswordForAccounts(identifier) {
+const RESET_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+
+function hashResetToken(raw) {
+  return crypto.createHash('sha256').update(String(raw)).digest('hex');
+}
+
+function publicSiteOrigin(req) {
+  const env = String(process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+  if (env) return env;
+  const host = (req && req.get && (req.get('x-forwarded-host') || req.get('host'))) || '';
+  const proto = (req && req.get && (req.get('x-forwarded-proto') || req.protocol)) || 'https';
+  if (host) return `${proto}://${host}`.replace(/\/$/, '');
+  return 'https://remoedph.com';
+}
+
+function looksLikeEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+async function applyChosenPassword(user, role, password) {
+  const hashed = await bcrypt.hash(password, role === 'Admin' ? 12 : 10);
+  if (role === 'Admin') {
+    user.passwordHash = hashed;
+    user.password = undefined;
+    user.mustSetPassword = false;
+    user.passwordSetupTokenHash = null;
+    user.passwordSetupExpires = null;
+  } else {
+    user.password = hashed;
+  }
+  user.hasGeneratedPassword = false;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+}
+
+async function findAccountByResetToken(rawToken) {
+  const token = String(rawToken || '').trim();
+  if (!token) return null;
+  const hashed = hashResetToken(token);
+  const fresh = { resetPasswordExpires: { $gt: new Date() } };
+  const [student, teacher, admin, legacyTeacher] = await Promise.all([
+    Student.findOne({ resetPasswordToken: hashed, ...fresh }),
+    Teacher.findOne({ resetPasswordToken: hashed, ...fresh }),
+    Admin.findOne({ resetPasswordToken: hashed, ...fresh }),
+    Teacher.findOne({ resetPasswordToken: token, ...fresh }),
+  ]);
+  if (student) return { user: student, role: 'Student' };
+  if (teacher) return { user: teacher, role: 'Teacher' };
+  if (admin) return { user: admin, role: 'Admin' };
+  if (legacyTeacher) return { user: legacyTeacher, role: 'Teacher' };
+  return null;
+}
+
+// Unified forgot password — Student, Teacher, and Admin by email or username.
+// Does not change the password; emails a one-hour link to choose a new one.
+async function issuePasswordResetLinks(identifier, req) {
   const raw = String(identifier || '').trim();
   if (!raw) {
-    return { ok: false, status: 400, body: { success: false, message: 'Email or username is required.' } };
+    return { ok: false, status: 400, body: { success: false, message: 'Email is required.' } };
+  }
+  if (!looksLikeEmail(raw)) {
+    return { ok: false, status: 400, body: { success: false, message: 'Enter a valid email address.' } };
   }
 
   const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const rx = new RegExp(`^${escaped}$`, 'i');
-  const query = { $or: [{ username: rx }, { email: rx }] };
+  const query = { email: rx };
 
-  const [student, teacher] = await Promise.all([
+  const [student, teacher, admin] = await Promise.all([
     Student.findOne(query),
-    Teacher.findOne(query)
+    Teacher.findOne(query),
+    Admin.findOne(query),
   ]);
 
   const accounts = [];
   if (student) accounts.push({ user: student, role: 'Student' });
   if (teacher) accounts.push({ user: teacher, role: 'Teacher' });
+  if (admin) accounts.push({ user: admin, role: 'Admin' });
 
-  // Anti-enumeration: same success copy whether or not an account exists
   const genericOk = {
     success: true,
-    message: 'If an account exists for that email or username, a new password has been sent.'
+    message: 'If an account exists for that email, we sent a link to set a new password.',
   };
 
   if (!accounts.length) {
     return { ok: true, status: 200, body: genericOk };
   }
 
-  const newPassword = generateStrongPassword();
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const origin = publicSiteOrigin(req);
   let emailFallback = false;
+  let lastResetUrl = null;
   const rolesReset = [];
 
   for (const { user, role } of accounts) {
-    user.password = hashedPassword;
-    if (role === 'Student' || role === 'Teacher') {
-      user.hasGeneratedPassword = true;
-    }
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    const token = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = hashResetToken(token);
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
     await user.save();
     rolesReset.push(role);
 
-    const toEmail = user.email || raw;
-    const emailResult = await sendPasswordResetEmail(toEmail, user.username, newPassword, role);
+    const resetUrl = `${origin}/reset-password.html?token=${encodeURIComponent(token)}`;
+    lastResetUrl = resetUrl;
+    const toEmail = (user.email && String(user.email).trim()) || (looksLikeEmail(raw) ? raw : '');
+    if (!toEmail) {
+      emailFallback = true;
+      continue;
+    }
+    const emailResult = await sendPasswordResetEmail(toEmail, user.username, resetUrl, role);
     if (emailResult && emailResult.fallback) {
       emailFallback = true;
     } else if (emailResult && !emailResult.success) {
@@ -1426,20 +1491,19 @@ async function resetPasswordForAccounts(identifier) {
   const body = {
     success: true,
     message: emailFallback
-      ? 'A new password has been generated. Please check your email or contact support if you don\'t receive it.'
-      : 'A new password has been generated and sent to your email address.',
-    roles: rolesReset
+      ? 'Choose a new password on the next screen. Your current password is unchanged until you save one.'
+      : genericOk.message,
+    roles: rolesReset,
   };
-  // Only expose password when email transport is not configured (dev/fallback)
-  if (emailFallback) {
-    body.newPassword = newPassword;
+  if (emailFallback && lastResetUrl) {
+    body.resetUrl = lastResetUrl;
   }
   return { ok: true, status: 200, body };
 }
 
 router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
-    const result = await resetPasswordForAccounts(req.body && (req.body.email || req.body.username));
+    const result = await issuePasswordResetLinks(req.body && (req.body.email || req.body.username), req);
     return res.status(result.status).json(result.body);
   } catch (error) {
     console.error('Error in forgot password:', error);
@@ -1447,35 +1511,30 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   }
 });
 
-// Add reset password endpoint
 router.post('/reset-password', passwordResetLimiter, async (req, res) => {
-  const { token, password } = req.body;
-  console.log('Token received:', token);
-  const user = await Teacher.findOne({
-    resetPasswordToken: token,
-    resetPasswordExpires: { $gt: Date.now() }
-  });
-  console.log('User found for token:', user);
-  if (!user) {
-    return res.status(400).json({ success: false, message: 'Invalid or expired token.' });
+  try {
+    const { token, password } = req.body || {};
+    if (!RESET_PASSWORD_REGEX.test(String(password || ''))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number.',
+      });
+    }
+    const found = await findAccountByResetToken(token);
+    if (!found) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token.' });
+    }
+    await applyChosenPassword(found.user, found.role, password);
+    res.json({ success: true, message: 'Your password has been saved. You can now log in.' });
+  } catch (error) {
+    console.error('Error in reset password:', error);
+    res.status(500).json({ success: false, message: 'An error occurred while processing your request.' });
   }
-  user.password = await bcrypt.hash(password, 10);
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
-  await user.save();
-  res.json({ success: true });
 });
 
-
-
-// Student schema (already imported from models/Student.js)
-
-// Student login endpoint (duplicate removed - using the one above)
-
-// Legacy student endpoint — same unified reset as /forgot-password
 router.post('/student-forgot-password', passwordResetLimiter, async (req, res) => {
   try {
-    const result = await resetPasswordForAccounts(req.body && (req.body.email || req.body.username));
+    const result = await issuePasswordResetLinks(req.body && (req.body.email || req.body.username), req);
     return res.status(result.status).json(result.body);
   } catch (error) {
     console.error('Error in student forgot password:', error);
@@ -1483,23 +1542,25 @@ router.post('/student-forgot-password', passwordResetLimiter, async (req, res) =
   }
 });
 
-// Add reset password endpoint (duplicate removed - using the one above)
-
-// Student reset password endpoint
 router.post('/student-reset-password', passwordResetLimiter, async (req, res) => {
-  const { token, password } = req.body;
-  const user = await Student.findOne({
-    resetPasswordToken: token,
-    resetPasswordExpires: { $gt: Date.now() }
-  });
-  if (!user) {
-    return res.status(400).json({ success: false, message: 'Invalid or expired token.' });
+  try {
+    const { token, password } = req.body || {};
+    if (!RESET_PASSWORD_REGEX.test(String(password || ''))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number.',
+      });
+    }
+    const found = await findAccountByResetToken(token);
+    if (!found || found.role !== 'Student') {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token.' });
+    }
+    await applyChosenPassword(found.user, found.role, password);
+    res.json({ success: true, message: 'Your password has been saved. You can now log in.' });
+  } catch (error) {
+    console.error('Error in student reset password:', error);
+    res.status(500).json({ success: false, message: 'An error occurred while processing your request.' });
   }
-  user.password = await bcrypt.hash(password, 10);
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
-  await user.save();
-  res.json({ success: true });
 });
 
 // Get users by role (admin only — previously unauthenticated)

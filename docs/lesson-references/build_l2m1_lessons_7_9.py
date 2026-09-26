@@ -162,10 +162,9 @@ def knock_out_white(im: Image.Image) -> Image.Image:
     return im
 
 
-def draw_footer(img: Image.Image, ix, iy) -> Image.Image:
+def draw_footer(img: Image.Image, ix, iy, footer: str = "SPROUTS! MONTH 1") -> Image.Image:
     """Month label + logo, no card. White text and a soft shadow for contrast."""
     canvas = img.convert("RGBA")
-    footer = "SPROUTS! MONTH 1"
     font = load_font(34)
     probe = ImageDraw.Draw(canvas)
     tw, th = text_size(probe, footer, font)
@@ -197,7 +196,7 @@ def draw_footer(img: Image.Image, ix, iy) -> Image.Image:
     return canvas.convert("RGB")
 
 
-def compose_slide(src: Path, dest: Path, lesson_title: str, page: int, total: int, phrase: str, is_title: bool):
+def compose_slide(src: Path, dest: Path, lesson_title: str, page: int, total: int, phrase: str, is_title: bool, footer: str = "SPROUTS! MONTH 1"):
     img = Image.open(src).convert("RGB")
     img = img.resize((PX_W, PX_H), Image.Resampling.LANCZOS)
     draw = ImageDraw.Draw(img)
@@ -228,7 +227,7 @@ def compose_slide(src: Path, dest: Path, lesson_title: str, page: int, total: in
     tw, th = text_size(draw, badge, font14)
     draw.text((bx + (bw - tw) // 2, by + (bh - th) // 2 - 2), badge, font=font14, fill=(255, 255, 255))
 
-    img = draw_footer(img, ix, iy)
+    img = draw_footer(img, ix, iy, footer)
     draw = ImageDraw.Draw(img)
 
     if is_title:
@@ -281,7 +280,9 @@ def build_lesson(lesson: dict):
         copied = art_dir / f"{lesson['prefix']}{i:02d}.png"
         shutil.copy2(src, copied)
         dest = composed_dir / f"{lesson['prefix']}{i:02d}.jpg"
-        compose_slide(copied, dest, lesson["title"], i, 15, phrase, is_title)
+        total = len(lesson["pages"])
+        footer = lesson.get("footer", "SPROUTS! MONTH 1")
+        compose_slide(copied, dest, lesson["title"], i, total, phrase, is_title, footer)
         composed_paths.append(dest)
 
     prs = Presentation()

@@ -9,6 +9,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Area | Files |
 |------|--------|
 | Portal tokens | `public/js/user-session.js`, `public/js/remoed-auth-token.js`, `server/authMiddleware.js` |
+| Forgot / set password | `POST /api/auth/forgot-password` (link, not a temp password), `POST /api/auth/reset-password`, `public/forgot-password.html`, `public/reset-password.html` |
 | Student book UI | `public/student-book.html` |
 | Book API | `server/student.js` (`POST /book-class`), `server/studentController.js`, `server/services/studentBookSlotService.js`, legacy `POST /api/teacher/book-class` in `server/teacher.js` |
 | Teacher ID resolve | `server/services/teacherSlotResolve.js`, `teacherBookingKey` in `server/teacher.js` |
@@ -32,9 +33,9 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Admin Messages | `public/admin-messages.html`, `GET/POST /api/admin/messages/*` — teachers, students, **and admins**; desktop viewport-fit messenger |
 | System monitor (Super-Admin) | `public/super-monitor.html`, `GET /api/admin/system-stats` — live unique students / teachers / admins via Socket.IO `userType` + `presenceKey` |
 | Virtual Garden / Eco-Drops | [`SKILLS.md`](../SKILLS.md), `public/student-virtual-garden.html`, `public/css/student-virtual-garden.css`, `server/services/ecoDropGardenService.js`, `GET/POST /api/student/garden*`; grant on first `LessonProgress` → completed |
-| Lesson slide generation (L2M1+) | [`reference.md`](../reference.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md), `docs/lesson-references/build_l2m1_lessons_*.py` → repo `docs/lesson-references/lessons/` **and** laptop `Level {1–4}` folders |
+| Lesson slide generation (L2M1+) | [`docs/lesson-references/`](lesson-references/) ([`README.md`](lesson-references/README.md)), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md), `docs/lesson-references/build_l2m1_lessons_*.py` / `build_l3m1_lessons_*.py` → repo `docs/lesson-references/lessons/` **and** laptop `Level {1–4}` folders |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
-| MariBank payroll withdraw | `public/js/payroll-withdraw-modal.js`, `server/services/payrollWithdrawService.js`; teacher `POST /api/teacher/payroll/withdraw`; admin `POST /api/admin/admin-fee/withdraw` + `/complete`; Accounting `POST /api/admin/payroll/complete` |
+| MariBank payroll withdraw | `public/js/payroll-withdraw-modal.js`, `server/services/payrollWithdrawService.js`; withdraw APIs; **Mark Completed** in Accounting Hub Payment History (`POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`) — email to support is ops-only |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 | Ensure marketing admin (ops) | `scripts/ensure-admin-marketing.js` (create/update `adminmktg@remoedph.com` → `admin_marketing` + fresh setup token) |
 
@@ -104,7 +105,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] **System monitor → Live platform** shows Students / Teachers / Admins online (unique `presenceKey` counts; refreshes with other stats).
 - [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); Eco-Drop badge in sidebar/header; stats load (not “Student not found”); shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works; completing a lesson awards +1 once.
 - [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll matches teacher payroll UX (soft rounded `.btn`, period nav, Load + Dispense release, Payment History + **Mark Completed** after MariBank withdraw).
-- [ ] After Accounting **Dispense**, Teaching Fee / Admin Fee show **Withdraw (MariBank)** (Open MariBank link works). Submit → Processing; email to support; Accounting Mark Completed → Completed. Legacy Success/paid rows have no Withdraw.
+- [ ] After Accounting **Dispense**, Teaching Fee / Admin Fee show **Withdraw (MariBank)** (Open MariBank link works). Submit → Processing + email to `support@remoedph.com` (ops only — **email does not complete**). Accounting Hub → Payroll Management / Admin Payroll → **Payment History** → **Mark Completed** on Processing rows → Completed. Legacy Success/paid rows have no Withdraw.
 - [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
@@ -276,11 +277,15 @@ Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** st
 - Models: `TimeLog` (`teacherId` = `admin:<username>`, `logOwnerType: 'admin'`), `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches sync from TimeLog.
 - APIs (Admin Fee): `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`**, **`/payment-history`**, **`/admins-filter-list`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales. Ineligible rows stay listed at ₱0; dispense skips them server-side.
-- **Payroll withdraw (MariBank only):** Accounting **Dispense** writes `DISBURSED` / `disbursed` (release — not bank-final). Teacher Teaching Fee / Admin Fee show **Withdraw (MariBank)** → `WITHDRAWAL_REQUESTED` / `withdrawal_requested` with masked `payoutReference` only. Full account details email to `support@remoedph.com` via `sendRawEmail`. Accounting **Mark Completed** → `COMPLETED` / `completed`. Legacy `Success` / `paid` = Completed (no Withdraw). Open MariBank link: `https://maribank.ph/c/earnfreemoney?referralCode=KB740303`. Shared UI: `public/js/payroll-withdraw-modal.js`. APIs: `POST /api/teacher/payroll/withdraw`, `POST /api/admin/admin-fee/withdraw`, `POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`. Service: `server/services/payrollWithdrawService.js`.
+- **Payroll withdraw (MariBank only):**
+  1. Accounting **Dispense** → `DISBURSED` / `disbursed` (release — not bank-final).
+  2. Teacher Teaching Fee / Admin Fee → **Withdraw (MariBank)** → `WITHDRAWAL_REQUESTED` / `withdrawal_requested` + masked `payoutReference` only. Full account details email to `support@remoedph.com` via `sendRawEmail` — **ops notice only; do not treat email as the completion step**.
+  3. Accounting **Mark Completed** in portal UI only: **Accounting Hub → Payroll Management** (teachers) or **Admin Payroll** (admins) → **Payment History Management** → Load Records → **Mark Completed** on Processing / withdrawal-requested rows → `COMPLETED` / `completed` (`POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`).
+  - Legacy `Success` / `paid` = Completed (no Withdraw). Open MariBank: `https://maribank.ph/c/earnfreemoney?referralCode=KB740303`. Shared UI: `public/js/payroll-withdraw-modal.js`. Withdraw APIs: `POST /api/teacher/payroll/withdraw`, `POST /api/admin/admin-fee/withdraw`. Service: `server/services/payrollWithdrawService.js`.
 - **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`, iframe `embedVer` bump on UI changes): mirror teacher **Payroll Management** (`public/admin-payroll.html` / `page-admin-payroll`):
   - Soft rounded buttons (`.btn` `border-radius: 6px`, primary/success/danger colors) — do not leave square/edgy browser defaults.
   - Period nav (`Sep 16 - Sep 30`), **Load Admins** + red **Dispense All Admin Fees** (same enable rule as teachers: stay enabled until at least one row is **Paid**/released; gray **Fees Dispensed** after. Do **not** replace with “No Pending Fees” when everyone is Ineligible).
-  - `payroll-table` list + **Payment History Management** (filter / Load Records / Export CSV / **Mark Completed** on withdrawal-requested rows).
+  - `payroll-table` list + **Payment History Management** (filter / Load Records / Export CSV / **Mark Completed** on withdrawal-requested rows — **not** via email).
   - Dispense marks eligible `AdminPayout` `disbursed` and notifies each admin. Same bi-monthly `periodKey` as teacher payroll.
 - Header notification bell: `public/js/admin-notifications.js` (delegated click; opens via `remoedSetNavDropdownOpen`). Panel is body-mounted and **fixed under `#admin-notifications-icon`** — do not re-append the dropdown into the 40px chip or inject `position:absolute; top:calc(100% + 8px)` for the open state. Wire via `admin-page-header.js`.
 
@@ -357,9 +362,9 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 
 | Piece | Location |
 |-------|----------|
-| Brief / character rules | [`reference.md`](../reference.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md) |
+| Brief / character rules | [`docs/lesson-references/README.md`](lesson-references/README.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md) |
 | In-repo canonical | `docs/lesson-references/lessons/L2M1-Lesson-{N}/` (+ flat copy under `docs/lesson-references/`) |
-| Build / chrome | `docs/lesson-references/build_l2m1_lessons_7_9.py` (`build_lesson`), `build_l2m1_lessons_10_12.py`, `build_l2m1_lessons_13_15.py` |
+| Build / chrome | `docs/lesson-references/build_l2m1_lessons_7_9.py` (`build_lesson`), `build_l2m1_lessons_10_12.py`, `build_l2m1_lessons_13_15.py`, `build_l2m1_lessons_16_18.py`, `build_l2m1_lessons_19_22.py`, `build_l3m1_lessons_1_3.py`, `build_l3m1_lessons_4_6.py` |
 | **Laptop download (required)** | `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Level {1\|2\|3\|4}\` |
 | Filename pattern | `RemoEd L2M1-Lesson-{N}-{Title}.pptx` (Level 2 Sprouts Month 1; other levels use their own prefix) |
 
@@ -368,7 +373,9 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 - Save **per Level folder** (`Level 1` … `Level 4`) — do not dump all levels into one flat directory.
 - `build_lesson` in `build_l2m1_lessons_7_9.py` copies to the laptop `Level {N}` path automatically (`lesson["level"]`, default **2**). If the desktop path is missing, log a warning but still write the repo copy.
 - Optional Drive upload remains manual ([Drive – Level 2 Month 1](https://drive.google.com/drive/u/0/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk)); laptop Level folders are the day-to-day download destination.
-- Style / chrome: green Remo, Filipino Ed/Sofie/Teacher Grace, no Teacher Scripts, `SPROUTS! MONTH 1` footer + logo overlays — see remoed-lesson-creation skill.
+- Style / chrome: green Remo, Filipino Ed/Sofie/Teacher Grace, no Teacher Scripts, level-month footer + logo overlays — see remoed-lesson-creation skill. **Lesson briefs, character stills, and curriculum PDFs live in `docs/lesson-references/`** ([`README.md`](lesson-references/README.md)); do not use workspace-root `reference.md` as the lesson brief.
+- Sprouts Month 1 lessons **19–22** (Honoring My Friends, Virtual Garden Challenge 1, Virtual Garden Challenge 2, Monthly Celebration) use `build_l2m1_lessons_19_22.py`. Uppercase A, B, and C are drawn in code on the phonics slides so the letter shapes stay correct. PDF footers that say Level 1 still publish as Level 2 – Sprouts.
+- `build_lesson` uses `lesson["footer"]` (default `SPROUTS! MONTH 1`) and the length of `lesson["pages"]` for the page badge. Saplings Month 1 lessons **1–6** (`build_l3m1_lessons_1_3.py`, `build_l3m1_lessons_4_6.py`) are Level 3, footer `SAPLINGS! MONTH 1`, **18** pages, laptop folder `Level 3`, filenames `RemoEd L3M1-Lesson-{N}-….pptx`. Phonics letters and the name badge are drawn in code. Lessons 4–6 cover asking before apps, “God made me unique!”, and honoring each person.
 
 ## Known product gates (not bugs)
 

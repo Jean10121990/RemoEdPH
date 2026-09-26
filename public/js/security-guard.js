@@ -27,8 +27,9 @@
       if (/admin-login|admin-first-setup|admin-2fa-verify|admin-2fa-setup/.test(p)) return 'public';
       return 'admin';
     }
-    if (p.startsWith('/teacher-')) return 'teacher';
-    if (p.startsWith('/student-')) return 'student';
+    if (p.indexOf('forgot-password') !== -1 || p.indexOf('reset-password') !== -1) {
+      return 'public';
+    }
     if (p.indexOf('change-password') !== -1) {
       var utCh = (getSessionRoleFromStorage() || '').toLowerCase();
       if (utCh === 'admin') return 'admin';

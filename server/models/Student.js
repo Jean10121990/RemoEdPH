@@ -58,6 +58,8 @@ const studentSchema = new mongoose.Schema({
   /** When set and in the future, login is rejected until this time */
   lockUntil: { type: Date, default: null },
   hasGeneratedPassword: { type: Boolean, default: false },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
   /** Canonical ids: spark | steady | scholar | summit (aliases: 1month, 3months, 6months, 1year). Credits = months × 22; see server/config/planCredits.js */
   subscriptionPlan: { type: String },
   subscriptionStartDate: { type: Date },

@@ -1,0 +1,245 @@
+[
+ {
+  "slide": 1,
+  "file": "art/l3m1-l17-slide-01.png",
+  "on_screen_text": "Smart Tech Hero Review!",
+  "subject": "Remo wearing a small red hero cape and a round blank gold badge, flexing his stubby arms, with Ed and Sofie in capes striking hero poses beside him in the attic HQ.",
+  "characters": [
+   "Remo",
+   "Ed",
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/remo-green.jpg",
+   "/workspace/remoed/assets/ed.jpg",
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "Remo wearing a small red hero cape and a round blank gold badge, flexing his stubby arms, with Ed and Sofie in capes striking hero poses beside him in the attic HQ. Wide shot: characters center-right with faces between 22% and 55% of the height; the lower-left area (left 60%, 58-90% down) is empty floor for the title; top 20% open. 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 2,
+  "file": "art/l3m1-l17-slide-02.png",
+  "on_screen_text": "Green Light Ask, Red Light Stop!",
+  "subject": "Two big round glowing signal lights on a shelf: a bright green light on the left and a bright red light on the right, soft glow, no people.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "Two big round glowing signal lights on a shelf: a bright green light on the left and a bright red light on the right, soft glow, no people. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 3,
+  "file": "art/l3m1-l17-slide-03.png",
+  "on_screen_text": "Rule 1: Always Ask!",
+  "subject": "In the living room, Ed with hands folded politely asking Mom, who holds a closed tablet and smiles.",
+  "characters": [
+   "Ed",
+   "Mom"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg"
+  ],
+  "prompt": "In the living room, Ed with hands folded politely asking Mom, who holds a closed tablet and smiles. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Mom = warm Filipino mother, shoulder-length wavy black hair, coral blouse. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 4,
+  "file": "art/l3m1-l17-slide-04.png",
+  "on_screen_text": "Rule 2: Set the Timer!",
+  "subject": "A big tabletop digital timer with a blank dark screen on the coffee table (screen about 40-60% across, 42-58% down); Mom on the right presses its top button while Ed watches from the left.",
+  "characters": [
+   "Ed",
+   "Mom"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg"
+  ],
+  "prompt": "A big tabletop digital timer with a blank dark screen on the coffee table (screen about 40-60% across, 42-58% down); Mom on the right presses its top button while Ed watches from the left. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Mom = warm Filipino mother, shoulder-length wavy black hair, coral blouse. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp 15:00 on the timer screen"
+ },
+ {
+  "slide": 5,
+  "file": "art/l3m1-l17-slide-05.png",
+  "on_screen_text": "Rule 3: Stop at BEEP!",
+  "subject": "A round alarm-clock timer ringing with bouncy sound arcs beside a tablet whose cover is closing, on the coffee table, no people.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A round alarm-clock timer ringing with bouncy sound arcs beside a tablet whose cover is closing, on the coffee table, no people. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 6,
+  "file": "art/l3m1-l17-slide-06.png",
+  "on_screen_text": "I ask and stop when timer rings.",
+  "subject": "Remo standing on the left pointing at a tall cream checklist board on an easel (board about 48-85% across, 10-70% down) with three big green checkmarks down its left edge (52-58% across, rows at 22%, 38%, 54% down) and blank space to the right.",
+  "characters": [
+   "Remo"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/remo-green.jpg"
+  ],
+  "prompt": "Remo standing on the left pointing at a tall cream checklist board on an easel (board about 48-85% across, 10-70% down) with three big green checkmarks down its left edge (52-58% across, rows at 22%, 38%, 54% down) and blank space to the right. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp Ask / Timer / Stop beside the checkmarks"
+ },
+ {
+  "slide": 7,
+  "file": "art/l3m1-l17-slide-07.png",
+  "on_screen_text": "You see a phone! What do you do?",
+  "subject": "A phone lying alone on the coffee table; Sofie on the sofa looking at it curiously with her hands in her lap.",
+  "characters": [
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "A phone lying alone on the coffee table; Sofie on the sofa looking at it curiously with her hands in her lap. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 8,
+  "file": "art/l3m1-l17-slide-08.png",
+  "on_screen_text": "BEEP BEEP! Timer rings!",
+  "subject": "Ed on the sofa playing a game on a tablet (screen abstract) looks up as a round timer on the side table rings with bouncy sound arcs.",
+  "characters": [
+   "Ed"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg"
+  ],
+  "prompt": "Ed on the sofa playing a game on a tablet (screen abstract) looks up as a round timer on the side table rings with bouncy sound arcs. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 9,
+  "file": "art/l3m1-l17-slide-09.png",
+  "on_screen_text": "Rest Your Eyes!",
+  "subject": "Ed at the big round attic window looking far away at a green mango tree outside, his tablet lying face-down on the sill, relaxed smile.",
+  "characters": [
+   "Ed"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg"
+  ],
+  "prompt": "Ed at the big round attic window looking far away at a green mango tree outside, his tablet lying face-down on the sill, relaxed smile. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 10,
+  "file": "art/l3m1-l17-slide-10.png",
+  "on_screen_text": "Self-control protects our hearts.",
+  "subject": "A glowing golden heart-shaped shield with a shiny red apple emblem floating above the HQ table, sparkles around it, no people.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A glowing golden heart-shaped shield with a shiny red apple emblem floating above the HQ table, sparkles around it, no people. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 11,
+  "file": "art/l3m1-l17-slide-11.png",
+  "on_screen_text": "Move to Finish Line!",
+  "subject": "High-angle view of a floor board-game mat: a winding path of three big blank white round spaces (centered about 30%/58%, 50%/44%, 70%/58% across/down) ending at a checkered finish flag on the right; Remo stands at the start on the far left, whole body visible.",
+  "characters": [
+   "Remo"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/remo-green.jpg"
+  ],
+  "prompt": "High-angle view of a floor board-game mat: a winding path of three big blank white round spaces (centered about 30%/58%, 50%/44%, 70%/58% across/down) ending at a checkered finish flag on the right; Remo stands at the start on the far left, whole body visible. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp Ask / Timer / Stop in the three spaces (Kristine: Teacher Script version)"
+ },
+ {
+  "slide": 12,
+  "file": "art/l3m1-l17-slide-12.png",
+  "on_screen_text": "Smooth Transition High-Five!",
+  "subject": "Ed giving Mom a big high-five on the sofa, a closed tablet on the coffee table, both beaming.",
+  "characters": [
+   "Ed",
+   "Mom"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg"
+  ],
+  "prompt": "Ed giving Mom a big high-five on the sofa, a closed tablet on the coffee table, both beaming. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Mom = warm Filipino mother, shoulder-length wavy black hair, coral blouse. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 13,
+  "file": "art/l3m1-l17-slide-13.png",
+  "on_screen_text": "Tech Steward Pledge",
+  "subject": "Sofie standing proudly with one hand on her heart under a big glowing blank gold shield emblem on the HQ wall.",
+  "characters": [
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "Sofie standing proudly with one hand on her heart under a big glowing blank gold shield emblem on the HQ wall. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 14,
+  "file": "art/l3m1-l17-slide-14.png",
+  "on_screen_text": "Ask. Device. Timer. Stop.",
+  "subject": "Four plain white cards pinned in an even row on the cork mission board (cards centered about 20%, 40%, 60%, 80% across, 28-60% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "Four plain white cards pinned in an even row on the cork mission board (cards centered about 20%, 40%, 60%, 80% across, 28-60% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp Ask / Device / Timer / Stop on the cards"
+ },
+ {
+  "slide": 15,
+  "file": "art/l3m1-l17-slide-15.png",
+  "on_screen_text": "Tech Stewardship Mastered!",
+  "subject": "A big shiny gold hero shield badge with a green sprout emblem and a star, floating with sparkles in the attic HQ.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A big shiny gold hero shield badge with a green sprout emblem and a star, floating with sparkles in the attic HQ. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 16,
+  "file": "art/l3m1-l17-slide-16.png",
+  "on_screen_text": "I ask and stop when timer rings.",
+  "subject": "Ed, Sofie and Remo in capes standing proudly under three glowing round icons in a row: a blank speech bubble, a round timer and a closed tablet.",
+  "characters": [
+   "Ed",
+   "Sofie",
+   "Remo"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg",
+   "/workspace/remoed/assets/sofie.jpg",
+   "/workspace/remoed/assets/remo-green.jpg"
+  ],
+  "prompt": "Ed, Sofie and Remo in capes standing proudly under three glowing round icons in a row: a blank speech bubble, a round timer and a closed tablet. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 17,
+  "file": "art/l3m1-l17-slide-17.png",
+  "on_screen_text": "Tech Hero Badge Saved!",
+  "subject": "A glowing gold shield badge settling into a slot on a floating app profile panel made of abstract soft shapes, sparkles.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A glowing gold shield badge settling into a slot on a floating app profile panel made of abstract soft shapes, sparkles. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 18,
+  "file": "art/l3m1-l17-slide-18.png",
+  "on_screen_text": "Goodbye!",
+  "subject": "A sparkling blue Eco-Drop falling onto a sprout in a clay pot on the attic windowsill; Remo, Ed and Sofie waving goodbye beside it.",
+  "characters": [
+   "Remo",
+   "Ed",
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/remo-green.jpg",
+   "/workspace/remoed/assets/ed.jpg",
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "A sparkling blue Eco-Drop falling onto a sprout in a clay pot on the attic windowsill; Remo, Ed and Sofie waving goodbye beside it. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: Ed's attic playroom turned into a kids' superhero clubhouse with a big round window, a plush traffic-light lamp, a cork board, capes on hooks, beanbags and a wooden floor; home scenes are in the bright living room below with a sofa, coffee table and potted plants. Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ }
+]

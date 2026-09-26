@@ -4,22 +4,23 @@ You are an AI developer assistant working on the RemoEd project. Your task is to
 
 ## Primary Reference Sources
 
-1. **`reference.md` (this file, workspace root):** Always read and consult `reference.md` in the workspace root. This file contains uploaded reference photos, file paths, slides, design specs, and content notes.
-2. **Official Website (`https://www.remoedph.com`):** Reference our live website for branding, UI/UX structure, color themes, copywriting, tone of voice, and feature layouts.
-3. **Lesson creation skill:** `.cursor/skills/remoed-lesson-creation/SKILL.md` — follow for every slide lesson (characters, chrome, title size, no Teacher Scripts, new-from-scratch designs).
-4. **Sample Lesson:** `docs/lesson-references/Sample-Lesson.pptx` (Lesson 6 – I am Happy!) — visual + chrome reference. Original: `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Sample Lesson.pptx`
+1. **`reference.md` (this file, workspace root):** Product / portal notes that are not slide lessons.
+2. **Official Website (`https://www.remoedph.com`):** Branding, UI/UX, copy, and feature layouts.
+3. **Slide lessons:** [`docs/lesson-references/README.md`](docs/lesson-references/README.md) + `.cursor/skills/remoed-lesson-creation/SKILL.md` — characters, chrome, curriculum PDFs, page counts, active briefs. **Do not use this file as the lesson brief.**
+4. **Sample Lesson:** `docs/lesson-references/Sample-Lesson.pptx` (Lesson 6 – I am Happy!). Original: `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Sample Lesson.pptx`
 
 ## Guidelines for Code & Content Generation
 
-- **Check `reference.md` First:** Before writing or modifying components, pages, or content, review `reference.md` for specific details, images, or slide requirements provided for that task.
-- **Brand & Website Alignment:** Ensure all styles, UI components, and text copy match the look, feel, and brand identity established on www.remoedph.com.
-- **Asset Handling:** Ensure paths, image placeholders, and structural props accurately reflect the uploaded references and file descriptions found in this file.
-- **Conflict Resolution:** If there is a discrepancy between `reference.md`, the website, or the current codebase, flag the inconsistency and ask for clarification before writing the code.
-- **Curriculum PDFs vs user:** Outline PDFs footer often say “Level 1 / Curriculum Roadmap.” **User confirmed Level 2 – Sprouts** for this Month 1 track — follow the user + this brief, not the PDF footer number.
+- **Portal / product work:** Review this file for product notes that are not slide lessons.
+- **Slide lessons:** Read `docs/lesson-references/` first (see `README.md`). Curriculum PDF footer vs level-track rules live there.
+- **Brand & Website Alignment:** Match www.remoedph.com.
+- **Conflict Resolution:** If `docs/lesson-references`, the website, or the codebase disagree on a lesson, stop and ask. For non-lesson product work, flag disagreements between this file, the website, and the codebase.
 
 ---
 
-## Lesson character & logo references (canonical)
+## Lesson character & logo references (moved)
+
+Canonical lesson stills, chrome, PDFs, and briefs: **[`docs/lesson-references/README.md`](docs/lesson-references/README.md)**. The copies below are historical; do not treat them as the active lesson brief.
 
 3D Pixar-style assets for RemoEd lesson slides. Use these paths; do not invent alternate Remo/Ed/Sofie/Grace designs when these exist.
 
@@ -165,7 +166,71 @@ Source: `docs/lesson-references/L2M1-Sprouts-Month-1.pdf`
 
 ---
 
-## Active lesson brief (Batch E — Lessons 13–15)
+## Active lesson brief (Level 3 Saplings Month 1 — Lessons 4–6)
+
+| Field | Lesson 4 | Lesson 5 | Lesson 6 |
+|-------|----------|----------|----------|
+| Level / footer | Level 3 – Saplings · `SAPLINGS! MONTH 1` | same | same |
+| Title | **Lesson 4 – Asking Before Using Apps** | **Lesson 5 – God Made Me Special** | **Lesson 6 – Honoring Each Person** |
+| Pages | 1–18 | 1–18 | 1–18 |
+| Mode | New from scratch · PowerPoint | same | same |
+| Vocab | Device, Ask, Please | Special, Unique, God | Respect, Kind, Friend |
+| Sentence | “May I use the device, please?” | “God made me unique!” | “You are special to God.” |
+| Design world | Polite Tablet Nook | Wonder Mirror Garden | Kindness Circle Lawn |
+| Outline | `docs/lesson-references/lessons/L3M1-Lesson-4/L3M1-Lesson-4-outline.txt` | `docs/lesson-references/lessons/L3M1-Lesson-5/L3M1-Lesson-5-outline.txt` | `docs/lesson-references/lessons/L3M1-Lesson-6/L3M1-Lesson-6-outline.txt` |
+| Deliverable | `docs/lesson-references/lessons/L3M1-Lesson-4/L3M1-Lesson-4-Asking-Before-Using-Apps.pptx` | `docs/lesson-references/lessons/L3M1-Lesson-5/L3M1-Lesson-5-God-Made-Me-Special.pptx` | `docs/lesson-references/lessons/L3M1-Lesson-6/L3M1-Lesson-6-Honoring-Each-Person.pptx` |
+
+Source: `docs/lesson-references/L3M1-Saplings-Month-1.pdf` (18 slides each). Sofie, not Sophia. No Teacher Scripts. Do not copy Lessons 1–3 or Sprouts layouts. Laptop copy: Level 3 folder.
+
+## Previous brief (Level 3 Saplings Month 1 — Lessons 1–3, completed)
+
+| Field | Lesson 1 | Lesson 2 | Lesson 3 |
+|-------|----------|----------|----------|
+| Level / footer | Level 3 – Saplings · `SAPLINGS! MONTH 1` | same | same |
+| Title | **Lesson 1 – Writing My First Name** | **Lesson 2 – Short A Blend: Cat and Mat** | **Lesson 3 – Short A Blend: Hat and Bag** |
+| Pages | 1–18 | 1–18 | 1–18 |
+| Mode | New from scratch · PowerPoint | same | same |
+| Vocab | Name, Write, Pencil | Cat, Mat, On | Hat, Bag, Red |
+| Sentence | “My name is Ed.” | “The cat is on the mat.” | “I have a red hat.” |
+| Design world | Name Lantern Desk | Cat-and-Mat Reading Nook | Red Hat Porch |
+| Outline | `docs/lesson-references/lessons/L3M1-Lesson-1/L3M1-Lesson-1-outline.txt` | `docs/lesson-references/lessons/L3M1-Lesson-2/L3M1-Lesson-2-outline.txt` | `docs/lesson-references/lessons/L3M1-Lesson-3/L3M1-Lesson-3-outline.txt` |
+| Deliverable | `docs/lesson-references/lessons/L3M1-Lesson-1/L3M1-Lesson-1-Writing-My-First-Name.pptx` | `docs/lesson-references/lessons/L3M1-Lesson-2/L3M1-Lesson-2-Short-A-Cat-and-Mat.pptx` | `docs/lesson-references/lessons/L3M1-Lesson-3/L3M1-Lesson-3-Short-A-Hat-and-Bag.pptx` |
+
+Source: `docs/lesson-references/L3M1-Saplings-Month-1.pdf` (18 slides each). Sofie, not Sophia. Name badge and phonics letters are drawn in code. Do not copy Sprouts Month 1 layouts. Laptop copy: Level 3 folder, `RemoEd L3M1-Lesson-{N}-….pptx`.
+
+## Previous brief (Batch G — Lessons 19–22, completed)
+
+| Field | Lesson 19 | Lesson 20 | Lesson 21 | Lesson 22 |
+|-------|-----------|-----------|-----------|-----------|
+| Level / footer | Level 2 – Sprouts · `SPROUTS! MONTH 1` | same | same | same |
+| Title | **Lesson 19 – Honoring My Friends** | **Lesson 20 – Virtual Garden Challenge 1** | **Lesson 21 – Virtual Garden Challenge 2** | **Lesson 22 – Monthly Celebration** |
+| Pages | 1–15 | 1–15 | 1–15 | 1–15 |
+| Mode | New from scratch · PowerPoint | same | same | same |
+| Vocab | Special, Friend, Love, You | A, B, C · /a/ /b/ /k/ | Morning, Night, Sun, Moon | Sprout, Complete, Badge |
+| Sentence | “You are special.” | Phonics A–C | “Morning and Night.” | “I am a Sprout!” |
+| Design world | Sampaguita Friendship Court | Crown Balloon Meadow | Dawn-Dusk Sorting Pavilion | Sprout Badge Fiesta |
+| Outline | `docs/lesson-references/lessons/L2M1-Lesson-19/L2M1-Lesson-19-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-20/L2M1-Lesson-20-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-21/L2M1-Lesson-21-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-22/L2M1-Lesson-22-outline.txt` |
+| Deliverable | `docs/lesson-references/lessons/L2M1-Lesson-19/L2M1-Lesson-19-Honoring-My-Friends.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-20/L2M1-Lesson-20-Virtual-Garden-Challenge-1.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-21/L2M1-Lesson-21-Virtual-Garden-Challenge-2.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-22/L2M1-Lesson-22-Monthly-Celebration.pptx` |
+
+PDF footer says “Level 1”; this track is **Level 2 – Sprouts** (user + this brief). On-screen text only — no Teacher Scripts. Sofie, not Sophia. Uppercase A, B, and C on Lesson 20 and the celebration garden are drawn in code so the letter shapes stay correct. Do not copy Lessons 6–18 layouts.
+
+## Previous brief (Batch F — Lessons 16–18, completed)
+
+| Field | Lesson 16 | Lesson 17 | Lesson 18 |
+|-------|-----------|-----------|-----------|
+| Level / footer | Level 2 – Sprouts · `SPROUTS! MONTH 1` | same | same |
+| Title | **Lesson 16 – This is My Family** | **Lesson 17 – Letter E is for Excellent** | **Lesson 18 – Tracing D and E** |
+| Pages | 1–15 | 1–15 | 1–15 |
+| Mode | New from scratch · PowerPoint | same | same |
+| Vocab | Mother, Father, Family, Home | E, Excellent · /e/ | Down, Curve, D, E |
+| Sentence | “This is my family.” | “I am excellent.” | “Down and around.” / “Trace the path.” |
+| Design world | Lantern Family Garden | Excellent Star Stage | Harbor Tracing Dock |
+| Outline | `docs/lesson-references/lessons/L2M1-Lesson-16/L2M1-Lesson-16-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-17/L2M1-Lesson-17-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-18/L2M1-Lesson-18-outline.txt` |
+| Deliverable | `docs/lesson-references/lessons/L2M1-Lesson-16/L2M1-Lesson-16-This-is-My-Family.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-17/L2M1-Lesson-17-Letter-E-is-for-Excellent.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-18/L2M1-Lesson-18-Tracing-D-and-E.pptx` |
+
+Page-5 map lists Lesson 16 as “Letter D is for Diligent”; the detailed slide curriculum (and this brief) uses **This is My Family**. Letter D appears in Lesson 18 tracing. Prior batches (done): Lessons 7–15. Do not copy those layouts.
+
+## Previous brief (Batch E — Lessons 13–15, completed)
 
 | Field | Lesson 13 | Lesson 14 | Lesson 15 |
 |-------|-----------|-----------|-----------|

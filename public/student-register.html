@@ -530,6 +530,22 @@
       const submitBtn = document.getElementById('register-btn');
 
       errorDiv.style.display = 'none';
+      const emailEl = document.getElementById('student-register-email');
+      emailEl.setCustomValidity('');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        emailEl.setCustomValidity('Enter a valid email address');
+        emailEl.reportValidity();
+        emailEl.focus();
+        return;
+      }
+      const userEl = document.getElementById('student-register-username');
+      if (!username) {
+        userEl.setCustomValidity('Required');
+        userEl.reportValidity();
+        userEl.focus();
+        return;
+      }
+      userEl.setCustomValidity('');
 
       if (!validatePassword(password)) {
         errorDiv.textContent = 'Please ensure your password meets all requirements.';

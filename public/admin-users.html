@@ -191,8 +191,8 @@
                 </div>
                 
                 <div style="margin-bottom: 15px;">
-                    <label for="email" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email</label>
-                    <input type="email" id="email" name="email" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    <label for="email" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email *</label>
+                    <input type="email" id="email" name="email" required placeholder="name@example.com" autocomplete="email" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
                 </div>
 
                 <div id="admin-only-fields" style="display: none; margin-bottom: 15px;">
@@ -715,7 +715,7 @@
             document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
             document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
             document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
-            document.getElementById('email').required = userType === 'teacher' || userType === 'student';
+            document.getElementById('email').required = true;
             document.getElementById('password-hint').textContent =
                 userType === 'admin'
                     ? 'Optional for new admins: leave blank and share the setup token so they set a password in Profile / first-time setup.'
@@ -779,7 +779,7 @@
                 document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
                 document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
                 document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
-                document.getElementById('email').required = userType === 'teacher' || userType === 'student';
+                document.getElementById('email').required = true;
                 document.getElementById('password-hint').textContent =
                     userType === 'admin'
                         ? 'Set a new password here, or leave blank to keep the current one.'
@@ -888,6 +888,16 @@
         // Handle form submission
         document.getElementById('user-form').addEventListener('submit', async function(e) {
             e.preventDefault();
+            const emailEl = document.getElementById('email');
+            const emailVal = String(emailEl.value || '').trim();
+            emailEl.setCustomValidity('');
+            if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+                emailEl.setCustomValidity('Enter a valid email address');
+                emailEl.reportValidity();
+                emailEl.focus();
+                return;
+            }
+            if (!e.target.reportValidity()) return;
             
             const formData = new FormData(e.target);
             const userData = Object.fromEntries(formData.entries());

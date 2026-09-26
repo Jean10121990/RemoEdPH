@@ -542,22 +542,20 @@ This is an automated message from RemoEdPH. Please do not reply.
       `.trim()
     };
   },
-  passwordReset: (username, newPassword, userType) => ({
-    subject: `RemoEdPH - New Password Generated`,
+  passwordReset: (username, _unusedPassword, userType, resetLink) => ({
+    subject: `RemoEdPH - Set a new password`,
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Password - RemoEdPH</title>
+        <title>Set a new password - RemoEdPH</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: #1ca7e7; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .password-box { background: #fff; border: 2px solid #1ca7e7; border-radius: 6px; padding: 15px; margin: 20px 0; text-align: center; }
-          .password { font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; color: #1ca7e7; }
           .warning { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin: 20px 0; }
           .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
           .btn { display: inline-block; background: #1ca7e7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
@@ -566,81 +564,37 @@ This is an automated message from RemoEdPH. Please do not reply.
       <body>
         <div class="container">
           <div class="header">
-            <h1>🔐 Password Reset</h1>
-            <p>RemoEdPH - Online Distance Learning Platform</p>
+            <h1>Set a new password</h1>
+            <p>RemoEdPH</p>
           </div>
-          
           <div class="content">
             <h2>Hello ${username}!</h2>
-            
-            <p>A new password has been generated for your ${userType} account as requested.</p>
-            
-            <div class="password-box">
-              <strong>Your New Password:</strong><br>
-              <span class="password">${newPassword}</span>
-            </div>
-            
-            <div class="warning">
-              <strong>⚠️ Important Security Notice:</strong><br>
-              • Please save this password immediately<br>
-              • Change your password after logging in<br>
-              • Do not share this password with anyone<br>
-              • This password is valid for immediate use
-            </div>
-            
-            <p><strong>Next Steps:</strong></p>
-            <ol>
-              <li>Copy the password above</li>
-              <li>Go to the RemoEdPH login page</li>
-              <li>Log in with your username and the new password</li>
-              <li>Change your password in your account settings</li>
-            </ol>
-            
+            <p>Use the button below to choose a new password for your ${userType} account. Your current password stays the same until you finish this step.</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}" class="btn">Go to Login Page</a>
+              <a href="${resetLink || '#'}" class="btn">Choose a new password</a>
             </div>
-            
-            <p><strong>Need Help?</strong><br>
-            If you didn't request this password reset, please contact our support team immediately.</p>
+            <div class="warning">
+              This link expires in 1 hour. If you did not request a reset, you can ignore this email.
+            </div>
           </div>
-          
           <div class="footer">
             <p>This is an automated message from RemoEdPH.<br>
             Please do not reply to this email.</p>
-            <p>&copy; 2025 RemoEdPH. All rights reserved.</p>
           </div>
         </div>
       </body>
       </html>
     `,
     text: `
-RemoEdPH - New Password Generated
+RemoEdPH — Set a new password
 
 Hello ${username}!
 
-A new password has been generated for your ${userType} account as requested.
+Open this link to choose a new password for your ${userType} account (expires in 1 hour):
+${resetLink || ''}
 
-Your New Password: ${newPassword}
-
-IMPORTANT SECURITY NOTICE:
-- Please save this password immediately
-- Change your password after logging in
-- Do not share this password with anyone
-- This password is valid for immediate use
-
-Next Steps:
-1. Copy the password above
-2. Go to the RemoEdPH login page
-3. Log in with your username and the new password
-4. Change your password in your account settings
-
-Need Help?
-If you didn't request this password reset, please contact our support team immediately.
-
-This is an automated message from RemoEdPH.
-Please do not reply to this email.
-
-© 2025 RemoEdPH. All rights reserved.
+Your current password stays the same until you finish this step.
+If you did not request a reset, you can ignore this email.
     `
   }),
   teacherPipelineWelcome: (firstName, fullName, signupLink) => {
@@ -824,7 +778,12 @@ async function sendEmail(to, template, data) {
       };
     }
 
-    const emailContent = emailTemplates[template](data.username, data.newPassword, data.userType);
+    const emailContent = emailTemplates[template](
+      data.username,
+      data.newPassword,
+      data.userType,
+      data.resetLink
+    );
     
     console.log(`📧 Attempting to send email to: ${to} via ${activeEmailService.toUpperCase()}`);
     
@@ -1124,11 +1083,12 @@ async function sendAssessmentEmail(email, childName, cefrLevel, score, registerU
 }
 
 // Send password reset email
-async function sendPasswordResetEmail(email, username, newPassword, userType) {
+async function sendPasswordResetEmail(email, username, resetLink, userType) {
   return await sendEmail(email, 'passwordReset', {
     username,
-    newPassword,
-    userType
+    newPassword: '',
+    userType,
+    resetLink,
   });
 }
 
@@ -1324,8 +1284,9 @@ async function testEmailSending(testEmail) {
   try {
     const testResult = await sendEmail(testEmail, 'passwordReset', {
       username: 'test-user',
-      newPassword: 'test-password-123',
-      userType: 'Test'
+      newPassword: '',
+      userType: 'Test',
+      resetLink: `${process.env.FRONTEND_URL || 'https://remoedph.com'}/reset-password.html?token=test`,
     });
     
     return {

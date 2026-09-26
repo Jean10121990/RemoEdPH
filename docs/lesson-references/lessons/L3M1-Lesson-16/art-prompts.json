@@ -1,0 +1,218 @@
+[
+ {
+  "slide": 1,
+  "file": "art/l3m1-l16-slide-01.png",
+  "on_screen_text": "Short A Reading Challenge!",
+  "subject": "Ed dressed as a Phonics Champion with a gold star medal on a ribbon, arms raised, Sofie and Remo cheering beside him in the arcade.",
+  "characters": [
+   "Ed",
+   "Sofie",
+   "Remo"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg",
+   "/workspace/remoed/assets/sofie.jpg",
+   "/workspace/remoed/assets/remo-green.jpg"
+  ],
+  "prompt": "Ed dressed as a Phonics Champion with a gold star medal on a ribbon, arms raised, Sofie and Remo cheering beside him in the arcade. Wide shot: characters center-right with faces between 22% and 55% of the height; the lower-left area (left 60%, 58-90% down) is empty floor for the title; top 20% open. 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 2,
+  "file": "art/l3m1-l16-slide-02.png",
+  "on_screen_text": "/a/ /a/ /a/ Bounce!",
+  "subject": "A big shiny red bouncy ball high above a small round trampoline, motion lines under it; the ball has a plain white circle on its front (circle about 44-56% across, 24-42% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A big shiny red bouncy ball high above a small round trampoline, motion lines under it; the ball has a plain white circle on its front (circle about 44-56% across, 24-42% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp A on the ball's white circle"
+ },
+ {
+  "slide": 3,
+  "file": "art/l3m1-l16-slide-03.png",
+  "on_screen_text": "C - A - T",
+  "subject": "An orange cat sitting on the left beside a wooden treasure game chest on the right; the chest front has a blank cream plaque (plaque about 52-80% across, 50-64% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "An orange cat sitting on the left beside a wooden treasure game chest on the right; the chest front has a blank cream plaque (plaque about 52-80% across, 50-64% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp CAT on the chest plaque"
+ },
+ {
+  "slide": 4,
+  "file": "art/l3m1-l16-slide-04.png",
+  "on_screen_text": "M - A - T",
+  "subject": "A blue woven mat unrolled on the left beside the same wooden treasure game chest on the right; blank cream plaque on the chest front (about 52-80% across, 50-64% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A blue woven mat unrolled on the left beside the same wooden treasure game chest on the right; blank cream plaque on the chest front (about 52-80% across, 50-64% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp MAT on the chest plaque"
+ },
+ {
+  "slide": 5,
+  "file": "art/l3m1-l16-slide-05.png",
+  "on_screen_text": "H - A - T",
+  "subject": "A red hat on a little stand on the left beside the same wooden treasure game chest on the right; blank cream plaque on the chest front (about 52-80% across, 50-64% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A red hat on a little stand on the left beside the same wooden treasure game chest on the right; blank cream plaque on the chest front (about 52-80% across, 50-64% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp HAT on the chest plaque"
+ },
+ {
+  "slide": 6,
+  "file": "art/l3m1-l16-slide-06.png",
+  "on_screen_text": "B - A - G",
+  "subject": "A yellow school bag on the left beside the same wooden treasure game chest on the right; blank cream plaque on the chest front (about 52-80% across, 50-64% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A yellow school bag on the left beside the same wooden treasure game chest on the right; blank cream plaque on the chest front (about 52-80% across, 50-64% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp BAG on the chest plaque"
+ },
+ {
+  "slide": 7,
+  "file": "art/l3m1-l16-slide-07.png",
+  "on_screen_text": "S - A - M",
+  "subject": "Sam smiling and holding a plain white card up at chest height with both hands, his face fully visible above it (card about 38-62% across, 46-66% down).",
+  "characters": [
+   "Sam"
+  ],
+  "reference_images": [],
+  "prompt": "Sam smiling and holding a plain white card up at chest height with both hands, his face fully visible above it (card about 38-62% across, 46-66% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Sam = Filipino cartoon boy (story character from Lessons 9 and 20), short spiky brown hair, red-and-white striped tee, green shorts, red sneakers; clearly different from Ed. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp SAM on the card"
+ },
+ {
+  "slide": 8,
+  "file": "art/l3m1-l16-slide-08.png",
+  "on_screen_text": "Pop the HAT balloon!",
+  "subject": "Four big balloons (red, blue, yellow, green) floating in a row, each with a plain white circle patch (patches centered about 30%, 47%, 64% and 81% across, 22-38% down); Ed stands at the far left pointing up, grinning.",
+  "characters": [
+   "Ed"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg"
+  ],
+  "prompt": "Four big balloons (red, blue, yellow, green) floating in a row, each with a plain white circle patch (patches centered about 30%, 47%, 64% and 81% across, 22-38% down); Ed stands at the far left pointing up, grinning. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp CAT / MAT / HAT / BAG on the balloons"
+ },
+ {
+  "slide": 9,
+  "file": "art/l3m1-l16-slide-09.png",
+  "on_screen_text": "Read the Mystery Word!",
+  "subject": "A wooden mystery box with its lid popping open, three blank wooden letter blocks springing up in a row above it with sparkles (blocks centered about 36%, 50%, 64% across, 22-42% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A wooden mystery box with its lid popping open, three blank wooden letter blocks springing up in a row above it with sparkles (blocks centered about 36%, 50%, 64% across, 22-42% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp B / A / G on the blocks"
+ },
+ {
+  "slide": 10,
+  "file": "art/l3m1-l16-slide-10.png",
+  "on_screen_text": "Thank God for growing brains!",
+  "subject": "Sofie beaming and holding up a small gold trophy with a glowing star on top, warm light rays behind her.",
+  "characters": [
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "Sofie beaming and holding up a small gold trophy with a glowing star on top, warm light rays behind her. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 11,
+  "file": "art/l3m1-l16-slide-11.png",
+  "on_screen_text": "Sam has a hat on the mat.",
+  "subject": "Sam wearing a red hat, sitting cross-legged on a blue mat on the foam floor, smiling.",
+  "characters": [
+   "Sam"
+  ],
+  "reference_images": [],
+  "prompt": "Sam wearing a red hat, sitting cross-legged on a blue mat on the foam floor, smiling. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Sam = Filipino cartoon boy (story character from Lessons 9 and 20), short spiky brown hair, red-and-white striped tee, green shorts, red sneakers; clearly different from Ed. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 12,
+  "file": "art/l3m1-l16-slide-12.png",
+  "on_screen_text": "The cat is in the bag.",
+  "subject": "The orange cat curled up asleep inside an open yellow bag on the foam floor, tail peeking out.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "The orange cat curled up asleep inside an open yellow bag on the foam floor, tail peeking out. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 13,
+  "file": "art/l3m1-l16-slide-13.png",
+  "on_screen_text": "Speed Round!",
+  "subject": "Five plain white flashcards standing upright in a row with whoosh motion swirls between them (cards centered about 14%, 32%, 50%, 68%, 86% across, 30-60% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "Five plain white flashcards standing upright in a row with whoosh motion swirls between them (cards centered about 14%, 32%, 50%, 68%, 86% across, 30-60% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp CAT / MAT / HAT / BAG / SAM on the cards"
+ },
+ {
+  "slide": 14,
+  "file": "art/l3m1-l16-slide-14.png",
+  "on_screen_text": "Final Match Board",
+  "subject": "A big match board on an easel (about 18-82% across, 10-76% down): a left column of five picture tiles (cat, blue mat, red hat, yellow bag, smiling boy Sam) at 24-38% across and a right column of five blank white label strips at 56-78% across, rows centered about 18%, 30%, 42%, 54%, 66% down.",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A big match board on an easel (about 18-82% across, 10-76% down): a left column of five picture tiles (cat, blue mat, red hat, yellow bag, smiling boy Sam) at 24-38% across and a right column of five blank white label strips at 56-78% across, rows centered about 18%, 30%, 42%, 54%, 66% down. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp HAT / SAM / CAT / BAG / MAT on the label strips (shuffled)"
+ },
+ {
+  "slide": 15,
+  "file": "art/l3m1-l16-slide-15.png",
+  "on_screen_text": "Short A Mastered!",
+  "subject": "A big gold trophy on a pedestal in the center (about 40-60% across, 12-50% down) with five blank gold plaques in a row below it (centered about 22%, 36%, 50%, 64%, 78% across, 56-66% down).",
+  "characters": [],
+  "reference_images": [],
+  "prompt": "A big gold trophy on a pedestal in the center (about 40-60% across, 12-50% down) with five blank gold plaques in a row below it (centered about 22%, 36%, 50%, 64%, 78% across, 56-66% down). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": "stamp CAT / MAT / HAT / BAG / SAM on the plaques"
+ },
+ {
+  "slide": 16,
+  "file": "art/l3m1-l16-slide-16.png",
+  "on_screen_text": "Sam has a hat on the mat.",
+  "subject": "Sam in his red hat sitting on the blue mat and waving happily, the orange cat sitting beside him.",
+  "characters": [
+   "Sam"
+  ],
+  "reference_images": [],
+  "prompt": "Sam in his red hat sitting on the blue mat and waving happily, the orange cat sitting beside him. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Sam = Filipino cartoon boy (story character from Lessons 9 and 20), short spiky brown hair, red-and-white striped tee, green shorts, red sneakers; clearly different from Ed. No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 17,
+  "file": "art/l3m1-l16-slide-17.png",
+  "on_screen_text": "Short A Trophy Unlocked!",
+  "subject": "Ed and Sofie cheering beside a tablet on a stand as a glowing golden trophy badge rises out of its screen (screen shows only abstract shapes).",
+  "characters": [
+   "Ed",
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/ed.jpg",
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "Ed and Sofie cheering beside a tablet on a stand as a glowing golden trophy badge rises out of its screen (screen shows only abstract shapes). Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ },
+ {
+  "slide": 18,
+  "file": "art/l3m1-l16-slide-18.png",
+  "on_screen_text": "Goodbye!",
+  "subject": "A sparkling blue Eco-Drop falling onto a green sprout in a clay pot; Remo, Ed and Sofie waving goodbye beside it.",
+  "characters": [
+   "Remo",
+   "Ed",
+   "Sofie"
+  ],
+  "reference_images": [
+   "/workspace/remoed/assets/remo-green.jpg",
+   "/workspace/remoed/assets/ed.jpg",
+   "/workspace/remoed/assets/sofie.jpg"
+  ],
+  "prompt": "A sparkling blue Eco-Drop falling onto a green sprout in a clay pot; Remo, Ed and Sofie waving goodbye beside it. Keep the corners and the bottom 22% of the frame free of faces (the text box and footer go there). 3D Pixar-style animated film still, soft cinematic lighting, rich colors, 16:9. Setting: a bright indoor kids' game arcade room at a Filipino school: colorful foam floor tiles, a small round trampoline, wooden treasure game chests, balloon garlands, star-shaped ceiling lights, bamboo walls with capiz-shell windows, cheerful daylight. Remo = cute GREEN round robot with EXACTLY TWO round sprout leaves on ONE short stem on top (no rings, no antennae), peach face panel, black oval eyes, blush cheeks, stubby green arms; his whole body is always in frame. Ed = Filipino boy, messy black hair, light-blue puffer jacket over a yellow tee, navy pants, grey sneakers (exact reference look). Sofie = Filipino girl, dark pigtails with orange/yellow flower ties, yellow hoodie with red drawstrings, light-blue jeans, yellow sneakers (exact reference look). No text, letters, numbers or logos anywhere; every card, sign, screen, plaque and board is blank. No floating or disembodied hands: every hand belongs to a fully visible character. Everyone looks Filipino.",
+  "code_stamps": null
+ }
+]

@@ -12,7 +12,7 @@ description: >-
 
 Apply these rules whenever generating or restyling RemoEd lesson slides. Prefer attached reference photos over inventing a new art style.
 
-**Before any lesson or brand work:** read workspace-root [`reference.md`](../../../reference.md) (character paths, logo, brand rules, active lesson brief). Also align with https://www.remoedph.com. If `reference.md`, the website, and the codebase disagree, **stop and ask** before generating.
+**Before any lesson or brand work:** read [`docs/lesson-references/`](../../../docs/lesson-references/) — start with [`README.md`](../../../docs/lesson-references/README.md) (character stills, logo, chrome, curriculum PDFs, page counts, active lesson brief). Also align with https://www.remoedph.com. If `docs/lesson-references`, the website, and the codebase disagree, **stop and ask** before generating. Do **not** use workspace-root `reference.md` as the lesson brief.
 
 ## Core style (always)
 

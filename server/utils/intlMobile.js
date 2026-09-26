@@ -63,11 +63,11 @@ function digitsOnly(value) {
 function normalizeIntlMobile(iso, nationalRaw) {
   const country = byIso(iso);
   if (!country) {
-    return { ok: false, error: 'Please select a country for your contact number.' };
+    return { ok: false, error: 'Select a country code' };
   }
   let national = digitsOnly(nationalRaw);
   if (!national) {
-    return { ok: false, error: 'Contact number is required.' };
+    return { ok: false, error: 'Required' };
   }
   // Drop leading 0 (common trunk prefix)
   if (national.startsWith('0')) national = national.replace(/^0+/, '');
@@ -78,13 +78,7 @@ function normalizeIntlMobile(iso, nationalRaw) {
   if (national.length < country.min || national.length > country.max) {
     return {
       ok: false,
-      error:
-        'Enter a valid phone number for ' +
-        country.name +
-        ' (' +
-        country.min +
-        (country.min === country.max ? '' : '–' + country.max) +
-        ' digits).',
+      error: national.length < country.min ? 'Not enough digits' : 'Too many digits',
     };
   }
   return { ok: true, e164: '+' + country.dial + national, iso: country.iso };

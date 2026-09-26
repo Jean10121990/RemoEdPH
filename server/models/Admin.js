@@ -44,6 +44,8 @@ const adminSchema = new mongoose.Schema({
   referralCode: { type: String, default: null },
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   hasGeneratedPassword: { type: Boolean, default: false },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
   /** Super-admin created account without password — user completes setup via token. */
   mustSetPassword: { type: Boolean, default: false },
   passwordSetupTokenHash: { type: String, default: null },

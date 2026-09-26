@@ -57,10 +57,10 @@
   function normalizeIntlMobile(iso, nationalRaw) {
     var country = byIso(iso);
     if (!country) {
-      return { ok: false, error: 'Please select a country for your contact number.' };
+      return { ok: false, error: 'Select a country code' };
     }
     var national = digitsOnly(nationalRaw);
-    if (!national) return { ok: false, error: 'Contact number is required.' };
+    if (!national) return { ok: false, error: 'Required' };
     if (national.startsWith('0')) national = national.replace(/^0+/, '');
     if (national.startsWith(country.dial) && national.length > country.dial.length + country.min - 1) {
       national = national.slice(country.dial.length);
@@ -68,13 +68,7 @@
     if (national.length < country.min || national.length > country.max) {
       return {
         ok: false,
-        error:
-          'Enter a valid phone number for ' +
-          country.name +
-          ' (' +
-          country.min +
-          (country.min === country.max ? '' : '–' + country.max) +
-          ' digits).',
+        error: national.length < country.min ? 'Not enough digits' : 'Too many digits',
       };
     }
     return { ok: true, e164: '+' + country.dial + national, iso: country.iso };
@@ -113,12 +107,13 @@
     selectEl.innerHTML = '';
     var empty = document.createElement('option');
     empty.value = '';
-    empty.textContent = 'Select country';
+    empty.textContent = 'Code';
     selectEl.appendChild(empty);
     sorted.forEach(function (c) {
       var opt = document.createElement('option');
       opt.value = c.iso;
-      opt.textContent = c.name + ' (+' + c.dial + ')';
+      opt.title = c.name;
+      opt.textContent = c.iso + ' +' + c.dial;
       if (selectedIso && String(selectedIso).toUpperCase() === c.iso) opt.selected = true;
       selectEl.appendChild(opt);
     });

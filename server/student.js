@@ -351,6 +351,13 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
     if (!emailVal) {
       return res.status(400).json({ success: false, error: 'Email is required.' });
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      return res.status(400).json({ success: false, error: 'Enter a valid email' });
+    }
+    const parentEmailVal = String(parentEmail || '').trim();
+    if (parentEmailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmailVal)) {
+      return res.status(400).json({ success: false, error: 'Enter a valid parent email' });
+    }
 
     const contactIso = String(contactCountry || '').trim();
     const contactNat = contactNational != null ? contactNational : contact;

@@ -39,7 +39,28 @@
                 grid-template-columns: 1fr;
             }
             .phone-input-row {
+                display: flex;
+                align-items: stretch;
                 width: 100%;
+            }
+            .phone-country-select {
+                width: 7.25rem;
+                flex: 0 0 7.25rem;
+                border-radius: 6px 0 0 6px !important;
+                border-right: 0 !important;
+                font-size: 0.85rem;
+                padding-left: 8px;
+                padding-right: 4px;
+            }
+            .phone-input-row .form-input[type="tel"] {
+                border-radius: 0 6px 6px 0 !important;
+                flex: 1;
+            }
+            .form-input.is-invalid,
+            .form-textarea.is-invalid,
+            select.form-input.is-invalid {
+                border-color: #e11d48 !important;
+                box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.12);
             }
         }
         
@@ -740,16 +761,16 @@
                             <h4 class="info-section-title">Basic Information</h4>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">First Name</label>
-                                    <input type="text" class="form-input" id="firstName" placeholder="First Name" disabled>
+                                    <label class="form-label">First Name *</label>
+                                    <input type="text" class="form-input" id="firstName" placeholder="First Name" required disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Middle Name</label>
                                     <input type="text" class="form-input" id="middleName" placeholder="Middle Name" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Last Name</label>
-                                    <input type="text" class="form-input" id="lastName" placeholder="Last Name" disabled>
+                                    <label class="form-label">Last Name *</label>
+                                    <input type="text" class="form-input" id="lastName" placeholder="Last Name" required disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Nickname</label>
@@ -782,17 +803,13 @@
                             <div class="form-grid">
                                 <div class="form-group full-width">
                                     <label class="form-label">Email *</label>
-                                    <input type="email" class="form-input" id="email" placeholder="Email" required disabled>
+                                    <input type="email" class="form-input" id="email" placeholder="name@example.com" required autocomplete="email" disabled>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Country *</label>
-                                    <select class="form-input" id="contactCountry" disabled></select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Contact Number *</label>
-                                    <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
-                                        <span class="phone-prefix" id="contactDialCode" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;">+</span>
-                                        <input type="tel" class="form-input" id="contact" placeholder="National number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel-national" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                <div class="form-group full-width">
+                                    <label class="form-label">Phone Number *</label>
+                                    <div class="phone-input-row">
+                                        <select class="form-input phone-country-select" id="contactCountry" aria-label="Country calling code" required disabled></select>
+                                        <input type="tel" class="form-input" id="contact" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" required disabled>
                                     </div>
                                 </div>
                                 <div class="form-group full-width">
@@ -828,44 +845,36 @@
                         <!-- Family & Emergency Contact Section -->
                         <div class="info-section">
                             <h4 class="info-section-title">Family & Emergency Contact</h4>
-                            <div class="form-grid">
+                            <div class="form-grid family-contact-grid">
                                 <div class="form-group">
                                     <label class="form-label">Parent/Guardian Name</label>
                                     <input type="text" class="form-input" id="parentName" placeholder="Parent/Guardian Name" disabled>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Parent/Guardian Country</label>
-                                    <select class="form-input" id="parentContactCountry" disabled>
-                                        <option value="">Select country</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Parent/Guardian Contact</label>
-                                    <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
-                                        <span class="phone-prefix" id="parentContactDialCode" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;min-width:3.5rem;">+</span>
-                                        <input type="tel" class="form-input" id="parentContact" placeholder="National number" inputmode="numeric" pattern="[0-9]*" disabled style="border-radius:0 6px 6px 0;flex:1;">
-                                    </div>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label class="form-label">Parent/Guardian Email</label>
-                                    <input type="email" class="form-input" id="parentEmail" placeholder="Parent/Guardian Email" disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Emergency Contact Person</label>
                                     <input type="text" class="form-input" id="emergencyContactPerson" placeholder="Emergency contact person" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Emergency Country</label>
-                                    <select class="form-input" id="emergencyContactCountry" disabled>
-                                        <option value="">Select country</option>
-                                    </select>
+                                    <label class="form-label">Phone Number</label>
+                                    <div class="phone-input-row">
+                                        <select class="form-input phone-country-select" id="parentContactCountry" aria-label="Parent country calling code" disabled>
+                                            <option value="">Code</option>
+                                        </select>
+                                        <input type="tel" class="form-input" id="parentContact" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" disabled>
+                                    </div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Emergency Contact Number</label>
-                                    <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
-                                        <span class="phone-prefix" id="emergencyContactDialCode" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;min-width:3.5rem;">+</span>
-                                        <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="National number" inputmode="numeric" pattern="[0-9]*" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                    <label class="form-label">Phone Number</label>
+                                    <div class="phone-input-row">
+                                        <select class="form-input phone-country-select" id="emergencyContactCountry" aria-label="Emergency country calling code" disabled>
+                                            <option value="">Code</option>
+                                        </select>
+                                        <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" disabled>
                                     </div>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Parent/Guardian Email</label>
+                                    <input type="email" class="form-input" id="parentEmail" placeholder="parent@example.com" autocomplete="email" disabled>
                                 </div>
                                 <div class="form-group full-width" id="emergency-contact-legacy-wrap" style="display: none;">
                                     <label class="form-label">Emergency Contact (previous notes)</label>
@@ -1035,23 +1044,34 @@
             }
         });
 
-        function syncDialCode(countrySelectId, dialSpanId) {
-            const sel = document.getElementById(countrySelectId);
-            const span = document.getElementById(dialSpanId);
-            if (!span) return;
-            const iso = sel ? sel.value : '';
-            span.textContent = (window.RemoedIntlMobile && RemoedIntlMobile.dialLabelForIso)
-                ? RemoedIntlMobile.dialLabelForIso(iso)
-                : '+';
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        function isValidEmail(value) {
+            return EMAIL_RE.test(String(value || '').trim());
         }
 
-        function wireCountryDial(countrySelectId, dialSpanId) {
-            const sel = document.getElementById(countrySelectId);
-            if (!sel || sel._remoedDialWired) return;
-            sel._remoedDialWired = true;
-            sel.addEventListener('change', function () {
-                syncDialCode(countrySelectId, dialSpanId);
-            });
+        function clearFieldError(el) {
+            if (!el) return;
+            el.setCustomValidity('');
+            el.classList.remove('is-invalid');
+            el.removeAttribute('aria-invalid');
+        }
+
+        function setFieldError(el, message) {
+            if (!el) return false;
+            el.classList.add('is-invalid');
+            el.setAttribute('aria-invalid', 'true');
+            el.setCustomValidity(message || 'Invalid');
+            try { el.reportValidity(); } catch (_e) {}
+            el.focus();
+            return false;
+        }
+
+        function wireClearErrorOnEdit(el) {
+            if (!el || el._remoedClearWired) return;
+            el._remoedClearWired = true;
+            el.addEventListener('input', function () { clearFieldError(el); });
+            el.addEventListener('change', function () { clearFieldError(el); });
         }
 
         function initStudentPhoneFields() {
@@ -1059,15 +1079,12 @@
             RemoedIntlMobile.fillCountrySelect(document.getElementById('contactCountry'), '');
             RemoedIntlMobile.fillCountrySelect(document.getElementById('parentContactCountry'), '');
             RemoedIntlMobile.fillCountrySelect(document.getElementById('emergencyContactCountry'), '');
-            wireCountryDial('contactCountry', 'contactDialCode');
-            wireCountryDial('parentContactCountry', 'parentContactDialCode');
-            wireCountryDial('emergencyContactCountry', 'emergencyContactDialCode');
-            syncDialCode('contactCountry', 'contactDialCode');
-            syncDialCode('parentContactCountry', 'parentContactDialCode');
-            syncDialCode('emergencyContactCountry', 'emergencyContactDialCode');
+            ['firstName', 'lastName', 'email', 'contact', 'contactCountry', 'parentEmail', 'parentContact', 'parentContactCountry', 'emergencyContactNumber', 'emergencyContactCountry'].forEach(function (id) {
+                wireClearErrorOnEdit(document.getElementById(id));
+            });
         }
 
-        function applyPhoneField(countrySelectId, nationalInputId, dialSpanId, storedE164, storedIso) {
+        function applyPhoneField(countrySelectId, nationalInputId, storedE164, storedIso) {
             if (!window.RemoedIntlMobile) {
                 const nat = document.getElementById(nationalInputId);
                 if (nat) nat.value = storedE164 || '';
@@ -1078,7 +1095,6 @@
             RemoedIntlMobile.fillCountrySelect(document.getElementById(countrySelectId), iso);
             const nat = document.getElementById(nationalInputId);
             if (nat) nat.value = RemoedIntlMobile.nationalFromE164(storedE164 || '', iso);
-            syncDialCode(countrySelectId, dialSpanId);
         }        
     // Load profile picture from backend (uses shared setAvatar)
     async function loadProfilePicture(studentId) {
@@ -1651,14 +1667,11 @@
             applyPhoneField(
                 'contactCountry',
                 'contact',
-                'contactDialCode',
                 profile.contact || '',
                 profile.contactCountry || ''
             );
             
-            // Use profile email if available, otherwise use login email from localStorage
-            const loginEmail = localStorage.getItem('remoedUsername') || '';
-            document.getElementById('email').value = profile.email || profile.username || loginEmail;
+            document.getElementById('email').value = profile.email || '';
             
             document.getElementById('address').value = profile.address || '';
             document.getElementById('language').value = profile.language || '';
@@ -1667,18 +1680,16 @@
             applyPhoneField(
                 'parentContactCountry',
                 'parentContact',
-                'parentContactDialCode',
                 profile.parentContact || '',
                 profile.parentContactCountry || ''
             );
-            document.getElementById('parentEmail').value = profile.parentEmail || profile.email || '';
+            document.getElementById('parentEmail').value = profile.parentEmail || '';
             const emergencyPerson = profile.emergencyContactPerson || '';
             const emergencyNumber = profile.emergencyContactNumber || '';
             document.getElementById('emergencyContactPerson').value = emergencyPerson;
             applyPhoneField(
                 'emergencyContactCountry',
                 'emergencyContactNumber',
-                'emergencyContactDialCode',
                 emergencyNumber,
                 profile.emergencyContactCountry || ''
             );
@@ -1836,18 +1847,24 @@
                 }
 
                 // Collect form data
-                const firstName = String(document.getElementById('firstName').value || '').trim();
-                const lastName = String(document.getElementById('lastName').value || '').trim();
-                const emailVal = String(document.getElementById('email').value || '').trim();
-                if (!firstName) throw new Error('First name is required.');
-                if (!lastName) throw new Error('Last name is required.');
-                if (!emailVal) throw new Error('Email is required.');
+                const firstNameEl = document.getElementById('firstName');
+                const lastNameEl = document.getElementById('lastName');
+                const emailEl = document.getElementById('email');
+                const contactEl = document.getElementById('contact');
+                const contactCountryEl = document.getElementById('contactCountry');
+                const firstName = String(firstNameEl.value || '').trim();
+                const lastName = String(lastNameEl.value || '').trim();
+                const emailVal = String(emailEl.value || '').trim();
+                if (!firstName) return setFieldError(firstNameEl, 'Required');
+                if (!lastName) return setFieldError(lastNameEl, 'Required');
+                if (!emailVal) return setFieldError(emailEl, 'Required');
+                if (!isValidEmail(emailVal)) return setFieldError(emailEl, 'Enter a valid email');
 
-                const contactCountry = document.getElementById('contactCountry')?.value || '';
-                const contactNational = document.getElementById('contact').value;
                 if (!window.RemoedIntlMobile) throw new Error('Phone helper failed to load. Refresh and try again.');
-                const contactNorm = RemoedIntlMobile.normalizeIntlMobile(contactCountry, contactNational);
-                if (!contactNorm.ok) throw new Error(contactNorm.error);
+                if (!contactCountryEl.value) return setFieldError(contactCountryEl, 'Required');
+                const contactNational = contactEl.value;
+                const contactNorm = RemoedIntlMobile.normalizeIntlMobile(contactCountryEl.value, contactNational);
+                if (!contactNorm.ok) return setFieldError(contactEl, contactNorm.error);
 
                 const parentCountry = document.getElementById('parentContactCountry')?.value || '';
                 const parentNational = document.getElementById('parentContact').value;
@@ -1855,9 +1872,18 @@
                 let parentContactCountry = '';
                 if (String(parentNational || '').trim() || parentCountry) {
                     const pNorm = RemoedIntlMobile.normalizeIntlMobile(parentCountry, parentNational);
-                    if (!pNorm.ok) throw new Error('Parent contact: ' + pNorm.error);
+                    if (!pNorm.ok) {
+                        const pEl = parentCountry ? document.getElementById('parentContact') : document.getElementById('parentContactCountry');
+                        return setFieldError(pEl, pNorm.error);
+                    }
                     parentContact = pNorm.e164;
                     parentContactCountry = pNorm.iso;
+                }
+
+                const parentEmailEl = document.getElementById('parentEmail');
+                const parentEmailVal = String(parentEmailEl.value || '').trim();
+                if (parentEmailVal && !isValidEmail(parentEmailVal)) {
+                    return setFieldError(parentEmailEl, 'Enter a valid email');
                 }
 
                 const emergCountry = document.getElementById('emergencyContactCountry')?.value || '';
@@ -1866,7 +1892,10 @@
                 let emergencyContactCountry = '';
                 if (String(emergNational || '').trim() || emergCountry) {
                     const eNorm = RemoedIntlMobile.normalizeIntlMobile(emergCountry, emergNational);
-                    if (!eNorm.ok) throw new Error('Emergency contact number: ' + eNorm.error);
+                    if (!eNorm.ok) {
+                        const eEl = emergCountry ? document.getElementById('emergencyContactNumber') : document.getElementById('emergencyContactCountry');
+                        return setFieldError(eEl, eNorm.error);
+                    }
                     emergencyContactNumber = eNorm.e164;
                     emergencyContactCountry = eNorm.iso;
                 }
@@ -1890,7 +1919,7 @@
                     parentContact: parentContact,
                     parentContactCountry: parentContactCountry,
                     parentContactNational: parentNational,
-                    parentEmail: document.getElementById('parentEmail').value,
+                    parentEmail: parentEmailVal,
                     emergencyContactPerson: document.getElementById('emergencyContactPerson').value,
                     emergencyContactNumber: emergencyContactNumber,
                     emergencyContactCountry: emergencyContactCountry,

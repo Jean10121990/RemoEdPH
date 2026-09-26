@@ -1,0 +1,631 @@
+"""Build L3M1 Saplings Lessons 16-17 as RemoEd PPTX decks (engine identical to build_l3m1_lessons_18_22.py).
+
+Same engine as build_l3m1_lessons_13_15.py (itself generalised from build_l3m1_lesson_12.py), plus optional
+per-lesson "title_lines" for long titles. Chrome matches the laptop's shared composer
+(build_l2m1_lessons_7_9.compose_slide): white lesson pill (0.25",0.2") 4.2"x0.45" #1A5696,
+indigo #5A67D8 page badge (11.55",0.2") 1.5"x0.45", yellow #FAD648 learner chip (#1E3A5F),
+white footer label + knocked-out logo with drop shadows and NO card, 1920x1080 composed JPG
+placed full-bleed on a 13.333"x7.5" slide. Deliberate differences (same as Lesson 12):
+  * title slide: ~52-58pt title as two stacked white pills low-left (not a mid-frame banner
+    that covers faces); greeting chip in the open top band;
+  * wide body chips are lifted above the footer row instead of colliding with it;
+  * art is centre-cropped to 16:9 before resizing (never stretched);
+  * phonics / card words are stamped in code (README: never bake text into art);
+  * nothing is ever overwritten without a timestamped backup in a sibling "_backup" folder,
+    and the D: Level folder is never created (copied only if it exists).
+
+Art: docs/lesson-references/lessons/L3M1-Lesson-<N>/art/l3m1-l<N>-slide-01.png ... -18.png
+Stamp positions can be tuned without editing this file: put a stamps.json next to the art
+folder ({"4": [{"kind": "lines", ...}], ...}); it replaces that lesson's STAMPS per slide.
+
+Usage (laptop, from docs/lesson-references):
+    python build_l3m1_lessons_16_17.py --lessons 16 17
+    python build_l3m1_lessons_16_17.py --lessons 16 --stamp-debug --no-copies   (tuning pass)
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as _dt
+import json
+import shutil
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from pptx import Presentation
+from pptx.util import Emu, Inches
+
+FOOTER = "SAPLINGS! MONTH 1"
+LEVEL_NUM = 3
+DEFAULT_ROOT = Path(r"D:\Users\Window11\Documents\RemoEd-Jean\RemoEdPH")
+DEFAULT_LAPTOP = Path(r"D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials")
+
+NAVY = (26, 86, 150)
+NAVY_DARK = (30, 58, 95)
+INDIGO = (90, 103, 216)
+YELLOW = (250, 214, 72)
+WHITE = (255, 255, 255)
+PLAQUE_INK = (255, 240, 205)
+PLAQUE_HALO = (45, 25, 10)
+
+# (on-screen text, is_title, chip position) - chip: "bottom" | "top" | (centre-x frac, top-y frac)
+# On-screen text is verbatim from the brief; quotation marks dropped to match laptop L3M1 Lessons 1-6.
+# "title_lines" (optional) sets how the title-slide pills break, for titles too long for "Lesson N -" / "Title".
+# Stamp boxes for Lessons 16-17 are planned from the prompt coordinates; measure them on the final art before building.
+
+
+def _row(words, centres, y0, y1, hw):
+    return [{"kind": "word", "text": w, "box": (c - hw, y0, c + hw, y1), "group": "row"} for w, c in zip(words, centres)]
+
+
+LESSONS = {
+    # Planned from the prompt coordinates (art-prompts.json); re-measure every box on the final art before the real build.
+    16: {
+        "title": "Lesson 16 \u2013 Review: Short A Blends",
+        "title_lines": ["Lesson 16 \u2013", "Review:", "Short A Blends"],   # 3 short pills stay left of the characters
+        "title_bottom": 7.28,      # real art: bottom pill below Sofie's shoes (y 0.79), top pill beside the trampoline
+        "title_max_right": 0.40,   # -> 104px (52pt)
+        "folder": "L3M1-Lesson-16",
+        "pptx": "L3M1-Lesson-16-Review-Short-A-Blends.pptx",
+        "prefix": "l3m1-l16-slide-",
+        "pages": [
+            ("Short A Reading Challenge!", True, (0.27, 0.10)),   # top-left over balloons; Ed's hair/fists at x>0.53
+            ("/a/ /a/ /a/ Bounce!", False, "bottom"),
+            ("C - A - T", False, "bottom"),
+            ("M - A - T", False, "bottom"),
+            ("H - A - T", False, "bottom"),
+            ("B - A - G", False, "bottom"),
+            ("S - A - M", False, "bottom"),
+            ("Pop the HAT balloon!", False, "bottom"),
+            ("Read the Mystery Word!", False, "bottom"),
+            ("Thank God for growing brains!", False, "bottom"),
+            ("Sam has a hat on the mat.", False, "bottom"),
+            ("The cat is in the bag.", False, "bottom"),
+            ("Speed Round!", False, "bottom"),
+            ("Final Match Board", False, "bottom"),
+            ("Short A Mastered!", False, "bottom"),
+            ("Sam has a hat on the mat.", False, "bottom"),
+            ("Short A Trophy Unlocked!", False, "bottom"),
+            ("Goodbye!", False, "bottom"),
+        ],
+        "stamps": {
+            # measured on the final art (fractions of width / height)
+            2: [{"kind": "word", "text": "A", "box": (0.475, 0.19, 0.545, 0.32)}],                           # ball circle x 0.455-0.565, y 0.155-0.353
+            3: [{"kind": "word", "text": "CAT", "box": (0.545, 0.57, 0.695, 0.695)}],                        # cloud plaque x 0.505-0.734, y 0.511-0.750
+            4: [{"kind": "word", "text": "MAT", "box": (0.635, 0.54, 0.795, 0.665)}],                        # plaque x 0.604-0.825, y 0.506-0.707 (slanted)
+            5: [{"kind": "word", "text": "HAT", "box": (0.585, 0.52, 0.785, 0.675)}],                        # plaque x 0.533-0.837, y 0.463-0.731
+            6: [{"kind": "word", "text": "BAG", "box": (0.615, 0.595, 0.81, 0.735)}],                        # plaque x 0.570-0.855, y 0.536-0.790 (lock at top)
+            7: [{"kind": "word", "text": "SAM", "box": (0.45, 0.54, 0.562, 0.665)}],                         # card x 0.427-0.584, y 0.506-0.693, thumbs on the edges
+            8: [{"kind": "word", "text": w, "box": (x - 0.026, y - 0.03, x + 0.026, y + 0.03), "group": "balloons"}
+                for w, (x, y) in zip(["CAT", "MAT", "HAT", "BAG"], [(0.4205, 0.209), (0.561, 0.2015), (0.7085, 0.1925), (0.871, 0.189)])],
+            9: [{"kind": "word", "text": w, "box": (x - 0.03, 0.285, x + 0.03, 0.385), "group": "blocks"}      # front faces y 0.273-0.392
+                for w, x in zip(["B", "A", "G"], [0.40, 0.503, 0.597])],
+            13: _row(["CAT", "MAT", "HAT", "BAG", "SAM"], [0.1505, 0.3325, 0.508, 0.6795, 0.8565], 0.50, 0.63, 0.055),   # cards y 0.39-0.745
+            14: [{"kind": "word", "text": w, "box": (0.475, a + 0.013, 0.63, b - 0.013), "group": "strips"}   # strips x 0.443-0.662
+                 for w, (a, b) in zip(["HAT", "SAM", "CAT", "BAG", "MAT"],
+                                      [(0.108, 0.186), (0.244, 0.321), (0.379, 0.457), (0.514, 0.593), (0.650, 0.731)])],
+            15: [{"kind": "word", "text": w, "box": (c - 0.05, 0.61, c + 0.05, 0.705), "group": "plaques"}   # gold plaques y 0.572-0.745
+                 for w, c in zip(["CAT", "MAT", "HAT", "BAG", "SAM"], [0.18, 0.3405, 0.5035, 0.6685, 0.8305])],
+        },
+    },
+    17: {
+        "title": "Lesson 17 \u2013 Review: App Boundaries",
+        # real art: Remo stands centre-left (face y 0.44-0.57, raised fist from x 0.345) in the lower-left title zone,
+        # so the pills stack top-left over the window and the art is zoomed 8% (anchored top-left), which moves
+        # Remo's fist right/down below the last pill; the chip sits top-right over the cork board.
+        "title_lines": ["Lesson 17 \u2013", "Review: App", "Boundaries"],
+        "title_top": 0.75,         # inches (y 0.10), just under the lesson label
+        "title_max_right": 0.40,   # -> 104px (52pt)
+        "art_zoom": {1: (1.08, 0.0, 0.0)},
+        "folder": "L3M1-Lesson-17",
+        "pptx": "L3M1-Lesson-17-Review-App-Boundaries.pptx",
+        "prefix": "l3m1-l17-slide-",
+        "pages": [
+            ("Smart Tech Hero Review!", True, (0.63, 0.10)),         # above Ed's hair (y 0.24), right of the pills
+            ("Green Light Ask, Red Light Stop!", False, "bottom"),
+            ("Rule 1: Always Ask!", False, "bottom"),
+            ("Rule 2: Set the Timer!", False, "bottom"),
+            ("Rule 3: Stop at BEEP!", False, "bottom"),
+            ("I ask and stop\nwhen timer rings.", False, (0.21, 0.10)),   # 2-line chip over the window: keeps Remo's legs clear
+            ("You see a phone! What do you do?", False, "bottom"),
+            ("BEEP BEEP! Timer rings!", False, "bottom"),
+            ("Rest Your Eyes!", False, "bottom"),
+            ("Self-control protects our hearts.", False, "bottom"),
+            ("Move to Finish Line!", False, "bottom"),
+            ("Smooth Transition High-Five!", False, "bottom"),
+            ("Tech Steward Pledge", False, "bottom"),
+            ("Ask. Device. Timer. Stop.", False, "bottom"),
+            ("Tech Stewardship Mastered!", False, "bottom"),
+            ("I ask and stop\nwhen timer rings.", False, (0.19, 0.72)),   # 2-line chip left of Remo; feet reach y 0.93
+            ("Tech Hero Badge Saved!", False, "bottom"),
+            ("Goodbye!", False, (0.5, 0.88)),   # below Remo's feet (y 0.84)
+        ],
+        "stamps": {
+            # measured on the final art
+            4: [{"kind": "glow", "text": "15:00", "box": (0.462, 0.607, 0.637, 0.703)}],                     # screen x 0.44-0.659, y 0.589-0.721
+            6: [{"kind": "word", "text": w, "box": (0.665, c - 0.05, 0.86, c + 0.05), "align": "left", "group": "checks"}
+                for w, c in zip(["Ask", "Timer", "Stop"], [0.222, 0.378, 0.543])],                            # right of the checks; board edge x 0.88
+            11: [{"kind": "word", "text": w, "box": (x - 0.036, y - 0.035, x + 0.036, y + 0.035), "group": "spaces"}   # 3 spaces (Kristine)
+                 for w, (x, y) in zip(["Ask", "Timer", "Stop"], [(0.4455, 0.5965), (0.5285, 0.4945), (0.6235, 0.5685)])],
+            14: _row(["Ask", "Device", "Timer", "Stop"], [0.257, 0.4235, 0.59, 0.7555], 0.46, 0.58, 0.06),    # cards y 0.332-0.685
+        },
+    },
+}
+
+SLIDE_W, SLIDE_H = Inches(13.333), Inches(7.5)
+PX_W, PX_H = 1920, 1080
+
+
+def ix(inches: float) -> int:
+    return int(round(inches * PX_W / 13.333))
+
+
+def iy(inches: float) -> int:
+    return int(round(inches * PX_H / 7.5))
+
+
+class Ctx:
+    font_path: str | None = None
+    fallback_path: str | None = None
+    logo: Path | None = None
+    stamp_debug = False
+    stamp_ts = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+def first_existing(paths):
+    for p in paths:
+        if p and Path(p).exists():
+            return str(p)
+    return None
+
+
+def load_font(size: int, fallback: bool = False):
+    path = Ctx.fallback_path if fallback else Ctx.font_path
+    return ImageFont.truetype(path, size) if path else ImageFont.load_default()
+
+
+_MISSING: dict = {}
+
+
+def has_glyph(font, ch: str) -> bool:
+    key = (id(font), ch)
+    if key not in _MISSING:
+        notdef = font.getmask("\ue000")
+        m = font.getmask(ch)
+        _MISSING[key] = not (m.size == notdef.size and bytes(m) == bytes(notdef))
+    return _MISSING[key]
+
+
+def runs(text: str, size: int):
+    """Split text into (segment, font) runs, using the fallback font for glyphs the main font lacks (e.g. U+2192)."""
+    main = load_font(size)
+    out, cur, cur_fb = [], "", False
+    for ch in text:
+        fb = bool(Ctx.fallback_path) and not has_glyph(main, ch)
+        if cur and fb != cur_fb:
+            out.append((cur, load_font(size, cur_fb)))
+            cur = ""
+        cur += ch
+        cur_fb = fb
+    if cur:
+        out.append((cur, load_font(size, cur_fb)))
+    return out
+
+
+def measure(draw, text: str, size: int):
+    w, top, bot = 0, 10 ** 6, -10 ** 6
+    for seg, f in runs(text, size):
+        b = draw.textbbox((w, 0), seg, font=f)
+        w = b[2]
+        top, bot = min(top, b[1]), max(bot, b[3])
+    return w, bot - top, top
+
+
+def draw_runs(draw, xy, text: str, size: int, fill):
+    x, y = xy
+    for seg, f in runs(text, size):
+        draw.text((x, y), seg, font=f, fill=fill)
+        x = draw.textbbox((x, y), seg, font=f)[2]
+
+
+def text_size(draw, text, font):
+    b = draw.textbbox((0, 0), text, font=font)
+    return b[2] - b[0], b[3] - b[1]
+
+
+def round_rect(draw, xy, radius, fill):
+    draw.rounded_rectangle(xy, radius=radius, fill=fill)
+
+
+# ---------------------------------------------------------------- safe file writes
+def backup_if_exists(dest: Path):
+    if dest.exists():
+        bdir = dest.parent / "_backup"
+        bdir.mkdir(exist_ok=True)
+        b = bdir / f"{dest.stem}.{Ctx.stamp_ts}{dest.suffix}"
+        shutil.copy2(dest, b)
+        print("backup", b)
+
+
+LOCKED: list = []
+
+
+def safe_copy(src: Path, dest: Path) -> bool:
+    """Copy with backup; a file locked by PowerPoint etc. is reported and skipped, not fatal."""
+    try:
+        backup_if_exists(dest)
+        shutil.copy2(src, dest)
+        return True
+    except PermissionError as e:
+        print("LOCKED (not updated):", dest, "-", e)
+        LOCKED.append(str(dest))
+        return False
+
+
+# ---------------------------------------------------------------- footer / chrome
+def knock_out_white(im):
+    im = im.convert("RGBA")
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if r > 246 and g > 246 and b > 246:
+                px[x, y] = (r, g, b, 0)
+            elif r > 228 and g > 228 and b > 228:
+                px[x, y] = (r, g, b, max(0, a - int((min(r, g, b) - 228) / 18 * 255)))
+    return im
+
+
+_LOGO: dict = {}
+
+
+def footer_geometry(draw):
+    tw, th = text_size(draw, FOOTER, load_font(34))
+    logo_w, logo_h = ix(0.78), iy(0.78)
+    logo_x = PX_W - ix(0.28) - logo_w
+    logo_y = PX_H - iy(0.22) - logo_h
+    text_x = logo_x - ix(0.14) - tw
+    return tw, th, logo_w, logo_h, logo_x, logo_y, text_x
+
+
+def draw_footer(img):
+    canvas = img.convert("RGBA")
+    tw, th, logo_w, logo_h, logo_x, logo_y, text_x = footer_geometry(ImageDraw.Draw(canvas))
+    text_y = logo_y + (logo_h - th) // 2 - 2
+    font = load_font(34)
+    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).text((text_x, text_y + 2), FOOTER, font=font, fill=(0, 0, 0, 179))  # rgba(0,0,0,0.7)
+    canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(4)))
+    sharp = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sharp).text((text_x, text_y), FOOTER, font=font, fill=WHITE + (255,))
+    canvas = Image.alpha_composite(canvas, sharp)
+    if "logo" not in _LOGO:
+        _LOGO["logo"] = knock_out_white(Image.open(Ctx.logo)).resize((logo_w, logo_h), Image.Resampling.LANCZOS)
+    logo = _LOGO["logo"]
+    ls = Image.new("RGBA", logo.size, (0, 0, 0, 0))
+    ls.putalpha(logo.split()[-1].point(lambda a: int(a * 0.6)))  # rgba(0,0,0,0.6)
+    pad = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    pad.paste(ls.filter(ImageFilter.GaussianBlur(3)), (logo_x, logo_y + 2), ls.filter(ImageFilter.GaussianBlur(3)))
+    canvas = Image.alpha_composite(canvas, pad)
+    canvas.paste(logo, (logo_x, logo_y), logo)
+    return canvas.convert("RGB")
+
+
+# ---------------------------------------------------------------- code-stamped text
+def fit_size(draw, lines, w, h, start=400, floor=18):
+    size = start
+    while size > floor:
+        f = load_font(size)
+        lw = max(text_size(draw, ln, f)[0] for ln in lines)
+        lh = int(size * 1.08) * len(lines)
+        if lw <= w and lh <= h:
+            return size
+        size -= 4
+    return floor
+
+
+def stamp(img, s):
+    draw = ImageDraw.Draw(img)
+    kind = s["kind"]
+    if kind == "badge":
+        cx, cy = int(PX_W * s["center"][0]), int(PX_H * s["center"][1])
+        r = int(PX_W * s.get("r", 0.04))
+        sh = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ImageDraw.Draw(sh).ellipse((cx - r, cy - r + 4, cx + r, cy + r + 4), fill=(0, 0, 0, 110))
+        img = Image.alpha_composite(img.convert("RGBA"), sh.filter(ImageFilter.GaussianBlur(5))).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=YELLOW, outline=WHITE, width=6)
+        f = load_font(int(r * 1.2))
+        b = draw.textbbox((0, 0), s["text"], font=f)
+        draw.text((cx - (b[0] + b[2]) // 2, cy - (b[1] + b[3]) // 2), s["text"], font=f, fill=NAVY_DARK)
+        return img
+    x0, y0, x1, y1 = (int(PX_W * s["box"][0]), int(PX_H * s["box"][1]), int(PX_W * s["box"][2]), int(PX_H * s["box"][3]))
+    if kind == "clone":   # cover a tiny art remnant with the plain background from dy below (soft-edged)
+        dy = int(PX_H * s["dy"])
+        patch = img.crop((x0, y0 + dy, x1, y1 + dy))
+        mask = Image.new("L", patch.size, 0)
+        ml, mr = (0 if x0 <= 0 else 6), (0 if x1 >= PX_W else 6)   # no feather on the slide edge itself
+        ImageDraw.Draw(mask).rectangle((ml - 8 if ml == 0 else ml, 6, patch.size[0] - mr + (8 if mr == 0 else -1), patch.size[1] - 7), fill=255)
+        mask = mask.filter(ImageFilter.GaussianBlur(3))
+        if ml == 0 or mr == 0:   # re-solidify the edge column the blur softened
+            md = ImageDraw.Draw(mask)
+            if ml == 0:
+                md.rectangle((0, 8, 3, patch.size[1] - 9), fill=255)
+            if mr == 0:
+                md.rectangle((patch.size[0] - 4, 8, patch.size[0], patch.size[1] - 9), fill=255)
+        img = img.copy()
+        img.paste(patch, (x0, y0), mask)
+        return img
+    if Ctx.stamp_debug:
+        draw.rectangle((x0, y0, x1, y1), outline=(255, 0, 0), width=3)
+    if kind == "lines":
+        n = s.get("n", 3)
+        gap = (x1 - x0) * 0.12
+        seg = ((x1 - x0) - gap * (n - 1)) / n
+        th = max(12, (y1 - y0) // 3)
+        for k in range(n):
+            lx = int(x0 + k * (seg + gap))
+            round_rect(draw, (lx - 2, y1 - th - 2, int(lx + seg) + 2, y1 + 2), th // 2 + 2, WHITE)
+            round_rect(draw, (lx, y1 - th, int(lx + seg), y1), th // 2, NAVY_DARK)
+        return img
+    if s.get("plate"):   # clean white rounded label strip drawn in code (art has none)
+        rad = (y1 - y0) // 3
+        sh = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        round_rect(ImageDraw.Draw(sh), (x0, y0 + 6, x1, y1 + 6), rad, (0, 0, 0, 90))
+        img = Image.alpha_composite(img.convert("RGBA"), sh.filter(ImageFilter.GaussianBlur(6))).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        round_rect(draw, (x0, y0, x1, y1), rad, WHITE)
+        pad_x, pad_y = int((x1 - x0) * 0.12), int((y1 - y0) * 0.16)
+        x0, y0, x1, y1 = x0 + pad_x, y0 + pad_y, x1 - pad_x, y1 - pad_y
+    lines = s["text"].split("\n")
+    size = s.get("size") or fit_size(draw, lines, x1 - x0, y1 - y0)
+    f = load_font(size)
+    lh = int(size * 1.08)
+    total_h = lh * len(lines)
+    layer = Image.new("L", img.size, 0)
+    ld = ImageDraw.Draw(layer)
+    for k, ln in enumerate(lines):
+        b = ld.textbbox((0, 0), ln, font=f)
+        tx = (x0 - b[0]) if s.get("align") == "left" else x0 + ((x1 - x0) - (b[2] - b[0])) // 2 - b[0]
+        ty = y0 + ((y1 - y0) - total_h) // 2 + k * lh - b[1] + (lh - (b[3] - b[1])) // 2
+        ld.text((tx, ty), ln, font=f, fill=255)
+    base = img.convert("RGBA")
+    if kind == "glow":
+        glow = Image.new("RGBA", img.size, (255, 236, 140, 0))
+        glow.putalpha(layer.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(14)))
+        base = Image.alpha_composite(base, glow)
+        base = Image.alpha_composite(base, glow)
+        core = Image.new("RGBA", img.size, (255, 250, 220, 0))
+        core.putalpha(layer)
+        base = Image.alpha_composite(base, core)
+    elif kind == "dotted":
+        # tracing style: faint letter fill + dashed outline ring
+        from PIL import ImageChops
+        k = max(7, (size // 18) | 1)
+        ring = ImageChops.subtract(layer.filter(ImageFilter.MaxFilter(k)), layer.filter(ImageFilter.MinFilter(k)))
+        step = max(12, size // 9)
+        dots = Image.new("L", img.size, 0)
+        dd = ImageDraw.Draw(dots)
+        for yy in range(y0 - step, y1 + step, step):
+            for xx in range(x0 - step, x1 + step, step):
+                dd.ellipse((xx, yy, xx + step * 0.62, yy + step * 0.62), fill=255)
+        fill = Image.new("RGBA", img.size, (160, 170, 240, 0))
+        fill.putalpha(layer.point(lambda v: int(v * 0.35)))
+        base = Image.alpha_composite(base, fill)
+        col = Image.new("RGBA", img.size, INDIGO + (0,))
+        col.putalpha(ImageChops.multiply(ring, dots))
+        base = Image.alpha_composite(base, col)
+    else:  # word: navy text with a soft white halo so it reads on boards, cards and paper
+        halo = Image.new("RGBA", img.size, tuple(s.get("halo", WHITE)) + (0,))
+        halo.putalpha(layer.filter(ImageFilter.MaxFilter(5)).point(lambda a: int(a * 0.55)))
+        base = Image.alpha_composite(base, halo)
+        txt = Image.new("RGBA", img.size, tuple(s.get("color", NAVY_DARK)) + (0,))
+        txt.putalpha(layer)
+        base = Image.alpha_composite(base, txt)
+    return base.convert("RGB")
+
+
+def uniform_sizes(img, stamps):
+    """Stamps sharing a "group" key get the same (largest common) font size, so a row of cards reads evenly."""
+    groups: dict = {}
+    draw = ImageDraw.Draw(img)
+    for st in stamps:
+        if st.get("group") and "box" in st and not st.get("size"):
+            x0, y0, x1, y1 = (int(PX_W * st["box"][0]), int(PX_H * st["box"][1]), int(PX_W * st["box"][2]), int(PX_H * st["box"][3]))
+            sz = fit_size(draw, st["text"].split("\n"), x1 - x0, y1 - y0)
+            groups[st["group"]] = min(groups.get(st["group"], 10 ** 6), sz)
+    return [dict(st, size=groups[st["group"]]) if st.get("group") in groups else st for st in stamps]
+
+
+# ---------------------------------------------------------------- slide composition
+def load_art(src: Path, zoom=None):
+    img = Image.open(src).convert("RGB")
+    if zoom:   # (scale, anchor-x frac, anchor-y frac): crop in around a fixed point to push edge decoration off-frame
+        sc, ax, ay = zoom
+        w, h = img.size
+        nw, nh = w / sc, h / sc
+        l, t = ax * (w - nw), ay * (h - nh)
+        img = img.crop((int(round(l)), int(round(t)), int(round(l + nw)), int(round(t + nh))))
+    w, h = img.size
+    t = PX_W / PX_H
+    if abs(w / h - t) > 0.01:
+        if w / h > t:
+            nw = int(h * t)
+            img = img.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+        else:
+            nh = int(w / t)
+            img = img.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
+    return img.resize((PX_W, PX_H), Image.Resampling.LANCZOS)
+
+
+def compose_slide(src, dest, title, page, total, phrase, is_title, chip_pos, stamps, title_bottom=6.42, title_lines=None,
+                  title_max_right=None, zoom=None, title_top=None):
+    img = load_art(src, zoom)
+    stamps = uniform_sizes(img, stamps)
+    for s in stamps:
+        img = stamp(img, s)
+    draw = ImageDraw.Draw(img)
+    font14 = load_font(36)
+
+    tw, th = text_size(draw, title, font14)
+    lw = max(ix(4.2), tw + 44)
+    lx, ly = ix(0.25), iy(0.2)
+    round_rect(draw, (lx, ly, lx + lw, ly + iy(0.45)), 22, WHITE)
+    draw.text((lx + 18, ly + (iy(0.45) - th) // 2 - 2), title, font=font14, fill=NAVY)
+
+    badge = f"{page} / {total}"
+    bw, bh, bx, by = ix(1.5), iy(0.45), ix(11.55), iy(0.2)
+    round_rect(draw, (bx, by, bx + bw, by + bh), 22, INDIGO)
+    tw, th = text_size(draw, badge, font14)
+    draw.text((bx + (bw - tw) // 2, by + (bh - th) // 2 - 2), badge, font=font14, fill=WHITE)
+
+    img = draw_footer(img)
+    draw = ImageDraw.Draw(img)
+    f_tw, _, _, _, _, logo_y, footer_left = footer_geometry(draw)
+
+    if is_title:
+        # two stacked pills low-left: "Lesson N -" / "{Title}", 52-58pt (104-116px)
+        lines = list(title_lines) if title_lines else [t.strip() for t in title.replace("\u2013", "\u2013\n", 1).split("\n")]
+        max_right = footer_left - ix(0.2)
+        if title_max_right:   # keep the pills left of a face that sits low in the frame (e.g. Remo)
+            max_right = min(max_right, int(PX_W * title_max_right))
+        size = 116
+        while True:
+            f = load_font(size)
+            widths = [draw.textbbox((0, 0), ln, font=f)[2] for ln in lines]
+            if ix(0.3) + max(widths) + 70 <= max_right or size <= 104:
+                break
+            size -= 4
+        asc, desc = f.getmetrics()
+        pill_h, gap = asc + desc + 24, 12
+        bottom = iy(title_bottom)
+        right = ix(0.3) + max(widths) + 70
+        if bottom > logo_y - 12 and right > footer_left - ix(0.15):
+            bottom = min(bottom, logo_y - 12)   # never let a low title collide with the footer
+        y = bottom - len(lines) * pill_h - (len(lines) - 1) * gap
+        if title_top is not None:   # top-anchored stack when a character stands in the lower-left title zone
+            y = iy(title_top)
+        for ln, w in zip(lines, widths):
+            round_rect(draw, (ix(0.3), y, ix(0.3) + w + 70, y + pill_h), 28, WHITE)
+            draw.text((ix(0.3) + 35, y + 12), ln, font=f, fill=NAVY)
+            y += pill_h + gap
+
+    size = 64
+    chip_lines = phrase.split("\n")        # a chip may wrap onto 2 lines to fit a gap beside a character
+    ms = [measure(draw, ln, size) for ln in chip_lines]
+    lh, lgap = max(m[1] for m in ms), 10
+    tw, th, top = max(m[0] for m in ms), lh * len(ms) + lgap * (len(ms) - 1), min(m[2] for m in ms)
+    cw, ch = tw + 72, max(iy(0.7), th + 32)
+    if isinstance(chip_pos, tuple):
+        cx, cy = int(PX_W * chip_pos[0]) - cw // 2, int(PX_H * chip_pos[1])
+    elif chip_pos == "top":
+        cx, cy = (PX_W - cw) // 2, iy(0.9)
+    else:
+        cx, cy = (PX_W - cw) // 2, iy(6.05)
+        if cx + cw > footer_left - ix(0.15):
+            cy = min(cy, logo_y - 18 - ch)
+    round_rect(draw, (cx, cy, cx + cw, cy + ch), 26, YELLOW)
+    ly0 = cy + (ch - th) // 2 - top
+    for ln, m in zip(chip_lines, ms):
+        draw_runs(draw, (cx + (cw - m[0]) // 2, ly0), ln, size, NAVY_DARK)
+        ly0 += lh + lgap
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    backup_if_exists(dest)
+    img.save(dest, "JPEG", quality=92)
+
+
+def build(n: int, refs: Path, laptop_root: Path, copies: bool, only=None):
+    L = LESSONS[n]
+    folder = refs / "lessons" / L["folder"]
+    art_dir, comp_dir = folder / "art", folder / "composed"
+    total = len(L["pages"])
+    stamps = {int(k): v for k, v in L.get("stamps", {}).items()}
+    override = folder / "stamps.json"
+    if override.exists():
+        for k, v in json.loads(override.read_text(encoding="utf-8")).items():
+            stamps[int(k)] = [dict(s, box=tuple(s["box"])) if "box" in s else dict(s, center=tuple(s["center"])) for s in v]
+        print("stamp overrides from", override)
+    missing = [i for i in range(1, total + 1) if not (art_dir / f"{L['prefix']}{i:02d}.png").exists()]
+    if missing:
+        raise SystemExit(f"Lesson {n}: missing art for slides {missing} in {art_dir}")
+    composed = []
+    for i, (phrase, is_title, pos) in enumerate(L["pages"], 1):
+        dest = comp_dir / f"{L['prefix']}{i:02d}.jpg"
+        if only is None or i in only:
+            compose_slide(art_dir / f"{L['prefix']}{i:02d}.png", dest, L["title"], i, total, phrase, is_title, pos, stamps.get(i, []),
+                          L.get("title_bottom", 6.42), L.get("title_lines"),
+                          L.get("title_max_right"), L.get("art_zoom", {}).get(i), L.get("title_top"))
+        composed.append(dest)
+    if only is not None or Ctx.stamp_debug:
+        print(f"Lesson {n}: composed slides only (tuning mode), no PPTX written")
+        return None
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = SLIDE_W, SLIDE_H
+    for p in composed:
+        prs.slides.add_slide(prs.slide_layouts[6]).shapes.add_picture(str(p), Emu(0), Emu(0), width=SLIDE_W, height=SLIDE_H)
+    out = folder / L["pptx"]
+    try:
+        backup_if_exists(out)
+        prs.save(str(out))
+    except PermissionError as e:
+        print("LOCKED (not updated):", out, "-", e)
+        LOCKED.append(str(out))
+        out = folder / f"{out.stem}.new-{Ctx.stamp_ts}{out.suffix}"
+        prs.save(str(out))   # keep the fresh deck next to the locked one so the copies below still update
+    print("wrote", out, "slides:", len(Presentation(str(out)).slides))
+    if not copies:
+        return out
+    if safe_copy(out, folder / f"RemoEd {L['pptx']}"):
+        print("lesson folder copy", folder / f"RemoEd {L['pptx']}")
+    if safe_copy(out, refs / L["pptx"]):
+        print("root copy", refs / L["pptx"])
+    stage = refs / "drive-upload-stage"
+    stage.mkdir(exist_ok=True)
+    if safe_copy(out, stage / f"RemoEd {L['pptx']}"):
+        print("drive stage", stage / f"RemoEd {L['pptx']}")
+    level_dir = laptop_root / f"Level {LEVEL_NUM}"
+    if level_dir.is_dir():
+        if safe_copy(out, level_dir / f"RemoEd {L['pptx']}"):
+            print("laptop copy", level_dir / f"RemoEd {L['pptx']}")
+    else:
+        print("laptop folder missing, skipped (not created):", level_dir)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--lessons", nargs="+", type=int, default=sorted(LESSONS))
+    ap.add_argument("--root", default=None, help="RemoEdPH project root (default: two levels above this script, else laptop path)")
+    ap.add_argument("--font", default=None)
+    ap.add_argument("--fallback-font", default=None, help="font for glyphs Arial Rounded lacks (e.g. arrows)")
+    ap.add_argument("--laptop-root", default=str(DEFAULT_LAPTOP))
+    ap.add_argument("--no-copies", action="store_true")
+    ap.add_argument("--stamp-debug", action="store_true", help="outline stamp boxes in red; composes only, no PPTX")
+    ap.add_argument("--slides", nargs="+", type=int, default=None, help="compose only these slides (tuning), no PPTX")
+    a = ap.parse_args()
+
+    here = Path(__file__).resolve()
+    root = Path(a.root) if a.root else (here.parents[2] if (here.parents[2] / "docs" / "lesson-references").is_dir() else DEFAULT_ROOT)
+    refs = root / "docs" / "lesson-references"
+    Ctx.font_path = first_existing([a.font, r"C:\Windows\Fonts\ARLRDBD.TTF", r"C:\Windows\Fonts\arialbd.ttf"])
+    Ctx.fallback_path = first_existing([a.fallback_font, r"C:\Windows\Fonts\arialbd.ttf", r"C:\Windows\Fonts\seguisym.ttf",
+                                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"])
+    Ctx.logo = refs / "remoedph-logo.jpg"
+    Ctx.stamp_debug = a.stamp_debug
+    print("root:", root, "| font:", Ctx.font_path, "| fallback:", Ctx.fallback_path)
+    if not Ctx.logo.exists():
+        raise SystemExit(f"logo not found: {Ctx.logo}")
+    for n in a.lessons:
+        if n not in LESSONS:
+            raise SystemExit(f"Lesson {n} is not configured in this script")
+        build(n, refs, Path(a.laptop_root), not a.no_copies, set(a.slides) if a.slides else None)
+    if LOCKED:
+        print("NOT UPDATED (file locked - close it and re-run):")
+        for p in LOCKED:
+            print("  ", p)
+        raise SystemExit(3)
+
+
+if __name__ == "__main__":
+    main()

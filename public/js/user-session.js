@@ -22,6 +22,7 @@
       var p = String(loc.pathname).toLowerCase();
       if (p.indexOf('super-monitor') !== -1) return 'admin';
       if (p.startsWith('/admin-') || p.indexOf('/admin/') !== -1) return 'admin';
+      if (p.indexOf('forgot-password') !== -1 || p.indexOf('reset-password') !== -1) return '';
       if (p.startsWith('/teacher-')) return 'teacher';
       if (p.startsWith('/student-')) return 'student';
       if (p.indexOf('change-password') !== -1) {
