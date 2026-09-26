@@ -22,6 +22,7 @@ const {
   uiLifecycleLabel,
   validateMariBankWithdrawBody,
   sendWithdrawalEmailToAccounting,
+  collectCarryForwardFromHistory,
   ALLOWED_BANK,
 } = require('./services/payrollWithdrawService');
 const Referral = require('./models/Referral');
@@ -3208,62 +3209,102 @@ router.post('/dispense-salaries', async (req, res) => {
       const weekClasses = byTeacherId.get(String(teacher.teacherId)) || [];
       const bonus = getPeriodIncentiveAmount(teacher, periodKey);
       const row = computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate, bonus);
-      const weeklySalary = row.weeklySalary;
-
-      if (weeklySalary > 0) {
-        // Release funds for MariBank withdraw (DISBURSED — not bank-final COMPLETED)
-        const already = (teacher.paymentHistory || []).find(
-          (p) => p.duration === `${startDate} - ${endDate}` && isReleased(p.status)
-        );
-        if (already) {
-          continue;
-        }
-        await Teacher.findByIdAndUpdate(teacher._id, {
-          $push: {
-            paymentHistory: {
-              duration: `${startDate} - ${endDate}`,
-              issueDate: issueDate,
-              amount: weeklySalary,
-              remark: 0,
-              paymentMethod: ALLOWED_BANK,
-              account: teacher.username,
-              status: 'DISBURSED',
-              disbursedAt: new Date(),
-              breakdown: {
-                completedClasses: row.completedClasses,
-                studentAbsentClasses: row.studentAbsentClasses,
-                teacherAbsentClasses: row.teacherAbsentClasses,
-                lateMinutes: row.lateMinutes,
-                ratePerClass: row.rate,
-                baseFee: row.baseWeeklyFee,
-                studentAbsentPayment: row.studentAbsentPayment,
-                bonusIncentive: row.bonusIncentive,
-                lateDeductions: row.lateDeductions,
-                cancellationDeductions: 0,
-                absentDeductions: row.teacherAbsentDeductions,
-                netAmount: weeklySalary,
-              },
-            }
-          }
-        });
-        
-        // Create salary notification for teacher dashboard
-        try {
-          await createNotification(
-            teacher.teacherId,
-            'salary',
-            `Your salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been released. Open Teaching Fee → Withdraw via MariBank.`
-          );
-        } catch (notifError) {
-          console.error('❌ Error creating salary notification for teacher:', teacher.teacherId, notifError);
-        }
-        
-        dispensedTeachers.push({
-          teacherId: teacher._id,
-          email: teacher.username,
-          weeklySalary
-        });
+      const durationKey = `${startDate} - ${endDate}`;
+      const already = (teacher.paymentHistory || []).find(
+        (p) => p.duration === durationKey && isReleased(p.status)
+      );
+      if (already) {
+        continue;
       }
+
+      const { carryForward, paymentIds: carryIds } = collectCarryForwardFromHistory(
+        teacher.paymentHistory,
+        durationKey
+      );
+      const periodEarned = Number(row.weeklySalary) || 0;
+      const releaseAmount = Math.max(0, periodEarned + carryForward);
+
+      // Nothing to release this cut-off (and nothing carried forward)
+      if (releaseAmount <= 0) {
+        continue;
+      }
+
+      // Fold prior unwithdrawn DISBURSED rows into this cut-off, then release the combined amount
+      if (carryIds.length) {
+        await Teacher.updateOne(
+          { _id: teacher._id },
+          {
+            $set: {
+              'paymentHistory.$[elem].status': 'ROLLED_OVER',
+              'paymentHistory.$[elem].completedAt': new Date(),
+            },
+          },
+          {
+            arrayFilters: [
+              {
+                'elem._id': {
+                  $in: carryIds
+                    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+                    .map((id) => new mongoose.Types.ObjectId(id)),
+                },
+              },
+            ],
+          }
+        );
+      }
+
+      await Teacher.findByIdAndUpdate(teacher._id, {
+        $push: {
+          paymentHistory: {
+            duration: durationKey,
+            issueDate: issueDate,
+            amount: releaseAmount,
+            remark: 0,
+            paymentMethod: ALLOWED_BANK,
+            account: teacher.username,
+            status: 'DISBURSED',
+            disbursedAt: new Date(),
+            breakdown: {
+              completedClasses: row.completedClasses,
+              studentAbsentClasses: row.studentAbsentClasses,
+              teacherAbsentClasses: row.teacherAbsentClasses,
+              lateMinutes: row.lateMinutes,
+              ratePerClass: row.rate,
+              baseFee: row.baseWeeklyFee,
+              studentAbsentPayment: row.studentAbsentPayment,
+              bonusIncentive: row.bonusIncentive,
+              lateDeductions: row.lateDeductions,
+              cancellationDeductions: 0,
+              absentDeductions: row.teacherAbsentDeductions,
+              periodEarned,
+              carryForward,
+              netAmount: releaseAmount,
+            },
+          },
+        },
+      });
+
+      try {
+        const carryNote =
+          carryForward > 0
+            ? ` (includes ₱${carryForward.toFixed(2)} carried from prior cut-off(s) not yet withdrawn)`
+            : '';
+        await createNotification(
+          teacher.teacherId,
+          'salary',
+          `Your salary of ₱${releaseAmount.toFixed(2)} for ${startDate} - ${endDate} has been released${carryNote}. Open Teaching Fee → Withdraw via MariBank. Minimum withdraw is ₱100; daily MariBank limit is ₱50,000.`
+        );
+      } catch (notifError) {
+        console.error('❌ Error creating salary notification for teacher:', teacher.teacherId, notifError);
+      }
+
+      dispensedTeachers.push({
+        teacherId: teacher._id,
+        email: teacher.username,
+        weeklySalary: releaseAmount,
+        periodEarned,
+        carryForward,
+      });
     }
     
     console.log(`Dispensed salaries to ${dispensedTeachers.length} teachers`);

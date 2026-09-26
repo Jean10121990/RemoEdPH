@@ -7,6 +7,11 @@ const ALLOWED_BANK = 'MariBank';
 const ACCOUNTING_PAYOUT_EMAIL = 'support@remoedph.com';
 const MARIBANK_OPEN_URL = 'https://maribank.ph/c/earnfreemoney?referralCode=KB740303';
 
+/** Minimum single MariBank withdraw; below this, amount rolls to the next cut-off. */
+const MIN_WITHDRAW_PHP = 100;
+/** MariBank daily withdrawal cap (informational + UI gate for split days). */
+const MAX_DAILY_WITHDRAW_PHP = 50000;
+
 function normStatus(status) {
   return String(status || '')
     .trim()
@@ -34,9 +39,55 @@ function isCompleted(status) {
   return s === 'COMPLETED' || s === 'SUCCESS' || s === 'PAID';
 }
 
+/** Prior-cut-off balance folded into a newer dispense (no longer withdrawable alone). */
+function isRolledOver(status) {
+  const s = normStatus(status);
+  return s === 'ROLLED_OVER' || s === 'ROLLED_TO_NEXT';
+}
+
 /** Already released by Accounting (dispense done for this cut-off). */
 function isReleased(status) {
-  return isDisbursed(status) || isWithdrawRequested(status) || isCompleted(status);
+  return (
+    isDisbursed(status) ||
+    isWithdrawRequested(status) ||
+    isCompleted(status) ||
+    isRolledOver(status)
+  );
+}
+
+/**
+ * Sum DISBURSED rows from earlier cut-offs (not yet withdrawn) to fold into the next dispense.
+ * @returns {{ carryForward: number, paymentIds: string[] }}
+ */
+function collectCarryForwardFromHistory(paymentHistory, currentDuration) {
+  const cur = String(currentDuration || '').trim();
+  let carryForward = 0;
+  const paymentIds = [];
+  for (const p of paymentHistory || []) {
+    if (!p || !isDisbursed(p.status)) continue;
+    const dur = String(p.duration || '').trim();
+    if (cur && dur === cur) continue;
+    const amt = Number(p.amount);
+    if (!Number.isFinite(amt) || amt <= 0) continue;
+    carryForward += amt;
+    if (p._id) paymentIds.push(String(p._id));
+  }
+  return { carryForward, paymentIds };
+}
+
+function validateWithdrawAmount(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) {
+    return { ok: false, code: 'INVALID_AMOUNT', message: 'Invalid withdrawal amount.' };
+  }
+  if (n < MIN_WITHDRAW_PHP) {
+    return {
+      ok: false,
+      code: 'BELOW_MIN_WITHDRAW',
+      message: `Minimum withdrawable amount is ₱${MIN_WITHDRAW_PHP}. Amounts below ₱${MIN_WITHDRAW_PHP} are added to the next cut-off.`,
+    };
+  }
+  return { ok: true, amount: n };
 }
 
 function maskAccount(accountNumber) {
@@ -153,6 +204,7 @@ function uiLifecycleLabel(status) {
   if (isDisbursed(status)) return 'Released — withdraw';
   if (isWithdrawRequested(status)) return 'Processing payout';
   if (isCompleted(status)) return 'Completed';
+  if (isRolledOver(status)) return 'Rolled to next cut-off';
   return 'Pending Admin Release';
 }
 
@@ -160,12 +212,17 @@ module.exports = {
   ALLOWED_BANK,
   ACCOUNTING_PAYOUT_EMAIL,
   MARIBANK_OPEN_URL,
+  MIN_WITHDRAW_PHP,
+  MAX_DAILY_WITHDRAW_PHP,
   maskAccount,
   validateMariBankWithdrawBody,
+  validateWithdrawAmount,
+  collectCarryForwardFromHistory,
   sendWithdrawalEmailToAccounting,
   isDisbursed,
   isWithdrawRequested,
   isCompleted,
+  isRolledOver,
   isReleased,
   uiLifecycleLabel,
   normStatus,

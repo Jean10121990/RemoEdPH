@@ -14,7 +14,7 @@
   <script src="js/user-session.js"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <script src="js/teacher-payout-settings.js"></script>
-  <script src="js/payroll-withdraw-modal.js?v=2"></script>
+  <script src="js/payroll-withdraw-modal.js?v=3"></script>
   <style>
     .fee-cancel-tooltip-wrap { position: relative; display: inline-flex; align-items: center; align-self: flex-end; margin-bottom: 2px; }
     .fee-cancel-q-btn {
@@ -390,6 +390,12 @@
               </div>
               <p id="fee-maribank-daily-limit-note" hidden style="display:none;margin:8px 0 0;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:0.78rem;line-height:1.4;font-weight:600;">
                 Note: MariBank maximum daily withdrawal limit is up to ₱50,000. If your Available to Withdraw exceeds ₱50,000, you may need more than one day (or split transfers) to complete withdrawal.
+              </p>
+              <p id="fee-min-withdraw-note" hidden style="display:none;margin:8px 0 0;padding:8px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1e3a8a;font-size:0.78rem;line-height:1.4;font-weight:600;">
+                Minimum withdrawable amount is ₱100. Amounts below ₱100 (and any balance not withdrawn) are added to the next cut-off.
+              </p>
+              <p id="fee-withdraw-rules-note" style="margin:8px 0 0;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;color:#475569;font-size:0.72rem;line-height:1.45;">
+                Withdraw rules: minimum ₱100 per MariBank withdrawal · daily MariBank limit ₱50,000 · any amount not withdrawn rolls into the next cut-off.
               </p>
               <div style="margin-top:8px;background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
                 <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Pending Earnings</div>
@@ -1190,11 +1196,17 @@
         pendingEarn = Math.max(0, earnedNet);
       }
       const netAmount = earnedNet;
+      // Prefer released paymentHistory.amount (may include carry-forward from prior cut-offs)
+      const releasedWalletAmt = Number(window.__teacherWithdrawPayment && window.__teacherWithdrawPayment.amount);
+      const displayWalletAmt =
+        kind === 'available' && Number.isFinite(releasedWalletAmt) && releasedWalletAmt > 0
+          ? releasedWalletAmt
+          : netAmount;
       
       // Update display — keep cut-off amount; only the label changes after withdraw
       document.getElementById('total-deductions').textContent = '₱' + totalDeductions.toFixed(2);
       const netAmountElement = document.getElementById('net-amount');
-      netAmountElement.textContent = '₱' + netAmount.toFixed(2);
+      netAmountElement.textContent = '₱' + displayWalletAmt.toFixed(2);
       const walletLabel = document.getElementById('fee-wallet-amount-label');
       const walletBox = document.getElementById('fee-wallet-amount-box');
       const sectionTitle = document.getElementById('fee-wallet-section-title-text');
@@ -1215,7 +1227,7 @@
           walletBox.style.borderColor = '#c8e6c9';
         }
         if (walletLabel) walletLabel.style.color = '#2e7d32';
-        netAmountElement.style.color = netAmount < 0 ? '#dc3545' : '#2e7d32';
+        netAmountElement.style.color = displayWalletAmt < 0 ? '#dc3545' : '#2e7d32';
       } else {
         if (walletLabel) walletLabel.textContent = 'Pending Earnings';
         if (sectionTitle) sectionTitle.textContent = 'Available to Withdraw';
@@ -1241,13 +1253,29 @@
       const pendingEl = document.getElementById('fee-pending-earnings');
       if (pendingEl) pendingEl.textContent = '₱' + pendingEarn.toFixed(2);
 
+      const MIN_WITHDRAW_PHP = 100;
       const MARIBANK_DAILY_WITHDRAW_LIMIT = 50000;
       const limitNote = document.getElementById('fee-maribank-daily-limit-note');
+      const minNote = document.getElementById('fee-min-withdraw-note');
       if (limitNote) {
         const showLimit =
-          kind === 'available' && Number(earnedNet) > MARIBANK_DAILY_WITHDRAW_LIMIT;
+          kind === 'available' && Number(displayWalletAmt) > MARIBANK_DAILY_WITHDRAW_LIMIT;
         limitNote.hidden = !showLimit;
         limitNote.style.display = showLimit ? 'block' : 'none';
+      }
+      if (minNote) {
+        const showMin =
+          kind === 'available' &&
+          Number(displayWalletAmt) > 0 &&
+          Number(displayWalletAmt) < MIN_WITHDRAW_PHP;
+        minNote.hidden = !showMin;
+        minNote.style.display = showMin ? 'block' : 'none';
+      }
+
+      const withdrawBtn = document.getElementById('teacher-withdraw-btn');
+      if (withdrawBtn && kind === 'available' && window.__teacherWithdrawPayment) {
+        const canWithdraw = Number(displayWalletAmt) >= MIN_WITHDRAW_PHP;
+        withdrawBtn.style.display = canWithdraw ? 'block' : 'none';
       }
       
       // Log the calculation for debugging
@@ -2100,7 +2128,10 @@
               statusElement.classList.remove('is-pending');
               statusElement.classList.add('is-success');
               window.__teacherWithdrawPayment = weekPayment;
-              if (withdrawBtn) withdrawBtn.style.display = 'block';
+              const amt = Number(weekPayment.amount) || 0;
+              if (withdrawBtn) {
+                withdrawBtn.style.display = amt >= 100 ? 'block' : 'none';
+              }
             } else if (st === 'WITHDRAWAL_REQUESTED') {
               statusElement.textContent = 'Processing payout';
               statusElement.classList.remove('is-pending');
@@ -2110,6 +2141,11 @@
               statusElement.textContent = 'Completed';
               statusElement.classList.remove('is-pending');
               statusElement.classList.add('is-success');
+              if (withdrawBtn) withdrawBtn.style.display = 'none';
+            } else if (st === 'ROLLED_OVER' || st === 'ROLLED_TO_NEXT') {
+              statusElement.textContent = 'Rolled to next cut-off';
+              statusElement.classList.remove('is-success');
+              statusElement.classList.add('is-pending');
               if (withdrawBtn) withdrawBtn.style.display = 'none';
             } else {
               statusElement.textContent = weekPayment.status || 'Pending';
