@@ -4511,6 +4511,37 @@ function parsePayslipDuration(duration) {
   return { startDate: m[1], endDate: m[2] };
 }
 
+function findPaymentHistoryForPeriod(history, startDate, endDate) {
+  const list = Array.isArray(history) ? history : [];
+  const exact = `${startDate} - ${endDate}`;
+  const hit = list.find((p) => p && p.duration === exact);
+  if (hit) return hit;
+  return (
+    list.find((p) => {
+      const parsed = parsePayslipDuration(p && p.duration);
+      return parsed && parsed.startDate === startDate && parsed.endDate === endDate;
+    }) || null
+  );
+}
+
+function payslipStatusFromPayment(paymentRecord) {
+  const {
+    isWithdrawRequested,
+    isCompleted,
+    isDisbursed,
+  } = require('./services/payrollWithdrawService');
+  if (!paymentRecord || !paymentRecord.status) {
+    return { label: 'Pending', kind: 'pending' };
+  }
+  if (isWithdrawRequested(paymentRecord.status) || isCompleted(paymentRecord.status)) {
+    return { label: 'Withdrawn', kind: 'paid' };
+  }
+  if (isDisbursed(paymentRecord.status)) {
+    return { label: 'Available to Withdraw', kind: 'available' };
+  }
+  return { label: 'Pending', kind: 'pending' };
+}
+
 function teacherLegalDisplayName(t) {
   if (!t) return 'Teacher';
   return (
@@ -4567,7 +4598,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
   let absentDeductions = 0;
 
   bookings.forEach((booking) => {
-    if (booking.status === 'completed') {
+    if (String(booking.status || '').toLowerCase() === 'completed') {
       completedClasses++;
     } else if (booking.status === 'cancelled') {
       cancelledClasses++;
@@ -4697,35 +4728,43 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
     }
 
     if (!paymentRecord) {
-      const durationKey = `${startDate} - ${endDate}`;
-      paymentRecord =
-        (teacher.paymentHistory || []).find((p) => p && p.duration === durationKey) || null;
+      paymentRecord = findPaymentHistoryForPeriod(teacher.paymentHistory, startDate, endDate);
     }
 
     const live = await computeTeacherPeriodFeeSummary(teacherId, startDate, endDate);
     const snap = paymentRecord && paymentRecord.breakdown ? paymentRecord.breakdown : null;
-
-    const baseFee = snap ? Number(snap.baseFee) : live.weeklyFee;
-    const lateDeductions = snap ? Number(snap.lateDeductions) : live.lateDeductions;
-    const cancellationDeductions = snap
-      ? Number(snap.cancellationDeductions || 0)
-      : live.cancellationDeductions;
-    const absentDeductions = snap ? Number(snap.absentDeductions) : live.absentDeductions;
-    const completedClasses = snap ? Number(snap.completedClasses) : live.completedClasses;
-    const ratePerClass = snap ? Number(snap.ratePerClass) : live.ratePerClass;
-    const bonusIncentive = snap
-      ? Number(snap.bonusIncentive || 0)
-      : Number(live.bonusIncentive || 0);
-    const netFromLedger =
-      paymentRecord && paymentRecord.amount != null ? Number(paymentRecord.amount) : null;
-    const netAmount = netFromLedger != null ? netFromLedger : live.netAmount;
+    const n = (v, fb = 0) => {
+      const x = Number(v);
+      return Number.isFinite(x) ? x : fb;
+    };
+    // Prefer the higher of snapshot vs live so payslip matches Accounting (class fee + bonus).
+    const baseFee = Math.max(n(snap && snap.baseFee), n(live.weeklyFee));
+    const lateDeductions = Math.max(n(snap && snap.lateDeductions), n(live.lateDeductions));
+    const cancellationDeductions = Math.max(
+      n(snap && snap.cancellationDeductions),
+      n(live.cancellationDeductions)
+    );
+    const absentDeductions = Math.max(n(snap && snap.absentDeductions), n(live.absentDeductions));
+    const completedClasses = Math.max(n(snap && snap.completedClasses), n(live.completedClasses));
+    const ratePerClass = n(snap && snap.ratePerClass) > 0 ? n(snap.ratePerClass) : n(live.ratePerClass);
+    const bonusIncentive = Math.max(n(snap && snap.bonusIncentive), n(live.bonusIncentive));
+    const studentAbsentClasses = Math.max(
+      n(snap && snap.studentAbsentClasses),
+      n(live.studentAbsentClasses)
+    );
+    const studentAbsentPayment = Math.max(
+      n(snap && snap.studentAbsentPayment),
+      n(live.studentAbsentPayment)
+    );
     const totalDeductions = lateDeductions + cancellationDeductions + absentDeductions;
-
-    const paidStatuses = ['success', 'paid'];
-    const statusRaw = (paymentRecord && paymentRecord.status) || (live.netAmount > 0 ? 'Pending' : 'Pending');
-    const isPaid = paidStatuses.includes(String(statusRaw).toLowerCase());
-
-    const withdrawableAmount = Number(netAmount) || 0;
+    const reconstructedNet = Math.max(
+      0,
+      baseFee + studentAbsentPayment + bonusIncentive - totalDeductions
+    );
+    const ledgerAmt = n(paymentRecord && paymentRecord.amount);
+    const netAmount = Math.max(reconstructedNet, ledgerAmt);
+    const withdrawableAmount = netAmount;
+    const payoutUi = payslipStatusFromPayment(paymentRecord);
     const salaryDate = salaryDateFromPayPeriodYmd(startDate, endDate);
     const issueDate =
       (paymentRecord && paymentRecord.issueDate) || new Date(`${salaryDate}T12:00:00+08:00`);
@@ -4758,19 +4797,16 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
         paymentMethod:
           (paymentRecord && paymentRecord.paymentMethod) || 'Approved digital channel',
         account: (paymentRecord && paymentRecord.account) || teacher.username,
-        status: isPaid ? 'Paid' : 'Pending / Accrued',
+        status: payoutUi.label,
+        statusKind: payoutUi.kind,
         paymentId: paymentRecord ? String(paymentRecord._id) : null,
         earnings: {
           ratePerClass,
           completedClasses,
           minutesTaught: completedClasses * 25,
           baseFee,
-          studentAbsentClasses: snap
-            ? Number(snap.studentAbsentClasses || 0)
-            : live.studentAbsentClasses,
-          studentAbsentPayment: snap
-            ? Number(snap.studentAbsentPayment || 0)
-            : live.studentAbsentPayment,
+          studentAbsentClasses,
+          studentAbsentPayment,
           cancelledClasses: live.cancelledClasses,
           absentClasses: snap
             ? Number(snap.teacherAbsentClasses != null ? snap.teacherAbsentClasses : snap.absentClasses || 0)
@@ -4788,9 +4824,11 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
           'Withdrawable amount is only this cut-off’s net (1st cut-off 1–15, salary date the 15th; 2nd cut-off 16–end of month, salary date the last day of the month). Other periods are not included.',
           'Bonus/Incentive is Accounting-entered at the Founder’s discretion (e.g. successful referral plan purchase, internet aid) and is not a fixed monthly entitlement.',
           'Rate is per completed 25-minute class session.',
-          isPaid
-            ? 'Status Paid means this cut-off was dispensed by RemoEd administration.'
-            : 'Status Pending means this cut-off has not yet been dispensed; amounts are estimated from class records.',
+          payoutUi.kind === 'paid'
+            ? 'Status Withdrawn means you already requested or received this cut-off’s payout.'
+            : payoutUi.kind === 'available'
+              ? 'Status Available to Withdraw means Accounting released this cut-off; open Teaching Fee to withdraw.'
+              : 'Status Pending means this cut-off has not yet been released by Accounting; amounts are estimated from class records.',
           'For bank or legal use, print or save as PDF after verifying the withdrawable amount.',
         ],
         generatedAt: new Date().toISOString(),

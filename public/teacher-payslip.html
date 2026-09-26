@@ -114,9 +114,14 @@
       font-weight: 700;
       font-size: 0.8rem;
     }
-    .payslip-stamp .status--paid {
+    .payslip-stamp .status--paid,
+    .payslip-stamp .status--withdrawn {
       background: #dcfce7;
       color: #166534;
+    }
+    .payslip-stamp .status--available {
+      background: #dbeafe;
+      color: #1e40af;
     }
     .payslip-stamp .status--pending {
       background: #fef3c7;
@@ -376,20 +381,28 @@
         setText('payslip-period', p.period && p.period.label);
         setText('payslip-salary-date', formatDate(p.salaryDate || (p.period && p.period.salaryDate) || p.issueDate));
         setText('payslip-method', p.paymentMethod);
-        setText('payslip-net', peso((e.withdrawableAmount != null ? e.withdrawableAmount : e.netAmount)));
+        setText('payslip-net', peso(Number(e.netAmount != null ? e.netAmount : e.withdrawableAmount) || 0));
         setText('payslip-generated-at', formatDate(p.generatedAt) + ' (generated)');
 
         var statusEl = document.getElementById('payslip-status');
         if (statusEl) {
           statusEl.textContent = p.status || '—';
-          statusEl.className = 'status ' + (String(p.status).toLowerCase().indexOf('paid') !== -1 ? 'status--paid' : 'status--pending');
+          var kind = String(p.statusKind || '').toLowerCase();
+          var label = String(p.status || '').toLowerCase();
+          var cls = 'status status--pending';
+          if (kind === 'paid' || label.indexOf('withdrawn') !== -1 || label.indexOf('paid') !== -1 || label.indexOf('completed') !== -1) {
+            cls = 'status status--paid';
+          } else if (kind === 'available' || label.indexOf('withdraw') !== -1) {
+            cls = 'status status--available';
+          }
+          statusEl.className = cls;
         }
 
         var lines = [];
         lines.push(lineRow(
           'Teaching fee (completed classes)',
           (e.completedClasses || 0) + ' × ₱' + Number(e.ratePerClass || 0).toFixed(2) + ' (' + (e.minutesTaught || 0) + ' min)',
-          e.baseFee
+          Number(e.baseFee) || 0
         ));
         if ((e.studentAbsentPayment || 0) !== 0) {
           lines.push(lineRow('Student-absent payment', String(e.studentAbsentClasses || 0) + ' class(es)', e.studentAbsentPayment));

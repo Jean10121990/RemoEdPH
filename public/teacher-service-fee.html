@@ -388,17 +388,10 @@
                 <div class="label" id="fee-wallet-amount-label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Withdrawable this cut-off</div>
                 <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                <div style="background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
-                  <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Pending Earnings</div>
-                  <div id="fee-pending-earnings" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
-                  <div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;">Earned, not yet released</div>
-                </div>
-                <div style="background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
-                  <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Withdrawn</div>
-                  <div id="fee-withdrawn-amount" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
-                  <div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;">Already taken out</div>
-                </div>
+              <div style="margin-top:8px;background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Pending Earnings</div>
+                <div id="fee-pending-earnings" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
+                <div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;">Earned, not yet released</div>
               </div>
 
               <div class="payment-summary-print">
@@ -1244,8 +1237,6 @@
       }
       const pendingEl = document.getElementById('fee-pending-earnings');
       if (pendingEl) pendingEl.textContent = '₱' + pendingEarn.toFixed(2);
-      const withdrawnEl = document.getElementById('fee-withdrawn-amount');
-      if (withdrawnEl) withdrawnEl.textContent = '₱' + withdrawnAmt.toFixed(2);
       
       // Log the calculation for debugging
       console.log(`💰 NET AMOUNT CALCULATION:`);
