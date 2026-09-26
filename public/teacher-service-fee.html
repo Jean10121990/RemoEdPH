@@ -1171,7 +1171,9 @@
       const cancelledDeductions = parseFloat(document.getElementById('cancelled-deductions').value) || 0;
       
       const totalDeductions = lateDeductions + absentDeductions + cancelledDeductions;
-      const netAmount = baseSum + bonusIncentive + totalIssuePayment - totalDeductions;
+      const earnedNet = baseSum + bonusIncentive + totalIssuePayment - totalDeductions;
+      const withdrawn = !!window.__teacherFeeAlreadyWithdrawn;
+      const netAmount = withdrawn ? 0 : earnedNet;
       
       // Update display
       document.getElementById('total-deductions').textContent = '₱' + totalDeductions.toFixed(2);
@@ -1208,7 +1210,9 @@
       console.log(`   Teacher issue payment (20%): ₱${teacherIssuePayment.toFixed(2)}`);
       console.log(`   Total issue payments: ₱${totalIssuePayment.toFixed(2)}`);
       console.log(`   Total deductions: ₱${totalDeductions.toFixed(2)}`);
-      console.log(`   Net amount: ₱${netAmount.toFixed(2)}`);
+      console.log(`   Earned net: ₱${earnedNet.toFixed(2)}`);
+      console.log(`   Already withdrawn: ${withdrawn}`);
+      console.log(`   Withdrawable shown: ₱${netAmount.toFixed(2)}`);
     }
     
     // Note: Rate and completed lessons inputs are disabled for teachers
@@ -2009,6 +2013,7 @@
           const data = await response.json();
           const withdrawBtn = document.getElementById('teacher-withdraw-btn');
           window.__teacherWithdrawPayment = null;
+          window.__teacherFeeAlreadyWithdrawn = false;
           if (data.profile && data.profile.paymentHistory) {
             const weekPayment = data.profile.paymentHistory.find(payment => {
               return payment.duration === `${startDate} - ${endDate}`;
@@ -2019,6 +2024,11 @@
             if (!statusElement) return;
 
             const st = String((weekPayment && weekPayment.status) || '').toUpperCase();
+            window.__teacherFeeAlreadyWithdrawn =
+              st === 'WITHDRAWAL_REQUESTED' ||
+              st === 'COMPLETED' ||
+              st === 'SUCCESS' ||
+              st === 'PAID';
             if (!weekPayment) {
               statusElement.textContent = 'Pending Admin Release';
               statusElement.classList.remove('is-success');
@@ -2046,6 +2056,7 @@
               statusElement.classList.add('is-pending');
               if (withdrawBtn) withdrawBtn.style.display = 'none';
             }
+            if (typeof calculateNetAmount === 'function') calculateNetAmount();
           }
         }
       } catch (error) {
