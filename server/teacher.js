@@ -1480,6 +1480,46 @@ router.get('/slots', async (req, res) => {
       applyBookingFirstSlotOverlay(tCached.slots, freshBookingsForOverlay, actualTeacherId, {
         debugTime: '19:00',
       });
+      const cachedBookingList = Array.isArray(tCached.bookings) ? tCached.bookings : [];
+      const freshById = new Map(freshBookingsForOverlay.map((b) => [String(b._id), b]));
+      const fbIdList = [
+        ...cachedBookingList.map((b) => b && b._id),
+        ...freshBookingsForOverlay.map((b) => b && b._id),
+      ].filter(Boolean);
+      const wrapRows =
+        fbIdList.length > 0
+          ? await Feedback.find({
+              bookingId: { $in: fbIdList.flatMap((id) => [id, String(id)]) },
+              $or: [
+                { feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT },
+                { feedbackRole: { $exists: false } },
+                { feedbackRole: null },
+              ],
+            })
+              .select('bookingId')
+              .lean()
+          : [];
+      const wrapSet = new Set(wrapRows.map((f) => String(f.bookingId)));
+      tCached.bookings = cachedBookingList.map((b) => {
+        const id = String(b._id || '');
+        const fresh = freshById.get(id);
+        const submitted =
+          wrapSet.has(id) ||
+          b.feedbackSubmitted === true ||
+          String((fresh && fresh.status) || b.status || '').toLowerCase() === 'completed';
+        return {
+          ...b,
+          ...(fresh
+            ? {
+                status: fresh.status,
+                attendance: fresh.attendance,
+                finishedAt: fresh.finishedAt,
+              }
+            : {}),
+          hasTeacherFeedback: submitted,
+          feedbackSubmitted: submitted,
+        };
+      });
       return res.json(tCached);
     }
 
@@ -1550,6 +1590,21 @@ router.get('/slots', async (req, res) => {
         },
       ],
     });
+
+    const wrapFeedbackRows =
+      bookings.length > 0
+        ? await Feedback.find({
+            bookingId: { $in: bookings.flatMap((b) => [b._id, String(b._id)]) },
+            $or: [
+              { feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT },
+              { feedbackRole: { $exists: false } },
+              { feedbackRole: null },
+            ],
+          })
+            .select('bookingId')
+            .lean()
+        : [];
+    const wrapFeedbackBookingIds = new Set(wrapFeedbackRows.map((f) => String(f.bookingId)));
 
     const slotsQuery = await TeacherSlot.find(queryFilter);
 
@@ -1658,6 +1713,8 @@ router.get('/slots', async (req, res) => {
               }
             : null,
           hasResolvedIssue: resolvedIssues.length > 0,
+          hasTeacherFeedback: wrapFeedbackBookingIds.has(String(booking._id)),
+          feedbackSubmitted: wrapFeedbackBookingIds.has(String(booking._id)),
         };
       })
     );
@@ -1987,6 +2044,18 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       resolvedLessonId = await resolveLessonIdFromBooking(booking);
     }
 
+    const wrapFb = await Feedback.findOne({
+      bookingId: String(booking._id),
+      $or: [
+        { feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT },
+        { feedbackRole: { $exists: false } },
+        { feedbackRole: null },
+      ],
+    })
+      .select('_id')
+      .lean();
+    const hasTeacherFeedback = !!wrapFb;
+
     res.json({ 
       success: true, 
       booking: {
@@ -2009,7 +2078,9 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         finishedAt: booking.finishedAt,
         attendance: booking.attendance,
         dateTimeUtc: booking.dateTimeUtc,
-        scheduledStartTime: getScheduledStartTime(booking)
+        scheduledStartTime: getScheduledStartTime(booking),
+        hasTeacherFeedback,
+        feedbackSubmitted: hasTeacherFeedback,
       }
     });
   } catch (err) {
@@ -4451,7 +4522,19 @@ function teacherLegalDisplayName(t) {
   );
 }
 
-/** Bi-monthly teaching fee summary (shared by Teaching Fee UI + payslips). */
+function salaryDateFromPayPeriodYmd(startDate, endDate) {
+  const startDay = Number(String(startDate || '').slice(8, 10));
+  if (startDay <= 15) return String(endDate || '').slice(0, 10) || String(startDate).slice(0, 7) + '-15';
+  return String(endDate || '').slice(0, 10);
+}
+
+function payCutOffLabelFromStart(startDate) {
+  const startDay = Number(String(startDate || '').slice(8, 10));
+  return startDay <= 15
+    ? '1st cut-off (1st–15th) · salary date 15th'
+    : '2nd cut-off (16th–end of month) · salary date last day of month';
+}
+
 async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
   const bookings = await Booking.find({
     teacherId,
@@ -4544,7 +4627,8 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
 
   const netAmount = weeklyFee + studentAbsentPayment + bonusIncentive - totalDeductions;
   const status = netAmount > 0 ? 'success' : 'pending';
-  const salaryDateRange = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+  const salaryDate = salaryDateFromPayPeriodYmd(startDate, endDate);
+  const salaryDateRange = `${startDate} to ${endDate} (salary date ${salaryDate})`;
 
   return {
     weeklyFee,
@@ -4562,6 +4646,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
     absentDeductions,
     netAmount,
     ratePerClass,
+    salaryDate,
     startDate,
     endDate,
     periodKey,
@@ -4640,13 +4725,10 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
     const statusRaw = (paymentRecord && paymentRecord.status) || (live.netAmount > 0 ? 'Pending' : 'Pending');
     const isPaid = paidStatuses.includes(String(statusRaw).toLowerCase());
 
+    const withdrawableAmount = Number(netAmount) || 0;
+    const salaryDate = salaryDateFromPayPeriodYmd(startDate, endDate);
     const issueDate =
-      (paymentRecord && paymentRecord.issueDate) ||
-      (() => {
-        const d = new Date(endDate + 'T12:00:00+08:00');
-        d.setDate(d.getDate() + 1);
-        return d;
-      })();
+      (paymentRecord && paymentRecord.issueDate) || new Date(`${salaryDate}T12:00:00+08:00`);
 
     res.json({
       success: true,
@@ -4667,13 +4749,12 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
         period: {
           startDate,
           endDate,
+          salaryDate,
           label: `${startDate} to ${endDate}`,
-          cutOff:
-            Number(String(startDate).slice(8, 10)) <= 15
-              ? '1st–15th of the month'
-              : '16th–end of the month',
+          cutOff: payCutOffLabelFromStart(startDate),
         },
         issueDate,
+        salaryDate,
         paymentMethod:
           (paymentRecord && paymentRecord.paymentMethod) || 'Approved digital channel',
         account: (paymentRecord && paymentRecord.account) || teacher.username,
@@ -4699,17 +4780,18 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
           absentDeductions,
           bonusIncentive,
           totalDeductions,
-          netAmount,
+          netAmount: withdrawableAmount,
+          withdrawableAmount,
           currency: 'PHP',
         },
         notes: [
-          'This statement reflects RemoEd bi-monthly cut-off earnings (1st–15th and 16th–end of month, Asia/Manila).',
+          'Withdrawable amount is only this cut-off’s net (1st cut-off 1–15, salary date the 15th; 2nd cut-off 16–end of month, salary date the last day of the month). Other periods are not included.',
           'Bonus/Incentive is Accounting-entered at the Founder’s discretion (e.g. successful referral plan purchase, internet aid) and is not a fixed monthly entitlement.',
           'Rate is per completed 25-minute class session.',
           isPaid
             ? 'Status Paid means this cut-off was dispensed by RemoEd administration.'
             : 'Status Pending means this cut-off has not yet been dispensed; amounts are estimated from class records.',
-          'For bank or legal use, print or save as PDF after verifying the Net Amount.',
+          'For bank or legal use, print or save as PDF after verifying the withdrawable amount.',
         ],
         generatedAt: new Date().toISOString(),
       },

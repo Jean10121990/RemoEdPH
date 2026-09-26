@@ -29,7 +29,7 @@ Before changing shared auth, booking, class schedule, or Mongo scripts, read [do
 - **Never** declare `require('./studentController')` twice in `server/student.js` (caused production 502).
 - Resolve teacher identity with `resolveToCanonicalTeacherId` / `findOpenTeacherSlotByUtcAndNormalizedTeacher` (`server/services/teacherSlotResolve.js`). UI may send email via `teacherBookingKey` (`server/teacher.js`) while slots store username — do not require email-only preferred IDs.
 - Persist `Booking.teacherId` as canonical `Teacher.teacherId`. `Booking.studentId` is student **username**, not Mongo `_id`. Prefer `/api/student/bookings*`.
-- Book body must include Mongo `slotId`. Schedule matching uses UTC `dateTimeUtc` (±2s).
+- Book body must include Mongo `slotId`. Schedule matching uses UTC `dateTimeUtc` (±2s). Cap: **2 classes (1 hour) per student local day** (`DAILY_CLASS_LIMIT`).
 - Credits: available = `creditBalance` only (`server/services/studentCreditSummary.js`). Expiry via `server/services/creditExpiry.js`. Product codes `SUBSCRIPTION_REQUIRED_LESSON_2`, `CREDITS_EXPIRED`, `INSUFFICIENT_CREDITS`, `TRIAL_LESSON_1_ONLY` are expected gates, not route bugs. Do not reverse already-booked classes on expiry.
 
 ## Teacher Class Schedule / Report Issue

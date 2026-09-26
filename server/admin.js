@@ -2976,12 +2976,37 @@ function parsePayPeriodKey(periodKey) {
   return { year: Number(m[1]), month: Number(m[2]), half: Number(m[3]) };
 }
 
-function getPayPeriodBoundsFromKey(periodKey) {
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+/** Calendar YMD for a bi-monthly cut-off. Salary date is the last day of that cut-off (15th or EOM). */
+function payPeriodCalendarFromKey(periodKey) {
   const p = parsePayPeriodKey(periodKey);
   if (!p) return null;
-  const start = new Date(p.year, p.month - 1, p.half === 1 ? 1 : 16);
-  const end = p.half === 1 ? new Date(p.year, p.month - 1, 15) : new Date(p.year, p.month, 0);
-  return { start, end };
+  const lastDay = new Date(p.year, p.month, 0).getDate();
+  if (p.half === 1) {
+    return {
+      startDate: `${p.year}-${pad2(p.month)}-01`,
+      endDate: `${p.year}-${pad2(p.month)}-15`,
+      salaryDate: `${p.year}-${pad2(p.month)}-15`,
+      cutOffLabel: '1st cut-off (1st–15th)',
+    };
+  }
+  return {
+    startDate: `${p.year}-${pad2(p.month)}-16`,
+    endDate: `${p.year}-${pad2(p.month)}-${pad2(lastDay)}`,
+    salaryDate: `${p.year}-${pad2(p.month)}-${pad2(lastDay)}`,
+    cutOffLabel: '2nd cut-off (16th–end of month)',
+  };
+}
+
+function getPayPeriodBoundsFromKey(periodKey) {
+  const cal = payPeriodCalendarFromKey(periodKey);
+  if (!cal) return null;
+  const start = new Date(`${cal.startDate}T00:00:00+08:00`);
+  const end = new Date(`${cal.endDate}T23:59:59.999+08:00`);
+  return { start, end, calendar: cal };
 }
 
 function getCurrentPayPeriodKey(date = new Date()) {
@@ -3100,8 +3125,9 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
     const periodKey = req.query.period || getCurrentPayPeriodKey(new Date());
     const bounds =
       getPayPeriodBoundsFromKey(periodKey) || getPayPeriodBoundsFromKey(getCurrentPayPeriodKey(new Date()));
-    const startDate = bounds.start.toISOString().split('T')[0];
-    const endDate = bounds.end.toISOString().split('T')[0];
+    const cal = (bounds && bounds.calendar) || payPeriodCalendarFromKey(periodKey);
+    const startDate = cal.startDate;
+    const endDate = cal.endDate;
 
     const settings = await GlobalSettings.findOne({}).select('globalRate').lean();
     const globalRate = settings ? settings.globalRate : 100;
@@ -3135,6 +3161,8 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
       teachers: teachersWithSalaries,
       periodKey,
       weekPeriod: `${startDate} to ${endDate}`,
+      salaryDate: cal.salaryDate,
+      cutOffLabel: cal.cutOffLabel,
     });
   } catch (error) {
     console.error('Error getting teachers weekly salaries:', error);
@@ -3150,11 +3178,11 @@ router.post('/dispense-salaries', async (req, res) => {
   try {
     const periodKey = req.body.period || getCurrentPayPeriodKey(new Date());
     const bounds = getPayPeriodBoundsFromKey(periodKey) || getPayPeriodBoundsFromKey(getCurrentPayPeriodKey(new Date()));
-    const startDate = bounds.start.toISOString().split('T')[0];
-    const endDate = bounds.end.toISOString().split('T')[0];
-    // Issue date = next day after endDate
-    const issueDate = new Date(bounds.end);
-    issueDate.setDate(issueDate.getDate() + 1);
+    const cal = (bounds && bounds.calendar) || payPeriodCalendarFromKey(periodKey);
+    const startDate = cal.startDate;
+    const endDate = cal.endDate;
+    // Salary / issue date = last day of this cut-off (15th or end of month), Asia/Manila
+    const issueDate = new Date(`${cal.salaryDate}T12:00:00+08:00`);
     
     const settings = await GlobalSettings.findOne({}).select('globalRate').lean();
     const globalRate = settings ? settings.globalRate : 100;
@@ -6187,6 +6215,58 @@ router.get('/issues', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   }
 });
 
+async function notifyStudentToRescheduleFromQa(issue, extraMessage) {
+  try {
+    const { notifyStudent, resolveStudentUsername } = require('./services/notifyService');
+    const { sendRawEmail } = require('./emailService');
+    const booking = issue.bookingId
+      ? await Booking.findById(issue.bookingId).select('studentId date time').lean()
+      : null;
+    const canonical =
+      (await resolveStudentUsername(booking && booking.studentId)) ||
+      (await resolveStudentUsername(issue.studentId)) ||
+      String(issue.studentId || '').trim();
+    if (!canonical) return;
+    if (canonical !== String(issue.studentId || '').trim()) {
+      issue.studentId = canonical;
+      await issue.save();
+    }
+    const when =
+      booking && booking.date
+        ? ` (${booking.date}${booking.time ? ' at ' + booking.time : ''})`
+        : '';
+    const notificationMessage =
+      extraMessage ||
+      `Please reschedule your class${when}. QA reviewed an issue on this session. Open Book a Class to pick a new slot.`;
+    await notifyStudent(canonical, 'reschedule-available', notificationMessage, {
+      bookingId: String(issue.bookingId || ''),
+      actionUrl: '/student-book.html',
+      importance: 'actionable',
+    });
+    try {
+      const stu = await Student.findOne({
+        $or: [{ username: canonical }, { email: canonical }],
+      })
+        .select('email firstName lastName username')
+        .lean();
+      const to = stu && stu.email ? String(stu.email).trim() : '';
+      if (to) {
+        const greet = (stu.firstName || stu.username || 'there').trim();
+        await sendRawEmail(
+          to,
+          'Please reschedule your RemoEd class',
+          `<p>Hi ${greet},</p><p>${notificationMessage}</p><p><a href="https://remoedph.com/student-book.html">Book a new class</a></p><p>— RemoEdPH</p>`,
+          `Hi ${greet},\n\n${notificationMessage}\n\nBook a new class: https://remoedph.com/student-book.html\n\n— RemoEdPH`
+        );
+      }
+    } catch (emErr) {
+      console.warn('Student reschedule email failed:', emErr.message);
+    }
+  } catch (snErr) {
+    console.warn('Student reschedule-available notify failed:', snErr.message);
+  }
+}
+
 // POST review issue
 router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
@@ -6214,40 +6294,23 @@ router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res)
     issue.reviewedBy = req.user.username || 'admin';
     issue.reviewedAt = new Date();
     
-    // Set reschedule options if invalid due to teacher technical issues
-    if (validityStatus === 'invalid' && canReschedule && 
-        issue.issueType.includes('Technical Issue')) {
+    // Student may reschedule when QA checks Allow Reschedule (any issue type)
+    if (canReschedule) {
       issue.canReschedule = true;
-      // Set 15-minute deadline from now
-      const deadline = new Date();
-      deadline.setMinutes(deadline.getMinutes() + 15);
-      issue.rescheduleDeadline = deadline;
+      if (!issue.rescheduleDeadline) {
+        const deadline = new Date();
+        deadline.setMinutes(deadline.getMinutes() + 15);
+        issue.rescheduleDeadline = deadline;
+      }
     }
     
     await issue.save();
     
-    // Create notification for student if reschedule is allowed
     if (issue.canReschedule) {
-      const notificationMessage = `Your class issue has been reviewed. You can reschedule your class within 15 minutes due to teacher technical issues.`;
-      try {
-        const { notifyStudent, resolveStudentUsername } = require('./services/notifyService');
-        // Canonicalize stored studentId to username so list/auth match JWT keys.
-        const booking = await Booking.findById(issue.bookingId).select('studentId').lean();
-        const canonical =
-          (await resolveStudentUsername(booking && booking.studentId)) ||
-          (await resolveStudentUsername(issue.studentId)) ||
-          String(issue.studentId || '').trim();
-        if (canonical && canonical !== String(issue.studentId || '').trim()) {
-          issue.studentId = canonical;
-          await issue.save();
-        }
-        await notifyStudent(canonical, 'reschedule-available', notificationMessage, {
-          bookingId: String(issue.bookingId || ''),
-          actionUrl: '/student-dashboard.html',
-        });
-      } catch (snErr) {
-        console.warn('Student reschedule-available notify failed:', snErr.message);
-      }
+      await notifyStudentToRescheduleFromQa(
+        issue,
+        `Your class issue has been reviewed by QA. Please reschedule this class. You have a short window to pick a new slot.`
+      );
     }
     
     // Create notification for teacher
@@ -6306,9 +6369,11 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     if (resolutionType === 'system-issue') {
       issue.teacherPaymentImpact = 'partial_payment_100';
       issue.studentPaymentImpact = 'reschedule_available';
+      issue.canReschedule = true;
     } else if (resolutionType === 'teacher-fault') {
       issue.teacherPaymentImpact = 'partial_payment_20';
-      issue.studentPaymentImpact = 'normal';
+      issue.studentPaymentImpact = 'reschedule_available';
+      issue.canReschedule = true;
       issue.teacherFaultReason = teacherFaultReason;
     } else if (resolutionType === 'student-issue') {
       issue.teacherPaymentImpact = 'partial_payment_100';
@@ -6393,6 +6458,13 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     }
     
     await createNotification(issue.teacherId, 'issue-resolved', notificationMessage);
+
+    if (issue.canReschedule || issue.studentPaymentImpact === 'reschedule_available') {
+      await notifyStudentToRescheduleFromQa(
+        issue,
+        `QA resolved an issue on your class. Please reschedule so you do not miss the session. Open Book a Class to choose a new time.`
+      );
+    }
     
     res.json({
       success: true,

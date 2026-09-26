@@ -119,6 +119,12 @@ async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
   });
 
   await emitBookingsUpdatedForTeacher(teacherId, booking);
+  try {
+    const slotsRedisCache = require('./slotsRedisCache');
+    await slotsRedisCache.invalidateSlotsCache(teacherId);
+  } catch (cacheErr) {
+    console.warn('slots cache invalidate after wrap-up:', cacheErr && cacheErr.message);
+  }
 }
 
 module.exports = {

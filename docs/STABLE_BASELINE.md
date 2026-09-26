@@ -366,7 +366,7 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 - **What it is:** Founder's discretion — e.g. successful student plan purchase referral bonus, internet aid, or other one-off incentives. Amount can be ₱0.
 - **Storage:** `Teacher.periodIncentives[]` `{ periodKey, amount, note, updatedAt, updatedBy }`.
 - **APIs:** `PUT /api/admin/teacher-period-incentive`; teacher `GET /api/teacher/period-incentive?startDate=YYYY-MM-DD`.
-- **Net payable:** period fee + bonus/incentive + issue payments − deductions. Included in salary dispense `breakdown.bonusIncentive` and payslip line when &gt; 0.
+- **Net payable / withdrawable:** period fee + bonus/incentive + issue payments − deductions for **that cut-off only**. 1st cut-off is 1–15 (salary date the 15th); 2nd cut-off is 16–end of month (salary date the last day). Payslip and Teaching Fee show only the amount the teacher can withdraw for the selected dispense period.
 - Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
 
 ## Lesson slide generation — laptop Level folders
@@ -397,7 +397,7 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 | `SUBSCRIPTION_REQUIRED_LESSON_2` | Not subscribed / no credits / no trial |
 | `CREDITS_EXPIRED` | Unused credits expired after validity window |
 | `INSUFFICIENT_CREDITS` | `creditBalance` is 0 |
-| `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
+| `DAILY_CLASS_LIMIT` | Student may book at most 2 classes (1 hour) per local day |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
 
 ## Ops notes (out of code scope)

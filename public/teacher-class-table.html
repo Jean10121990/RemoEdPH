@@ -587,8 +587,9 @@
 
     function bookingNeedsTeacherFeedbackCell(booking) {
       if (!booking) return false;
+      if (booking.feedbackSubmitted === true || booking.hasTeacherFeedback === true) return false;
       const st = String(booking.status || '').toLowerCase();
-      if (st === 'completed') return false;
+      if (st === 'completed' || st === 'cancelled' || st === 'canceled' || st === 'absent') return false;
       if (booking.feedbackSubmitted === false) return true;
       return st === 'pending_feedback';
     }
@@ -2311,8 +2312,15 @@
                 
                 if (response.ok) {
                     const feedbackState = await response.json();
-                    if (feedbackState.sessionFinalized) {
+                    if (feedbackState.sessionFinalized || feedbackState.exists || feedbackState.hasTeacherFeedback) {
                         showNotification('Feedback already submitted for this class', 'info');
+                        if (currentBooking) {
+                          currentBooking.feedbackSubmitted = true;
+                          currentBooking.hasTeacherFeedback = true;
+                          if (feedbackState.sessionFinalized || feedbackState.bookingStatus === 'completed') {
+                            currentBooking.status = 'completed';
+                          }
+                        }
                         closeClassInfo();
                         loadScheduleData();
                         return;
@@ -2632,10 +2640,12 @@
             );
             closeClassFeedbackModal();
             closeClassInfo();
-            loadScheduleData();
             if (currentBooking) {
                 currentBooking.status = 'completed';
+                currentBooking.feedbackSubmitted = true;
+                currentBooking.hasTeacherFeedback = true;
             }
+            loadScheduleData();
             try {
               window.dispatchEvent(new CustomEvent('remoed:pending-feedback-changed'));
             } catch (_ev) {}

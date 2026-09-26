@@ -262,7 +262,7 @@
             <div id="no-classes-message" style="display: none; background: #e3f2fd; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #bbdefb;">
               <div style="color: #1976d2; font-weight: 600; margin-bottom: 4px; font-size: 0.85rem;">📚 No completed classes this pay period</div>
               <div style="color: #424242; font-size: 0.75rem;">
-                Teaching fees use completed classes (15–25 minutes) within the current bi-monthly cut-off (1st–15th or 16th–end, Philippine calendar).<br>
+                Teaching fees use completed classes (15–25 minutes) in this cut-off only: 1st–15th (salary date the 15th) or 16th–end of month (salary date the last day). Other periods are not included.<br>
                 • Check your <a href="teacher-class-table.html" style="color: #1976d2; text-decoration: underline;">Class Schedule</a> for upcoming classes<br>
                 • Classes must be marked as completed to count for payment
               </div>
@@ -385,7 +385,7 @@
 
             <div class="payment-summary-body">
               <div class="service-summary" style="background: #e8f5e8; padding: 12px 14px; border-radius: 8px; border: 2px solid #c8e6c9;">
-                <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Net Payable Amount:</div>
+                <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Withdrawable this cut-off:</div>
                 <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
               </div>
 
@@ -626,14 +626,14 @@
           return {
             startDate: ymdFromParts(y, m, 1),
             endDate: ymdFromParts(y, m, 15),
-            periodLabel: '1st–15th (current cut-off)',
+            periodLabel: '1st cut-off 1–15 (salary date 15th)',
           };
         }
         const lastD = lastDayOfMonthManila(y, m);
         return {
           startDate: ymdFromParts(y, m, 16),
           endDate: ymdFromParts(y, m, lastD),
-          periodLabel: '16th–end (current cut-off)',
+          periodLabel: '2nd cut-off 16–end (salary date last day)',
         };
       }
       if (periodType === 'previous') {
@@ -648,13 +648,13 @@
           return {
             startDate: ymdFromParts(py, pm, 16),
             endDate: ymdFromParts(py, pm, lastD),
-            periodLabel: '16th–end (previous cut-off)',
+            periodLabel: '2nd cut-off 16–end (salary date last day)',
           };
         }
         return {
           startDate: ymdFromParts(y, m, 1),
           endDate: ymdFromParts(y, m, 15),
-          periodLabel: '1st–15th (previous cut-off)',
+          periodLabel: '1st cut-off 1–15 (salary date 15th)',
         };
       }
       return { startDate: ymdFromParts(y, m, 1), endDate: ymdFromParts(y, m, 15), periodLabel: '' };

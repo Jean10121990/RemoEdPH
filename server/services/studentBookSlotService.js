@@ -25,6 +25,95 @@ const {
   getCandidateTeachersForSlotUtc,
 } = require('./teacherSlotResolve');
 const { normalizeId } = require('../utils/normalizeId');
+const { cancelledStatusValues } = require('../utils/bookingStatus');
+
+/** Max 2 × 25-min classes = 50 minutes (under 1 hour) per student local calendar day. */
+const MAX_STUDENT_CLASSES_PER_DAY = 2;
+const CLASS_DURATION_MINUTES = 25;
+
+function studentLocalYmdFromUtc(utcValue, zone) {
+  const z = zone && DateTime.now().setZone(String(zone)).isValid ? String(zone) : 'Asia/Manila';
+  try {
+    const dt = DateTime.fromJSDate(
+      utcValue instanceof Date ? utcValue : new Date(utcValue),
+      { zone: 'utc' }
+    ).setZone(z);
+    return dt.isValid ? dt.toISODate() : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function studentDayUtcWindow(ymd, zone) {
+  const z = zone && DateTime.now().setZone(String(zone)).isValid ? String(zone) : 'Asia/Manila';
+  const start = DateTime.fromISO(`${ymd}T00:00:00`, { zone: z });
+  if (!start.isValid) return null;
+  return {
+    start: start.toUTC().toJSDate(),
+    end: start.plus({ days: 1 }).toUTC().toJSDate(),
+  };
+}
+
+function studentBookingKeys(student, req) {
+  return [
+    ...new Set(
+      [
+        student && student.username,
+        student && student.email,
+        student && student._id && String(student._id),
+        req && req.user && req.user.username,
+        req && req.user && req.user.studentId && String(req.user.studentId),
+      ]
+        .map((v) => (v != null ? String(v).trim() : ''))
+        .filter(Boolean)
+    ),
+  ];
+}
+
+async function countStudentClassesOnLocalDay({ studentKeys, ymd, zone, session }) {
+  const keys = Array.isArray(studentKeys) ? studentKeys.filter(Boolean) : [];
+  if (!keys.length || !ymd) return 0;
+  const window = studentDayUtcWindow(ymd, zone);
+  const or = [];
+  if (window) {
+    or.push({ dateTimeUtc: { $gte: window.start, $lt: window.end } });
+  }
+  or.push({
+    $and: [
+      { $or: [{ dateTimeUtc: null }, { dateTimeUtc: { $exists: false } }] },
+      { date: ymd },
+    ],
+  });
+  let q = Booking.find({
+    studentId: { $in: keys },
+    status: { $nin: cancelledStatusValues() },
+    $or: or,
+  }).select('_id dateTimeUtc date studentLocalZone');
+  if (session) q = q.session(session);
+  const rows = await q.lean();
+  return rows.filter((b) => {
+    if (b.dateTimeUtc) {
+      const day = studentLocalYmdFromUtc(b.dateTimeUtc, b.studentLocalZone || zone);
+      return !day || day === ymd;
+    }
+    return String(b.date || '') === ymd;
+  }).length;
+}
+
+function dailyClassLimitError(ymd, bookedCount) {
+  const err = new Error(
+    `You can book up to ${MAX_STUDENT_CLASSES_PER_DAY} classes (1 hour) per day. You already have ${bookedCount} on ${ymd}. Please pick another day.`
+  );
+  err.statusCode = 400;
+  err.code = 'DAILY_CLASS_LIMIT';
+  err.details = {
+    limit: MAX_STUDENT_CLASSES_PER_DAY,
+    booked: bookedCount,
+    day: ymd,
+    minutesPerClass: CLASS_DURATION_MINUTES,
+  };
+  return err;
+}
 
 /** Teacher-facing notification text — many students have empty first/last until profile is completed. */
 function studentDisplayNameForNotification(studentDoc, usernameFallback) {
@@ -225,6 +314,25 @@ async function runBookSlot(req, res) {
     }
     const dateUtc = dt.toISODate();
     const timeUtc = dt.toFormat('HH:mm');
+    const studentZone =
+      timezone && DateTime.now().setZone(String(timezone)).isValid
+        ? String(timezone)
+        : 'Asia/Manila';
+    const bookingLocalYmd = studentLocalYmdFromUtc(canonicalUtc, studentZone) || dateUtc;
+    const identKeys = studentBookingKeys(student, req);
+    const alreadyToday = await countStudentClassesOnLocalDay({
+      studentKeys: identKeys,
+      ymd: bookingLocalYmd,
+      zone: studentZone,
+    });
+    if (alreadyToday >= MAX_STUDENT_CLASSES_PER_DAY) {
+      const limitErr = dailyClassLimitError(bookingLocalYmd, alreadyToday);
+      return res.status(limitErr.statusCode).json({
+        error: limitErr.message,
+        code: limitErr.code,
+        details: limitErr.details,
+      });
+    }
 
     const slotIdTrim = slotIdBody != null ? String(slotIdBody).trim() : '';
     if (!slotIdTrim) {
@@ -322,6 +430,16 @@ async function runBookSlot(req, res) {
         err.statusCode = 409;
         err.code = 'ALREADY_BOOKED';
         throw err;
+      }
+
+      const alreadyAtomic = await countStudentClassesOnLocalDay({
+        studentKeys: identKeys,
+        ymd: bookingLocalYmd,
+        zone: studentZone,
+        session,
+      });
+      if (alreadyAtomic >= MAX_STUDENT_CLASSES_PER_DAY) {
+        throw dailyClassLimitError(bookingLocalYmd, alreadyAtomic);
       }
 
       // Gate: live balance > 0 (no reserve-on-book). Allow active free-trial booking.
@@ -454,7 +572,8 @@ async function runBookSlot(req, res) {
               sessionHandled = true;
               return res.status(e.statusCode).json({
                 error: e.message,
-                code: e.code || undefined
+                code: e.code || undefined,
+                details: e.details || undefined,
               });
             }
             if (isTransactionUnsupportedError(txnErr)) {
@@ -489,7 +608,8 @@ async function runBookSlot(req, res) {
         if (e && e.statusCode && e.message) {
           return res.status(e.statusCode).json({
             error: e.message,
-            code: e.code || undefined
+            code: e.code || undefined,
+            details: e.details || undefined,
           });
         }
         throw bookErr;

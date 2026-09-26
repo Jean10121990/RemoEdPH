@@ -269,6 +269,7 @@
           <h3>Pay period</h3>
           <dl>
             <dt>Period</dt><dd id="payslip-period">—</dd>
+            <dt>Salary date</dt><dd id="payslip-salary-date">—</dd>
             <dt>Payment method</dt><dd id="payslip-method">—</dd>
             <dt>Currency</dt><dd>PHP (Philippine Peso)</dd>
           </dl>
@@ -287,7 +288,7 @@
       </table>
 
       <div class="payslip-net">
-        <div class="label">Net salary for this cut-off</div>
+        <div class="label">Withdrawable this dispense period</div>
         <div class="value" id="payslip-net">₱0.00</div>
       </div>
 
@@ -373,8 +374,9 @@
         setText('payslip-account', p.account || (p.teacher && p.teacher.username));
         setText('payslip-email', p.teacher && p.teacher.email);
         setText('payslip-period', p.period && p.period.label);
+        setText('payslip-salary-date', formatDate(p.salaryDate || (p.period && p.period.salaryDate) || p.issueDate));
         setText('payslip-method', p.paymentMethod);
-        setText('payslip-net', peso(e.netAmount));
+        setText('payslip-net', peso((e.withdrawableAmount != null ? e.withdrawableAmount : e.netAmount)));
         setText('payslip-generated-at', formatDate(p.generatedAt) + ' (generated)');
 
         var statusEl = document.getElementById('payslip-status');

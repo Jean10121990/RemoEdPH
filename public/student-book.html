@@ -289,7 +289,14 @@
             align-items: center;
             justify-content: center;
         }
-        .slot-cell.booked {
+        .slot-cell.day-full {
+            background: #fff7ed;
+            color: #9a3412;
+            cursor: not-allowed;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-align: center;
+        }
             background: #f8d7da;
             color: #721c24;
             cursor: not-allowed;
@@ -1055,7 +1062,7 @@
             <div style="flex-shrink: 0;">
                 <div class="header-info">
                 <div class="info-item">
-                    <span class="quota" id="available-slots-info">Select a time slot to book a class</span>
+                    <span class="quota" id="available-slots-info">Select a time slot to book a class. Limit: 2 classes (1 hour) per day.</span>
                 </div>
                 
                 <!-- Combined Navigation and Action Buttons Row -->
@@ -1097,6 +1104,11 @@
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
                         <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 2px; border: 1px solid #6c757d; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #6c757d; font-size: 7px;">—</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Unavailable</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+                        <div style="width: 12px; height: 12px; background: #fff7ed; border-radius: 2px; border: 1px solid #fdba74; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #9a3412; font-size: 6px;">2</div>
+                        <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Day full (2 / 1 hr)</span>
+                    </div>
                     </div>
                 </div>
                 </div>
@@ -1380,6 +1392,9 @@
         let bookedSlots = new Map(); // Map to store booked slots data
         /** Local date-time keys where the logged-in student already has a booking (wins over "available" when another teacher is still open). */
         let ownBookedSlotKeys = new Set();
+        /** Count of this student's non-cancelled classes per local YYYY-MM-DD. Max 2 / day. */
+        const MAX_CLASSES_PER_DAY = 2;
+        let ownClassesByDate = new Map();
 
         /** Case-insensitive teacher id / email for slot maps and dropdown matching. */
         function normalizeId(id) {
@@ -1921,6 +1936,7 @@
                 availableSlots.clear();
                 bookedSlots.clear();
                 ownBookedSlotKeys.clear();
+                ownClassesByDate = new Map();
 
                 const tz = userTimezone || 'UTC';
                 const toKey = (utcIso, fallbackDate, fallbackTime, fallbackZone) => {
@@ -2037,6 +2053,42 @@
                     });
                 }
 
+                try {
+                    const ownRes = await fetch(
+                        `/api/student/bookings?week=${weekString}&tz=${encodeURIComponent(userTimezone)}&timezoneOffset=${new Date().getTimezoneOffset()}`,
+                        { headers: { Authorization: 'Bearer ' + token } }
+                    );
+                    if (ownRes.ok) {
+                        const ownData = await ownRes.json().catch(function () { return {}; });
+                        const ownList = Array.isArray(ownData.bookings) ? ownData.bookings : [];
+                        ownList.forEach(function (booking) {
+                            let utc = booking.dateTimeUtc || booking.startTime || null;
+                            if (!utc && booking.date && booking.time) {
+                                try {
+                                    utc = TimezoneUtils.toUtcIso(
+                                        booking.date,
+                                        booking.time,
+                                        booking.studentLocalZone || booking.teacherLocalZone || userTimezone
+                                    );
+                                } catch (_e) {}
+                            }
+                            if (!utc) return;
+                            const mapped = toKey(utc, booking.date, booking.time, booking.studentLocalZone || userTimezone);
+                            if (mapped && mapped.key) ownBookedSlotKeys.add(mapped.key);
+                        });
+                    }
+                } catch (ownErr) {
+                    console.warn('Could not load own bookings for daily limit:', ownErr && ownErr.message);
+                }
+
+                ownClassesByDate = new Map();
+                ownBookedSlotKeys.forEach(function (key) {
+                    const d = String(key).slice(0, 10);
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                        ownClassesByDate.set(d, (ownClassesByDate.get(d) || 0) + 1);
+                    }
+                });
+
                 console.log('🔍 Student booking - Total available slots after processing:', availableSlots.size);
                 
                 // If no available slots found, show a message
@@ -2117,7 +2169,7 @@
                 const isPast = slotLocal <= now;
                 
                 if (isPast) {
-                    cell.classList.remove('available', 'unavailable', 'booked');
+                    cell.classList.remove('available', 'unavailable', 'booked', 'day-full');
                     cell.classList.add('past');
                     cell.textContent = 'Past';
                     cell.style.cursor = 'not-allowed';
@@ -2126,7 +2178,7 @@
 
                 } else if (ownBookedSlotKeys.has(slotKey) || bookedSlots.has(slotKey)) {
                     // Existing booking at this local date/time — hard lock (grey Booked)
-                    cell.classList.remove('available', 'unavailable', 'past');
+                    cell.classList.remove('available', 'unavailable', 'past', 'day-full');
                     cell.classList.add('booked');
                     cell.textContent = 'Booked';
                     cell.style.cursor = 'not-allowed';
@@ -2134,9 +2186,18 @@
                     cell.style.fontSize = '0.8rem';
                     cell.style.color = '#dc3545';
                     cell.onclick = null;
+                } else if ((ownClassesByDate.get(date) || 0) >= MAX_CLASSES_PER_DAY) {
+                    cell.classList.remove('available', 'unavailable', 'past', 'booked');
+                    cell.classList.add('day-full');
+                    cell.textContent = 'Day full';
+                    cell.style.cursor = 'not-allowed';
+                    cell.style.fontWeight = '700';
+                    cell.style.fontSize = '0.65rem';
+                    cell.style.color = '#9a3412';
+                    cell.onclick = null;
                 } else if (availableSlotsArray.includes(slotKey)) {
                     // Open slot for at least one teacher
-                    cell.classList.remove('unavailable', 'past', 'booked');
+                    cell.classList.remove('unavailable', 'past', 'booked', 'day-full');
                     cell.classList.add('available');
                     cell.textContent = 'Book Now';
                     cell.style.cursor = 'pointer';
@@ -2147,7 +2208,7 @@
                     availableCount++;
                 } else {
                     // Slot is not available (grey) - this includes slots that don't exist
-                    cell.classList.remove('available', 'unavailable', 'past');
+                    cell.classList.remove('available', 'unavailable', 'past', 'day-full');
                     cell.classList.add('unavailable');
                     cell.textContent = '';
                     cell.style.cursor = 'not-allowed';
@@ -2212,6 +2273,11 @@
             
             if (!isAvailable) {
                 showMessage('This time slot is not available for booking. Please select an open slot (green cells only).', 'error');
+                return;
+            }
+
+            if ((ownClassesByDate.get(date) || 0) >= MAX_CLASSES_PER_DAY) {
+                showMessage('You can book only 2 classes (1 hour) per day. Please choose another day.', 'error');
                 return;
             }
             
@@ -3121,6 +3187,16 @@
                 if (!response.ok) {
                     const errorMsg = result.error || result.message || 'Booking failed';
                     const errorDetails = result.details || {};
+
+                    if (result.code === 'DAILY_CLASS_LIMIT') {
+                        showMessage(errorMsg, 'error');
+                        closeBookingModal();
+                        clearAllSelections();
+                        await loadAvailableSlots();
+                        bookBtn.disabled = false;
+                        bookBtnText.textContent = 'Book Class';
+                        return;
+                    }
 
                     // Slot taken — lock UI and refresh calendar
                     if (

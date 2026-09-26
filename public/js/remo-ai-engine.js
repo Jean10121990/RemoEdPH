@@ -388,10 +388,11 @@
         return {
           text:
             "**Teaching fee & payslips**\n\n" +
-            "• Pay is bi‑monthly: **1st–15th** and **16th–end** (Asia/Manila)\n" +
-            "• Open **Teaching Fee** to see current/previous cut‑off\n" +
+            "• **1st cut-off:** 1st–15th, salary date the **15th**\n" +
+            "• **2nd cut-off:** 16th–end of month, salary date the **last day** of the month\n" +
+            "• Payslip shows only the **withdrawable amount for that dispense period**\n" +
+            "• Open **Teaching Fee** for the current or previous cut‑off\n" +
             "• Click **Print Payslip** for an official statement (bank / legal use)\n" +
-            "• **Payment History** also has a Payslip link per dispensed period\n" +
             "• Rate is per completed **25‑minute** class; deductions may apply\n\n" +
             "Paid status appears after admin dispenses that cut‑off.",
           buttons: [
