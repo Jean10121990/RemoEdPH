@@ -626,11 +626,11 @@ router.post('/admin-first-setup', authRegisterLimiter, async (req, res) => {
         message: 'Username, setup token, and new password are required.',
       });
     }
-    const pwdRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const pwdRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
     if (!pwdRe.test(String(password))) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number.',
+        message: 'Password must be at least 8 characters with uppercase, lowercase, a number, and a symbol.',
       });
     }
     const admin = await Admin.findOne({ username: String(username).trim() });
@@ -1038,7 +1038,8 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
         userRole: 'teacher',
         teacherId: teacher.teacherId,
         teacherMongoId: String(teacher._id),
-        redirectTo: '/teacher/dashboard',
+        needsPasswordChange: !!teacher.hasGeneratedPassword,
+        redirectTo: teacher.hasGeneratedPassword ? '/change-password.html' : '/teacher/dashboard',
       });
     }
 
@@ -1090,7 +1091,8 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
       success: true,
       token,
       userRole: 'student',
-      redirectTo: '/student/dashboard',
+      needsPasswordChange: !!student.hasGeneratedPassword,
+      redirectTo: student.hasGeneratedPassword ? '/change-password.html' : '/student/dashboard',
     });
   } catch (err) {
     console.error('Unified login error:', err);
@@ -1372,7 +1374,7 @@ router.post('/complete-checkout-profile', authRegisterLimiter, async (req, res) 
   }
 });
 
-const RESET_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+const RESET_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 function hashResetToken(raw) {
   return crypto.createHash('sha256').update(String(raw)).digest('hex');
@@ -1517,7 +1519,7 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
     if (!RESET_PASSWORD_REGEX.test(String(password || ''))) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number.',
+        message: 'Password must be at least 8 characters with uppercase, lowercase, a number, and a symbol.',
       });
     }
     const found = await findAccountByResetToken(token);
@@ -1548,7 +1550,7 @@ router.post('/student-reset-password', passwordResetLimiter, async (req, res) =>
     if (!RESET_PASSWORD_REGEX.test(String(password || ''))) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number.',
+        message: 'Password must be at least 8 characters with uppercase, lowercase, a number, and a symbol.',
       });
     }
     const found = await findAccountByResetToken(token);
@@ -1834,84 +1836,106 @@ router.post('/test-set-generated-password', verifyAdminApiAuth, requireAdmin, as
   }
 });
 
+function changePasswordRole(req) {
+  const u = req.user || {};
+  const claimed = String(
+    (req.body && req.body.userType) || u.userType || u.userRole || u.role || ''
+  )
+    .trim()
+    .toLowerCase();
+  if (claimed === 'teacher' || claimed === 'student' || claimed === 'admin') return claimed;
+  if (u.teacherId || u.teacherMongoId) return 'teacher';
+  if (u.studentId) return 'student';
+  if (u.adminId || u.isAdmin === true) return 'admin';
+  return '';
+}
+
+async function findChangePasswordAccount(role, u) {
+  const or = [];
+  const pushId = (val) => {
+    if (val && mongoose.isValidObjectId(String(val))) or.push({ _id: String(val) });
+  };
+  if (role === 'teacher') {
+    pushId(u.teacherMongoId);
+    pushId(u.teacherId);
+    if (u.teacherId) or.push({ teacherId: u.teacherId });
+    if (u.username) {
+      or.push({ username: u.username });
+      or.push({ email: u.username });
+    }
+    return or.length ? Teacher.findOne({ $or: or }) : null;
+  }
+  if (role === 'student') {
+    pushId(u.studentId);
+    if (u.username) {
+      or.push({ username: u.username });
+      or.push({ email: u.username });
+    }
+    return or.length ? Student.findOne({ $or: or }) : null;
+  }
+  if (role === 'admin') {
+    pushId(u.adminId);
+    pushId(u.userId);
+    if (u.username) or.push({ username: u.username });
+    return or.length ? Admin.findOne({ $or: or }) : null;
+  }
+  return null;
+}
+
+function storedPasswordHash(user, role) {
+  if (role === 'admin') return user.passwordHash || user.password || '';
+  return user.password || '';
+}
+
 // Change password endpoint
 router.post('/change-password', authenticateToken, async (req, res) => {
   try {
-    const { currentPassword, newPassword, userType } = req.body;
-    const userId = req.user.teacherId || req.user.studentId; // Get the appropriate ID from token
+    const { currentPassword, newPassword } = req.body || {};
+    const role = changePasswordRole(req);
 
-    console.log('=== CHANGE PASSWORD ATTEMPT ===');
-    console.log('User ID from token:', userId);
-    console.log('User type:', userType);
-    console.log('Request body:', { currentPassword: '***', newPassword: '***', userType });
-
-    if (!currentPassword || !newPassword || !userType) {
+    if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-
-    // Validate new password strength (no special characters required)
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'New password must be at least 8 characters long and contain uppercase, lowercase, and number' 
+    if (!role) {
+      return res.status(400).json({ success: false, message: 'Invalid user type' });
+    }
+    if (!RESET_PASSWORD_REGEX.test(String(newPassword))) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long and contain uppercase, lowercase, a number, and a symbol',
       });
     }
 
-    let user;
-    let UserModel;
-
-    // Determine which model to use based on userType
-    if (userType === 'teacher') {
-      UserModel = Teacher;
-    } else if (userType === 'student') {
-      UserModel = Student;
-    } else if (userType === 'admin') {
-      UserModel = Admin;
-    } else {
-      return res.status(400).json({ success: false, message: 'Invalid user type' });
-    }
-
-    // Find user by the appropriate ID based on user type
-    if (userType === 'teacher') {
-      console.log('Looking for teacher with teacherId:', userId);
-      user = await UserModel.findOne({ teacherId: userId });
-    } else if (userType === 'student') {
-      console.log('Looking for student with studentId:', userId);
-      user = await UserModel.findOne({ _id: userId });
-    } else if (userType === 'admin') {
-      console.log('Looking for admin with adminId:', userId);
-      user = await UserModel.findOne({ _id: userId });
-    }
-    console.log('User found:', !!user);
+    const user = await findChangePasswordAccount(role, req.user || {});
     if (!user) {
-      console.log('User not found in database');
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    console.log('User found successfully:', user.username);
 
-    // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const hash = storedPasswordHash(user, role);
+    if (!hash) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+    const isCurrentPasswordValid = await bcrypt.compare(String(currentPassword), hash);
     if (!isCurrentPasswordValid) {
       return res.status(400).json({ success: false, message: 'Current password is incorrect' });
     }
-
-    // Check if new password is same as current
-    const isNewPasswordSame = await bcrypt.compare(newPassword, user.password);
+    const isNewPasswordSame = await bcrypt.compare(String(newPassword), hash);
     if (isNewPasswordSame) {
       return res.status(400).json({ success: false, message: 'New password must be different from current password' });
     }
 
-    // Hash new password
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password and clear the generated password flag
-    user.password = hashedNewPassword;
-    user.hasGeneratedPassword = false; // Clear the flag since user now has a personal password
+    const hashedNewPassword = await bcrypt.hash(String(newPassword), role === 'admin' ? 12 : 10);
+    if (role === 'admin') {
+      user.passwordHash = hashedNewPassword;
+      user.password = undefined;
+      user.mustSetPassword = false;
+    } else {
+      user.password = hashedNewPassword;
+    }
+    user.hasGeneratedPassword = false;
     await user.save();
 
     res.json({ success: true, message: 'Password updated successfully' });
-
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

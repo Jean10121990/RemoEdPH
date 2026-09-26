@@ -968,11 +968,11 @@ router.put('/me', async (req, res) => {
 
     const newPassword = b.newPassword && String(b.newPassword).trim();
     if (newPassword) {
-      const pwdRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+      const pwdRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
       if (!pwdRe.test(newPassword)) {
         return res.status(400).json({
           success: false,
-          message: 'New password must be 8+ chars with uppercase, lowercase, and a number.',
+          message: 'New password must be 8+ chars with uppercase, lowercase, a number, and a symbol.',
         });
       }
       const hash = admin.passwordHash || admin.password;

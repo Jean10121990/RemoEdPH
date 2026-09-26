@@ -143,6 +143,7 @@
       this.tourSteps.length +
       '</span>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<button type="button" id="tour-skip" style="padding:8px 14px;border:0;background:transparent;color:#64748b;cursor:pointer;font-weight:600;font-size:0.88rem;">Skip</button>' +
       (stepIndex > 0
         ? '<button type="button" id="tour-prev" style="padding:8px 14px;border:2px solid ' +
           accent +
@@ -175,6 +176,14 @@
           if (h) h.remove();
           self.currentStep = stepIndex + 1;
           self.showStep(self.currentStep);
+        });
+      }
+      var skipBtn = document.getElementById('tour-skip');
+      if (skipBtn) {
+        var newSkip = skipBtn.cloneNode(true);
+        skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+        newSkip.addEventListener('click', function () {
+          self.endTour();
         });
       }
       if (stepIndex > 0) {

@@ -167,7 +167,10 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
         }
       } catch (_e2) {}
 
-      // Use redirectTo field from API
+      if (data.needsPasswordChange || String(data.redirectTo || '').indexOf('change-password') !== -1) {
+        window.location.replace('/change-password.html');
+        return;
+      }
       if (data.redirectTo === '/teacher/dashboard') {
         window.location.replace('/teacher-dashboard.html');
         return;

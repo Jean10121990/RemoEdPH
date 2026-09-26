@@ -108,7 +108,7 @@
     var welcome =
       'Welcome to the RemoEdPH Teacher Portal.\n\n' +
       'A short guided tour (about a minute) explains each menu item — scheduling, lessons, pay, performance, messages, and profile.\n\n' +
-      'You can always reopen the tour with the button in the bottom-right corner.\n\n' +
+      'You can skip any step with Skip, or reopen the tour with the button in the bottom-right corner.\n\n' +
       'Start the tour now?';
 
     window.teacherTour = new PortalTour({

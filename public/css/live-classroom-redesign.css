@@ -886,8 +886,8 @@ body.page-live-classroom .lc-stage-video-toolbar {
     min-height: 40px;
     width: auto;
     height: auto;
-    font-size: 0.75rem;
-    padding: 6px 10px;
+    font-size: 0;
+    padding: 8px 10px;
   }
 
   body.page-live-classroom .tabs,
@@ -968,17 +968,20 @@ body.page-live-classroom .lc-stage-video-toolbar {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 32px;
+  min-height: 36px;
   padding: 6px 8px;
   border: 1px solid #99f6e4;
   border-radius: 999px;
   background: #ecfdf5;
   color: #0f766e;
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: 0;
+  line-height: 0;
   cursor: pointer;
-  white-space: nowrap;
+}
+.lc-media-lock-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .lc-media-lock-btn:hover {
@@ -1032,7 +1035,23 @@ body.page-live-classroom .lc-stage-video-toolbar {
   text-align: center;
 }
 
-.lc-media-toast[hidden] {
+.lc-chat-reveal {
+  display: inline-flex;
+  margin-top: 6px;
+  border: 0;
+  background: transparent;
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.lc-chat-flag-note {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: #64748b;
+}
   display: none !important;
 }
 

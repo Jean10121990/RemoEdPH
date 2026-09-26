@@ -10,49 +10,52 @@
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/student-wait.css?v=1">
     <script src="js/user-session.js"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
+    <script src="js/lucide-icons.js?v=1"></script>
 </head>
 <body class="student-no-motion page-student-waiting-room">
     <div class="waiting-container">
         <div class="waiting-brand">
             <img src="images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.src='images/remoed-logo.png'">
         </div>
-        <div class="waiting-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        </div>
+        <div class="waiting-icon" aria-hidden="true" data-lucide="clock"></div>
         <h1 class="waiting-title">Waiting for Teacher</h1>
         <p class="waiting-subtitle">Please wait while your teacher joins the classroom. We'll connect you automatically when they arrive.</p>
         
         <div class="waiting-spinner" aria-hidden="true"></div>
         <div class="status-message" id="status-message">Checking for teacher...</div>
 
+        <div id="waiting-play-host" class="waiting-play-host"></div>
+
         <div class="device-check-section">
             <h3 class="device-check-title">Device Check</h3>
             <div class="device-item">
                 <span class="device-name">Camera</span>
                 <div class="device-status">
-                    <span class="status-icon status-pending" id="camera-icon" aria-hidden="true"></span>
+                    <span class="status-icon status-pending" id="camera-icon" data-lucide="video" aria-hidden="true"></span>
                     <span class="status-text" id="camera-status">Checking...</span>
                 </div>
             </div>
             <div class="device-item">
                 <span class="device-name">Microphone</span>
                 <div class="device-status">
-                    <span class="status-icon status-pending" id="mic-icon" aria-hidden="true"></span>
+                    <span class="status-icon status-pending" id="mic-icon" data-lucide="mic" aria-hidden="true"></span>
                     <span class="status-text" id="mic-status">Checking...</span>
                 </div>
             </div>
             <div class="device-item">
                 <span class="device-name">Internet Connection</span>
                 <div class="device-status">
-                    <span class="status-icon status-pending" id="internet-icon" aria-hidden="true"></span>
+                    <span class="status-icon status-pending" id="internet-icon" data-lucide="wifi" aria-hidden="true"></span>
                     <span class="status-text" id="internet-status">Checking...</span>
                 </div>
             </div>
             <div class="device-item">
                 <span class="device-name">Browser Compatibility</span>
                 <div class="device-status">
-                    <span class="status-icon status-pending" id="browser-icon" aria-hidden="true"></span>
+                    <span class="status-icon status-pending" id="browser-icon" data-lucide="globe" aria-hidden="true"></span>
                     <span class="status-text" id="browser-status">Checking...</span>
                 </div>
             </div>
@@ -196,7 +199,7 @@
             if (!bookingId) return;
 
             try {
-                const token = localStorage.getItem('token');
+                const token = (window.RemoedAuthToken && RemoedAuthToken.getStudentToken && RemoedAuthToken.getStudentToken()) || localStorage.getItem('remoed_student_token') || localStorage.getItem('token');
                 if (!token) {
                     showNotification('Please log in to view class information', 'error');
                     return;
@@ -353,8 +356,10 @@
             }
             var cls = 'status-' + kind;
             if (iconElement) {
-                iconElement.textContent = '';
                 iconElement.className = 'status-icon ' + cls;
+                var lucideName = { camera: 'video', microphone: 'mic', internet: 'wifi', browser: 'globe' }[device];
+                if (window.RemoedLucide && lucideName) RemoedLucide.apply(iconElement, lucideName);
+                else iconElement.textContent = '';
             }
             if (statusElement) {
                 statusElement.textContent = text;
@@ -399,7 +404,16 @@
             
             const checkInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/signaling/room-status?room=${currentRoom}`);
+                    const response = await fetch(`/api/signaling/room-status?room=${currentRoom}`, {
+                        headers: {
+                            Authorization: 'Bearer ' + (
+                              (window.RemoedAuthToken && RemoedAuthToken.getStudentToken && RemoedAuthToken.getStudentToken()) ||
+                              localStorage.getItem('remoed_student_token') ||
+                              localStorage.getItem('token') ||
+                              ''
+                            )
+                        }
+                    });
                     
                     if (response.ok) {
                         const data = await response.json();
@@ -546,6 +560,7 @@
                 });
         }
     </script>
+    <script src="js/student-class-wait.js?v=1"></script>
 </body>
 </html>
 

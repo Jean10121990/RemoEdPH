@@ -1,0 +1,119 @@
+.lc-student-waiting-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-blocking, 100000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(ellipse 70% 50% at 10% 0%, rgba(141, 249, 124, 0.35), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0, 174, 239, 0.18), transparent 50%),
+    #f4fbf6;
+}
+.lc-student-waiting-overlay[hidden] {
+  display: none !important;
+}
+.waiting-play-host {
+  width: 100%;
+  margin: 12px 0 18px;
+}
+  width: min(920px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #d7e5dd;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px -24px rgba(31, 74, 56, 0.45);
+  padding: 22px 24px 20px;
+  box-sizing: border-box;
+}
+.lc-wait-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #2e9a28;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+.lc-wait-kicker svg {
+  width: 22px;
+  height: 22px;
+}
+.lc-wait-card h1 {
+  margin: 0 0 8px;
+  font-size: 1.55rem;
+  color: #1a2e26;
+}
+.lc-wait-card p,
+.lc-wait-hint {
+  margin: 0;
+  color: #5b6f66;
+}
+#lc-wait-status {
+  font-weight: 700;
+  color: #008fc4;
+  margin: 8px 0 14px;
+}
+.lc-wait-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lc-wait-tab {
+  border: 1px solid #cfe6d6;
+  background: #f6fbf7;
+  color: #2e9a28;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lc-wait-tab.is-active {
+  background: #47bc3e;
+  border-color: #47bc3e;
+  color: #fff;
+}
+.lc-wait-score-label {
+  margin-left: auto;
+  font-weight: 700;
+  color: #1a2e26;
+}
+.lc-wait-canvas-wrap {
+  position: relative;
+  height: min(42vh, 360px);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #d7e5dd;
+  background: #eef8f1;
+}
+.lc-wait-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.lc-wait-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0b3d2e;
+  text-shadow: 0 1px 0 rgba(255,255,255,.7);
+}
+body.page-live-classroom .video-control-btn svg,
+body.page-live-classroom .chat-send svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+body.page-live-classroom .video-control-btn {
+  font-size: 0;
+}
+body.page-live-classroom .chat-send {
+  font-size: 0;
+}

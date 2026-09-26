@@ -1523,16 +1523,18 @@ router.get('/upcoming-classes', verifyToken, requireStudent, async (req, res) =>
 // Update student settings (email, username, password)
 router.post('/update-settings', verifyToken, requireStudent, async (req, res) => {
   try {
-    console.log('🔍 Student settings update request received');
-    console.log('🔍 Student ID:', req.user.studentId);
-    console.log('🔍 Request body:', req.body);
-    
     const { newEmail, newUsername, currentPassword, newPassword } = req.body;
-    
-    // Find the student
-    const student = await Student.findById(req.user.studentId);
+    const u = req.user || {};
+    const or = [];
+    if (u.studentId && mongoose.isValidObjectId(String(u.studentId))) {
+      or.push({ _id: String(u.studentId) });
+    }
+    if (u.username) {
+      or.push({ username: u.username });
+      or.push({ email: u.username });
+    }
+    const student = or.length ? await Student.findOne({ $or: or }) : await Student.findById(u.studentId);
     if (!student) {
-      console.log('❌ Student not found');
       return res.status(404).json({ error: 'Student not found' });
     }
     
@@ -1587,7 +1589,7 @@ router.post('/update-settings', verifyToken, requireStudent, async (req, res) =>
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
       updateData.password = hashedPassword;
-      console.log('✅ Password will be updated');
+      updateData.hasGeneratedPassword = false;
     }
     
     // Save updates

@@ -31,6 +31,20 @@
           if (utCh === 'admin') return 'admin';
           if (utCh === 'teacher') return 'teacher';
           if (utCh === 'student') return 'student';
+          if (
+            global.localStorage.getItem(LS_TEACHER) ||
+            global.sessionStorage.getItem(LS_TEACHER) ||
+            global.localStorage.getItem('remoed_teacher_auth')
+          ) {
+            return 'teacher';
+          }
+          if (
+            global.localStorage.getItem(LS_STUDENT) ||
+            global.sessionStorage.getItem(LS_STUDENT) ||
+            global.localStorage.getItem('remoed_student_auth')
+          ) {
+            return 'student';
+          }
         } catch (_ec) {}
       }
       if (p.indexOf('leaderboard') !== -1) {

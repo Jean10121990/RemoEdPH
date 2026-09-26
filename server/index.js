@@ -183,6 +183,33 @@ const PORT = process.env.PORT || 8080;
 
 // Store chat history for each room
 const chatHistory = new Map();
+const chatLanguage = require('../public/js/chat-language-filter');
+
+function chatRoleOfSocket(sock) {
+  if (!sock) return '';
+  if (sock.userType) return sock.userType;
+  const sess = userSessions.get(sock.id);
+  return (sess && sess.userType) || '';
+}
+
+function emitChatHistoryToSocket(socket, room) {
+  if (!chatHistory.has(room)) return;
+  const role = chatRoleOfSocket(socket);
+  socket.emit(
+    'chat-history',
+    chatHistory.get(room).map((m) => chatLanguage.payloadForRole(m, role))
+  );
+}
+
+function broadcastChatMessage(ioRef, room, stored) {
+  const ids = ioRef.sockets.adapter.rooms.get(room);
+  if (!ids) return;
+  ids.forEach((id) => {
+    const sock = ioRef.sockets.sockets.get(id);
+    if (!sock) return;
+    sock.emit('chat-message', chatLanguage.payloadForRole(stored, chatRoleOfSocket(sock)));
+  });
+}
 
 // Store user information for attendance tracking
 const userSessions = new Map(); // socketId -> { room, userType, userId, username }
@@ -2130,8 +2157,7 @@ io.on('connection', socket => {
         
         // Send existing chat history to the new user
         if (chatHistory.has(room)) {
-            console.log('📜 Sending chat history to client:', chatHistory.get(room).length, 'messages');
-            socket.emit('chat-history', chatHistory.get(room));
+            emitChatHistoryToSocket(socket, room);
         } else {
             console.log('📜 No chat history for room:', room);
         }
@@ -2362,8 +2388,7 @@ io.on('connection', socket => {
         
         // Send existing chat history to the new user
         if (chatHistory.has(room)) {
-            console.log('📜 Sending chat history to client:', chatHistory.get(room).length, 'messages');
-            socket.emit('chat-history', chatHistory.get(room));
+            emitChatHistoryToSocket(socket, room);
         } else {
             console.log('📜 No chat history for room:', room);
         }
@@ -2517,10 +2542,19 @@ io.on('connection', socket => {
         const sender = messageData.sender || messageData.username;
         const message =
             messageData.message == null ? '' : String(messageData.message);
-        const payload = { ...messageData, message, sender };
-        console.log('💬 Received chat message from', sender, 'in room', room, ':', message);
+        const screened = chatLanguage.screenMessage(message);
+        const payload = {
+          ...messageData,
+          sender,
+          message: screened.display,
+          display: screened.display,
+          flagged: screened.flagged,
+          flagUncertain: screened.flagged,
+        };
+        if (screened.flagged) {
+          payload.originalMessage = screened.original;
+        }
 
-        // Store message in chat history
         if (!chatHistory.has(room)) {
             chatHistory.set(room, []);
             capMapSize(chatHistory, 500);
@@ -2529,16 +2563,11 @@ io.on('connection', socket => {
         const roomHistory = chatHistory.get(room);
         roomHistory.push(payload);
 
-        // Keep only last 50 messages to prevent memory issues
         if (roomHistory.length > 50) {
             roomHistory.shift();
         }
 
-        const clients = io.sockets.adapter.rooms.get(room);
-        console.log('📤 Broadcasting message to', clients ? clients.size : 0, 'clients in room', room);
-        io.to(room).emit('chat-message', payload);
-
-        console.log(`Chat message in room ${room}: ${sender}: ${message}`);
+        broadcastChatMessage(io, room, payload);
     });
 
     // Handle reward giving

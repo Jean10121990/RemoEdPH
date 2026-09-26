@@ -9,6 +9,8 @@
   <script src="js/user-session.js?v=lc-no-crossrole-logout-1"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <script src="js/remoed-auth-token.js?v=1"></script>
+  <script src="js/lucide-icons.js?v=1"></script>
+  <script src="js/chat-language-filter.js?v=1"></script>
   <title>Live Classroom</title>
   <!-- PDF.js library for embedded free PDF viewer -->
   <script type="module">
@@ -56,7 +58,8 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-app-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-15" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-17" />
+  <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -180,10 +183,10 @@
           <div class="video-empty-hint" id="peer-video-empty">Waiting for peer…</div>
         </div>
         <div id="lc-teacher-media-controls" class="lc-teacher-media-controls" hidden>
-          <button type="button" id="force-mute-student-mic" class="lc-media-lock-btn" title="Mute student microphone">Mute mic</button>
-          <button type="button" id="force-unlock-student-mic" class="lc-media-lock-btn" title="Allow student microphone">Allow mic</button>
-          <button type="button" id="force-off-student-cam" class="lc-media-lock-btn" title="Turn off student camera">Cam off</button>
-          <button type="button" id="force-unlock-student-cam" class="lc-media-lock-btn" title="Allow student camera">Allow cam</button>
+          <button type="button" id="force-mute-student-mic" class="lc-media-lock-btn" title="Mute student microphone" aria-label="Mute student microphone" data-lucide="mic-off"></button>
+          <button type="button" id="force-unlock-student-mic" class="lc-media-lock-btn" title="Allow student microphone" aria-label="Allow student microphone" data-lucide="mic"></button>
+          <button type="button" id="force-off-student-cam" class="lc-media-lock-btn" title="Turn off student camera" aria-label="Turn off student camera" data-lucide="video-off"></button>
+          <button type="button" id="force-unlock-student-cam" class="lc-media-lock-btn" title="Allow student camera" aria-label="Allow student camera" data-lucide="video"></button>
         </div>
         <div class="video student is-local" id="local-video-tile">
           <div class="video-header">
@@ -195,10 +198,10 @@
             <button id="retry-camera-btn" style="padding:4px 12px; background:#47BC3E; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
           </div>
           <div class="video-controls" aria-label="Media controls">
-            <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera">C</button>
-            <button id="toggle-mic" class="video-control-btn" type="button" title="Toggle microphone" aria-label="Toggle microphone">M</button>
-            <button id="toggle-mute" class="video-control-btn is-off" type="button" title="Unmute peer audio" aria-label="Unmute peer audio">A</button>
-            <button id="toggle-camera-settings" class="video-control-btn" type="button" title="Camera background" aria-label="Camera background" aria-expanded="false">BG</button>
+            <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera" data-lucide="video"></button>
+            <button id="toggle-mic" class="video-control-btn" type="button" title="Toggle microphone" aria-label="Toggle microphone" data-lucide="mic"></button>
+            <button id="toggle-mute" class="video-control-btn is-off" type="button" title="Unmute peer audio" aria-label="Unmute peer audio" data-lucide="volume-x"></button>
+            <button id="toggle-camera-settings" class="video-control-btn" type="button" title="Camera background" aria-label="Camera background" aria-expanded="false" data-lucide="image"></button>
           </div>
           <div id="lc-media-toast" class="lc-media-toast" hidden role="status" aria-live="polite"></div>
         </div>
@@ -214,7 +217,7 @@
         </div>
         <form id="chat-form" class="chat-form">
           <textarea id="chat-input" class="chat-input" rows="2" placeholder="Type here — Enter to send, Shift+Enter for new line" title="Enter sends. Shift+Enter adds a line." aria-label="Chat message"></textarea>
-          <button type="submit" class="chat-send" aria-label="Send">➤</button>
+          <button type="submit" class="chat-send" aria-label="Send" data-lucide="send"></button>
         </form>
       </div>
     </div>
@@ -228,6 +231,27 @@
       Chat<span class="lc-mobile-chat-unread" id="lc-mobile-chat-unread" hidden></span>
     </button>
   </nav>
+  <div id="lc-student-waiting" class="lc-student-waiting-overlay" hidden>
+    <div class="lc-wait-card">
+      <p class="lc-wait-kicker"><span data-lucide="clock"></span> Waiting room</p>
+      <h1>Your teacher is on the way</h1>
+      <p>Stay here and play or watch. You will join the class automatically when they enter.</p>
+      <p id="lc-wait-status">Checking for your teacher…</p>
+      <div class="lc-wait-toolbar">
+        <button type="button" class="lc-wait-tab is-active" id="lc-wait-tab-game">Play</button>
+        <button type="button" class="lc-wait-tab" id="lc-wait-tab-watch">Watch</button>
+        <span class="lc-wait-score-label">Stars <strong id="lc-wait-score">0</strong></span>
+      </div>
+      <div id="lc-wait-game-wrap" class="lc-wait-canvas-wrap">
+        <canvas id="lc-wait-game"></canvas>
+        <p class="lc-wait-hint">Tap the falling stars!</p>
+      </div>
+      <div id="lc-wait-watch-wrap" class="lc-wait-canvas-wrap" hidden>
+        <canvas id="lc-wait-watch"></canvas>
+        <p class="lc-wait-hint">A calm loop while you wait.</p>
+      </div>
+    </div>
+  </div>
   <script>
     (function () {
       var dock = document.getElementById('lc-mobile-dock');
@@ -5337,6 +5361,9 @@
       
       // When a student joins, teacher re-broadcasts presenter mode + video follow so late joiners catch up
       socket.on('user-joined', ({ userType: joinedUserType, room: eventRoom } = {}) => {
+        if (userType === 'student' && joinedUserType === 'teacher' && (!eventRoom || eventRoom === room)) {
+          if (window.RemoedStudentWait) RemoedStudentWait.setTeacherPresent(true);
+        }
         if (userType !== 'teacher' || eventRoom !== room || joinedUserType !== 'student') return;
         if (presenterModeActive && socket && socket.connected) {
           socket.emit('presenter-mode-start', { room });
@@ -5633,6 +5660,14 @@
 
       // Also request materials when we successfully join the room
       socket.on('joined', () => {
+        if (userType === 'student' && window.RemoedStudentWait) {
+          fetch('/api/signaling/room-status?room=' + encodeURIComponent(room), {
+            headers: { Authorization: 'Bearer ' + (window.RemoedAuthToken && RemoedAuthToken.getStudentToken ? RemoedAuthToken.getStudentToken() : '') },
+            credentials: 'same-origin'
+          }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+            if (data && data.teacherPresent) RemoedStudentWait.setTeacherPresent(true);
+          }).catch(function () {});
+        }
         // Re-setup reward animation listener after joining room
         if (typeof setupRewardAnimationListener === 'function') {
           setupRewardAnimationListener();
@@ -5671,6 +5706,15 @@
       const toggleCameraBtn = document.getElementById('toggle-camera');
       const toggleMicBtn = document.getElementById('toggle-mic');
       const toggleMuteBtn = document.getElementById('toggle-mute');
+      function syncLcMediaIcons() {
+        if (!window.RemoedLucide) return;
+        RemoedLucide.applyToggle(toggleCameraBtn, 'video', 'video-off', toggleCameraBtn && toggleCameraBtn.classList.contains('is-off'));
+        RemoedLucide.applyToggle(toggleMicBtn, 'mic', 'mic-off', toggleMicBtn && toggleMicBtn.classList.contains('is-off'));
+        RemoedLucide.applyToggle(toggleMuteBtn, 'volume-2', 'volume-x', toggleMuteBtn && toggleMuteBtn.classList.contains('is-off'));
+        var bgBtn = document.getElementById('toggle-camera-settings');
+        if (bgBtn) RemoedLucide.apply(bgBtn, 'image');
+      }
+      syncLcMediaIcons();
       const toggleBgBlurBtn = document.getElementById('toggle-bg-blur');
       const cameraErrorMessage = document.getElementById('camera-error-message');
       // Handle track ended events - auto-recover camera/mic
@@ -6331,9 +6375,9 @@
           if (videoTrack) {
             isCameraOn = !isCameraOn;
             videoTrack.enabled = isCameraOn;
-            toggleCameraBtn.textContent = 'C';
             toggleCameraBtn.classList.toggle('is-off', !isCameraOn);
             toggleCameraBtn.style.opacity = isCameraOn ? '1' : '0.55';
+            syncLcMediaIcons();
           }
         });
       }
@@ -6346,18 +6390,16 @@
           if (audioTrack) {
             isMicOn = !isMicOn;
             audioTrack.enabled = isMicOn;
-            toggleMicBtn.textContent = 'M';
             toggleMicBtn.classList.toggle('is-off', !isMicOn);
             toggleMicBtn.style.opacity = isMicOn ? '1' : '0.55';
-            // If mic is disabled, also mute
             if (!isMicOn) {
               isMuted = true;
               if (toggleMuteBtn) {
-                toggleMuteBtn.textContent = 'A';
                 toggleMuteBtn.classList.add('is-off');
                 toggleMuteBtn.style.opacity = '1';
               }
             }
+            syncLcMediaIcons();
           }
         });
       }
@@ -6369,11 +6411,11 @@
           if (!remoteVideo) return;
           isMuted = !isMuted;
           remoteVideo.muted = isMuted;
-          toggleMuteBtn.textContent = 'A';
           toggleMuteBtn.classList.toggle('is-off', isMuted);
           toggleMuteBtn.style.opacity = isMuted ? '1' : '0.55';
           toggleMuteBtn.title = isMuted ? 'Unmute peer audio' : 'Mute peer audio';
           toggleMuteBtn.setAttribute('aria-label', toggleMuteBtn.title);
+          syncLcMediaIcons();
         });
       }
 
@@ -7079,7 +7121,7 @@
         window.__lcClearChatUnread = clearChatUnread;
       } catch (_e) {}
 
-      function addChatMessage(message, sender, isOwn = false, timestamp = null) {
+      function addChatMessage(message, sender, isOwn = false, timestamp = null, meta = null) {
         if (!chatMessages) return;
         const emptyEl = document.getElementById('chat-empty');
         if (emptyEl) emptyEl.hidden = true;
@@ -7105,13 +7147,50 @@
 
         const textEl = document.createElement('div');
         textEl.className = 'message-text';
-        textEl.textContent = normalizeChatDisplayText(message);
+        const screened =
+          window.RemoedChatLanguage && typeof RemoedChatLanguage.screenMessage === 'function'
+            ? RemoedChatLanguage.screenMessage(message)
+            : { display: message, flagged: false, original: message };
+        const flagged = !!(meta && meta.flagged) || screened.flagged;
+        const displayText = (meta && meta.display) || screened.display;
+        const originalText =
+          userType === 'teacher'
+            ? (meta && meta.originalMessage) || screened.original
+            : '';
+        textEl.textContent = normalizeChatDisplayText(displayText);
+
+        bubble.appendChild(textEl);
+
+        if (flagged && userType === 'teacher' && originalText && originalText !== displayText) {
+          const reveal = document.createElement('button');
+          reveal.type = 'button';
+          reveal.className = 'lc-chat-reveal';
+          reveal.textContent = 'Show possible flagged words';
+          reveal.title = 'This may not be a bad word. Reveal is for teacher review and reporting only.';
+          reveal.addEventListener('click', function () {
+            const shown = reveal.dataset.open === '1';
+            if (shown) {
+              textEl.textContent = normalizeChatDisplayText(displayText);
+              reveal.textContent = 'Show possible flagged words';
+              reveal.dataset.open = '';
+            } else {
+              textEl.textContent = normalizeChatDisplayText(originalText);
+              reveal.textContent = 'Hide possible flagged words';
+              reveal.dataset.open = '1';
+            }
+          });
+          bubble.appendChild(reveal);
+        } else if (flagged && userType === 'student') {
+          const note = document.createElement('div');
+          note.className = 'lc-chat-flag-note';
+          note.textContent = 'Some words were hidden.';
+          bubble.appendChild(note);
+        }
 
         const timeEl = document.createElement('div');
         timeEl.className = 'message-time';
         timeEl.textContent = timeStr;
 
-        bubble.appendChild(textEl);
         bubble.appendChild(timeEl);
         row.appendChild(bubble);
         chatMessages.appendChild(row);
@@ -7142,7 +7221,15 @@
           console.log('💬 Sending chat message:', { message, messageId, room, username });
           
           // Add message locally first for immediate feedback
-          addChatMessage(message, myChatLabel, true, timestamp);
+          const screenedSend =
+            window.RemoedChatLanguage && RemoedChatLanguage.screenMessage
+              ? RemoedChatLanguage.screenMessage(message)
+              : { display: message, flagged: false, original: message };
+          addChatMessage(screenedSend.display, myChatLabel, true, timestamp, {
+            flagged: screenedSend.flagged,
+            display: screenedSend.display,
+            originalMessage: userType === 'teacher' ? screenedSend.original : ''
+          });
           
           // Mark as sent and displayed
           sentMessageIds.add(messageId);
@@ -7218,7 +7305,11 @@
         const isOwn = sender === username;
         const senderLabel = payload.senderLabel || sender;
         console.log('💬 Adding chat message to UI:', { message, sender, isOwn, timestamp });
-        addChatMessage(message, senderLabel, isOwn, timestamp);
+        addChatMessage(message, senderLabel, isOwn, timestamp, {
+          flagged: payload.flagged,
+          display: payload.message,
+          originalMessage: payload.originalMessage
+        });
       });
       
       // Also listen for chat messages with different event names (for compatibility)
@@ -8874,6 +8965,8 @@
 
     })();
     </script>
+    <script src="js/student-class-wait.js?v=1"></script>
+</body>
 </html>
 
 

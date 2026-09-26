@@ -69,6 +69,15 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Landing culture /
 - Homepage culture blocks after hero stay in order Who we are → Principles → Pillars → HEART → Vision/Mission. Pillars/HEART use **icons**, not cropped culture photos.
 - Profile gender selects: **Male / Female only**. Do not restore Other. Teacher enum and profile saves must reject/clear Other.
 
+## UI icons (Lucide)
+
+Details: [SKILLS.md](SKILLS.md) § UI icons and [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Icons / Password fields.
+
+- Catalog: [https://lucide.dev/icons/](https://lucide.dev/icons/). Inline SVG via `public/js/lucide-icons.js`. Camera = **video** / **video-off**, mic, volume, send, clock.
+- Password toggles: Lucide **eye** / **eye-off** in `public/js/password-toggle.js`. No emoji, no “Show” text.
+- Student waiting room overlay when the teacher is not in class yet (`public/js/student-class-wait.js`). Do not skip it.
+- Lesson slide characters stay 3D Pixar (lesson skill). Do not replace landing culture photos with icons-from-photos; new portal icons should be Lucide, not a third set.
+
 ## Admin Marketing Hub
 
 Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing Hub and § Admin Roles and Access.

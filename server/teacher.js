@@ -5018,13 +5018,20 @@ router.post('/payroll/withdraw', verifyToken, requireTeacher, async (req, res) =
 router.post('/update-settings', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { newEmail, newUsername, currentPassword, newPassword } = req.body;
-    const teacherId = req.user.teacherId;
-    
-    console.log('Settings update request for teacher:', teacherId);
-    console.log('Update data:', { newEmail: !!newEmail, newUsername: !!newUsername, hasPasswordChange: !!(currentPassword && newPassword) });
-    
-    // Find the teacher
-    const teacher = await Teacher.findOne({ teacherId });
+    const u = req.user || {};
+    const or = [];
+    if (u.teacherMongoId && mongoose.isValidObjectId(String(u.teacherMongoId))) {
+      or.push({ _id: String(u.teacherMongoId) });
+    }
+    if (u.teacherId) {
+      or.push({ teacherId: u.teacherId });
+      if (mongoose.isValidObjectId(String(u.teacherId))) or.push({ _id: String(u.teacherId) });
+    }
+    if (u.username) {
+      or.push({ username: u.username });
+      or.push({ email: u.username });
+    }
+    const teacher = or.length ? await Teacher.findOne({ $or: or }) : null;
     if (!teacher) {
       return res.status(404).json({ success: false, message: 'Teacher not found' });
     }
@@ -5073,13 +5080,13 @@ router.post('/update-settings', verifyToken, requireTeacher, async (req, res) =>
       const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       teacher.password = hashedPassword;
+      teacher.hasGeneratedPassword = false;
       hasChanges = true;
-      console.log('Password updated');
     }
     
     if (hasChanges) {
       await teacher.save();
-      console.log('Settings updated successfully for teacher:', teacherId);
+      console.log('Settings updated successfully for teacher:', teacher.teacherId);
       
       res.json({ 
         success: true, 

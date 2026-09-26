@@ -35,6 +35,14 @@
       if (utCh === 'admin') return 'admin';
       if (utCh === 'teacher') return 'teacher';
       if (utCh === 'student') return 'student';
+      try {
+        if (localStorage.getItem(LS_TEACHER) || sessionStorage.getItem(LS_TEACHER) || localStorage.getItem('remoed_teacher_auth')) {
+          return 'teacher';
+        }
+        if (localStorage.getItem(LS_STUDENT) || sessionStorage.getItem(LS_STUDENT) || localStorage.getItem('remoed_student_auth')) {
+          return 'student';
+        }
+      } catch (_cp) {}
     }
       if (
       p.indexOf('live-classroom') !== -1 ||

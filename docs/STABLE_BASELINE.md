@@ -9,7 +9,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Area | Files |
 |------|--------|
 | Portal tokens | `public/js/user-session.js`, `public/js/remoed-auth-token.js`, `server/authMiddleware.js` |
-| Forgot / set password | `POST /api/auth/forgot-password` (link, not a temp password), `POST /api/auth/reset-password`, `public/forgot-password.html`, `public/reset-password.html` |
+| Forgot / set password | `POST /api/auth/forgot-password` (link, not a temp password), `POST /api/auth/reset-password`, `public/forgot-password.html`, `public/reset-password.html`, `public/change-password.html`, `POST /api/auth/change-password` |
+| UI icons (Lucide) | [lucide.dev/icons](https://lucide.dev/icons/), [`SKILLS.md`](../SKILLS.md) § UI icons; `public/js/lucide-icons.js`; password eye: `public/js/password-toggle.js` |
 | Student book UI | `public/student-book.html` |
 | Book API | `server/student.js` (`POST /book-class`), `server/studentController.js`, `server/services/studentBookSlotService.js`, legacy `POST /api/teacher/book-class` in `server/teacher.js` |
 | Teacher ID resolve | `server/services/teacherSlotResolve.js`, `teacherBookingKey` in `server/teacher.js` |
@@ -17,6 +18,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Class schedule / issue | `public/teacher-class-table.html`, `POST /report-issue` + `GET /check-class-issues` in `server/teacher.js` |
 | Applicant → teacher docs | `server/utils/applicantDocuments.js`, teacher signup in `server/auth.js` |
 | Live classroom (AV / locks) | `public/live-classroom.html`, `public/css/live-classroom-redesign.css`, `public/js/virtual-background.js`, `public/images/virtual-bg/`, socket maps in `server/index.js` |
+| Student waiting room | Overlay `#lc-student-waiting` + `public/js/student-class-wait.js`; page `public/student-waiting-room.html`; `GET /api/signaling/room-status` |
 | Phone app chrome / scroll | `public/js/portal-layout.js`, `public/css/remoed-layers.css`, `public/css/mobile-first.css`, `public/css/portal-chrome-compact.css`, `public/mobile-utils.js` |
 | Portal header chips | `public/css/portal-header-actions.css` (bell / calendar dropdowns) |
 | Landing culture / about | `public/index.html` (`#who-we-are` … `#vision-mission`), `public/landing-brand.css` (`.remo-culture*`) |
@@ -73,6 +75,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Unchecking **Pen / annotate** stops student drawing on the lesson and the board; teacher pen still works. Leaving Board still sends students back to Lesson.
 - [ ] **Student microphone** / **Student camera** switches match the rail pills: one side of each pair is highlighted (Allow = green, Mute/Cam off = amber). Student is muted / cam-off until Allow.
 - [ ] **Your camera background** in Settings applies Off / Blur / Office / Classroom / Nature / Custom on the teacher camera (photos under `public/images/virtual-bg/*.jpg`). Hard-refresh after deploy so `?v=` cache-bust is not stale.
+- [ ] Student joining before the teacher sees the **waiting overlay** (Play stars / Watch loop). When the teacher joins, the overlay closes. Camera/mic/speaker use Lucide **video** / **mic** / **volume** icons, not C/M/A letters. Teacher student-lock chips are icons only (`mic-off` / `mic` / `video-off` / `video`). Flagged chat shows asterisks to students; teachers can reveal possible flagged words.
 
 ### Auth isolation
 
@@ -91,7 +94,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 ### Landing / culture
 
 - [ ] Homepage after hero shows, in order: **Who we are?** → Foundational Principles → Core Cultural Pillars → H.E.A.R.T. Framework → Vision & Mission, then existing Why Learn / Teachers / Assessment / Plans.
-- [ ] Pillars and HEART use **Font Awesome icon circles** (`.remo-culture-icon`), not cropped stock photos under `public/images/culture/`.
+- [ ] Pillars and HEART use **icon circles** (`.remo-culture-icon`), not cropped stock photos under `public/images/culture/`. New portal chrome uses **[Lucide](https://lucide.dev/icons/)** (see [`SKILLS.md`](../SKILLS.md)); do not put emoji on password fields.
+- [ ] Password fields show a Lucide **eye** / **eye-off** toggle **inside** the field (`password-toggle.js`), not emoji or a “Show” chip. Set-password card is ~560px on desktop. New passwords need 8+ mixed case, a number, **and a symbol**.
 - [ ] Nav **About** and footer **About RemoEd** jump to `#who-we-are`.
 
 ### Profile gender
@@ -228,6 +232,15 @@ Product copy and layout on `public/index.html` after the hero. Style in `public/
 ### Icons, not cropped comps
 
 Pillars and HEART use brand icon circles (same family as Foundational Principles / Why Learn cards). **Do not** reintroduce cropped mockup PNGs or a `public/images/culture/` photo set — those looked soft and blurry on the live page. Do not paste the full design-comp images as section backgrounds (duplicates titles and breaks a11y).
+
+**Product UI icons** (password, header chips, new controls): use **[Lucide](https://lucide.dev/icons/)** — spec in [`SKILLS.md`](../SKILLS.md) § UI icons. Inline SVG, `currentColor`, 24×24 viewBox. Password visibility is Lucide **eye** / **eye-off** via `public/js/password-toggle.js`. Do not use emoji for those controls. Existing landing Font Awesome circles may stay until a dedicated Lucide restyle; new icons should not introduce a third set.
+
+## Password fields / change password
+
+- Shared toggle: `public/js/password-toggle.js` + `public/css/password-toggle.css` on login, register, reset, change-password, profiles, admin login/setup/users.
+- Strength meter (reset + change-password): `public/js/password-strength.js` — 8+ characters, upper, lower, number, **and a symbol**. Server: `RESET_PASSWORD_REGEX` in `server/auth.js`.
+- Set-password layout: desktop card `max-width: 560px`; Lucide eye sits in the same box as the input (override `.reset-form button` so it cannot become a full-width “Show” pill).
+- Change password: Bearer from `remoed_teacher_token` / `remoed_student_token` (and session), user type from JWT. Admin compare/save `passwordHash`. Clear `hasGeneratedPassword` on success. Unified login with a generated password redirects to `change-password.html`.
 
 ### Nav / footer
 
@@ -400,6 +413,7 @@ Surfaces locked in on this date (extend around; do not rewrite). Details above.
 |------|----------------|
 | Phone app shell / scroll | `.remoed-main` sole scroller ≤768; no `window.scrollTo` / lastY snap / PTR on `.remoed-content`; adopt `.nav-right` only on phone; desktop Time In / bell / calendar stay in `.nav-header`. |
 | Landing culture | After hero: Who we are → Principles → Pillars → HEART → Vision/Mission; icon circles not culture photos; About → `#who-we-are`. |
+| UI icons | [Lucide](https://lucide.dev/icons/) for portal chrome; password **eye** / **eye-off**; no emoji toggles (`SKILLS.md`). |
 | Gender | Profile selects Male / Female only; Teacher enum rejects Other. |
 | Marketing Hub | Unique Link Commissions under sidebar **Marketing Hub** (below Accounting); Accounting Hub = Payroll + Subscriptions only. |
 | `admin_marketing` | Restricted sidebar + hub-guard + `adminRoleGate`; role in Admins dropdown; first-time setup token for blank-password creates. |

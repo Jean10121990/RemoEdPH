@@ -8,6 +8,7 @@
   <title>Admin Login - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/password-toggle.css">
   <style>
     .admin-2fa-enroll-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
     .admin-2fa-enroll-modal__backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); }
@@ -36,9 +37,7 @@
         <label for="admin-password" class="remoed-form-label">Password</label>
         <div class="password-input-container">
           <input type="password" id="admin-password" class="remoed-form-input" placeholder="Enter your password" required autocomplete="on">
-          <button type="button" class="password-toggle" id="admin-password-toggle" onclick="togglePassword()">
-            <span class="eye-icon">👁️</span>
-          </button>
+          <button type="button" class="password-toggle" id="admin-password-toggle" aria-label="Show password"></button>
         </div>
       </div>
       <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Login</button>
@@ -343,24 +342,8 @@
       btn.disabled = false;
       btn.textContent = 'Verify & continue';
     };
-    
-    // Password toggle functionality
-    function togglePassword() {
-      const passwordInput = document.getElementById('admin-password');
-      const toggleBtn = document.getElementById('admin-password-toggle');
-      const eyeIcon = toggleBtn.querySelector('.eye-icon');
-      
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleBtn.classList.add('show-password');
-        eyeIcon.textContent = '🙈';
-      } else {
-        passwordInput.type = 'password';
-        toggleBtn.classList.remove('show-password');
-        eyeIcon.textContent = '👁️';
-      }
-    }
   </script>
+  <script src="js/password-toggle.js"></script>
 </body>
 </html> 
 

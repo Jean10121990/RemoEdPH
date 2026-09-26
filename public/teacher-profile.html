@@ -13,7 +13,9 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-11">
     <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
+    <link rel="stylesheet" href="css/password-toggle.css">
     <script src="js/user-session.js"></script>
+    <script src="js/remoed-auth-token.js"></script>
     <script src="js/teacher-session-gate.js?v=2"></script>
     <script src="js/age-from-birthday.js?v=1"></script>
     <script src="js/ph-mobile.js?v=1"></script>
@@ -2744,7 +2746,11 @@
          
          // Settings functions
          function updateSettings() {
-             const token = localStorage.getItem('token');
+             const token =
+                 (window.RemoedAuthToken && typeof RemoedAuthToken.getTeacherToken === 'function' && RemoedAuthToken.getTeacherToken()) ||
+                 localStorage.getItem('remoed_teacher_token') ||
+                 sessionStorage.getItem('remoed_teacher_token') ||
+                 localStorage.getItem('token');
              if (!token) {
                  showSettingsMessage('Authentication required. Please login again.', 'error');
                  return;
@@ -4395,6 +4401,7 @@
 </script>
 <script src="js/remo-ai-engine.js?v=smart-1"></script>
 <script src="js/remo-ai-enhance.js?v=smart-1"></script>
+<script src="js/password-toggle.js"></script>
 </body>
 </html> 
 

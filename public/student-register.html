@@ -8,6 +8,7 @@
   <title>Student Registration - RemoEdPH</title>
   <script src="js/referral-tracking.js"></script>
   <script src="js/user-session.js"></script>
+  <link rel="stylesheet" href="css/password-toggle.css?v=2">
   <style>
     :root {
       --primary: #00aeef;
@@ -143,22 +144,6 @@
     }
     .password-input-container {
       position: relative;
-    }
-    .password-input-container input {
-      padding-right: 48px;
-    }
-    .password-toggle {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      font-size: 1.05rem;
-      line-height: 1;
-      padding: 6px;
-      color: var(--muted);
     }
     .password-requirements {
       margin-top: 10px;
@@ -344,9 +329,7 @@
           <label for="student-register-password">Password</label>
           <div class="password-input-container">
             <input type="password" id="student-register-password" placeholder="Create a strong password" required autocomplete="new-password">
-            <button type="button" class="password-toggle" id="password-toggle" onclick="togglePassword()" aria-label="Show password">
-              <span class="eye-icon">Show</span>
-            </button>
+            <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password"></button>
           </div>
           <div class="password-requirements" id="password-requirements">
             <div class="requirement" id="req-length">
@@ -364,6 +347,10 @@
             <div class="requirement" id="req-number">
               <span class="requirement-icon">○</span>
               <span>One number</span>
+            </div>
+            <div class="requirement" id="req-symbol">
+              <span class="requirement-icon">○</span>
+              <span>One symbol (e.g. ! @ # $ %)</span>
             </div>
           </div>
         </div>
@@ -480,39 +467,26 @@
       } catch (e) { /* ignore */ }
     })();
 
-    function togglePassword() {
-      const passwordInput = document.getElementById('student-register-password');
-      const toggleBtn = document.getElementById('password-toggle');
-      const eyeIcon = toggleBtn.querySelector('.eye-icon');
-
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleBtn.classList.add('show-password');
-        eyeIcon.textContent = 'Hide';
-      } else {
-        passwordInput.type = 'password';
-        toggleBtn.classList.remove('show-password');
-        eyeIcon.textContent = 'Show';
-      }
-    }
-
     function validatePassword(password) {
       const requirements = {
         length: password.length >= 8,
         uppercase: /[A-Z]/.test(password),
         lowercase: /[a-z]/.test(password),
-        number: /\d/.test(password)
+        number: /\d/.test(password),
+        symbol: /[^A-Za-z0-9]/.test(password)
       };
 
       document.getElementById('req-length').classList.toggle('met', requirements.length);
       document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
       document.getElementById('req-lowercase').classList.toggle('met', requirements.lowercase);
       document.getElementById('req-number').classList.toggle('met', requirements.number);
+      document.getElementById('req-symbol').classList.toggle('met', requirements.symbol);
 
       document.getElementById('req-length').querySelector('.requirement-icon').textContent = requirements.length ? '✓' : '○';
       document.getElementById('req-uppercase').querySelector('.requirement-icon').textContent = requirements.uppercase ? '✓' : '○';
       document.getElementById('req-lowercase').querySelector('.requirement-icon').textContent = requirements.lowercase ? '✓' : '○';
       document.getElementById('req-number').querySelector('.requirement-icon').textContent = requirements.number ? '✓' : '○';
+      document.getElementById('req-symbol').querySelector('.requirement-icon').textContent = requirements.symbol ? '✓' : '○';
 
       return Object.values(requirements).every(Boolean);
     }
@@ -665,5 +639,6 @@
       window.location.href = '/login/';
     }
   </script>
+  <script src="js/password-toggle.js?v=2"></script>
 </body>
 </html>

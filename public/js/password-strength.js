@@ -1,6 +1,6 @@
 /**
  * Live password rules + weak / strong / super-strong meter.
- * Required (matches /api/auth/reset-password): 8+ chars, upper, lower, number. Letters and digits only.
+ * Required: 8+ chars, upper, lower, number, and a symbol. Matches /api/auth/reset-password.
  */
 (function (global) {
   var RULES = [
@@ -8,6 +8,7 @@
     { id: 'lower', label: 'At least 1 lowercase letter', test: function (pw) { return /[a-z]/.test(pw); } },
     { id: 'upper', label: 'At least 1 uppercase letter', test: function (pw) { return /[A-Z]/.test(pw); } },
     { id: 'number', label: 'At least 1 number', test: function (pw) { return /\d/.test(pw); } },
+    { id: 'symbol', label: 'At least 1 symbol (e.g. ! @ # $ %)', test: function (pw) { return /[^A-Za-z0-9]/.test(pw); } },
   ];
 
   function analyze(password) {
@@ -20,7 +21,6 @@
       if (!ok) missing.push(rule.label.charAt(0).toLowerCase() + rule.label.slice(1));
     });
     var requiredMet = missing.length === 0 && pw.length > 0;
-    var hasSpecial = /[^A-Za-z0-9]/.test(pw);
     var level = 'weak';
     var label = 'Weak password';
     if (requiredMet && pw.length >= 12) {
@@ -33,13 +33,11 @@
     var hint = '';
     if (pw && !requiredMet && missing[0]) {
       hint = 'Must include ' + missing[0] + '.';
-    } else if (hasSpecial) {
-      hint = 'Use letters and numbers only (no symbols).';
     }
     return {
       rules: rules,
-      requiredMet: requiredMet && !hasSpecial,
-      serverOk: requiredMet && !hasSpecial,
+      requiredMet: requiredMet,
+      serverOk: requiredMet,
       level: pw ? level : 'idle',
       label: pw ? label : '',
       hint: hint,
@@ -53,7 +51,6 @@
     var meterLabel = document.getElementById(opts.meterLabelId);
     var list = document.getElementById(opts.listId);
     var hint = document.getElementById(opts.hintId);
-    var toggle = document.getElementById(opts.toggleId);
 
     function render() {
       var result = analyze(input.value);
@@ -75,14 +72,6 @@
 
     input.addEventListener('input', render);
     input.addEventListener('blur', render);
-    if (toggle) {
-      toggle.addEventListener('click', function () {
-        var show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-        toggle.classList.toggle('is-shown', show);
-      });
-    }
     render();
   }
 
