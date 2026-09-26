@@ -14,7 +14,7 @@
   <script src="js/user-session.js"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <script src="js/teacher-payout-settings.js"></script>
-  <script src="js/payroll-withdraw-modal.js?v=1"></script>
+  <script src="js/payroll-withdraw-modal.js?v=2"></script>
   <style>
     .fee-cancel-tooltip-wrap { position: relative; display: inline-flex; align-items: center; align-self: flex-end; margin-bottom: 2px; }
     .fee-cancel-q-btn {
@@ -388,6 +388,9 @@
                 <div class="label" id="fee-wallet-amount-label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Withdrawable this cut-off</div>
                 <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
               </div>
+              <p id="fee-maribank-daily-limit-note" hidden style="display:none;margin:8px 0 0;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:0.78rem;line-height:1.4;font-weight:600;">
+                Note: MariBank maximum daily withdrawal limit is up to ₱50,000. If your Available to Withdraw exceeds ₱50,000, you may need more than one day (or split transfers) to complete withdrawal.
+              </p>
               <div style="margin-top:8px;background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
                 <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Pending Earnings</div>
                 <div id="fee-pending-earnings" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
@@ -1237,6 +1240,15 @@
       }
       const pendingEl = document.getElementById('fee-pending-earnings');
       if (pendingEl) pendingEl.textContent = '₱' + pendingEarn.toFixed(2);
+
+      const MARIBANK_DAILY_WITHDRAW_LIMIT = 50000;
+      const limitNote = document.getElementById('fee-maribank-daily-limit-note');
+      if (limitNote) {
+        const showLimit =
+          kind === 'available' && Number(earnedNet) > MARIBANK_DAILY_WITHDRAW_LIMIT;
+        limitNote.hidden = !showLimit;
+        limitNote.style.display = showLimit ? 'block' : 'none';
+      }
       
       // Log the calculation for debugging
       console.log(`💰 NET AMOUNT CALCULATION:`);

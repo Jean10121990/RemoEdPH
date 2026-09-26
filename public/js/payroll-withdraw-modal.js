@@ -57,6 +57,9 @@
       '<div class="pw-field"><label for="pw-account-number">MariBank account number or mobile no.</label>' +
       '<input type="text" id="pw-account-number" placeholder="e.g. 0917XXXXXXX or Account No." required autocomplete="off"></div>' +
       '<div class="pw-amount"><span>Total payout</span><strong id="pw-amount">₱0.00</strong></div>' +
+      '<p class="pw-limit-note" id="pw-limit-note" hidden style="display:none;margin:0 0 12px;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:0.8rem;line-height:1.4;">' +
+      'Note: MariBank maximum daily withdrawal limit is up to ₱50,000. Your payout exceeds this limit, so you may need more than one day (or split transfers) to complete withdrawal.' +
+      '</p>' +
       '<div class="pw-actions">' +
       '<button type="button" class="pw-btn pw-btn-cancel" id="pw-cancel">Cancel</button>' +
       '<button type="submit" class="pw-btn pw-btn-go" id="pw-submit">Confirm &amp; Withdraw</button>' +
@@ -99,6 +102,12 @@
 
     document.getElementById('pw-record-id').value = state.recordId;
     document.getElementById('pw-amount').textContent = peso(state.amount);
+    var limitNote = document.getElementById('pw-limit-note');
+    if (limitNote) {
+      var overLimit = Number(state.amount) > 50000;
+      limitNote.hidden = !overLimit;
+      limitNote.style.display = overLimit ? 'block' : 'none';
+    }
     document.getElementById('pw-account-name').value = '';
     document.getElementById('pw-account-number').value = '';
     document.getElementById('pw-bank').value = 'MariBank';
