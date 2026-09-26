@@ -6,6 +6,8 @@
   'use strict';
 
   var MARIBANK_OPEN_URL = 'https://maribank.ph/c/earnfreemoney?referralCode=KB740303';
+  var MIN_WITHDRAW_PHP = 100;
+  var MAX_DAILY_WITHDRAW_PHP = 50000;
   var STYLE_ID = 'remoed-payroll-withdraw-css';
   var ROOT_ID = 'remoed-payroll-withdraw-root';
 
@@ -45,7 +47,7 @@
     root.innerHTML =
       '<div class="pw-panel" id="pw-panel">' +
       '<h3 class="pw-title">Withdraw earnings</h3>' +
-      '<p class="pw-note">Your MariBank details are used for this payout only. RemoEd stores a <strong>masked</strong> reference; Accounting receives full details by email.</p>' +
+      '<p class="pw-note">Your MariBank details are used for this payout only. RemoEd stores a <strong>masked</strong> reference; Accounting receives full details by email. Minimum withdraw is ₱100; daily MariBank limit is ₱50,000. Amounts not withdrawn roll to the next cut-off.</p>' +
       '<form id="pw-form">' +
       '<input type="hidden" id="pw-record-id" value="">' +
       '<div class="pw-field"><label for="pw-bank">Payout method</label>' +
@@ -59,6 +61,9 @@
       '<div class="pw-amount"><span>Total payout</span><strong id="pw-amount">₱0.00</strong></div>' +
       '<p class="pw-limit-note" id="pw-limit-note" hidden style="display:none;margin:0 0 12px;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:0.8rem;line-height:1.4;">' +
       'Note: MariBank maximum daily withdrawal limit is up to ₱50,000. Your payout exceeds this limit, so you may need more than one day (or split transfers) to complete withdrawal.' +
+      '</p>' +
+      '<p class="pw-min-note" id="pw-min-note" hidden style="display:none;margin:0 0 12px;padding:8px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1e3a8a;font-size:0.8rem;line-height:1.4;">' +
+      'Minimum withdrawable amount is ₱100. Amounts below ₱100 are added to the next cut-off.' +
       '</p>' +
       '<div class="pw-actions">' +
       '<button type="button" class="pw-btn pw-btn-cancel" id="pw-cancel">Cancel</button>' +
@@ -103,10 +108,21 @@
     document.getElementById('pw-record-id').value = state.recordId;
     document.getElementById('pw-amount').textContent = peso(state.amount);
     var limitNote = document.getElementById('pw-limit-note');
+    var minNote = document.getElementById('pw-min-note');
+    var submitBtn = document.getElementById('pw-submit');
+    var belowMin = Number(state.amount) > 0 && Number(state.amount) < MIN_WITHDRAW_PHP;
+    var overLimit = Number(state.amount) > MAX_DAILY_WITHDRAW_PHP;
     if (limitNote) {
-      var overLimit = Number(state.amount) > 50000;
       limitNote.hidden = !overLimit;
       limitNote.style.display = overLimit ? 'block' : 'none';
+    }
+    if (minNote) {
+      minNote.hidden = !belowMin;
+      minNote.style.display = belowMin ? 'block' : 'none';
+    }
+    if (submitBtn) {
+      submitBtn.disabled = belowMin;
+      submitBtn.textContent = belowMin ? 'Below ₱100 minimum' : 'Confirm & Withdraw';
     }
     document.getElementById('pw-account-name').value = '';
     document.getElementById('pw-account-number').value = '';
@@ -130,6 +146,16 @@
     var accountNumber = (document.getElementById('pw-account-number').value || '').replace(/\s+/g, '').trim();
     if (!state.submitUrl || !state.recordId) {
       alert('Missing payout record.');
+      return;
+    }
+    if (Number(state.amount) < MIN_WITHDRAW_PHP) {
+      alert(
+        'Minimum withdrawable amount is ₱' +
+          MIN_WITHDRAW_PHP +
+          '. Amounts below ₱' +
+          MIN_WITHDRAW_PHP +
+          ' are added to the next cut-off.'
+      );
       return;
     }
     if (!accountName || !accountNumber) {
@@ -179,5 +205,7 @@
     open: open,
     close: close,
     MARIBANK_OPEN_URL: MARIBANK_OPEN_URL,
+    MIN_WITHDRAW_PHP: MIN_WITHDRAW_PHP,
+    MAX_DAILY_WITHDRAW_PHP: MAX_DAILY_WITHDRAW_PHP,
   };
 })(typeof window !== 'undefined' ? window : this);

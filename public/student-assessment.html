@@ -559,6 +559,27 @@
             }
 
             if (isGuestAssessment && guestAssessmentData) {
+                try {
+                    var statusRes = await fetch(
+                        '/api/public/assessment-status?email=' +
+                            encodeURIComponent(guestAssessmentData.parentEmail || '')
+                    );
+                    var status = await statusRes.json().catch(function () { return {}; });
+                    if (status && status.taken) {
+                        alert(
+                            status.message ||
+                                'Assessment already taken. Please check your email for your results and registration link.'
+                        );
+                        var backLevel = encodeURIComponent(status.cefrLevel || 'A1');
+                        var backEmail = encodeURIComponent(guestAssessmentData.parentEmail || '');
+                        window.location.href =
+                            'index.html?email=' + backEmail + '&cefrLevel=' + backLevel + '#plans';
+                        return;
+                    }
+                } catch (statusErr) {
+                    console.warn('Guest assessment status check failed', statusErr);
+                }
+
                 var sb = document.getElementById('student-sidebar-root');
                 if (sb) sb.style.display = 'none';
                 var content = document.querySelector('.remoed-content');
@@ -842,7 +863,9 @@
             if (emailQ) registerUrl += '&email=' + emailQ;
             if (trialToken) registerUrl += '&trial=' + encodeURIComponent(trialToken);
 
-            const plansUrl = baseReg + '/index.html?email=' + emailQ + '&cefrLevel=' + levelQ + '&score=' + scoreQ + '#plans';
+            let plansUrl = baseReg + '/index.html?email=' + emailQ + '&cefrLevel=' + levelQ + '&score=' + scoreQ;
+            if (trialToken) plansUrl += '&trial=' + encodeURIComponent(trialToken);
+            plansUrl += '#plans';
 
             document.getElementById('pam-btn-register').onclick = function () {
                 window.location.href = registerUrl;
@@ -874,6 +897,22 @@
                 });
                 const emailResult = await emailResponse.json().catch(function () { return {}; });
                 if (emailResult.trialToken) trialToken = emailResult.trialToken;
+                if (emailResponse.status === 409 || emailResult.code === 'ASSESSMENT_ALREADY_TAKEN') {
+                    alert(
+                        emailResult.message ||
+                        'Assessment already taken. Please check your email for your results and registration link.'
+                    );
+                    const emailQ = encodeURIComponent(guestAssessmentData.parentEmail || '');
+                    const levelQ = encodeURIComponent(emailResult.cefrLevel || level);
+                    window.location.href =
+                        (window.location.origin || '') +
+                        '/index.html?email=' +
+                        emailQ +
+                        '&cefrLevel=' +
+                        levelQ +
+                        '#plans';
+                    return;
+                }
                 if (emailResult.success || emailResult.fallback) {
                     console.log('✅ Assessment email / trial token ready');
                 }

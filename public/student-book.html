@@ -308,23 +308,38 @@
             justify-content: center;
         }
         
-        /* Booking Modal */
+        /* Booking Modal — must sit on document.body (see showBookingModal) so fixed
+           positioning is not trapped by .remoed-content / overflow parents. */
         .booking-modal {
             display: none;
             position: fixed;
-            z-index: var(--z-modal);
+            inset: 0;
+            z-index: var(--z-modal, 10050);
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
         }
         
         .booking-modal.show {
             display: flex;
-            align-items: center;
-            justify-content: center;
+        }
+
+        body > .booking-modal {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            margin: 0 !important;
+            z-index: var(--z-modal, 10050) !important;
         }
         
         .booking-modal-content {
@@ -333,10 +348,11 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 32px;
             max-width: 500px;
-            width: 90%;
+            width: min(500px, 100%);
             max-height: 90vh;
             overflow-y: auto;
             position: relative;
+            margin: auto;
             animation: modalSlideIn 0.3s ease-out;
         }
         
@@ -1047,7 +1063,7 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-3">
     <link rel="stylesheet" href="css/student-sidebar.css?v=app-shell-1">
-    <link rel="stylesheet" href="css/remoed-layers.css?v=page-pass-2">
+    <link rel="stylesheet" href="css/remoed-layers.css?v=page-pass-3">
 </head>
 <body class="student-portal page-student-book">
     <div class="remoed-main">
@@ -2346,20 +2362,40 @@
             // The modal will be shown when clicking a "Book Now" button or similar
         }
         
-        // Modal functions
+        // Modal functions — hoist to body so the panel centers over the viewport
+        // (not trapped as a side column inside .remoed-content).
+        let bookingModalHomeParent = null;
+        let bookingModalHomeNext = null;
+
         function showBookingModal() {
             const modal = document.getElementById('booking-modal');
+            if (!modal) return;
+            if (modal.parentElement !== document.body) {
+                bookingModalHomeParent = modal.parentElement;
+                bookingModalHomeNext = modal.nextSibling;
+                document.body.appendChild(modal);
+            }
             modal.classList.add('show');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
         }
         
         function closeBookingModal() {
             const modal = document.getElementById('booking-modal');
-            modal.classList.remove('show');
-            document.body.style.overflow = ''; // Restore scrolling
+            if (modal) {
+                modal.classList.remove('show');
+                if (bookingModalHomeParent && modal.parentElement === document.body) {
+                    if (bookingModalHomeNext && bookingModalHomeNext.parentNode === bookingModalHomeParent) {
+                        bookingModalHomeParent.insertBefore(modal, bookingModalHomeNext);
+                    } else {
+                        bookingModalHomeParent.appendChild(modal);
+                    }
+                }
+            }
+            document.body.style.overflow = '';
             
             // Reset form but keep selected slots
-            document.getElementById('booking-form').reset();
+            const form = document.getElementById('booking-form');
+            if (form) form.reset();
             
             // Clear all field errors when closing modal
             clearAllFieldErrors();
@@ -3198,6 +3234,16 @@
                         return;
                     }
 
+                    if (result.code === 'LESSON_AHEAD_OF_PROGRESS') {
+                        showMessage(errorMsg, 'error');
+                        highlightFieldError('lesson', errorMsg);
+                        studentLessonProgressKeys = null;
+                        await loadLessonsForLevel();
+                        bookBtn.disabled = false;
+                        bookBtnText.textContent = 'Book Class';
+                        return;
+                    }
+
                     // Slot taken — lock UI and refresh calendar
                     if (
                         response.status === 409 ||
@@ -3248,6 +3294,7 @@
                 // Close modal and clear selections after successful booking
                 closeBookingModal();
                 clearAllSelections();
+                studentLessonProgressKeys = null;
 
                 // Refresh the grid to show updated availability
                 generateWeeklyGrid();
@@ -3491,6 +3538,9 @@
         // Load lessons for selected level
         let studentTrialBookingActive = false;
         let studentHasPaidPlan = false;
+        /** Max linear lesson number the student may book for the selected level (next stop). */
+        let studentMaxBookableLesson = 1;
+        let studentLessonProgressKeys = null;
 
         function curriculumLevelsMatch(a, b) {
             const normalize = (raw) => {
@@ -3503,6 +3553,51 @@
                 return s;
             };
             return normalize(a) === normalize(b);
+        }
+
+        function normalizeProgressLevelKey(raw) {
+            const s = String(raw || '').toLowerCase().trim();
+            if (!s) return '';
+            if (s.includes('little seeds') || s === 'nursery' || s === 'level 1') return 'Little Seeds';
+            if (s.includes('sprouts') || s.includes('kindergarten') || s === 'level 2') return 'Sprouts';
+            if (s.includes('saplings') || s.includes('preparatory') || s === 'level 3') return 'Saplings';
+            if (s.includes('young stewards') || s.includes('steward') || s === 'level 4') return 'Young Stewards';
+            return '';
+        }
+
+        function maxBookableFromCompletedKeys(completedKeys, levelRaw) {
+            const level = normalizeProgressLevelKey(levelRaw);
+            if (!level) return 1;
+            const set = completedKeys instanceof Set ? completedKeys : new Set(completedKeys || []);
+            for (let linear = 1; linear <= 220; linear++) {
+                const batch = Math.ceil(linear / 22);
+                const lessonNum = ((linear - 1) % 22) + 1;
+                if (!set.has(level + ':' + batch + ':' + lessonNum)) return linear;
+            }
+            return 220;
+        }
+
+        async function refreshLessonProgressUnlock(selectedLevel) {
+            studentMaxBookableLesson = 1;
+            try {
+                const token = getStudentAuthToken();
+                if (!token) return;
+                if (!studentLessonProgressKeys) {
+                    const res = await fetch('/api/student/lesson-progress', {
+                        headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' }
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    studentLessonProgressKeys = Array.isArray(data.completedKeys) ? data.completedKeys : [];
+                }
+                studentMaxBookableLesson = maxBookableFromCompletedKeys(
+                    studentLessonProgressKeys,
+                    selectedLevel
+                );
+            } catch (e) {
+                console.warn('refreshLessonProgressUnlock', e);
+                studentMaxBookableLesson = 1;
+            }
         }
 
         function isLessonOne(lesson) {
@@ -3612,6 +3707,7 @@
                 }
 
                 await refreshTrialBookingFlag();
+                await refreshLessonProgressUnlock(selectedLevel);
                 
                 // Get curricula for the selected level
                 const curriculaRes = await fetch(`/api/lessons/curricula?token=${encodeURIComponent(token)}`, {
@@ -3657,7 +3753,7 @@
                 }
 
                 // Always show the full catalog. Trial / unpaid students can only pick Lesson 1;
-                // later lessons stay visible but disabled until a plan is purchased.
+                // paid students may pick up to the next trail stop (and earlier for reschedule).
 
                 // De-dupe by lessonNumber + title
                 const seen = new Set();
@@ -3672,7 +3768,10 @@
                 const hintEl = document.getElementById('lesson-catalog-hint');
                 if (hintEl) {
                     if (studentHasPaidPlan) {
-                        hintEl.textContent = 'Your plan is active — you can book any lesson in this level.';
+                        hintEl.textContent =
+                            'You can book Lesson ' +
+                            studentMaxBookableLesson +
+                            ' (next on your trail) or any earlier lesson — including reschedules. Later lessons stay locked until you finish the ones before them.';
                     } else if (studentTrialBookingActive) {
                         hintEl.textContent = 'Free trial: Lesson 1 is open. Other lessons are listed but locked until you enroll in a plan.';
                     } else {
@@ -3695,18 +3794,27 @@
                         }
                         
                         const lessonOne = isLessonOne(lesson);
+                        const num = Number(lesson.lessonNumber);
+                        const aheadOfProgress =
+                            studentHasPaidPlan &&
+                            Number.isFinite(num) &&
+                            num > studentMaxBookableLesson;
                         const locked = studentHasPaidPlan
-                            ? false
+                            ? aheadOfProgress
                             : studentTrialBookingActive
                               ? !lessonOne
                               : true;
                         option.value = lesson._id.toString(); // Ensure it's a string
-                        option.textContent = locked
-                            ? `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (unlock with a plan)`
-                            : `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
-                        option.title = locked
-                            ? 'Enroll in a learning plan to book this lesson'
-                            : (lesson.description || lesson.title || '');
+                        if (locked && aheadOfProgress) {
+                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (finish earlier lessons first)`;
+                            option.title = 'Complete earlier lessons before booking this one';
+                        } else if (locked) {
+                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (unlock with a plan)`;
+                            option.title = 'Enroll in a learning plan to book this lesson';
+                        } else {
+                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
+                            option.title = lesson.description || lesson.title || '';
+                        }
                         option.disabled = locked;
                         if (lesson.lessonNumber != null) {
                             option.dataset.lessonNumber = String(lesson.lessonNumber);
@@ -3721,6 +3829,14 @@
                             (o) => o.value && !o.disabled
                         );
                         if (firstOpen) lessonSelect.value = firstOpen.value;
+                    } else if (studentHasPaidPlan) {
+                        const nextOpt = Array.from(lessonSelect.options).find(
+                            (o) =>
+                                o.value &&
+                                !o.disabled &&
+                                o.dataset.lessonNumber === String(studentMaxBookableLesson)
+                        );
+                        if (nextOpt && !lessonSelect.value) lessonSelect.value = nextOpt.value;
                     }
 
                     applyJourneyLessonPrefill(levelSelect, lessonSelect);

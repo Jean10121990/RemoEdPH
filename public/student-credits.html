@@ -526,7 +526,10 @@
               expirySub.textContent = 'Unused credits return to 0 on ' + onLabel + '.';
             } else {
               expiryCount.textContent = label;
-              expirySub.textContent = 'Valid until ' + onLabel + '. Unused credits return to 0 after this date.';
+              expirySub.textContent =
+                'Valid until ' +
+                onLabel +
+                '. Unused credits from that plan return to 0 after this date; newer plans keep their remaining credits.';
             }
           }
         }

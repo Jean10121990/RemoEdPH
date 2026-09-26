@@ -22,6 +22,7 @@ const {
   isCompleted,
   uiLifecycleLabel,
   validateMariBankWithdrawBody,
+  validateWithdrawAmount,
   sendWithdrawalEmailToAccounting,
   ALLOWED_BANK,
 } = require('./services/payrollWithdrawService');
@@ -634,6 +635,14 @@ router.post('/withdraw', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Funds are not available for withdrawal or have already been requested.',
+      });
+    }
+    const amountCheck = validateWithdrawAmount(payout.totalAmount);
+    if (!amountCheck.ok) {
+      return res.status(400).json({
+        success: false,
+        code: amountCheck.code,
+        message: amountCheck.message,
       });
     }
 

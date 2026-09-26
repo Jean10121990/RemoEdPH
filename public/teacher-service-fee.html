@@ -2172,6 +2172,13 @@
             alert('No released payment for this cut-off yet.');
             return;
           }
+          var amt = Number(p.amount) || 0;
+          if (amt < 100) {
+            alert(
+              'Minimum withdrawable amount is ₱100. This amount will be added to the next cut-off.'
+            );
+            return;
+          }
           if (!window.RemoedPayrollWithdraw) {
             alert('Withdraw UI failed to load. Hard-refresh the page.');
             return;

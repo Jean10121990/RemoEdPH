@@ -1102,7 +1102,15 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
 
 // Student registration endpoint
 router.post('/student-register', authRegisterLimiter, async (req, res) => {
-  const { username, email, password, referralCode, assessmentTrialToken } = req.body;
+  const {
+    username,
+    email,
+    password,
+    referralCode,
+    assessmentTrialToken,
+    firstName,
+    lastName,
+  } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password required' });
   }
@@ -1111,6 +1119,14 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
   }
   if (!looksLikeEmail(email)) {
     return res.status(400).json({ success: false, message: 'Enter a valid email address' });
+  }
+  const safeFirstName = String(firstName || '').trim();
+  const safeLastName = String(lastName || '').trim();
+  if (!safeFirstName || !safeLastName) {
+    return res.status(400).json({
+      success: false,
+      message: 'Student first name and last name are required',
+    });
   }
 
   // Check if database is connected
@@ -1122,28 +1138,8 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
     });
   }
 
-  let trial = null;
-  if (assessmentTrialToken && String(assessmentTrialToken).trim()) {
-    trial = await AssessmentTrial.findOne({
-      token: String(assessmentTrialToken).trim(),
-      redeemedByStudentId: null,
-    });
-    if (!trial) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or already used assessment trial link. Request a new results email from the assessment page.',
-      });
-    }
-    const em = String(email).trim().toLowerCase();
-    if (em !== trial.parentEmail) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'Use the same email address you used for the level assessment to claim your free trial class.',
-      });
-    }
-  }
-  
+  const emailNorm = String(email).trim().toLowerCase();
+
   try {
     // Check if username already exists
     const existingUsername = await Student.findOne({ username });
@@ -1151,21 +1147,57 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       return res.status(409).json({ success: false, message: 'Username already exists' });
     }
     
-    // Check if email already exists
-    const existingEmail = await Student.findOne({ email });
+    // Only hard-block when this email already has an account (trial links do not expire)
+    const existingEmail = await Student.findOne({
+      email: new RegExp('^' + emailNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+    });
     if (existingEmail) {
       return res.status(409).json({ success: false, message: 'Email address already registered' });
+    }
+
+    // Resolve assessment trial: prefer unredeemed row for this email (never expires).
+    // Invalid/stale token must not block first-time registration.
+    let trial = await AssessmentTrial.findOne({
+      parentEmail: emailNorm,
+      redeemedByStudentId: null,
+    }).sort({ createdAt: -1 });
+
+    if (!trial && assessmentTrialToken && String(assessmentTrialToken).trim()) {
+      const byToken = await AssessmentTrial.findOne({
+        token: String(assessmentTrialToken).trim(),
+      });
+      if (byToken) {
+        const tokenEmail = String(byToken.parentEmail || '').toLowerCase();
+        if (byToken.redeemedByStudentId) {
+          if (tokenEmail === emailNorm) {
+            return res.status(409).json({
+              success: false,
+              message: 'Email address already registered',
+            });
+          }
+          // Different email + stale redeemed token: ignore token and continue
+        } else if (tokenEmail === emailNorm) {
+          trial = byToken;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Use the same email address you used for the level assessment to claim your free trial class.',
+          });
+        }
+      }
     }
     
     const hashedPassword = await bcrypt.hash(password, 10);
     const student = new Student({ 
       username, 
-      email: email,
+      email: emailNorm,
       password: hashedPassword,
+      firstName: safeFirstName,
+      lastName: safeLastName,
       parentName: req.body.parentName || '',
-      parentEmail: String(req.body.parentEmail || email || '').trim(),
-      contact: req.body.contact || ''
-      // firstName and lastName will be set when they update their profile
+      parentEmail: String(req.body.parentEmail || emailNorm || '').trim().toLowerCase(),
+      contact: req.body.contact || '',
     });
 
     // Attach referral if provided (teacher referral link)
@@ -1218,6 +1250,8 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
         accountStatus: 'trial_active',
         isSubscribed: false,
         assessmentTrialGrantedAt: now,
+        firstName: safeFirstName,
+        lastName: safeLastName,
       },
       $push: {
         creditHistory: {
@@ -1248,21 +1282,21 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
         { $set: { redeemedByStudentId: student._id, redeemedAt: now } },
         { new: true }
       );
-      if (!redeem) {
-        return res.status(409).json({
-          success: false,
-          message: 'This assessment trial link was just used. Please refresh and try again.',
-        });
+      if (redeem) {
+        assessmentTrialActivated = true;
+        if (redeem.cefrLevel) {
+          welcomeUpdate.$set.cefrLevel = redeem.cefrLevel;
+          welcomeUpdate.$set.leveling = redeem.cefrLevel;
+        }
+        if (redeem.score != null && redeem.score !== undefined) {
+          welcomeUpdate.$set.assessmentScore = Number(redeem.score) || 0;
+        }
+        welcomeUpdate.$set.assessmentDate = new Date();
+        if (redeem.contactNumber) {
+          welcomeUpdate.$set.contact = redeem.contactNumber;
+        }
       }
-      assessmentTrialActivated = true;
-      if (redeem.cefrLevel) {
-        welcomeUpdate.$set.cefrLevel = redeem.cefrLevel;
-        welcomeUpdate.$set.leveling = redeem.cefrLevel;
-      }
-      if (redeem.score != null && redeem.score !== undefined) {
-        welcomeUpdate.$set.assessmentScore = Number(redeem.score) || 0;
-      }
-      welcomeUpdate.$set.assessmentDate = new Date();
+      // Redeem race: keep the new account; welcome trial is already granted
     }
 
     await Student.updateOne({ _id: student._id }, welcomeUpdate);

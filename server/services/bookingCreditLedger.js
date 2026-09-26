@@ -1,6 +1,18 @@
+/**
+ * Deduct / release lesson credits for bookings.
+ * Consumption burns FIFO credit lots (earliest expiresAt first).
+ */
+const mongoose = require('mongoose');
 const Student = require('../models/Student');
 const CreditAudit = require('../models/CreditAudit');
 const { isMongoObjectId } = require('../utils/mongoObjectId');
+const {
+  ensureCreditLotsBackfilled,
+  expireDueLotsInMemory,
+  pickFifoLotId,
+  syncSubscriptionFieldsFromLots,
+  sumLotRemaining,
+} = require('./creditLots');
 
 async function findStudentForBooking(booking) {
   if (!booking || !booking.studentId) return null;
@@ -15,11 +27,49 @@ function attachSession(query, session) {
   return session ? query.session(session) : query;
 }
 
+async function persistExpiredLotsIfNeeded(student, now) {
+  ensureCreditLotsBackfilled(student, now);
+  const before = sumLotRemaining(student.creditLots);
+  const expiredAmt = expireDueLotsInMemory(student, now);
+  if (expiredAmt <= 0) return 0;
+  const sync = syncSubscriptionFieldsFromLots(student, now);
+  const after = sumLotRemaining(student.creditLots);
+  const bal = Math.max(0, Number(student.creditBalance) || 0);
+  const newBal = Math.min(bal, after);
+  const dropped = Math.max(0, bal - newBal);
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $set: {
+        creditLots: student.creditLots,
+        creditBalance: newBal,
+        subscriptionEndDate: sync.subscriptionEndDate,
+        subscriptionPlan: sync.subscriptionPlan,
+        subscriptionStatus: sync.subscriptionStatus,
+        isSubscribed: sync.subscriptionStatus === 'active',
+      },
+      $inc: { expiredCredits: dropped || expiredAmt },
+      $push: {
+        creditHistory: {
+          date: now,
+          plan: 'Plan validity ended',
+          credits: -(dropped || expiredAmt),
+          amountPaid: 0,
+          paymentId: `lot-expiry:${now.toISOString()}`,
+          entryType: 'expiry',
+          balanceAfter: newBal,
+        },
+      },
+    }
+  );
+  student.creditBalance = newBal;
+  void before;
+  return dropped || expiredAmt;
+}
+
 /**
  * Deduct 1 unused credit when a class is completed or marked absent.
- * If unused balance is already 0 (expiry, trial, race), still mark the booking
- * consumed so teacher wrap-up is never blocked for a class that already ran.
- * Mutates booking in memory; caller must persist the booking document.
+ * Burns the earliest-expiring active lot first (FIFO).
  */
 async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class finished', opts = {}) {
   if (!booking || booking.creditConsumedAt) {
@@ -29,27 +79,29 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
   if (!student) return null;
   const now = new Date();
   const isTrial = !!booking.isAssessmentFreeTrialBooking;
-  const balance = Math.max(0, Number(student.creditBalance) || 0);
   const session = opts && opts.session ? opts.session : undefined;
-  const planLabel = student.subscriptionPlan || '';
-  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
 
-  /**
-   * Booked classes must still finalize after unused credits expire (balance 0).
-   * Do not block teacher wrap-up / absent marking — the lesson already happened.
-   */
+  await persistExpiredLotsIfNeeded(student, now);
+  // Reload after possible expiry write
+  const fresh = await attachSession(Student.findById(student._id), session);
+  if (!fresh) return null;
+
+  ensureCreditLotsBackfilled(fresh, now);
+  const balance = Math.max(0, Number(fresh.creditBalance) || 0);
+  const planLabel = fresh.subscriptionPlan || '';
+  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
   const skipBalanceDecrement = balance < 1;
   const balanceAfter = skipBalanceDecrement ? balance : Math.max(0, balance - 1);
+  const lotId = skipBalanceDecrement ? null : pickFifoLotId(fresh, now);
 
   if (isTrial && balance < 1) {
-    // Trial class with no paid balance: finalize booking flags only, no balance decrement.
     const trialSet = {
       accountStatus: 'trial_completed',
       trialCompletedAt: now,
       assessmentTrialCreditActive: false,
       hasFreeTrial: false,
     };
-    await attachSession(Student.updateOne({ _id: student._id }, { $set: trialSet }), session);
+    await attachSession(Student.updateOne({ _id: fresh._id }, { $set: trialSet }), session);
   } else if (balance < 1) {
     console.warn(
       '[credits] wrap-up with 0 unused credits; finalizing booking without deduct',
@@ -57,7 +109,7 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
     );
     await attachSession(
       Student.updateOne(
-        { _id: student._id },
+        { _id: fresh._id },
         {
           $inc: { usedCredits: 1 },
           $push: {
@@ -117,16 +169,53 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
       };
     }
 
-    const result = await attachSession(
-      Student.updateOne({ _id: student._id, creditBalance: { $gte: 1 } }, update),
-      session
-    );
+    let result;
+    if (lotId && mongoose.Types.ObjectId.isValid(lotId)) {
+      update.$inc['creditLots.$[lot].creditsRemaining'] = -1;
+      result = await attachSession(
+        Student.updateOne(
+          {
+            _id: fresh._id,
+            creditBalance: { $gte: 1 },
+            creditLots: {
+              $elemMatch: { _id: new mongoose.Types.ObjectId(lotId), creditsRemaining: { $gte: 1 } },
+            },
+          },
+          update,
+          { arrayFilters: [{ 'lot._id': new mongoose.Types.ObjectId(lotId), 'lot.creditsRemaining': { $gte: 1 } }] }
+        ),
+        session
+      );
+    } else {
+      result = await attachSession(
+        Student.updateOne({ _id: fresh._id, creditBalance: { $gte: 1 } }, update),
+        session
+      );
+    }
 
     if (!result || result.modifiedCount === 0) {
       console.warn(
         '[credits] deduct raced to 0 balance; finalizing without decrement',
         String(booking._id || '')
       );
+    } else {
+      // Refresh subscription display fields from remaining lots
+      const after = await Student.findById(fresh._id).lean();
+      if (after) {
+        ensureCreditLotsBackfilled(after, now);
+        const sync = syncSubscriptionFieldsFromLots(after, now);
+        await Student.updateOne(
+          { _id: fresh._id },
+          {
+            $set: {
+              subscriptionEndDate: sync.subscriptionEndDate,
+              subscriptionPlan: sync.subscriptionPlan,
+              subscriptionStatus: sync.subscriptionStatus,
+              isSubscribed: sync.subscriptionStatus === 'active',
+            },
+          }
+        );
+      }
     }
   }
 
@@ -136,7 +225,7 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
     await CreditAudit.create(
       [
         {
-          studentId: student._id,
+          studentId: fresh._id,
           bookingId: booking._id || null,
           deltaCredits: skipBalanceDecrement ? 0 : -1,
           reason: descriptionPrefix,
@@ -148,6 +237,7 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
             time: booking.time,
             wasTrial: !!booking.isAssessmentFreeTrialBooking,
             skippedDecrement: !!skipBalanceDecrement,
+            lotId: lotId || null,
           },
         },
       ],
@@ -157,16 +247,16 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
     console.error('[credit audit] failed:', auditErr.message || auditErr);
   }
 
-  if (booking.isAssessmentFreeTrialBooking && student.email) {
+  if (booking.isAssessmentFreeTrialBooking && fresh.email) {
     try {
       const emailService = require('../emailService');
       const greet =
-        [student.firstName, student.lastName].filter(Boolean).join(' ').trim() ||
-        (student.email ? String(student.email).split('@')[0] : '') ||
+        [fresh.firstName, fresh.lastName].filter(Boolean).join(' ').trim() ||
+        (fresh.email ? String(fresh.email).split('@')[0] : '') ||
         'there';
       setImmediate(() => {
         emailService
-          .sendLesson2InvitationEmail(student.email, greet)
+          .sendLesson2InvitationEmail(fresh.email, greet)
           .catch((err) =>
             console.error('[lesson2 invite] email failed:', err.message || err)
           );
@@ -180,7 +270,7 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
   booking.creditReservationReleasedAt = null;
   booking.creditsFinalized = true;
 
-  return student._id;
+  return fresh._id;
 }
 
 /** @deprecated Alias — call sites still import the old name. */
@@ -188,10 +278,6 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix, opts)
   return deductCreditOnClassOutcome(booking, descriptionPrefix, opts);
 }
 
-/**
- * Legacy no-op under no-reserve model (nothing was held at book time).
- * Still migrates any leftover reservedCredits for this student if present.
- */
 async function releaseReservedCreditForBooking(booking, opts = {}) {
   if (!booking || booking.creditConsumedAt) {
     return null;
@@ -245,9 +331,6 @@ async function releaseReservedCreditForBooking(booking, opts = {}) {
   return student._id;
 }
 
-/**
- * Append Credit Retained ledger row without changing balance (emergency cancel).
- */
 async function logEmergencyCreditRetained(booking) {
   const student = await findStudentForBooking(booking);
   if (!student) return null;

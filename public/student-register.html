@@ -318,12 +318,20 @@
 
       <form id="student-register-form" autocomplete="on">
         <div class="field">
-          <label for="student-register-username">Username</label>
-          <input type="text" id="student-register-username" placeholder="Choose a username" required autocomplete="username">
+          <label for="student-register-first-name">Student first name</label>
+          <input type="text" id="student-register-first-name" placeholder="First name" required autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label for="student-register-last-name">Student last name</label>
+          <input type="text" id="student-register-last-name" placeholder="Last name" required autocomplete="family-name">
         </div>
         <div class="field">
           <label for="student-register-email">Email Address</label>
           <input type="email" id="student-register-email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="student-register-username">Username</label>
+          <input type="text" id="student-register-username" placeholder="Choose a username" required autocomplete="username">
         </div>
         <div class="field">
           <label for="student-register-password">Password</label>
@@ -445,15 +453,78 @@
   <script>
     const urlParamsReg = new URLSearchParams(window.location.search);
     const urlTrialToken = urlParamsReg.get('trial');
-    (function prefillFromAssessment() {
+
+    function splitChildName(fullName) {
+      const parts = String(fullName || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!parts.length) return { firstName: '', lastName: '' };
+      if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+      return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+    }
+
+    function applyRegisterPrefill(opts) {
+      opts = opts || {};
+      const emEl = document.getElementById('student-register-email');
+      const firstEl = document.getElementById('student-register-first-name');
+      const lastEl = document.getElementById('student-register-last-name');
+      if (opts.email && emEl && !String(emEl.value || '').trim()) {
+        emEl.value = String(opts.email).trim();
+      }
+      if (opts.firstName && firstEl && !String(firstEl.value || '').trim()) {
+        firstEl.value = String(opts.firstName).trim();
+      }
+      if (opts.lastName && lastEl && !String(lastEl.value || '').trim()) {
+        lastEl.value = String(opts.lastName).trim();
+      }
+      if (opts.lockEmail && emEl && emEl.value) {
+        emEl.readOnly = true;
+        emEl.title = 'Use the same email from your assessment results';
+      }
+    }
+
+    (async function prefillFromAssessment() {
       const pe = urlParamsReg.get('email');
       if (pe) {
-        const emEl = document.getElementById('student-register-email');
-        if (emEl) emEl.value = decodeURIComponent(pe.replace(/\+/g, ' '));
+        applyRegisterPrefill({
+          email: decodeURIComponent(pe.replace(/\+/g, ' ')),
+          lockEmail: !!urlTrialToken,
+        });
       }
       if (urlTrialToken) {
         const hint = document.getElementById('assessment-trial-hint');
         if (hint) hint.style.display = 'block';
+        try {
+          const res = await fetch(
+            '/api/public/assessment-trial/' + encodeURIComponent(urlTrialToken)
+          );
+          const data = await res.json().catch(function () {
+            return {};
+          });
+          if (res.ok && data.success) {
+            const names = splitChildName(data.childName || '');
+            applyRegisterPrefill({
+              email: data.email || '',
+              firstName: names.firstName,
+              lastName: names.lastName,
+              lockEmail: true,
+            });
+          } else if (data && data.redeemed) {
+            const errorDiv = document.getElementById('student-register-error');
+            if (errorDiv) {
+              errorDiv.textContent =
+                'This email is already registered. Please log in instead.';
+              errorDiv.className = 'register-error';
+              errorDiv.style.display = 'block';
+            }
+            if (data.email) {
+              applyRegisterPrefill({ email: data.email, lockEmail: true });
+            }
+          }
+        } catch (e) {
+          console.warn('Could not load assessment trial prefill', e);
+        }
       }
       try {
         const ref = localStorage.getItem('referralCode');
@@ -497,6 +568,8 @@
 
     document.getElementById('student-register-form').onsubmit = async function (e) {
       e.preventDefault();
+      const firstName = document.getElementById('student-register-first-name').value.trim();
+      const lastName = document.getElementById('student-register-last-name').value.trim();
       const username = document.getElementById('student-register-username').value.trim();
       const email = document.getElementById('student-register-email').value.trim();
       const password = document.getElementById('student-register-password').value.trim();
@@ -504,6 +577,22 @@
       const submitBtn = document.getElementById('register-btn');
 
       errorDiv.style.display = 'none';
+      const firstEl = document.getElementById('student-register-first-name');
+      const lastEl = document.getElementById('student-register-last-name');
+      firstEl.setCustomValidity('');
+      lastEl.setCustomValidity('');
+      if (!firstName) {
+        firstEl.setCustomValidity('Required');
+        firstEl.reportValidity();
+        firstEl.focus();
+        return;
+      }
+      if (!lastName) {
+        lastEl.setCustomValidity('Required');
+        lastEl.reportValidity();
+        lastEl.focus();
+        return;
+      }
       const emailEl = document.getElementById('student-register-email');
       emailEl.setCustomValidity('');
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -536,6 +625,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            firstName,
+            lastName,
             username,
             email,
             password,

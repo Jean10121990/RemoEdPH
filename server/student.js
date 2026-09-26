@@ -1870,10 +1870,22 @@ router.post('/send-assessment-email', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    await AssessmentTrial.deleteMany({
-      parentEmail: toEmail,
-      redeemedByStudentId: null,
-    });
+    const existingTrial = await AssessmentTrial.findOne({ parentEmail: toEmail })
+      .sort({ createdAt: -1 });
+    if (existingTrial) {
+      const redeemed = !!existingTrial.redeemedByStudentId;
+      return res.status(409).json({
+        success: false,
+        code: 'ASSESSMENT_ALREADY_TAKEN',
+        message: redeemed
+          ? 'Assessment already taken. Please log in with your student account.'
+          : 'Assessment already taken. Please check your email for your results and registration link.',
+        trialToken: redeemed ? null : existingTrial.token,
+        cefrLevel: existingTrial.cefrLevel || finalCefrLevel || '',
+        score: existingTrial.score != null ? existingTrial.score : finalScore,
+      });
+    }
+
     const token = crypto.randomBytes(24).toString('hex');
     await AssessmentTrial.create({
       token,
@@ -1885,7 +1897,9 @@ router.post('/send-assessment-email', async (req, res) => {
     });
 
     const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
-    const registerUrl = `${base}/student-register.html?trial=${encodeURIComponent(token)}`;
+    const registerUrl =
+      `${base}/student-register.html?trial=${encodeURIComponent(token)}` +
+      `&email=${encodeURIComponent(toEmail)}`;
 
     // Send email using email service
     const emailService = require('./emailService');

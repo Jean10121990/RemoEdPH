@@ -14,7 +14,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Student book UI | `public/student-book.html` |
 | Book API | `server/student.js` (`POST /book-class`), `server/studentController.js`, `server/services/studentBookSlotService.js`, legacy `POST /api/teacher/book-class` in `server/teacher.js` |
 | Teacher ID resolve | `server/services/teacherSlotResolve.js`, `teacherBookingKey` in `server/teacher.js` |
-| Credits / expiry | `server/services/studentCreditSummary.js`, `server/services/creditExpiry.js` |
+| Credits / expiry | `server/services/studentCreditSummary.js`, `server/services/creditExpiry.js`, `server/services/creditLots.js` — each purchase is a **credit lot** with its own `expiresAt`. Class finish burns FIFO (earliest lot first). When a lot expires, only that lot’s remaining credits zero; newer plans keep theirs. |
 | Class schedule / issue | `public/teacher-class-table.html`, `POST /report-issue` + `GET /check-class-issues` in `server/teacher.js` |
 | Applicant → teacher docs | `server/utils/applicantDocuments.js`, teacher signup in `server/auth.js` |
 | Live classroom (AV / locks) | `public/live-classroom.html`, `public/css/live-classroom-redesign.css`, `public/js/virtual-background.js`, `public/images/virtual-bg/`, socket maps in `server/index.js` |
@@ -59,6 +59,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 ### Student booking
 
 - [ ] Signed-in student with `creditBalance > 0` can open **Book a Class**, see open slots, and complete `POST /api/student/book-class` (Network 2xx).
+- [ ] **Booking Details** opens as a centered body-level modal (not a side column inside `.remoed-content`).
+- [ ] Paid students cannot select / book a lesson ahead of their trail stop (`LESSON_AHEAD_OF_PROGRESS`); earlier lessons stay bookable for reschedule.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
 - [ ] Booking for a teacher whose slot `teacherId` is a username (not email) still succeeds when the UI sends their email.
 
@@ -291,10 +293,12 @@ Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** st
 - APIs (Admin Fee): `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`**, **`/payment-history`**, **`/admins-filter-list`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales. Ineligible rows stay listed at ₱0; dispense skips them server-side.
 - **Payroll withdraw (MariBank only):**
-  1. Accounting **Dispense** → `DISBURSED` / `disbursed` (release — not bank-final).
+  1. Accounting **Dispense** → `DISBURSED` / `disbursed` (release — not bank-final). Prior cut-off rows still `DISBURSED` (not withdrawn) are folded into the new release as **carry-forward** and marked `ROLLED_OVER`.
   2. Teacher Teaching Fee / Admin Fee → **Withdraw (MariBank)** → `WITHDRAWAL_REQUESTED` / `withdrawal_requested` + masked `payoutReference` only. Full account details email to `support@remoedph.com` via `sendRawEmail` — **ops notice only; do not treat email as the completion step**.
   3. Accounting **Mark Completed** in portal UI only: **Accounting Hub → Payroll Management** (teachers) or **Admin Payroll** (admins) → **Payment History Management** → Load Records → **Mark Completed** on Processing / withdrawal-requested rows → `COMPLETED` / `completed` (`POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`).
-  - Legacy `Success` / `paid` = Completed (no Withdraw). Open MariBank: `https://maribank.ph/c/earnfreemoney?referralCode=KB740303`. Shared UI: `public/js/payroll-withdraw-modal.js`. Withdraw APIs: `POST /api/teacher/payroll/withdraw`, `POST /api/admin/admin-fee/withdraw`. Service: `server/services/payrollWithdrawService.js`.
+  - **Minimum withdraw:** ₱100. Below that, Withdraw is hidden / rejected; balance stays until next dispense (carry-forward).
+  - **Daily MariBank limit:** ₱50,000 (UI note when Available exceeds the cap; teachers may need multiple days).
+  - Legacy `Success` / `paid` = Completed (no Withdraw). Open MariBank: `https://maribank.ph/c/earnfreemoney?referralCode=KB740303`. Shared UI: `public/js/payroll-withdraw-modal.js`. Withdraw APIs: `POST /api/teacher/payroll/withdraw`, `POST /api/admin/admin-fee/withdraw`. Service: `server/services/payrollWithdrawService.js` (`MIN_WITHDRAW_PHP`, `MAX_DAILY_WITHDRAW_PHP`, `collectCarryForwardFromHistory`).
 - **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`, iframe `embedVer` bump on UI changes): mirror teacher **Payroll Management** (`public/admin-payroll.html` / `page-admin-payroll`):
   - Soft rounded buttons (`.btn` `border-radius: 6px`, primary/success/danger colors) — do not leave square/edgy browser defaults.
   - Period nav (`Sep 16 - Sep 30`), **Load Admins** + red **Dispense All Admin Fees** (same enable rule as teachers: stay enabled until at least one row is **Paid**/released; gray **Fees Dispensed** after. Do **not** replace with “No Pending Fees” when everyone is Ineligible).
@@ -357,6 +361,8 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 ## Student My Level — CEFR alignment images
 
 - `public/student-assessment.html` intro + results show RemoEd Kids / RemoEd Teens guides (`public/images/cefr/*-cefr-guide.jpg`) with tab switch + lightbox. Keep both images; do not remove the guides section when editing assessment copy.
+- After guest assessment completes, landing `#plans` shows level + **You have taken the assessment…** with **Register Now** (hides the pre-assessment register note). Same email cannot retake: `GET /api/public/assessment-status` + landing form / guest assessment gate → “Assessment already taken. Please check your email…”.
+- Assessment email **Claim Free Trial** link includes `trial` + `email`. Register page asks **student first name → last name → email** (then username/password). Prefill via query + `GET /api/public/assessment-trial/:token`. Trial links **do not expire**; the only hard block is **email already registered**. Stale/invalid tokens must not block first-time signup (`POST /api/auth/student-register` resolves unredeemed trial by email).
 
 ## Teaching Fee — Bonus / Incentive (Accounting)
 
@@ -366,7 +372,8 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 - **What it is:** Founder's discretion — e.g. successful student plan purchase referral bonus, internet aid, or other one-off incentives. Amount can be ₱0.
 - **Storage:** `Teacher.periodIncentives[]` `{ periodKey, amount, note, updatedAt, updatedBy }`.
 - **APIs:** `PUT /api/admin/teacher-period-incentive`; teacher `GET /api/teacher/period-incentive?startDate=YYYY-MM-DD`.
-- **Available to Withdraw:** Teaching Fee keeps the cut-off amount visible. After the teacher withdraws, the **Withdrawable this cut-off** label changes to **Withdrawn** (amount is not reset to ₱0.00). Header **Total Earnings** is this cut-off’s earned net. Pending Earnings = not yet released.
+- **Available to Withdraw:** Teaching Fee keeps the cut-off amount visible (uses released `paymentHistory.amount`, which may include carry-forward). After the teacher withdraws, the **Withdrawable this cut-off** label changes to **Withdrawn** (amount is not reset to ₱0.00). Header **Total Earnings** is this cut-off’s earned net. Pending Earnings = not yet released.
+- **Withdraw rules:** Minimum ₱100; below that, UI notifies that the amount adds to the next cut-off and Withdraw is hidden. Any unwithdrawn `DISBURSED` balance is carried into the next Accounting dispense. MariBank daily max ₱50,000 (informational note when exceeded).
 - Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
 
 ## Lesson slide generation — laptop Level folders
@@ -398,6 +405,8 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 | `CREDITS_EXPIRED` | Unused credits expired after validity window |
 | `INSUFFICIENT_CREDITS` | `creditBalance` is 0 |
 | `DAILY_CLASS_LIMIT` | Student may book at most 2 classes (1 hour) per local day |
+| `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
+| `LESSON_AHEAD_OF_PROGRESS` | Paid book blocked: lesson is past the next trail stop (earlier / reschedule OK) |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
 
 ## Ops notes (out of code scope)

@@ -271,6 +271,26 @@ async function runBookSlot(req, res) {
       }
     }
 
+    // Paid / credited: no jumping ahead — next trail stop + earlier (reschedule) only.
+    if (!trialOnlyBooking) {
+      const { assertLessonNotAheadOfProgress } = require('./studentLessonUnlock');
+      const unlockIds = [
+        student.username,
+        student.email,
+        student._id && String(student._id),
+        student.studentId,
+      ].filter(Boolean);
+      const unlock = await assertLessonNotAheadOfProgress({
+        uniqueIdentifiers: unlockIds,
+        studentLevel,
+        lessonId,
+        lesson,
+      });
+      if (!unlock.ok) {
+        return res.status(unlock.status).json(unlock.body);
+      }
+    }
+
     const missingFields = [];
     if (!studentId) missingFields.push('studentId');
     if (!dateTimeUtc && !startTime && (!date || !time)) missingFields.push('dateTimeUtc|startTime');

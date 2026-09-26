@@ -83,8 +83,21 @@ body[class*="page-teacher-"] .remoed-modal.remoed-modal--stacked {
 .teacher-glass-overlay,
 .booking-modal,
 body.page-student-book .teacher-glass-overlay,
-body.page-student-book .booking-modal {
+body.page-student-book .booking-modal,
+body > .booking-modal {
   z-index: var(--z-modal);
+}
+
+body > .booking-modal.show {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
 .remoed-toast {

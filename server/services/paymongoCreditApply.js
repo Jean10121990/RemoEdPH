@@ -9,6 +9,7 @@ const {
   getPlanDurationMonths,
 } = require('../config/planCredits');
 const { emptyNoticeFlags } = require('./creditExpiry');
+const { buildCreditLot, ensureCreditLotsBackfilled } = require('./creditLots');
 
 /** True if any idempotency key is already stored on the student (PayMongo retries / alternate ids). */
 function paymongoKeysOverlap(processedIds, keys) {
@@ -36,12 +37,69 @@ function paymongoNotYetProcessedFilter(guardKeys) {
   };
 }
 
-function computeSubscriptionDates(plan) {
-  const startDate = new Date();
-  const endDate = new Date(startDate);
-  const months = getPlanDurationMonths(plan);
-  endDate.setMonth(endDate.getMonth() + months);
-  return { startDate, endDate };
+/**
+ * New plan lot validity (from purchase time). Each purchase is its own window.
+ * Student.subscriptionEndDate becomes the farthest active lot end (display).
+ *
+ * @returns {{ startDate: Date, endDate: Date, subscriptionPlan: string, lotExpiresAt: Date }}
+ */
+function computeSubscriptionDates(plan, existingStudent = null) {
+  const now = new Date();
+  const planId = normalizePlanId(plan);
+  const months = getPlanDurationMonths(planId || plan);
+
+  const lotExpiresAt = new Date(now);
+  lotExpiresAt.setMonth(lotExpiresAt.getMonth() + months);
+
+  let farthest = lotExpiresAt;
+  let farthestPlan = planId || String(plan || '').toLowerCase();
+
+  const lots =
+    existingStudent && Array.isArray(existingStudent.creditLots)
+      ? existingStudent.creditLots
+      : [];
+  for (const lot of lots) {
+    const rem = Math.max(0, Number(lot.creditsRemaining) || 0);
+    if (rem <= 0 || lot.expiredAt) continue;
+    const exp =
+      lot.expiresAt instanceof Date
+        ? lot.expiresAt
+        : lot.expiresAt
+          ? new Date(lot.expiresAt)
+          : null;
+    if (!exp || Number.isNaN(exp.getTime()) || exp.getTime() <= now.getTime()) continue;
+    if (exp.getTime() > farthest.getTime()) {
+      farthest = exp;
+      farthestPlan = normalizePlanId(lot.planId) || farthestPlan;
+    }
+  }
+
+  if (existingStudent && existingStudent.subscriptionEndDate && lots.length === 0) {
+    const d =
+      existingStudent.subscriptionEndDate instanceof Date
+        ? existingStudent.subscriptionEndDate
+        : new Date(existingStudent.subscriptionEndDate);
+    if (!Number.isNaN(d.getTime()) && d.getTime() > farthest.getTime()) {
+      farthest = d;
+      farthestPlan = normalizePlanId(existingStudent.subscriptionPlan) || farthestPlan;
+    }
+  }
+
+  let startDate = now;
+  if (existingStudent && existingStudent.subscriptionStartDate) {
+    const s =
+      existingStudent.subscriptionStartDate instanceof Date
+        ? existingStudent.subscriptionStartDate
+        : new Date(existingStudent.subscriptionStartDate);
+    if (!Number.isNaN(s.getTime())) startDate = s;
+  }
+
+  return {
+    startDate,
+    endDate: farthest,
+    subscriptionPlan: farthestPlan,
+    lotExpiresAt,
+  };
 }
 
 function buildGuardKeys({ idempotencyKey, paymongoPaymentId, checkoutSessionId }) {
@@ -93,9 +151,22 @@ async function applyExistingStudentPurchase({
   const creditsToAdd = Number(planCreditConfig.credits || 0);
   const amountPaid = Number(pending.amount || 0);
   const creditTimestamp = new Date();
-  const { startDate, endDate } = computeSubscriptionDates(normalizedPlanId || pending.plan);
+  const { created: lotsBackfilled } = ensureCreditLotsBackfilled(student, creditTimestamp);
+  const { startDate, endDate, subscriptionPlan, lotExpiresAt } = computeSubscriptionDates(
+    normalizedPlanId || pending.plan,
+    student
+  );
   const balanceAfterPurchase = (Number(student.creditBalance) || 0) + creditsToAdd;
   const historyPaymentId = paymongoPaymentId || idempotencyKey;
+  const newLot = buildCreditLot({
+    planId: normalizedPlanId || pending.plan,
+    planLabel: planCreditConfig.label,
+    credits: creditsToAdd,
+    purchasedAt: creditTimestamp,
+    expiresAt: lotExpiresAt,
+    paymentId: historyPaymentId,
+  });
+  const nextLots = [...(Array.isArray(student.creditLots) ? student.creditLots : []), newLot];
 
   const updateExisting = await Student.updateOne(
     { _id: student._id, ...paymongoNotYetProcessedFilter(guardKeys) },
@@ -106,7 +177,7 @@ async function applyExistingStudentPurchase({
         paymentReference: paymongoPaymentId || idempotencyKey,
         paymentPaidAt: creditTimestamp,
         subscriptionStatus: 'active',
-        subscriptionPlan: normalizedPlanId || student.subscriptionPlan || pending.plan,
+        subscriptionPlan: subscriptionPlan || normalizedPlanId || student.subscriptionPlan || pending.plan,
         subscriptionStartDate: startDate,
         subscriptionEndDate: endDate,
         accountStatus: 'active_subscriber',
@@ -114,6 +185,7 @@ async function applyExistingStudentPurchase({
         creditExpiryNotices: emptyNoticeFlags(),
         assessmentTrialCreditActive: false,
         hasFreeTrial: false,
+        creditLots: nextLots,
       },
       $inc: {
         creditBalance: creditsToAdd,
@@ -142,6 +214,7 @@ async function applyExistingStudentPurchase({
       },
     }
   );
+  void lotsBackfilled;
 
   if (updateExisting.matchedCount === 0) {
     const refreshed = await Student.findById(student._id).select('creditBalance processedPaymentIds').lean();

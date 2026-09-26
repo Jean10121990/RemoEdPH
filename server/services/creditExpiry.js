@@ -6,6 +6,14 @@
 const { DateTime } = require('luxon');
 const Student = require('../models/Student');
 const { getPlanDurationMonths } = require('../config/planCredits');
+const {
+  ensureCreditLotsBackfilled,
+  expireDueLotsInMemory,
+  syncSubscriptionFieldsFromLots,
+  sumLotRemaining,
+  isLotActive,
+  sortLotsFifo,
+} = require('./creditLots');
 
 const MANILA = 'Asia/Manila';
 const NOTICE_MILESTONES = [10, 5, 2];
@@ -33,8 +41,16 @@ function manilaCalendarDaysUntil(endDate, now = new Date()) {
   return days;
 }
 
-function resolveCreditExpiryDate(student) {
+/** Nearest active lot expiry (countdown); falls back to subscriptionEndDate. */
+function resolveCreditExpiryDate(student, now = new Date()) {
   if (!student) return null;
+  ensureCreditLotsBackfilled(student, now);
+  const active = sortLotsFifo(
+    (student.creditLots || []).filter((l) => isLotActive(l, now))
+  );
+  if (active.length) {
+    return toDate(active[0].expiresAt);
+  }
   const stored = toDate(student.subscriptionEndDate);
   if (stored) return stored;
   const start = toDate(student.subscriptionStartDate);
@@ -45,8 +61,24 @@ function resolveCreditExpiryDate(student) {
   return end;
 }
 
+function resolveFarthestExpiryDate(student, now = new Date()) {
+  if (!student) return null;
+  ensureCreditLotsBackfilled(student, now);
+  let far = null;
+  for (const l of student.creditLots || []) {
+    if (!isLotActive(l, now)) continue;
+    const e = toDate(l.expiresAt);
+    if (!e) continue;
+    if (!far || e.getTime() > far.getTime()) far = e;
+  }
+  return far || toDate(student.subscriptionEndDate);
+}
+
 function shouldTrackValidity(student) {
   if (!student) return false;
+  if (Array.isArray(student.creditLots) && student.creditLots.some((l) => isLotActive(l))) {
+    return true;
+  }
   if (student.subscriptionEndDate) return true;
   if (!student.subscriptionStartDate) return false;
   return (
@@ -65,8 +97,9 @@ function buildExpiryPayload(student, now = new Date()) {
       creditsExpired: false,
     };
   }
-  const end = resolveCreditExpiryDate(student);
-  if (!end) {
+  const nearest = resolveCreditExpiryDate(student, now);
+  const farthest = resolveFarthestExpiryDate(student, now);
+  if (!nearest && !farthest) {
     return {
       creditsExpireAt: null,
       daysUntilExpiry: null,
@@ -74,7 +107,9 @@ function buildExpiryPayload(student, now = new Date()) {
       creditsExpired: false,
     };
   }
-  const expired = now.getTime() >= end.getTime();
+  const end = nearest || farthest;
+  const lotSum = sumLotRemaining(student.creditLots);
+  const expired = lotSum <= 0 && now.getTime() >= end.getTime();
   const days = manilaCalendarDaysUntil(end, now);
   const endLabel = DateTime.fromJSDate(end, { zone: 'utc' }).setZone(MANILA).toFormat('LLL d, yyyy');
   let expiryCountdownLabel;
@@ -93,6 +128,7 @@ function buildExpiryPayload(student, now = new Date()) {
     expiryCountdownLabel,
     creditsExpired: expired,
     creditsExpireOnLabel: endLabel,
+    creditsExpireAtLatest: farthest ? farthest.toISOString() : null,
   };
 }
 
@@ -118,66 +154,67 @@ function noticeAlreadySent(student, milestone) {
 }
 
 async function persistMissingEndDate(studentId, student) {
-  if (!studentId || !student || student.subscriptionEndDate) return student;
-  if (!shouldTrackValidity(student)) return student;
-  const end = resolveCreditExpiryDate(student);
-  if (!end) return student;
-  await Student.updateOne(
-    { _id: studentId, $or: [{ subscriptionEndDate: null }, { subscriptionEndDate: { $exists: false } }] },
-    { $set: { subscriptionEndDate: end } }
-  );
-  return { ...student, subscriptionEndDate: end };
+  if (!studentId || !student) return student;
+  ensureCreditLotsBackfilled(student);
+  const sync = syncSubscriptionFieldsFromLots(student);
+  if (!sync.subscriptionEndDate) return student;
+  const patch = {
+    subscriptionEndDate: sync.subscriptionEndDate,
+    subscriptionPlan: sync.subscriptionPlan || student.subscriptionPlan,
+  };
+  if (Array.isArray(student.creditLots) && student.creditLots.length) {
+    patch.creditLots = student.creditLots;
+  }
+  await Student.updateOne({ _id: studentId }, { $set: patch });
+  return { ...student, ...patch };
 }
 
+/**
+ * Expire due plan lots only — newer plans keep their remaining credits.
+ */
 async function applyExpiredCreditsIfNeeded(studentId, studentLean, now = new Date()) {
   if (!studentId || !studentLean) {
     return { applied: false, student: studentLean };
   }
-  let student = await persistMissingEndDate(studentId, studentLean);
-  const end = resolveCreditExpiryDate(student);
-  if (!end || now.getTime() < end.getTime()) {
+  let student = { ...studentLean };
+  ensureCreditLotsBackfilled(student, now);
+  const expiredAmt = expireDueLotsInMemory(student, now);
+  if (expiredAmt <= 0) {
+    student = await persistMissingEndDate(studentId, student);
     return { applied: false, student };
   }
 
-  const unused = Math.max(0, Number(student.creditBalance) || 0);
-  const status = String(student.subscriptionStatus || '');
-  const stillLive = student.isSubscribed === true || status === 'active';
-  if (unused <= 0 && !stillLive && status === 'expired') {
-    return { applied: false, student };
-  }
-
-  const setFields = {
-    creditBalance: 0,
-    subscriptionStatus: 'expired',
-    isSubscribed: false,
-  };
-  const update = { $set: setFields };
-  if (unused > 0) {
-    update.$inc = { expiredCredits: unused };
-    update.$push = {
-      creditHistory: {
-        date: now,
-        plan: 'Validity ended',
-        credits: -unused,
-        amountPaid: 0,
-        paymentId: `expiry:${end.toISOString()}`,
-        entryType: 'expiry',
-        balanceAfter: 0,
-      },
-    };
-  }
+  const sync = syncSubscriptionFieldsFromLots(student, now);
+  const lotSum = sumLotRemaining(student.creditLots);
+  const prevBal = Math.max(0, Number(student.creditBalance) || 0);
+  const newBal = Math.min(prevBal, lotSum);
+  const dropped = Math.max(0, prevBal - newBal);
+  const zeroAll = lotSum <= 0;
 
   const updated = await Student.findOneAndUpdate(
+    { _id: studentId },
     {
-      _id: studentId,
-      subscriptionEndDate: { $lte: now },
-      $or: [
-        { creditBalance: { $gt: 0 } },
-        { subscriptionStatus: { $ne: 'expired' } },
-        { isSubscribed: true },
-      ],
+      $set: {
+        creditLots: student.creditLots,
+        creditBalance: newBal,
+        subscriptionEndDate: sync.subscriptionEndDate,
+        subscriptionPlan: sync.subscriptionPlan || student.subscriptionPlan,
+        subscriptionStatus: zeroAll ? 'expired' : 'active',
+        isSubscribed: !zeroAll,
+      },
+      $inc: { expiredCredits: dropped || expiredAmt },
+      $push: {
+        creditHistory: {
+          date: now,
+          plan: 'Plan validity ended',
+          credits: -(dropped || expiredAmt),
+          amountPaid: 0,
+          paymentId: `lot-expiry:${now.toISOString()}`,
+          entryType: 'expiry',
+          balanceAfter: newBal,
+        },
+      },
     },
-    update,
     { new: true }
   );
   if (!updated) {
@@ -191,6 +228,7 @@ async function applyExpiredCreditsIfNeeded(studentId, studentLean, now = new Dat
     /* cache optional */
   }
 
+  const unused = dropped || expiredAmt;
   if (unused > 0 && !noticeAlreadySent(student, 'expired')) {
     const claimed = await Student.findOneAndUpdate(
       {
@@ -206,14 +244,18 @@ async function applyExpiredCreditsIfNeeded(studentId, studentLean, now = new Dat
     if (claimed) {
       try {
         const { notifyStudent } = require('./notifyService');
+        const more =
+          newBal > 0
+            ? ` ${newBal} credit${newBal === 1 ? '' : 's'} from newer plan(s) remain.`
+            : ' Renew a plan to keep booking classes.';
         await notifyStudent(
           claimed.username,
           'credits-expired',
-          `Your unused lesson credits (${unused}) expired and returned to 0. Renew a plan to keep booking classes.`,
+          `A plan window ended: ${unused} unused credit${unused === 1 ? '' : 's'} expired.${more}`,
           {
             actionUrl: '/student-credits.html',
             importance: 'actionable',
-            meta: { expiredCredits: unused },
+            meta: { expiredCredits: unused, remainingBalance: newBal },
           }
         );
       } catch (e) {
@@ -221,7 +263,7 @@ async function applyExpiredCreditsIfNeeded(studentId, studentLean, now = new Dat
       }
       await emailCreditExpiryNotice(claimed, 'expired', {
         unused,
-        endLabel: DateTime.fromJSDate(end, { zone: 'utc' }).setZone(MANILA).toFormat('LLL d, yyyy'),
+        endLabel: DateTime.fromJSDate(now, { zone: 'utc' }).setZone(MANILA).toFormat('LLL d, yyyy'),
       });
     }
   }
@@ -328,15 +370,23 @@ async function sendCreditExpiryNotices(now = new Date()) {
 
 async function expireDueStudents(now = new Date()) {
   const due = await Student.find({
-    subscriptionEndDate: { $lte: now },
     $or: [
-      { creditBalance: { $gt: 0 } },
-      { subscriptionStatus: 'active' },
-      { isSubscribed: true },
+      {
+        creditLots: {
+          $elemMatch: {
+            expiresAt: { $lte: now },
+            creditsRemaining: { $gt: 0 },
+            expiredAt: null,
+          },
+        },
+      },
+      { subscriptionEndDate: { $lte: now }, creditBalance: { $gt: 0 } },
+      { subscriptionStatus: 'active', subscriptionEndDate: { $lte: now } },
+      { isSubscribed: true, subscriptionEndDate: { $lte: now } },
     ],
   })
     .select(
-      'username creditBalance subscriptionEndDate subscriptionStartDate subscriptionPlan subscriptionStatus isSubscribed paymentStatus creditExpiryNotices expiredCredits'
+      'username creditBalance creditLots subscriptionEndDate subscriptionStartDate subscriptionPlan subscriptionStatus isSubscribed paymentStatus creditExpiryNotices expiredCredits'
     )
     .limit(150)
     .lean();
@@ -364,6 +414,7 @@ module.exports = {
   emptyNoticeFlags,
   manilaCalendarDaysUntil,
   resolveCreditExpiryDate,
+  resolveFarthestExpiryDate,
   shouldTrackValidity,
   buildExpiryPayload,
   persistMissingEndDate,

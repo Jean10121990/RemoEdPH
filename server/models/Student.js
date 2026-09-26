@@ -135,6 +135,23 @@ const studentSchema = new mongoose.Schema({
   usedCredits: { type: Number, default: 0 }, // lifetime credits spent on bookings
   /** Unused credits zeroed when the validity window ended (not class consumption). */
   expiredCredits: { type: Number, default: 0 },
+  /**
+   * Per-plan credit lots. Each purchase has its own expiresAt.
+   * Booking consumption burns FIFO (earliest expiresAt first).
+   * Lot expiry only zeros that lot's creditsRemaining.
+   */
+  creditLots: [
+    {
+      planId: { type: String, default: '' },
+      planLabel: { type: String, default: '' },
+      creditsPurchased: { type: Number, default: 0 },
+      creditsRemaining: { type: Number, default: 0 },
+      purchasedAt: { type: Date, default: Date.now },
+      expiresAt: { type: Date, default: null },
+      paymentId: { type: String, default: '' },
+      expiredAt: { type: Date, default: null },
+    },
+  ],
   /** Once-per-window flags for 10 / 5 / 2 day and expired notices. Reset on repurchase. */
   creditExpiryNotices: {
     d10: { type: Date, default: null },

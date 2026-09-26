@@ -54,6 +54,10 @@
       plans_title: "Choose Your Learning Plan",
       plans_register_note:
         "You must register an account first (by taking the free assessment) before buying a plan.",
+      plans_post_assessment:
+        "You have taken the assessment. Register now to create your account and claim your free trial.",
+      assessment_already_taken:
+        "Assessment already taken. Please check your email for your results and registration link.",
       assessment_title: "Free Level Assessment",
     },
     zh: {
@@ -99,6 +103,8 @@
       teachers_see_more: "查看更多",
       plans_title: "选择学习套餐",
       plans_register_note: "购买套餐前，请先通过免费测评注册账号。",
+      plans_post_assessment: "您已完成测评。请立即注册账号并领取免费体验课。",
+      assessment_already_taken: "该邮箱已完成测评，请查收邮件中的结果与注册链接。",
       assessment_title: "免费水平测评",
     },
     ja: {
@@ -145,6 +151,8 @@
       teachers_see_more: "もっと見る",
       plans_title: "学習プランを選ぶ",
       plans_register_note: "プラン購入の前に、無料診断でアカウント登録が必要です。",
+      plans_post_assessment: "診断は完了しています。今すぐ登録して無料体験クラスを受け取りましょう。",
+      assessment_already_taken: "このメールアドレスはすでに診断済みです。メールの結果と登録リンクをご確認ください。",
       assessment_title: "無料レベル診断",
     },
     ko: {
@@ -191,6 +199,8 @@
       teachers_see_more: "더 보기",
       plans_title: "학습 플랜 선택",
       plans_register_note: "플랜을 구매하려면 먼저 무료 평가로 계정을 등록해야 합니다.",
+      plans_post_assessment: "평가를 완료했습니다. 지금 등록하고 무료 체험 수업을 받으세요.",
+      assessment_already_taken: "이미 평가를 완료한 이메일입니다. 결과와 등록 링크가 담긴 이메일을 확인해 주세요.",
       assessment_title: "무료 레벨 평가",
     },
   };

@@ -527,6 +527,7 @@
             <button type="submit" class="assessment-btn">
               Start Free Assessment
             </button>
+            <p id="assessment-already-taken-msg" class="assessment-already-taken-msg" hidden role="alert"></p>
           </form>
         </div>
       </div>
@@ -537,10 +538,14 @@
       <h2 class="section-title" data-i18n="plans_title">Choose Your Learning Plan</h2>
       <div id="cefr-level-banner" class="cefr-level-banner" role="status" aria-live="polite" hidden>
         <strong id="cefr-level-banner-title"></strong>
-        <p>Choose a learning plan below and tap Enroll Now to sign up.</p>
+        <p id="cefr-level-banner-text">You have taken the assessment. Register now to create your account and claim your free trial.</p>
+        <a id="cefr-register-now-btn" class="cefr-register-now-btn" href="/student-register.html">Register Now</a>
       </div>
-      <p class="plans-register-note" data-i18n="plans_register_note">
+      <p class="plans-register-note" id="plans-register-note" data-i18n="plans_register_note">
         You must register an account first (by taking the free assessment) before buying a plan.
+      </p>
+      <p class="plans-assessment-taken-note" id="plans-assessment-taken-note" hidden>
+        Assessment already taken. Please check your email for your results and registration link.
       </p>
       <div class="plans-grid">
         <div class="plan-card plan-spark">
@@ -844,10 +849,16 @@
           const childEl = document.getElementById("child-name");
           const emailEl = document.getElementById("parent-email");
           const contactEl = document.getElementById("contact-number");
+          const alreadyMsg = document.getElementById("assessment-already-taken-msg");
+          const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
           const childName = childEl.value.trim();
           const parentEmail = emailEl.value.trim();
           const contactNumber = contactEl.value.trim();
           [childEl, emailEl, contactEl].forEach((el) => el.setCustomValidity(""));
+          if (alreadyMsg) {
+            alreadyMsg.hidden = true;
+            alreadyMsg.textContent = "";
+          }
           if (!childName) {
             childEl.setCustomValidity("Required");
             childEl.reportValidity();
@@ -865,6 +876,41 @@
             contactEl.reportValidity();
             contactEl.focus();
             return;
+          }
+
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalText = submitBtn.textContent;
+            submitBtn.textContent = "Checking…";
+          }
+
+          try {
+            const statusRes = await fetch(
+              "/api/public/assessment-status?email=" + encodeURIComponent(parentEmail)
+            );
+            const status = await statusRes.json().catch(function () {
+              return {};
+            });
+            if (status && status.taken) {
+              const msg =
+                status.message ||
+                "Assessment already taken. Please check your email for your results and registration link.";
+              if (alreadyMsg) {
+                alreadyMsg.textContent = msg;
+                alreadyMsg.hidden = false;
+              } else {
+                alert(msg);
+              }
+              return;
+            }
+          } catch (statusErr) {
+            console.warn("Assessment status check failed; continuing", statusErr);
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent =
+                submitBtn.dataset.originalText || "Start Free Assessment";
+            }
           }
 
           assessmentData = { childName, parentEmail, contactNumber };
@@ -954,7 +1000,7 @@
         }, 200);
       }
 
-      // Returning from free assessment: prefill email and land on plans (Enroll sets plan + opens signup)
+      // Returning from free assessment: show Register Now + hide pre-assessment note
       document.addEventListener("DOMContentLoaded", function () {
         const yearEl = document.getElementById("footer-year");
         if (yearEl) yearEl.textContent = String(new Date().getFullYear());
@@ -962,7 +1008,10 @@
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get("email");
         const cefrLevel = urlParams.get("cefrLevel");
+        const score = urlParams.get("score");
+        const trial = urlParams.get("trial");
         const signup = urlParams.get("signup");
+        const registerNote = document.getElementById("plans-register-note");
 
         if (email && cefrLevel) {
           const signupEmailEl = document.getElementById("signup-email");
@@ -980,11 +1029,29 @@
 
           const banner = document.getElementById("cefr-level-banner");
           const bannerTitle = document.getElementById("cefr-level-banner-title");
+          const bannerText = document.getElementById("cefr-level-banner-text");
+          const registerBtn = document.getElementById("cefr-register-now-btn");
           if (banner && bannerTitle) {
             bannerTitle.textContent = "Your level: " + cefrLevel;
+            if (bannerText) {
+              bannerText.textContent =
+                "You have taken the assessment. Register now to create your account and claim your free trial.";
+            }
+            if (registerBtn) {
+              let regHref =
+                "/student-register.html?email=" +
+                encodeURIComponent(email) +
+                "&cefrLevel=" +
+                encodeURIComponent(cefrLevel);
+              if (score) regHref += "&score=" + encodeURIComponent(score);
+              if (trial) regHref += "&trial=" + encodeURIComponent(trial);
+              registerBtn.href = regHref;
+              registerBtn.hidden = false;
+            }
             banner.hidden = false;
             banner.classList.add("is-visible");
           }
+          if (registerNote) registerNote.hidden = true;
         } else if (window.location.hash === "#plans") {
           scrollToPlansSection();
         }

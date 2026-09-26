@@ -240,13 +240,27 @@ router.post(
       const balanceAfterPool = pool + creditsToAdd;
       const availableAfter = Math.max(balanceAfterPool - reserved, 0);
       const historyPaymentId = adminKey || `admin:${plan.planId}:${Date.now()}`;
-      const { startDate, endDate } = computeSubscriptionDates(plan.planId);
+      const { startDate, endDate, subscriptionPlan, lotExpiresAt } = computeSubscriptionDates(
+        plan.planId,
+        student
+      );
+      const { ensureCreditLotsBackfilled, buildCreditLot } = require('./services/creditLots');
+      ensureCreditLotsBackfilled(student, now);
+      const newLot = buildCreditLot({
+        planId: plan.planId,
+        planLabel: plan.label,
+        credits: creditsToAdd,
+        purchasedAt: now,
+        expiresAt: lotExpiresAt,
+        paymentId: historyPaymentId,
+      });
+      const nextLots = [...(Array.isArray(student.creditLots) ? student.creditLots : []), newLot];
 
       const update = {
         $set: {
           paymentStatus: 'paid',
           subscriptionStatus: 'active',
-          subscriptionPlan: plan.planId,
+          subscriptionPlan: subscriptionPlan || plan.planId,
           subscriptionStartDate: startDate,
           subscriptionEndDate: endDate,
           accountStatus: 'active_subscriber',
@@ -254,6 +268,7 @@ router.post(
           creditExpiryNotices: emptyNoticeFlags(),
           assessmentTrialCreditActive: false,
           hasFreeTrial: false,
+          creditLots: nextLots,
         },
         $inc: {
           creditBalance: creditsToAdd,

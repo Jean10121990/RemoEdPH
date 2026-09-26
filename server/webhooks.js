@@ -415,7 +415,20 @@ async function handlePaymongoWebhook(req, res) {
     const planCreditConfig = PLAN_CREDITS[normalizedPlanId] || { credits: 0, label: pending.plan || 'Plan' };
     const creditsToAdd = Number(planCreditConfig.credits || 0);
     const amountPaid = Number(pending.amount || 0);
-    const { startDate, endDate } = computeSubscriptionDates(normalizedPlanId || pending.plan);
+    const { startDate, endDate, lotExpiresAt } = computeSubscriptionDates(normalizedPlanId || pending.plan);
+    const { buildCreditLot } = require('./services/creditLots');
+    const historyPaymentIdEarly = paymongoPaymentId || idempotencyKey;
+    const firstLot =
+      creditsToAdd > 0
+        ? buildCreditLot({
+            planId: normalizedPlanId || pending.plan,
+            planLabel: planCreditConfig.label,
+            credits: creditsToAdd,
+            purchasedAt: new Date(),
+            expiresAt: lotExpiresAt || endDate,
+            paymentId: historyPaymentIdEarly,
+          })
+        : null;
     const student = new Student({
       username: String(metadata.username || pending.username || '').trim() || pending.username,
       email: String(metadata.email || pending.email || '').trim() || pending.email,
@@ -431,6 +444,7 @@ async function handlePaymongoWebhook(req, res) {
       paymentPaidAt: new Date(),
       accountStatus: 'active_subscriber',
       isSubscribed: true,
+      creditLots: firstLot ? [firstLot] : [],
     });
 
     try {

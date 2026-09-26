@@ -679,18 +679,26 @@
                 } else if (opts.done) {
                     statusEl.textContent = 'Finished — great work!';
                     statusEl.className = 'lj-modal__status is-done';
-                    descEl.textContent = opts.description || 'You already completed this stop on the map.';
+                    descEl.textContent =
+                        opts.description ||
+                        'You already completed this stop. You can book it again to reschedule or review.';
                     if (bookBtn) bookBtn.textContent = 'Book again';
                     setModalActions(true, false);
-                } else {
-                    statusEl.textContent = opts.isHere
-                        ? 'Remo is here — this is your next stop.'
-                        : 'Upcoming lesson on your trail.';
+                } else if (opts.isHere) {
+                    statusEl.textContent = 'Remo is here — this is your next stop.';
                     statusEl.className = 'lj-modal__status';
                     descEl.textContent =
                         opts.description || 'Open booking to schedule this lesson with a teacher.';
                     if (bookBtn) bookBtn.textContent = 'Book this lesson';
                     setModalActions(true, false);
+                } else {
+                    statusEl.textContent = 'Finish earlier lessons first.';
+                    statusEl.className = 'lj-modal__status is-locked';
+                    descEl.textContent =
+                        opts.description ||
+                        'You can’t jump ahead on the trail. Complete the stops before this one, then come back to book.';
+                    if (bookBtn) bookBtn.textContent = 'Book this lesson';
+                    setModalActions(false, false);
                 }
 
                 if (bookBtn) {
