@@ -8,16 +8,27 @@ const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 router.get('/announcement', async (req, res) => {
   try {
     const role = req.query.role;
-    let filter = {};
-    if (role === 'teacher') {
-      // Teachers see all-users + teachers-only (not students-only or admins-only)
-      filter = { $or: [ { role: 'admin' }, { role: 'teacher' } ] };
-    } else if (role === 'student') {
-      filter = { $or: [ { role: 'admin' }, { role: 'student' } ] };
-    } else if (role === 'admin') {
-      // Admins see all-users + admins-only (and may also see scoped posts when managing)
-      filter = { $or: [ { role: 'admin' }, { role: 'admins' }, { role: 'teacher' }, { role: 'student' } ] };
+    const topic = req.query.topic ? String(req.query.topic).trim() : '';
+    const clauses = [];
+    if (topic && ANNOUNCEMENT_TOPICS.has(topic)) {
+      if (topic === 'others') {
+        clauses.push({
+          $or: [{ topic: 'others' }, { topic: null }, { topic: { $exists: false } }],
+        });
+      } else {
+        clauses.push({ topic });
+      }
     }
+    if (role === 'teacher') {
+      clauses.push({ $or: [{ role: 'admin' }, { role: 'teacher' }] });
+    } else if (role === 'student') {
+      clauses.push({ $or: [{ role: 'admin' }, { role: 'student' }] });
+    } else if (role === 'admin') {
+      clauses.push({
+        $or: [{ role: 'admin' }, { role: 'admins' }, { role: 'teacher' }, { role: 'student' }],
+      });
+    }
+    const filter = clauses.length === 0 ? {} : clauses.length === 1 ? clauses[0] : { $and: clauses };
     const anns = await Announcement.find(filter).sort({ updatedAt: -1 });
     
     // Transform the data to include audience field for frontend compatibility
@@ -49,10 +60,26 @@ function roleFromAudience(audience) {
   return null;
 }
 
+const ANNOUNCEMENT_TOPICS = new Set([
+  'family-day',
+  'teachers-day',
+  'students-day',
+  'feeding-program',
+  'waste-management',
+  'mental-health',
+  'sustainability',
+  'others',
+]);
+
+function normalizeTopic(raw) {
+  const topic = String(raw || 'others').trim();
+  return ANNOUNCEMENT_TOPICS.has(topic) ? topic : null;
+}
+
 // Post new announcement (admin only)
 router.post('/announcement', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    const { content, audience } = req.body;
+    const { content, audience, topic: topicRaw, topicOther: topicOtherRaw } = req.body;
     if (!content || !audience) {
       return res.status(400).json({ success: false, message: 'Content and audience required' });
     }
@@ -61,8 +88,16 @@ router.post('/announcement', verifyAdminApiAuth, requireAdmin, async (req, res) 
     if (!role) {
       return res.status(400).json({ success: false, message: 'Invalid audience' });
     }
+    const topic = normalizeTopic(topicRaw || 'others');
+    if (!topic) {
+      return res.status(400).json({ success: false, message: 'Invalid announcement topic' });
+    }
+    const topicOther = topic === 'others' ? String(topicOtherRaw || '').trim().slice(0, 80) : '';
+    if (topic === 'others' && !topicOther) {
+      return res.status(400).json({ success: false, message: 'Enter a name for Other announcements' });
+    }
     
-    const ann = new Announcement({ content, role, updatedAt: new Date() });
+    const ann = new Announcement({ content, role, topic, topicOther, updatedAt: new Date() });
     await ann.save();
     
     // Create notifications for teachers / students based on audience
@@ -106,7 +141,7 @@ router.post('/announcement', verifyAdminApiAuth, requireAdmin, async (req, res) 
 router.put('/announcement/:id', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { content, audience } = req.body;
+    const { content, audience, topic: topicRaw, topicOther: topicOtherRaw } = req.body;
 
     if (!content || !audience) {
       return res.status(400).json({ success: false, message: 'Content and audience required' });
@@ -116,10 +151,18 @@ router.put('/announcement/:id', verifyAdminApiAuth, requireAdmin, async (req, re
     if (!role) {
       return res.status(400).json({ success: false, message: 'Invalid audience' });
     }
+    const topic = normalizeTopic(topicRaw || 'others');
+    if (!topic) {
+      return res.status(400).json({ success: false, message: 'Invalid announcement topic' });
+    }
+    const topicOther = topic === 'others' ? String(topicOtherRaw || '').trim().slice(0, 80) : '';
+    if (topic === 'others' && !topicOther) {
+      return res.status(400).json({ success: false, message: 'Enter a name for Other announcements' });
+    }
 
     const updated = await Announcement.findByIdAndUpdate(
       id,
-      { content, role, updatedAt: new Date() },
+      { content, role, topic, topicOther, updatedAt: new Date() },
       { new: true }
     );
 

@@ -22,7 +22,7 @@
 
         .metrics-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 8px;
             margin-bottom: 12px;
         }
@@ -119,6 +119,17 @@
             border-radius: 10px;
             border: 1px solid #e0e6ed;
             background: #fafdff;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font: inherit;
+            color: inherit;
+        }
+        .community-item:hover,
+        .community-item.is-active {
+            border-color: #1ca7e7;
+            background: #f0f9ff;
+            box-shadow: 0 0 0 2px rgba(28, 167, 231, 0.18);
         }
         .community-icon {
             width: 34px;
@@ -889,7 +900,20 @@
                             </svg>
                             Announcements
                         </span>
-                        <a href="admin-announcements.html" style="font-size:0.8rem;font-weight:600;color:#667eea;text-decoration:none;">Manage →</a>
+                        <span style="display:flex;align-items:center;gap:8px;">
+                            <select id="admin-announcement-topic" aria-label="Announcement topic" style="font-size:0.8rem;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;color:#0f172a;">
+                                <option value="">All topics</option>
+                                <option value="family-day">Family Day</option>
+                                <option value="teachers-day">Teachers’ Day</option>
+                                <option value="students-day">Students’ Day</option>
+                                <option value="feeding-program">Feeding Program</option>
+                                <option value="waste-management">Waste Management</option>
+                                <option value="mental-health">Mental Health Support</option>
+                                <option value="sustainability">Sustainability Projects</option>
+                                <option value="others">Others</option>
+                            </select>
+                            <a href="admin-announcements.html" style="font-size:0.8rem;font-weight:600;color:#667eea;text-decoration:none;">Manage →</a>
+                        </span>
                     </div>
                     <div id="admin-announcement-content" style="background: #fafdff; border-radius: 8px; padding: 10px; margin-bottom: 0; max-height: 280px; overflow-y: auto;">
                         <div style="color:#888;">Loading announcements…</div>
@@ -947,29 +971,6 @@
                             <div class="stat-item">
                                 <span class="stat-label">Finished</span>
                                 <span class="stat-value positive" id="finished-classes">0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="metric-card income-earned">
-                        <div class="metric-header">
-                            <div class="metric-header-left">
-                                <div class="metric-icon" aria-hidden="true" title="Income Earned">
-                                    <!-- peso / money -->
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M9 4v16"/>
-                                        <path d="M9 5h7a4 4 0 0 1 0 8H9"/>
-                                        <path d="M9 13h8"/>
-                                    </svg>
-                                </div>
-                                <h3>Income Earned</h3>
-                            </div>
-                        </div>
-                        <div class="metric-value" id="total-income">₱0</div>
-                        <div class="metric-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">This Month</span>
-                                <span class="stat-value" id="monthly-income">₱0</span>
                             </div>
                         </div>
                     </div>
@@ -1114,56 +1115,70 @@
                         </svg>
                         Community & Social Responsibility
                     </div>
-                    <div class="community-grid">
-                        <div class="community-item">
+                    <div class="community-grid" id="community-topic-grid">
+                        <button type="button" class="community-item" data-topic="family-day">
                             <div class="community-icon">👨‍👩‍👧</div>
                             <div>
                                 <h4>Family Day</h4>
                                 <p>Activities that encourage parent involvement and celebrate learning together.</p>
                             </div>
-                        </div>
-                        <div class="community-item">
+                        </button>
+                        <button type="button" class="community-item" data-topic="teachers-day">
                             <div class="community-icon">👩‍🏫</div>
                             <div>
                                 <h4>Teachers’ Day</h4>
                                 <p>Recognizing teacher dedication through appreciation and community events.</p>
                             </div>
-                        </div>
-                        <div class="community-item">
+                        </button>
+                        <button type="button" class="community-item" data-topic="students-day">
                             <div class="community-icon">🧒</div>
                             <div>
                                 <h4>Students’ Day</h4>
                                 <p>Celebrating student progress and building confidence through fun events.</p>
                             </div>
-                        </div>
-                        <div class="community-item">
+                        </button>
+                        <button type="button" class="community-item" data-topic="feeding-program">
                             <div class="community-icon">🥣</div>
                             <div>
                                 <h4>Feeding Program</h4>
                                 <p>Supporting learner wellness through food assistance and community outreach.</p>
                             </div>
-                        </div>
-                        <div class="community-item">
+                        </button>
+                        <button type="button" class="community-item" data-topic="waste-management">
                             <div class="community-icon">♻️</div>
                             <div>
                                 <h4>Waste Management</h4>
                                 <p>Promoting proper segregation and eco-friendly habits at home and in school.</p>
                             </div>
-                        </div>
-                        <div class="community-item">
+                        </button>
+                        <button type="button" class="community-item" data-topic="mental-health">
                             <div class="community-icon">🧠</div>
                             <div>
                                 <h4>Mental Health Support</h4>
                                 <p>Resources and awareness activities to support a safe, positive learning environment.</p>
                             </div>
-                        </div>
-                        <div class="community-item">
+                        </button>
+                        <button type="button" class="community-item" data-topic="sustainability">
                             <div class="community-icon">🌱</div>
                             <div>
                                 <h4>Sustainability Projects</h4>
                                 <p>Simple projects and activities that build care for the environment.</p>
                             </div>
+                        </button>
+                        <button type="button" class="community-item" data-topic="others">
+                            <div class="community-icon">📌</div>
+                            <div>
+                                <h4>Others</h4>
+                                <p>Announcements that are not one of the topics above.</p>
+                            </div>
+                        </button>
+                    </div>
+                    <div id="community-topic-history" style="margin-top:12px;display:none;border:1px solid #e0e6ed;border-radius:10px;background:#fff;padding:12px 14px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                            <h3 id="community-topic-history-title" style="margin:0;font-size:1rem;color:#0f172a;">Posts</h3>
+                            <a id="community-topic-post-link" href="admin-announcements.html" style="font-size:0.85rem;font-weight:700;color:#1ca7e7;">Post for this topic</a>
                         </div>
+                        <div id="community-topic-history-list" style="display:flex;flex-direction:column;gap:8px;"></div>
                     </div>
                 </div>
 
@@ -1344,6 +1359,7 @@
             loadRecentActivity();
             createCharts();
             loadAdminAnnouncements();
+            bindCommunityAnnouncementTopics();
             
             // Auto-refresh dashboard data every 30 seconds
             setInterval(() => {
@@ -1357,41 +1373,129 @@
             loadAdminReferralLinks();
         });
 
-        async function loadAdminAnnouncements() {
+        const COMMUNITY_TOPIC_LABELS = {
+            'family-day': 'Family Day',
+            'teachers-day': 'Teachers’ Day',
+            'students-day': 'Students’ Day',
+            'feeding-program': 'Feeding Program',
+            'waste-management': 'Waste Management',
+            'mental-health': 'Mental Health Support',
+            sustainability: 'Sustainability Projects',
+            others: 'Others'
+        };
+
+        function escapeAnnouncementHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function announcementTopicLabel(item) {
+            const key = item && item.topic ? item.topic : 'others';
+            const base = COMMUNITY_TOPIC_LABELS[key] || 'Others';
+            if (key === 'others' && item && item.topicOther) return 'Others · ' + item.topicOther;
+            return base;
+        }
+
+        function renderAnnouncementCards(list) {
+            if (!Array.isArray(list) || !list.length) {
+                return '<div style="color:#888;">No announcements for this topic yet.</div>';
+            }
+            return list.map(function (a) {
+                var audienceLabel = a.audience === 'all' ? 'All users'
+                    : a.audience === 'teachers' ? 'Teachers'
+                    : a.audience === 'students' ? 'Students'
+                    : a.audience === 'admins' ? 'Admins'
+                    : (a.role || 'All');
+                var when = a.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
+                    ? window.TimezoneUtils.formatDateTimePhilippines(new Date(a.updatedAt))
+                    : (a.updatedAt ? new Date(a.updatedAt).toLocaleString() : '');
+                var content = escapeAnnouncementHtml(a.content);
+                var topicLabel = escapeAnnouncementHtml(announcementTopicLabel(a));
+                return '<div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px 14px;margin-bottom:10px;">'
+                    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">'
+                    + '<span style="display:flex;gap:6px;flex-wrap:wrap;">'
+                    + '<span style="font-size:0.75rem;font-weight:600;color:#0f766e;background:#ccfbf1;padding:2px 8px;border-radius:999px;">' + topicLabel + '</span>'
+                    + '<span style="font-size:0.75rem;font-weight:600;color:#667eea;background:#eef2ff;padding:2px 8px;border-radius:999px;">' + audienceLabel + '</span>'
+                    + '</span>'
+                    + '<span style="font-size:0.8rem;color:#888;">' + when + '</span>'
+                    + '</div>'
+                    + '<div style="font-weight:500;white-space:pre-line;color:#333;">' + content + '</div>'
+                    + '</div>';
+            }).join('');
+        }
+
+        async function fetchAnnouncementsByTopic(topic) {
+            const qs = topic ? ('?topic=' + encodeURIComponent(topic)) : '';
+            const response = await fetch('/api/announcement' + qs);
+            const list = await response.json();
+            return Array.isArray(list) ? list : [];
+        }
+
+        async function loadAdminAnnouncements(topic) {
             const listDiv = document.getElementById('admin-announcement-content');
             if (!listDiv) return;
+            const select = document.getElementById('admin-announcement-topic');
+            const selected = topic != null ? topic : (select ? select.value : '');
             try {
-                const response = await fetch('/api/announcement');
-                const list = await response.json();
-                if (!Array.isArray(list) || !list.length) {
-                    listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+                const list = await fetchAnnouncementsByTopic(selected);
+                if (!list.length) {
+                    listDiv.innerHTML = '<div style="color:#888;">' + (selected ? 'No announcements for this topic yet.' : 'No announcements at this time.') + '</div>';
                     return;
                 }
-                listDiv.innerHTML = list.map(function (a) {
-                    var audienceLabel = a.audience === 'all' ? 'All users'
-                        : a.audience === 'teachers' ? 'Teachers'
-                        : a.audience === 'students' ? 'Students'
-                        : a.audience === 'admins' ? 'Admins'
-                        : (a.role || 'All');
-                    var when = a.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
-                        ? window.TimezoneUtils.formatDateTimePhilippines(new Date(a.updatedAt))
-                        : (a.updatedAt ? new Date(a.updatedAt).toLocaleString() : '');
-                    var content = String(a.content || '')
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
-                    return '<div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px 14px;margin-bottom:10px;">'
-                        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">'
-                        + '<span style="font-size:0.75rem;font-weight:600;color:#667eea;background:#eef2ff;padding:2px 8px;border-radius:999px;">' + audienceLabel + '</span>'
-                        + '<span style="font-size:0.8rem;color:#888;">' + when + '</span>'
-                        + '</div>'
-                        + '<div style="font-weight:500;white-space:pre-line;color:#333;">' + content + '</div>'
-                        + '</div>';
-                }).join('');
+                listDiv.innerHTML = renderAnnouncementCards(list);
             } catch (error) {
                 console.error('Error loading announcements:', error);
                 listDiv.innerHTML = '<div style="color:#888;">Unable to load announcements</div>';
             }
+        }
+
+        async function showCommunityTopicHistory(topic) {
+            const panel = document.getElementById('community-topic-history');
+            const title = document.getElementById('community-topic-history-title');
+            const listEl = document.getElementById('community-topic-history-list');
+            const postLink = document.getElementById('community-topic-post-link');
+            const label = COMMUNITY_TOPIC_LABELS[topic] || 'Topic';
+            document.querySelectorAll('#community-topic-grid .community-item').forEach(function (btn) {
+                btn.classList.toggle('is-active', btn.getAttribute('data-topic') === topic);
+            });
+            const select = document.getElementById('admin-announcement-topic');
+            if (select) select.value = topic;
+            if (panel) panel.style.display = 'block';
+            if (title) title.textContent = label + ' — post history';
+            if (postLink) postLink.href = 'admin-announcements.html?topic=' + encodeURIComponent(topic);
+            if (listEl) listEl.innerHTML = '<div style="color:#888;">Loading…</div>';
+            await loadAdminAnnouncements(topic);
+            try {
+                const list = await fetchAnnouncementsByTopic(topic);
+                if (listEl) listEl.innerHTML = renderAnnouncementCards(list);
+            } catch (_e) {
+                if (listEl) listEl.innerHTML = '<div style="color:#888;">Unable to load posts.</div>';
+            }
+        }
+
+        function bindCommunityAnnouncementTopics() {
+            const select = document.getElementById('admin-announcement-topic');
+            if (select) {
+                select.addEventListener('change', function () {
+                    const topic = select.value;
+                    if (topic) showCommunityTopicHistory(topic);
+                    else {
+                        document.querySelectorAll('#community-topic-grid .community-item').forEach(function (btn) {
+                            btn.classList.remove('is-active');
+                        });
+                        const panel = document.getElementById('community-topic-history');
+                        if (panel) panel.style.display = 'none';
+                        loadAdminAnnouncements('');
+                    }
+                });
+            }
+            document.querySelectorAll('#community-topic-grid .community-item').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    showCommunityTopicHistory(btn.getAttribute('data-topic'));
+                });
+            });
         }
 
         async function loadAdminReferralLinks() {
@@ -1420,17 +1524,15 @@
         async function loadDashboardData() {
             try {
                 // Load system statistics
-                const [teachersResponse, studentsResponse, bookingsResponse, financialResponse] = await Promise.all([
+                const [teachersResponse, studentsResponse, bookingsResponse] = await Promise.all([
                     adminApiFetch('/api/admin/teachers-count'),
                     adminApiFetch('/api/admin/students-count'),
-                    adminApiFetch('/api/admin/bookings-count'),
-                    adminApiFetch('/api/admin/reports/financial')
+                    adminApiFetch('/api/admin/bookings-count')
                 ]);
 
                 const teachersCount = teachersResponse.ok ? await teachersResponse.json() : { count: 0 };
                 const studentsCount = studentsResponse.ok ? await studentsResponse.json() : { count: 0 };
                 const bookingsData = bookingsResponse.ok ? await bookingsResponse.json() : { count: 0, active: 0, completed: 0 };
-                const financialData = financialResponse.ok ? await financialResponse.json() : { data: { totalEarnings: 0, globalRate: 100 } };
 
                 // Calculate metrics (bookings API: current month, all teachers)
                 const totalUsers = (teachersCount.count || 0) + (studentsCount.count || 0);
@@ -1441,8 +1543,6 @@
                 if (periodEl && bookingsData.year && bookingsData.month) {
                     periodEl.textContent = 'All teachers · ' + bookingsData.year + '-' + String(bookingsData.month).padStart(2, '0');
                 }
-                const totalIncome = financialData.data?.totalEarnings || 0;
-                const globalRate = financialData.data?.globalRate || 100;
                 
                 // Update registered users
                 safeSetText('total-users', totalUsers.toLocaleString());
@@ -1453,12 +1553,6 @@
                 safeSetText('total-bookings', totalBookings.toLocaleString());
                 safeSetText('booked-classes', (bookingsData.active || 0).toLocaleString());
                 safeSetText('finished-classes', (bookingsData.completed || 0).toLocaleString());
-                
-                // Update income earned
-                safeSetText('total-income', '₱' + totalIncome.toLocaleString());
-                const monthKey = new Date().toISOString().slice(0, 7);
-                const teachersThisMonth = (financialData.data && financialData.data.monthlyEarnings && financialData.data.monthlyEarnings[monthKey]) || 0;
-                safeSetText('monthly-income', '₱' + Number(teachersThisMonth).toLocaleString());
                 
                 // Update platform stats
                 safeSetText('total-teachers-stat', (teachersCount.count || 0).toLocaleString());
