@@ -128,17 +128,11 @@ const requireAdminTwoFactorSatisfied = async (req, res, next) => {
 
 // Middleware to verify JWT token
 const verifyToken = async (req, res, next) => {
-  console.log('Verifying token...');
-  console.log('Authorization header:', req.headers.authorization);
-  
   const token =
     req.headers.authorization?.split(' ')[1] ||
     req.body?.token ||
     req.query?.token;
-  console.log('Extracted token:', token ? 'Token found' : 'No token');
-  
   if (!token) {
-    console.log('No token provided');
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
 
@@ -147,7 +141,6 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('Token decoded successfully:', decoded);
     req.user = decoded;
     // Path-scoped portal tokens on the client: remoed_admin_token / remoed_teacher_token (see public/js/user-session.js).
 
@@ -187,6 +180,7 @@ const verifyToken = async (req, res, next) => {
       (method === 'POST' && /\/book-class$/.test(normPath)) ||
       (method === 'GET' && /\/api\/teacher\/student\/bookings$/.test(normPath)) ||
       (method === 'GET' && /\/api\/teacher\/available-teachers$/.test(normPath)) ||
+      (method === 'GET' && /\/api\/teacher\/booking\/by-classroom\//.test(normPath)) ||
       (method === 'GET' && /\/api\/teacher\/public\//.test(normPath));
     if (pathOnly.startsWith('/api/teacher') && !studentMayCallThisTeacherRoute) {
       if (studentish && !teacherish && !adminClaims) {

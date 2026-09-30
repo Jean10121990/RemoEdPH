@@ -107,6 +107,7 @@
                                 <th style="width:52px;">Profile</th>
                                 <th>Username</th>
                                 <th>Email</th>
+                                <th>Name</th>
                                 <th>Status</th>
                                 <th>Join Date</th>
                                 <th>Actions</th>
@@ -476,18 +477,25 @@
                 const tbody = document.getElementById('teachers-tbody');
                 if (response.status === 401 || response.status === 403) {
                     const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
                     return;
                 }
                 if (!response.ok) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load teachers') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load teachers') + '</td></tr>';
                     return;
                 }
                 if (!teachers.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No teachers found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No teachers found</td></tr>';
                     return;
                 }
                 
+                const teacherDisplayName = (teacher) => {
+                    const full = `${(teacher.firstName || '').trim()} ${(teacher.lastName || '').trim()}`.trim();
+                    if (full) return full;
+                    if (teacher.fullname && String(teacher.fullname).trim()) return String(teacher.fullname).trim();
+                    return 'N/A';
+                };
+
                 tbody.innerHTML = teachers.map(teacher => `
                     <tr>
                         <td>
@@ -500,6 +508,7 @@
                         </td>
                         <td>${teacher.username || 'N/A'}</td>
                         <td>${teacher.email || 'N/A'}</td>
+                        <td>${teacherDisplayName(teacher)}</td>
                         <td><span class="status-badge ${teacher.status === 'suspended' ? 'status-inactive' : 'status-active'}">${teacher.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
                         <td>${teacher.createdAt ? new Date(teacher.createdAt).toLocaleDateString() : 'N/A'}</td>
                         <td>
@@ -532,7 +541,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading teachers:', error);
-                document.getElementById('teachers-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading teachers</td></tr>';
+                document.getElementById('teachers-tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">Error loading teachers</td></tr>';
             }
         }
 

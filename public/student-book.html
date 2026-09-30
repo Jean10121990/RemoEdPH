@@ -1080,7 +1080,7 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js?v=book-label-1"></script>
-        <script src="js/student-page-header.js?v=notif-layout-1"></script>
+        <script src="js/student-page-header.js?v=sock-auth-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'book');
             StudentPageHeader.render('book');
@@ -1089,7 +1089,7 @@
             <div style="flex-shrink: 0;">
                 <div class="header-info">
                 <div class="info-item">
-                    <span class="quota" id="available-slots-info">Select a time slot to book a class. Limit: 2 classes (1 hour) per day.</span>
+                    <span class="quota" id="available-slots-info">Select a time slot to book a class. Limit: 6 classes (3 hours) per day.</span>
                 </div>
                 
                 <!-- Combined Navigation and Action Buttons Row -->
@@ -1434,7 +1434,7 @@
         /** Local date-time keys where the logged-in student already has a booking (wins over "available" when another teacher is still open). */
         let ownBookedSlotKeys = new Set();
         /** Count of this student's non-cancelled classes per local YYYY-MM-DD. Max 2 / day. */
-        const MAX_CLASSES_PER_DAY = 2;
+        const MAX_CLASSES_PER_DAY = 6;
         let ownClassesByDate = new Map();
 
         /** Case-insensitive teacher id / email for slot maps and dropdown matching. */
@@ -2318,7 +2318,7 @@
             }
 
             if ((ownClassesByDate.get(date) || 0) >= MAX_CLASSES_PER_DAY) {
-                showMessage('You can book only 2 classes (1 hour) per day. Please choose another day.', 'error');
+                showMessage('You can book only 6 classes (3 hours) per day. Please choose another day.', 'error');
                 return;
             }
             

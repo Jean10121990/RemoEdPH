@@ -10,7 +10,7 @@
         try {
             if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
                 var s = document.createElement('script');
-                s.src = '/js/remoed-notifications.js?v=profile-reminders-2';
+                s.src = '/js/remoed-notifications.js?v=sock-auth-1';
                 document.head.appendChild(s);
             }
             if (!global.io && !document.querySelector('script[src*="socket.io"]')) {

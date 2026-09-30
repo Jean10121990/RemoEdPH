@@ -9,6 +9,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Area | Files |
 |------|--------|
 | Portal tokens | `public/js/user-session.js`, `public/js/remoed-auth-token.js`, `server/authMiddleware.js` |
+| Security guidelines | [`docs/SECURITY.md`](SECURITY.md) — route auth decisions, public allowlist, socket room binding, XSS, NoSQL injection, secrets |
 | Forgot / set password | `POST /api/auth/forgot-password` (link, not a temp password), `POST /api/auth/reset-password`, `public/forgot-password.html`, `public/reset-password.html`, `public/change-password.html`, `POST /api/auth/change-password` |
 | UI icons (Lucide) | [lucide.dev/icons](https://lucide.dev/icons/), [`SKILLS.md`](../SKILLS.md) § UI icons; `public/js/lucide-icons.js`; password eye: `public/js/password-toggle.js` |
 | Student book UI | `public/student-book.html` |
@@ -83,6 +84,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Student token cannot call a random `/api/teacher/*` route outside the allowlist (`WRONG_PORTAL_TOKEN`).
 - [ ] Teacher token cannot call `/api/student/*` profile/bookings as a student.
+- [ ] No token: `/api/teacher/timezone-debug` and `/api/teacher/booking-test/x` return 404; `/api/teacher/booking/by-classroom/x`, `/api/teacher/dashboard-stats`, and `/api/teacher/classes?teacherId=…&week=…` return 401.
+- [ ] Teacher Open Class still shows booked slots; teacher and student bells and Messages still update live (socket rooms joined with the portal token).
 
 ### Portal / classroom responsive
 
@@ -399,6 +402,18 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 - Sprouts Month 1 lessons **19–22** (Honoring My Friends, Virtual Garden Challenge 1, Virtual Garden Challenge 2, Monthly Celebration) use `build_l2m1_lessons_19_22.py`. Uppercase A, B, and C are drawn in code on the phonics slides so the letter shapes stay correct. PDF footers that say Level 1 still publish as Level 2 – Sprouts.
 - `build_lesson` uses `lesson["footer"]` (default `SPROUTS! MONTH 1`) and the length of `lesson["pages"]` for the page badge. Saplings Month 1 lessons **1–6** (`build_l3m1_lessons_1_3.py`, `build_l3m1_lessons_4_6.py`) are Level 3, footer `SAPLINGS! MONTH 1`, **18** pages, laptop folder `Level 3`, filenames `RemoEd L3M1-Lesson-{N}-….pptx`. Phonics letters and the name badge are drawn in code. Lessons 4–6 cover asking before apps, “God made me unique!”, and honoring each person.
 
+## Security — do not reopen
+
+Full checklist: [`docs/SECURITY.md`](SECURITY.md). Update both files whenever a route, socket room, or auth rule changes.
+
+- Public on purpose (keep open): `GET /api/teacher/slots`, public teacher profile / landing / directory, student booking, obfuscated admin login path, `/api/public/*` assessment, `POST /api/applications`, `teacher-profiles/` uploads.
+- Teacher debug routes stay removed: `/api/teacher/test`, `/timezone-debug`, `/booking-test/:id`, `/test-remove-slide`, and the unauthenticated `/api/teacher/teacher/completed-classes`.
+- `GET /api/teacher/booking/by-classroom/:id` needs a token for that booking's teacher or student (or an admin). Students reach it through the `studentMayCallThisTeacherRoute` allowlist.
+- `GET /api/teacher/dashboard-stats` returns only the signed-in teacher. `GET /api/teacher/classes?teacherId&week` requires the matching teacher Bearer (`teacher-open-class.html` sends it).
+- Message / notification socket rooms (`teacher-msg:`, `student-msg:`, `admin-msg:`, `notif:*`) come from the verified JWT via `resolveSocketIdentity` in `server/index.js`; clients send `token` in the join payload.
+- `verifyToken` must not log Authorization headers or decoded tokens.
+- Helmet CSP stays off until a dedicated inline-script cleanup pass.
+
 ## Known product gates (not bugs)
 
 | Code | Meaning |
@@ -406,7 +421,7 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 | `SUBSCRIPTION_REQUIRED_LESSON_2` | Not subscribed / no credits / no trial |
 | `CREDITS_EXPIRED` | Unused credits expired after validity window |
 | `INSUFFICIENT_CREDITS` | `creditBalance` is 0 |
-| `DAILY_CLASS_LIMIT` | Student may book at most 2 classes (1 hour) per local day |
+| `DAILY_CLASS_LIMIT` | Student may book at most 6 classes (3 hours) per local day |
 | `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
 | `LESSON_AHEAD_OF_PROGRESS` | Paid book blocked: lesson is past the next trail stop (earlier / reschedule OK) |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |

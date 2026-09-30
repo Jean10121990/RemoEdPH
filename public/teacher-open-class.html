@@ -23,7 +23,7 @@
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js?v=app-shell-9"></script>
-    <script src="js/teacher-page-header.js?v=notif-layout-1"></script>
+    <script src="js/teacher-page-header.js?v=sock-auth-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-configuration');
             TeacherPageHeader.render('class-configuration');
@@ -823,9 +823,11 @@
         const classesQueryPath = `/api/teacher/classes?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&${cacheBuster}`;
         const classesFullUrl = new URL(classesQueryPath, window.location.origin).href;
         console.log('[Teacher booking] Full URL (GET classes):', classesFullUrl);
+        const classesToken = (window.RemoedAuthToken && RemoedAuthToken.getTeacherToken()) || '';
         const bookingsResponse = await fetch(classesQueryPath, {
           method: 'GET',
           headers: {
+            ...(classesToken ? { 'Authorization': `Bearer ${classesToken}` } : {}),
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             'Pragma': 'no-cache',
             'Expires': '0',

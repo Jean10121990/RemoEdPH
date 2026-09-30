@@ -1989,6 +1989,35 @@ function getSocketBearerToken(socket) {
   return '';
 }
 
+/**
+ * Personal inbox / notification rooms: identity comes from a verified JWT (join payload `token`
+ * or handshake), never from the client-supplied username / teacherId.
+ */
+async function resolveSocketIdentity(socket, data) {
+  const token = String((data && data.token) || '').trim() || getSocketBearerToken(socket);
+  if (!token) return null;
+  try {
+    if (await isTokenBlacklisted(token)) return null;
+    const decoded = jwt.verify(token, SOCKET_AUTH_JWT_SECRET);
+    const role = (v) => String(v == null ? '' : v).trim().toLowerCase();
+    if (decoded.isAdmin === true || role(decoded.role) === 'admin') {
+      const username = String(decoded.username || '').trim();
+      return username ? { role: 'admin', username } : null;
+    }
+    if (role(decoded.userType) === 'student' || role(decoded.userRole) === 'student') {
+      const username = String(decoded.username || '').trim();
+      return username ? { role: 'student', username } : null;
+    }
+    if (decoded.teacherId || role(decoded.userType) === 'teacher' || role(decoded.role) === 'teacher') {
+      const { resolveToCanonicalTeacherId } = require('./services/teacherSlotResolve');
+      const raw = String(decoded.teacherId || decoded.username || '').trim();
+      const teacherId = (raw && (await resolveToCanonicalTeacherId(raw))) || raw;
+      return teacherId ? { role: 'teacher', teacherId: String(teacherId) } : null;
+    }
+  } catch (_e) {}
+  return null;
+}
+
 /** Real classroom rooms require a valid JWT on the socket handshake. */
 async function disconnectIfClassroomUnauthenticated(socket, room) {
   if (!room || room === 'default-room') return true;
@@ -2024,10 +2053,14 @@ io.on('connection', socket => {
     console.log('🔌 New client connected:', socket.id);
 
     // Teacher-to-teacher messaging room (for real-time inbox updates)
-    socket.on('join-teacher-messages', (data = {}) => {
+    socket.on('join-teacher-messages', async (data = {}) => {
         try {
-            const teacherId = String(data.teacherId || '').trim();
-            if (!teacherId) return;
+            const who = await resolveSocketIdentity(socket, data);
+            if (!who || who.role !== 'teacher') {
+                socket.emit('auth-error', { code: 'INBOX_AUTH_REQUIRED', message: 'Sign in again to receive messages.' });
+                return;
+            }
+            const teacherId = who.teacherId;
             const roomName = `teacher-msg:${teacherId}`;
             socket.join(roomName);
             console.log(`💬 Socket ${socket.id} joined teacher message room: ${roomName}`);
@@ -2036,13 +2069,14 @@ io.on('connection', socket => {
         }
     });
 
-    socket.on('join-admin-messages', (data = {}) => {
+    socket.on('join-admin-messages', async (data = {}) => {
         try {
-            const username = String(data.username || data.userId || '')
-                .trim()
-                .toLowerCase()
-                .replace(/^admin:/, '');
-            if (!username) return;
+            const who = await resolveSocketIdentity(socket, data);
+            if (!who || who.role !== 'admin') {
+                socket.emit('auth-error', { code: 'INBOX_AUTH_REQUIRED', message: 'Sign in again to receive messages.' });
+                return;
+            }
+            const username = who.username.toLowerCase();
             const roomName = `admin-msg:${username}`;
             socket.join(roomName);
             socket.userType = 'admin';
@@ -2053,10 +2087,14 @@ io.on('connection', socket => {
         }
     });
 
-    socket.on('join-student-messages', (data = {}) => {
+    socket.on('join-student-messages', async (data = {}) => {
         try {
-            const username = String(data.username || '').trim();
-            if (!username) return;
+            const who = await resolveSocketIdentity(socket, data);
+            if (!who || who.role !== 'student') {
+                socket.emit('auth-error', { code: 'INBOX_AUTH_REQUIRED', message: 'Sign in again to receive messages.' });
+                return;
+            }
+            const username = who.username;
             const roomName = `student-msg:${username}`;
             socket.join(roomName);
             console.log(`💬 Socket ${socket.id} joined student message room: ${roomName}`);
@@ -2065,23 +2103,25 @@ io.on('connection', socket => {
         }
     });
 
-    socket.on('join-notifications', (data = {}) => {
+    socket.on('join-notifications', async (data = {}) => {
         try {
-            const role = String(data.role || data.userType || '').toLowerCase();
-            if (role === 'teacher') {
-                const teacherId = String(data.teacherId || data.userId || '').trim();
-                if (!teacherId) return;
+            const who = await resolveSocketIdentity(socket, data);
+            if (!who) {
+                socket.emit('auth-error', { code: 'NOTIF_AUTH_REQUIRED', message: 'Sign in again to receive notifications.' });
+                return;
+            }
+            if (who.role === 'teacher') {
+                const teacherId = who.teacherId;
                 socket.join(`notif:teacher:${teacherId}`);
                 socket.userType = 'teacher';
                 socket.presenceKey = `teacher:${teacherId}`;
-            } else if (role === 'student') {
-                const username = String(data.username || data.userId || '').trim();
-                if (!username) return;
+            } else if (who.role === 'student') {
+                const username = who.username;
                 socket.join(`notif:student:${username}`);
                 socket.userType = 'student';
                 socket.presenceKey = `student:${username}`;
-            } else if (role === 'admin') {
-                const username = String(data.username || data.userId || 'admin').trim();
+            } else if (who.role === 'admin') {
+                const username = who.username;
                 socket.join(`notif:admin:${username}`);
                 socket.userType = 'admin';
                 socket.presenceKey = `admin:${username}`;

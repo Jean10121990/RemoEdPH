@@ -323,11 +323,6 @@ const issueScreenshotUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// Test route to verify teacher routes are working
-router.get('/test', (req, res) => {
-  res.json({ message: 'Teacher routes are working!' });
-});
-
 const PUBLIC_TEACHER_FILTER = { status: { $ne: 'suspended' } };
 
 /** Resolve a student booking key (often normalized email) to a Teacher doc for public profile APIs. */
@@ -803,33 +798,16 @@ router.post('/convert-pptx-cloud', verifyToken, requireTeacher, (req, res) => {
   });
 });
 
-// Timezone debug endpoint
-router.get('/timezone-debug', (req, res) => {
-  const now = new Date();
-  const serverInfo = {
-    serverTime: now.toISOString(),
-    serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    serverTimezoneOffset: now.getTimezoneOffset(),
-    serverDate: now.toISOString().split('T')[0],
-    serverLocalDate: now.toLocaleDateString('en-CA'),
-    serverLocalTime: now.toLocaleTimeString(),
-    serverLocalDateTime: now.toLocaleString()
-  };
-  
-  res.json({
-    message: 'Timezone debug information',
-    server: serverInfo,
-    requestHeaders: req.headers,
-    queryParams: req.query
-  });
-});
-
 // Dashboard statistics endpoint
-router.get('/dashboard-stats', verifyToken, async (req, res) => {
+router.get('/dashboard-stats', verifyToken, requireTeacher, async (req, res) => {
   try {
-    const teacherId = req.query.teacherId;
-    if (!teacherId) {
-      return res.status(400).json({ error: 'Teacher ID is required' });
+    const teacherId = String(req.teacher.teacherId);
+    const requested = req.query.teacherId ? String(req.query.teacherId).trim() : '';
+    if (requested && normalizeId(requested) !== normalizeId(teacherId)) {
+      const requestedCanonical = await resolveToCanonicalTeacherId(requested);
+      if (!requestedCanonical || normalizeId(requestedCanonical) !== normalizeId(teacherId)) {
+        return res.status(403).json({ error: 'You can only view your own dashboard.' });
+      }
     }
 
     // Get current date and last month for comparison
@@ -1015,80 +993,6 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard statistics' });
-  }
-});
-
-// Simple test route for booking data
-router.get('/booking-test/:classroomId', async (req, res) => {
-  try {
-    const { classroomId } = req.params;
-    console.log('🔍 Test route: Looking for classroomId:', classroomId);
-    
-    const booking = await Booking.findOne({ classroomId });
-    console.log('🔍 Test route: Booking found:', booking ? 'YES' : 'NO');
-    
-    if (booking) {
-      // Get student information - studentId is stored as username/email string
-      const student = await Student.findOne({ 
-        $or: [
-          { username: booking.studentId },
-          { email: booking.studentId }
-        ]
-      });
-      console.log('🔍 Test route: Student found:', student ? 'YES' : 'NO');
-      console.log('🔍 Test route: Student data:', student ? {
-        firstName: student.firstName,
-        lastName: student.lastName,
-        username: student.username
-      } : 'No student data');
-      
-      let studentName = 'Unknown Student';
-      if (student) {
-        if (student.firstName) {
-          studentName = student.firstName;
-        } else if (student.username) {
-          studentName = student.username;
-        }
-      }
-      
-      // Get teacher information
-      const teacher = await Teacher.findOne({ teacherId: booking.teacherId });
-      console.log('🔍 Test route: Teacher found:', teacher ? 'YES' : 'NO');
-      console.log('🔍 Test route: Teacher data:', teacher ? {
-        firstName: teacher.firstName,
-        lastName: teacher.lastName,
-        username: teacher.username
-      } : 'No teacher data');
-      
-      let teacherName = 'Unknown Teacher';
-      if (teacher) {
-        if (teacher.firstName) {
-          teacherName = teacher.firstName;
-        } else if (teacher.username) {
-          teacherName = teacher.username;
-        }
-      }
-      
-      console.log('🔍 Test route: Final names - Student:', studentName, 'Teacher:', teacherName);
-      
-      res.json({ 
-        success: true, 
-        booking: {
-          classroomId: booking.classroomId,
-          date: booking.date,
-          time: booking.time,
-          lesson: booking.lesson,
-          studentLevel: booking.studentLevel,
-          studentName: studentName,
-          teacherName: teacherName
-        }
-      });
-    } else {
-      res.json({ success: false, message: 'No booking found' });
-    }
-  } catch (err) {
-    console.error('❌ Test route error:', err);
-    res.status(500).json({ error: err.message });
   }
 });
 
@@ -2336,35 +2240,26 @@ router.post('/mark-absent', verifyToken, requireTeacher, requireOwnTeacherData, 
   }
 });
 
-// Get teacher's completed classes for fee calculation
-router.get('/teacher/completed-classes', async (req, res) => {
-  try {
-    const { teacherId, startDate, endDate } = req.query;
-    
-    if (!teacherId || !startDate || !endDate) {
-      return res.status(400).json({ error: 'Missing teacherId, startDate, or endDate' });
-    }
-
-    // Only sessions finalized after teacher wrap-up (classCompleted) count toward teaching fee.
-    const completedClasses = await Booking.countDocuments({
-      teacherId,
-      date: { $gte: startDate, $lte: endDate },
-      status: 'completed',
-      'attendance.classCompleted': true,
-    });
-
-    res.json({ 
-      success: true, 
-      completedClasses,
-      period: { startDate, endDate }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+/** Admin, the booking's teacher, or the booking's student (username / email / Mongo id on the JWT). */
+async function userMayViewBooking(user, booking) {
+  if (!user || !booking) return false;
+  if (user.isAdmin === true || normRoleClaim(user.role) === 'admin') return true;
+  const bookingStudent = normalizeId(booking.studentId);
+  const studentKeys = [user.username, user.studentId].filter(Boolean).map(normalizeId);
+  if (bookingStudent && studentKeys.includes(bookingStudent)) return true;
+  const isStudent = normRoleClaim(user.userType) === 'student' || normRoleClaim(user.userRole) === 'student';
+  if (isStudent) {
+    if (!user.studentId || !mongoose.isValidObjectId(String(user.studentId))) return false;
+    const st = await Student.findById(String(user.studentId)).select('username email').lean();
+    return !!st && [st.username, st.email].filter(Boolean).map(normalizeId).includes(bookingStudent);
   }
-});
+  const mine = await resolveToCanonicalTeacherId(user.teacherId || user.username);
+  const theirs = await resolveToCanonicalTeacherId(booking.teacherId);
+  return !!mine && !!theirs && normalizeId(mine) === normalizeId(theirs);
+}
 
 // Get booking by classroom ID for live classroom
-router.get('/booking/by-classroom/:classroomId', async (req, res) => {
+router.get('/booking/by-classroom/:classroomId', verifyToken, async (req, res) => {
   try {
     const { classroomId } = req.params;
     
@@ -2391,6 +2286,9 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
     if (!booking) {
       console.log('❌ API: No booking found for classroomId:', classroomId);
       return res.status(404).json({ error: 'Booking not found' });
+    }
+    if (!(await userMayViewBooking(req.user, booking))) {
+      return res.status(403).json({ error: 'You are not part of this class.' });
     }
 
     // studentId on bookings is usually a username, not a Mongo ObjectId — never findById blindly
@@ -4072,7 +3970,7 @@ router.get('/classes/history', verifyToken, requireTeacher, async (req, res) => 
   }
 });
 
-// Get teacher classes for week (for frontend) - supports both authenticated and unauthenticated
+// Get teacher classes (date range or week grid) — teacher Bearer required for both
 router.get('/classes', async (req, res) => {
   try {
     const { teacherId, week, startDate, endDate } = req.query;
@@ -4185,8 +4083,11 @@ router.get('/classes', async (req, res) => {
       res.json({ success: true, classes });
       
     } else if (teacherId && week) {
-      // Week grid (teacher-open-class.html, etc.): teacherId + week. Works with or without Bearer;
-      // when Bearer is present it must match the resolved teacher (same portal id / email).
+      // Week grid (teacher-open-class.html): returns student names, so a teacher Bearer is required
+      // and it must match the resolved teacher (same portal id / email).
+      if (!isAuthenticated || !authenticatedTeacherId) {
+        return res.status(401).json({ error: 'Teacher session required.' });
+      }
       console.log(
         'GET /classes by week — teacherId:',
         teacherId,
@@ -4225,15 +4126,13 @@ router.get('/classes', async (req, res) => {
         }
       }
 
-      if (isAuthenticated && authenticatedTeacherId) {
-        const resolvedAuth = await resolveToCanonicalTeacherId(String(authenticatedTeacherId).trim());
-        const authCanon = resolvedAuth ? String(resolvedAuth) : String(authenticatedTeacherId).trim();
-        if (normalizeId(authCanon) !== normalizeId(canonicalTeacherId)) {
-          return res.status(403).json({
-            error: 'Forbidden: teacherId does not match your session.',
-            code: 'TEACHER_ID_SESSION_MISMATCH',
-          });
-        }
+      const resolvedAuth = await resolveToCanonicalTeacherId(String(authenticatedTeacherId).trim());
+      const authCanon = resolvedAuth ? String(resolvedAuth) : String(authenticatedTeacherId).trim();
+      if (normalizeId(authCanon) !== normalizeId(canonicalTeacherId)) {
+        return res.status(403).json({
+          error: 'Forbidden: teacherId does not match your session.',
+          code: 'TEACHER_ID_SESSION_MISMATCH',
+        });
       }
 
       // Booking.teacherId is always the string portal id (e.g. normalized email), never Mongo _id.
@@ -4251,7 +4150,7 @@ router.get('/classes', async (req, res) => {
       
     } else {
       return res.status(400).json({ 
-        error: 'Invalid parameters. For authenticated requests, provide startDate and endDate. For unauthenticated requests, provide teacherId and week.' 
+        error: 'Invalid parameters. Provide startDate and endDate, or teacherId and week.' 
       });
     }
     
@@ -5623,12 +5522,6 @@ router.post('/upload-slide-images', verifyToken, requireTeacher, (req, res) => {
     success: false, 
     error: 'Slide image upload has been removed. Files are now displayed directly without conversion.' 
   });
-});
-
-// Test route for debugging
-router.get('/test-remove-slide', (req, res) => {
-  console.log('🧪 Test remove-slide route accessed');
-  res.json({ message: 'Remove slide route is accessible' });
 });
 
 // Remove slide from lesson slides

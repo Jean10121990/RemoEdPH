@@ -83,6 +83,19 @@
     return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
   }
 
+  /** Server binds notification rooms to this JWT, not to the identity argument. */
+  function portalTokenFor(role) {
+    try {
+      var A = global.RemoedAuthToken;
+      if (role === 'teacher' && A && A.getTeacherToken) return A.getTeacherToken() || '';
+      if (role === 'student' && A && A.getStudentToken) return A.getStudentToken() || '';
+      var key = role === 'teacher' ? 'remoed_teacher_token' : role === 'student' ? 'remoed_student_token' : 'remoed_admin_token';
+      return global.localStorage.getItem(key) || global.sessionStorage.getItem(key) || '';
+    } catch (_e) {
+      return '';
+    }
+  }
+
   function joinNotificationSocket(role, identity) {
     try {
       if (!global.io || typeof global.io !== 'function') return null;
@@ -91,11 +104,18 @@
         socket = global.io({ transports: ['websocket', 'polling'] });
         global.__remoedNotifSocket = socket;
       }
-      var payload = { role: role };
+      var payload = { role: role, token: portalTokenFor(role) };
       if (role === 'teacher') payload.teacherId = identity;
       else if (role === 'student') payload.username = identity;
       else payload.username = identity;
       socket.emit('join-notifications', payload);
+      if (!socket.__remoedNotifRejoin) {
+        socket.__remoedNotifRejoin = true;
+        socket.on('connect', function () {
+          payload.token = portalTokenFor(role);
+          socket.emit('join-notifications', payload);
+        });
+      }
       return socket;
     } catch (_e) {
       return null;
@@ -135,6 +155,19 @@
       'display:block!important;width:auto!important;margin:0!important;padding:10px 14px!important;' +
       'white-space:normal!important;overflow-wrap:anywhere;background:#fff!important;color:#1e293b!important;' +
       'text-decoration:none!important;box-sizing:border-box!important;}' +
+      'body>#notifications-dropdown.show,body>#admin-notifications-dropdown.show,body>#upcoming-classes-dropdown.show{' +
+      'display:flex!important;flex-direction:column!important;align-items:stretch!important;}' +
+      'body>#notifications-dropdown .nav-dropdown-content,body>#admin-notifications-dropdown .nav-dropdown-content,' +
+      'body>#upcoming-classes-dropdown .nav-dropdown-content{display:block!important;padding:0!important;background:#fff!important;}' +
+      'body>#notifications-dropdown .nav-dropdown-footer,body>#notifications-dropdown .remoed-notif-footer{' +
+      'display:flex!important;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;' +
+      'padding:10px 14px!important;border-top:1px solid #e2e8f0!important;background:#fff!important;' +
+      'font-size:12px!important;font-weight:600!important;line-height:1.4!important;}' +
+      'body>#notifications-dropdown .nav-dropdown-footer a,body>#notifications-dropdown .remoed-notif-dash,' +
+      'body>#notifications-dropdown button[data-notif-prefs]{' +
+      'color:#0f766e!important;background:transparent!important;font-size:12px!important;font-weight:600!important;' +
+      'text-decoration:none!important;padding:0!important;border:none!important;}' +
+      'body>#notifications-dropdown a.nav-dropdown-item{color:#1e293b!important;text-decoration:none!important;}' +
       'body>#notifications-dropdown .remoed-notif-filter{width:auto!important;flex:0 0 auto!important;}';
     document.head.appendChild(style);
   }
@@ -169,18 +202,28 @@
       ';cursor:pointer;">Action</button>' +
       '</div>';
 
+    function footerHtml() {
+      return (
+        '<div class="remoed-notif-footer" style="padding:8px 12px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+        '<span>Showing last ' +
+        retention +
+        ' days</span>' +
+        '<span style="display:flex;gap:12px;align-items:center;">' +
+        '<button type="button" data-notif-prefs="1" style="border:none;background:transparent;color:#0f766e;cursor:pointer;padding:0;font-size:12px;font-weight:600;">Preferences</button>' +
+        (opts.dashboardHref
+          ? '<a class="remoed-notif-dash" href="' + escapeHtml(opts.dashboardHref) + '">Open dashboard</a>'
+          : '') +
+        '</span></div>'
+      );
+    }
+
     if (!items.length) {
       contentEl.innerHTML =
         toolbar +
         '<div class="nav-dropdown-item">No notifications' +
         (filter !== 'all' ? ' in this filter' : ' yet') +
         '.</div>' +
-        '<div class="remoed-notif-footer" style="padding:8px 12px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
-        '<span>Showing last ' +
-        retention +
-        ' days</span>' +
-        '<button type="button" data-notif-prefs="1" style="border:none;background:transparent;color:#0369a1;cursor:pointer;padding:0;font-size:11px;">Preferences</button>' +
-        '</div>';
+        footerHtml();
       return;
     }
 
@@ -253,13 +296,7 @@
       }
     });
 
-    html +=
-      '<div class="remoed-notif-footer" style="padding:8px 12px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
-      '<span>Showing last ' +
-      retention +
-      ' days</span>' +
-      '<button type="button" data-notif-prefs="1" style="border:none;background:transparent;color:#0369a1;cursor:pointer;padding:0;font-size:11px;">Preferences</button>' +
-      '</div>';
+    html += footerHtml();
     contentEl.innerHTML = html;
   }
 

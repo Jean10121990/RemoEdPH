@@ -19,7 +19,7 @@
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=app-shell-9"></script>
-        <script src="js/teacher-page-header.js?v=notif-layout-1"></script>
+        <script src="js/teacher-page-header.js?v=sock-auth-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'messages');
             TeacherPageHeader.render('messages');
@@ -492,7 +492,7 @@
 
             if (socket) {
                 socket.on('connect', () => {
-                    if (me) socket.emit('join-teacher-messages', { teacherId: me });
+                    if (me) socket.emit('join-teacher-messages', { teacherId: me, token });
                 });
                 socket.on('peer-message:new', (m) => {
                     if (!m || (!m.senderId && !m.recipientId)) return;

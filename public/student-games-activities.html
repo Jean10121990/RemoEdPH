@@ -545,7 +545,7 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js?v=book-label-1"></script>
-        <script src="js/student-page-header.js?v=notif-layout-1"></script>
+        <script src="js/student-page-header.js?v=sock-auth-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'games');
             StudentPageHeader.render('games');
@@ -1001,8 +1001,8 @@
 
         const WRITING_QUIZ_BANK = {
             'Little Seeds': {
-                letters: ['A', 'B', 'C', 'D', 'M', 'S', 'T', 'O'],
-                words: ['cat', 'mom', 'dad', 'sun', 'red', 'big', 'dog', 'hat', 'cup', 'ball', 'fish', 'book']
+                letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+                numbers: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
             },
             'Sprouts': {
                 letters: ['B', 'T', 'P', 'H', 'F', 'J', 'W', 'K'],
@@ -1036,19 +1036,25 @@
             }
         };
 
-        function isLowWritingLevel(level) {
-            return level === 'Little Seeds' || level === 'Sprouts';
-        }
-
         function writingExtraMode(level) {
-            return isLowWritingLevel(level) ? 'words' : 'sentences';
+            if (level === 'Little Seeds') return 'numbers';
+            if (level === 'Sprouts') return 'words';
+            return 'sentences';
         }
 
         function writingExtraLabel(level) {
-            return isLowWritingLevel(level) ? '3–4 letters' : 'Sentences';
+            if (level === 'Little Seeds') return 'Numbers';
+            if (level === 'Sprouts') return '3–4 letters';
+            return 'Sentences';
+        }
+
+        function writingStartMode(level) {
+            if (level === 'Little Seeds') return 'letters';
+            return writingExtraMode(level);
         }
 
         function writingHint(mode) {
+            if (mode === 'numbers') return 'Type the falling number before it reaches the bottom.';
             if (mode === 'sentences') return 'Type the short sentence before it reaches the bottom.';
             if (mode === 'words') return 'Type the 3–4 letter word before it reaches the bottom.';
             return 'Type the falling letter before it reaches the bottom.';
@@ -1065,13 +1071,14 @@
         function getWritingGame() {
             const level = selectedLevel || 'Little Seeds';
             const extra = writingExtraMode(level);
+            const start = writingStartMode(level);
             return `
                 <div class="wq-toolbar">
-                    <button type="button" class="wq-tab" id="wq-tab-letters" onclick="startWritingQuiz('letters')">Letters</button>
-                    <button type="button" class="wq-tab is-active" id="wq-tab-extra" onclick="startWritingQuiz('${extra}')">${writingExtraLabel(level)}</button>
+                    <button type="button" class="wq-tab${start === 'letters' ? ' is-active' : ''}" id="wq-tab-letters" onclick="startWritingQuiz('letters')">Letters</button>
+                    <button type="button" class="wq-tab${start === 'letters' ? '' : ' is-active'}" id="wq-tab-extra" onclick="startWritingQuiz('${extra}')">${writingExtraLabel(level)}</button>
                     <span class="wq-score">Caught <strong id="wq-caught">0</strong> · Missed <strong id="wq-missed">0</strong></span>
                 </div>
-                <p class="wq-hint" id="wq-hint">${writingHint(extra)}</p>
+                <p class="wq-hint" id="wq-hint">${writingHint(start)}</p>
                 <div class="wq-lane" id="wq-lane" onclick="focusWritingInput()"></div>
                 <input class="wq-input" id="wq-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type here" oninput="onWritingInput(this)" />
             `;
@@ -1510,7 +1517,7 @@
                     recordingStream = null;
                 }
             } else if (skill === 'writing') {
-                startWritingQuiz(writingExtraMode(selectedLevel));
+                startWritingQuiz(writingStartMode(selectedLevel));
             }
         }
 

@@ -142,7 +142,7 @@
                         socket = global.io({ transports: ['websocket', 'polling'] });
                         global.__remoedNotifSocket = socket;
                     }
-                    socket.emit('join-notifications', { role: 'admin', username: username });
+                    socket.emit('join-notifications', { role: 'admin', username: username, token: getAdminToken() });
                     global.__remoedAdminPresenceJoined = true;
                     return true;
                 } catch (_e) {
@@ -171,7 +171,7 @@
             try {
                 if (!document.querySelector('script[data-remoed-notif-helper]')) {
                     var s = document.createElement('script');
-                    s.src = 'js/remoed-notifications.js?v=profile-reminders-2';
+                    s.src = 'js/remoed-notifications.js?v=sock-auth-1';
                     s.async = true;
                     s.setAttribute('data-remoed-notif-helper', '1');
                     document.head.appendChild(s);

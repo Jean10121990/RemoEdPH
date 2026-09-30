@@ -3,6 +3,7 @@
  * Idempotent via Booking.classReminderSentAt / teacherLateNotifiedAt / reminderSnoozeUntil.
  */
 const Booking = require('../models/Booking');
+const { DateTime } = require('luxon');
 const { notifyTeacher, notifyStudent } = require('./notifyService');
 const { getBookingStartAsDate } = require('../utils/bookingScheduledStart');
 const { isCancelledStatus } = require('../utils/bookingStatus');
@@ -11,6 +12,15 @@ const WINDOW_MIN_MS = 14 * 60 * 1000;
 const WINDOW_MAX_MS = 31 * 60 * 1000;
 const LATE_AFTER_MS = 5 * 60 * 1000;
 const LATE_WINDOW_MS = 25 * 60 * 1000;
+
+/** Clock label in the student's zone. booking.time is not a local wall clock. */
+function formatStudentClassWhen(booking, start, withDate) {
+  const zone = (booking && (booking.studentLocalZone || booking.teacherLocalZone)) || 'Asia/Manila';
+  const dt = DateTime.fromJSDate(start, { zone: 'utc' }).setZone(zone);
+  if (!dt.isValid) return String((booking && booking.time) || '');
+  const clock = withDate ? dt.toFormat('LLL d, h:mm a') : dt.toFormat('h:mm a');
+  return clock + ' (' + zone + ')';
+}
 
 async function sendClassStartingReminders() {
   const now = Date.now();
@@ -49,13 +59,7 @@ async function sendClassStartingReminders() {
       const delta = start.getTime() - now;
       if (delta < WINDOW_MIN_MS || delta > WINDOW_MAX_MS) continue;
 
-      const when = start.toLocaleString('en-PH', {
-        timeZone: 'Asia/Manila',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      });
+      const when = formatStudentClassWhen(booking, start, true);
       const bid = String(booking._id);
       const claim = await Booking.findOneAndUpdate(
         {
@@ -132,11 +136,12 @@ async function sendTeacherLateAlerts() {
       );
       if (!claim) continue;
 
+      const when = formatStudentClassWhen(booking, start, false);
       const bid = String(booking._id);
       await notifyStudent(
         booking.studentId,
         'teacher-late',
-        `Your teacher has not joined yet for the class scheduled at ${booking.time}. You can wait in the waiting room or report an issue.`,
+        `Your teacher has not joined yet for the class scheduled at ${when}. You can wait in the waiting room or report an issue.`,
         {
           bookingId: bid,
           actionUrl: '/student-waiting-room.html?bookingId=' + encodeURIComponent(bid),

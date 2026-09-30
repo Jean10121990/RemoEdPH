@@ -250,9 +250,38 @@ body > #admin-notifications-dropdown a.nav-dropdown-item {
   box-sizing: border-box !important;
 }
 
-body > #notifications-dropdown .remoed-notif-toolbar,
+body > #notifications-dropdown .nav-dropdown-footer,
 body > #notifications-dropdown .remoed-notif-footer {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px !important;
+  border-top: 1px solid #e2e8f0 !important;
   background: #fff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+body > #notifications-dropdown .nav-dropdown-footer a,
+body > #notifications-dropdown .remoed-notif-dash,
+body > #notifications-dropdown button[data-notif-prefs] {
+  color: #0f766e !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+body > #notifications-dropdown.show,
+body > #admin-notifications-dropdown.show,
+body > #upcoming-classes-dropdown.show {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
 }
 
 body > #notifications-dropdown .remoed-notif-filter,

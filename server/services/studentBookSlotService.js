@@ -27,8 +27,8 @@ const {
 const { normalizeId } = require('../utils/normalizeId');
 const { cancelledStatusValues } = require('../utils/bookingStatus');
 
-/** Max 2 × 25-min classes = 50 minutes (under 1 hour) per student local calendar day. */
-const MAX_STUDENT_CLASSES_PER_DAY = 2;
+/** Max 6 × 25-min classes per student local calendar day (shown to students as 3 hours). */
+const MAX_STUDENT_CLASSES_PER_DAY = 6;
 const CLASS_DURATION_MINUTES = 25;
 
 function studentLocalYmdFromUtc(utcValue, zone) {
@@ -102,7 +102,7 @@ async function countStudentClassesOnLocalDay({ studentKeys, ymd, zone, session }
 
 function dailyClassLimitError(ymd, bookedCount) {
   const err = new Error(
-    `You can book up to ${MAX_STUDENT_CLASSES_PER_DAY} classes (1 hour) per day. You already have ${bookedCount} on ${ymd}. Please pick another day.`
+    `You can book up to ${MAX_STUDENT_CLASSES_PER_DAY} classes (3 hours) per day. You already have ${bookedCount} on ${ymd}. Please pick another day.`
   );
   err.statusCode = 400;
   err.code = 'DAILY_CLASS_LIMIT';

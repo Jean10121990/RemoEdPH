@@ -3664,7 +3664,7 @@ router.get('/teachers-list', async (req, res) => {
     // Filter out teachers with null or missing usernames
     const teachers = await Teacher.find({ 
       username: { $exists: true, $ne: null, $ne: '' } 
-    }).select('username email createdAt status teacherId _id');
+    }).select('username email firstName lastName fullname createdAt status teacherId _id');
     
     console.log(`Found ${teachers.length} valid teachers`);
     res.json(teachers);

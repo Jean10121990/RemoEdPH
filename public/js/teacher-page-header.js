@@ -9,7 +9,7 @@
         try {
             if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
                 var s = document.createElement('script');
-                s.src = '/js/remoed-notifications.js?v=profile-reminders-2';
+                s.src = '/js/remoed-notifications.js?v=sock-auth-1';
                 document.head.appendChild(s);
             }
             if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
@@ -89,7 +89,7 @@
         var l = document.createElement('link');
         l.id = 'remoed-header-actions-css';
         l.rel = 'stylesheet';
-        l.href = 'css/portal-header-actions.css?v=header-actions-2';
+        l.href = 'css/portal-header-actions.css?v=notif-panel-2';
         document.head.appendChild(l);
     }
 
@@ -165,7 +165,6 @@
             '<div class="nav-dropdown-header">Notifications</div>' +
             '<div class="nav-dropdown-content" id="notifications-dropdown-content">' +
             '<div class="nav-dropdown-item">Loading…</div></div>' +
-            '<div class="nav-dropdown-footer"><a href="teacher-dashboard.html">Open dashboard</a></div>' +
             '</div></div>' +
             '<div class="nav-icon" onclick="window.location.href=\'teacher-class-table.html\'" title="Class Schedule">' +
             ACTION.calendar +
@@ -245,6 +244,7 @@
                         window.RemoedNotifications.renderItems(content, list, {
                             limit: 12,
                             role: 'teacher',
+                            dashboardHref: 'teacher-dashboard.html',
                             retentionDays: (data && data.retentionDays) || 31,
                             filter: window.RemoedNotifications.getFilter
                                 ? window.RemoedNotifications.getFilter()
