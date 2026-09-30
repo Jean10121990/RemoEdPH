@@ -41,7 +41,7 @@ function manilaCalendarDaysUntil(endDate, now = new Date()) {
   return days;
 }
 
-/** Nearest active lot expiry (countdown); falls back to subscriptionEndDate. */
+/** Soonest active lot expiry (that lot still zeros on its own date). */
 function resolveCreditExpiryDate(student, now = new Date()) {
   if (!student) return null;
   ensureCreditLotsBackfilled(student, now);
@@ -107,7 +107,8 @@ function buildExpiryPayload(student, now = new Date()) {
       creditsExpired: false,
     };
   }
-  const end = nearest || farthest;
+  // Account countdown follows the longer remaining plan. Each lot still expires on its own date.
+  const end = farthest || nearest;
   const lotSum = sumLotRemaining(student.creditLots);
   const expired = lotSum <= 0 && now.getTime() >= end.getTime();
   const days = manilaCalendarDaysUntil(end, now);

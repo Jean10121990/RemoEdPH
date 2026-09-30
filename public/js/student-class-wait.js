@@ -82,14 +82,121 @@
     startPlay();
   }
 
+  var TREATS = [
+    { kind: 'candy', hue: 350 },
+    { kind: 'candy', hue: 24 },
+    { kind: 'lollipop', hue: 198 },
+    { kind: 'lollipop', hue: 322 },
+    { kind: 'block', hue: 210 },
+    { kind: 'block', hue: 128 },
+    { kind: 'block', hue: 42 },
+    { kind: 'ball', hue: 2 },
+    { kind: 'ball', hue: 222 },
+    { kind: 'duck', hue: 48 },
+  ];
+
   function spawnOrb(w, h) {
+    var treat = TREATS[Math.floor(Math.random() * TREATS.length)];
     orbs.push({
-      x: 24 + Math.random() * Math.max(40, w - 48),
-      y: -20 - Math.random() * 80,
-      r: 14 + Math.random() * 16,
-      vy: 1.2 + Math.random() * 1.8,
-      hue: 95 + Math.random() * 40,
+      x: 36 + Math.random() * Math.max(40, w - 72),
+      y: -28 - Math.random() * 90,
+      r: 18 + Math.random() * 12,
+      vy: 1.15 + Math.random() * 1.6,
+      kind: treat.kind,
+      hue: treat.hue,
+      spin: (Math.random() - 0.5) * 0.35,
     });
+  }
+
+  function fillRoundRect(ctx, x, y, w, h, rad) {
+    var r = Math.min(rad, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawTreat(ctx, o) {
+    var r = o.r;
+    var hue = o.hue;
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.rotate(o.spin || 0);
+    if (o.kind === 'lollipop') {
+      ctx.fillStyle = '#d7b07a';
+      ctx.fillRect(-r * 0.07, r * 0.05, r * 0.14, r * 1.05);
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.22, r * 0.62, 0, Math.PI * 2);
+      ctx.fillStyle = 'hsl(' + hue + ' 82% 54%)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.22, r * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    } else if (o.kind === 'block') {
+      ctx.fillStyle = 'hsl(' + hue + ' 72% 52%)';
+      fillRoundRect(ctx, -r * 0.72, -r * 0.72, r * 1.44, r * 1.44, r * 0.18);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      fillRoundRect(ctx, -r * 0.48, -r * 0.48, r * 0.42, r * 0.42, r * 0.08);
+    } else if (o.kind === 'ball') {
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+      ctx.fillStyle = 'hsl(' + hue + ' 78% 52%)';
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-r * 0.16, -r * 0.8, r * 0.32, r * 1.6);
+      ctx.restore();
+    } else if (o.kind === 'duck') {
+      ctx.fillStyle = '#f6c431';
+      ctx.beginPath();
+      ctx.ellipse(r * 0.08, r * 0.18, r * 0.72, r * 0.46, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-r * 0.22, -r * 0.28, r * 0.38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f08a14';
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.02, -r * 0.3);
+      ctx.lineTo(r * 0.42, -r * 0.2);
+      ctx.lineTo(0, -r * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#1f2937';
+      ctx.beginPath();
+      ctx.arc(-r * 0.12, -r * 0.36, Math.max(1.5, r * 0.07), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      var wrap = 'hsl(' + ((hue + 28) % 360) + ' 70% 74%)';
+      ctx.fillStyle = wrap;
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.2, 0);
+      ctx.lineTo(-r * 0.42, -r * 0.36);
+      ctx.lineTo(-r * 0.42, r * 0.36);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(r * 1.2, 0);
+      ctx.lineTo(r * 0.42, -r * 0.36);
+      ctx.lineTo(r * 0.42, r * 0.36);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.7, r * 0.46, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'hsl(' + hue + ' 84% 58%)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = Math.max(1.5, r * 0.08);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function startPlay() {
@@ -121,7 +228,8 @@
         var o = orbs[i];
         var dx = o.x - x;
         var dy = o.y - y;
-        if (dx * dx + dy * dy <= (o.r + 8) * (o.r + 8)) {
+        var hit = o.r * 1.35;
+        if (dx * dx + dy * dy <= hit * hit) {
           orbs.splice(i, 1);
           score += 1;
           if (scoreEl) scoreEl.textContent = String(score);
@@ -158,14 +266,7 @@
       if (orbs.length < 7 && Math.random() < 0.06) spawnOrb(gs.w, gs.h);
       orbs.forEach(function (o) {
         o.y += o.vy;
-        gctx.beginPath();
-        gctx.fillStyle = 'hsl(' + o.hue + ' 70% 48%)';
-        gctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
-        gctx.fill();
-        gctx.fillStyle = '#fff';
-        gctx.beginPath();
-        gctx.arc(o.x - o.r * 0.25, o.y - o.r * 0.25, o.r * 0.22, 0, Math.PI * 2);
-        gctx.fill();
+        drawTreat(gctx, o);
       });
       orbs = orbs.filter(function (o) {
         return o.y - o.r < gs.h + 10;
@@ -226,9 +327,9 @@
         '<div class="lc-wait-toolbar">' +
         '<button type="button" class="lc-wait-tab is-active" id="lc-wait-tab-game">Play</button>' +
         '<button type="button" class="lc-wait-tab" id="lc-wait-tab-watch">Watch</button>' +
-        '<span class="lc-wait-score-label">Stars <strong id="lc-wait-score">0</strong></span>' +
+        '<span class="lc-wait-score-label">Treats <strong id="lc-wait-score">0</strong></span>' +
         '</div>' +
-        '<div id="lc-wait-game-wrap" class="lc-wait-canvas-wrap"><canvas id="lc-wait-game"></canvas><p class="lc-wait-hint">Tap the falling stars!</p></div>' +
+        '<div id="lc-wait-game-wrap" class="lc-wait-canvas-wrap"><canvas id="lc-wait-game"></canvas><p class="lc-wait-hint">Tap the falling candies and toys!</p></div>' +
         '<div id="lc-wait-watch-wrap" class="lc-wait-canvas-wrap" hidden><canvas id="lc-wait-watch"></canvas><p class="lc-wait-hint">A calm loop while you wait.</p></div>';
     }
     startPlay();

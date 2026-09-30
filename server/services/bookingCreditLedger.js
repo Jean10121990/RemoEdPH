@@ -69,7 +69,7 @@ async function persistExpiredLotsIfNeeded(student, now) {
 
 /**
  * Deduct 1 unused credit when a class is completed or marked absent.
- * Burns the earliest-expiring active lot first (FIFO).
+ * Burns the oldest active subscription first (purchase date), then later plans.
  */
 async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class finished', opts = {}) {
   if (!booking || booking.creditConsumedAt) {

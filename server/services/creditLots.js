@@ -1,6 +1,6 @@
 /**
  * Per-plan credit lots: each purchase is its own validity window.
- * Consumption is FIFO by expiresAt (then purchasedAt) — earlier plans burn first.
+ * Consumption is FIFO by purchasedAt (then expiresAt) — the older subscription burns first.
  * When a lot's window ends, only that lot's remaining credits expire.
  */
 const mongoose = require('mongoose');
@@ -69,6 +69,20 @@ function sortLotsFifo(lots) {
     const pa = toDate(a.purchasedAt);
     const pb = toDate(b.purchasedAt);
     return (pa ? pa.getTime() : 0) - (pb ? pb.getTime() : 0);
+  });
+}
+
+/** Older purchase first, then earlier expiry. Spending uses this order. */
+function sortLotsByPurchase(lots) {
+  return [...(lots || [])].sort((a, b) => {
+    const pa = toDate(a.purchasedAt);
+    const pb = toDate(b.purchasedAt);
+    const ta = pa ? pa.getTime() : 0;
+    const tb = pb ? pb.getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    const ea = toDate(a.expiresAt);
+    const eb = toDate(b.expiresAt);
+    return (ea ? ea.getTime() : Number.MAX_SAFE_INTEGER) - (eb ? eb.getTime() : Number.MAX_SAFE_INTEGER);
   });
 }
 
@@ -173,11 +187,11 @@ function syncSubscriptionFieldsFromLots(student, now = new Date()) {
 }
 
 /**
- * Pick FIFO lot id to consume 1 credit (must be active).
+ * Pick the oldest active lot to consume 1 credit (purchase date, then expiry).
  */
 function pickFifoLotId(student, now = new Date()) {
   ensureCreditLotsBackfilled(student, now);
-  const active = sortLotsFifo(
+  const active = sortLotsByPurchase(
     (student.creditLots || []).filter((l) => isLotActive(l, now))
   );
   if (!active.length) return null;
@@ -189,6 +203,7 @@ module.exports = {
   lotExpiresAtFromPurchase,
   isLotActive,
   sortLotsFifo,
+  sortLotsByPurchase,
   sumLotRemaining,
   ensureCreditLotsBackfilled,
   expireDueLotsInMemory,

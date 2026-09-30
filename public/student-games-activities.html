@@ -290,36 +290,92 @@
             animation: none;
         }
 
-        /* Writing Game Styles */
-        .writing-prompt {
-            background: #f8f9fa;
-            border-left: 4px solid #00aeef;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin: 8px 0;
+        /* Writing typing quiz */
+        .wq-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
         }
-
-        .writing-prompt h3 {
-            margin: 0 0 6px 0;
-            color: #00aeef;
-            font-size: 1rem;
+        .wq-tab {
+            border: 1px solid #cfe6d6;
+            background: #f6fbf7;
+            color: #1a7f34;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-weight: 700;
+            cursor: pointer;
         }
-
-        .writing-area {
-            width: 100%;
-            min-height: 80px;
-            padding: 8px 10px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
+        .wq-tab.is-active {
+            background: #47bc3e;
+            border-color: #47bc3e;
+            color: #fff;
+        }
+        .wq-score {
+            margin-left: auto;
+            font-weight: 700;
+            color: #1a2e26;
+        }
+        .wq-hint {
+            margin: 0 0 8px;
+            color: #5b6f66;
             font-size: 0.9rem;
-            font-family: inherit;
-            resize: vertical;
-            margin: 8px 0;
         }
-
-        .writing-area:focus {
-            outline: none;
-            border-color: #00aeef;
+        .wq-lane {
+            position: relative;
+            height: 220px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #d7e5dd;
+            background: #eef8f1;
+        }
+        .wq-chip {
+            position: absolute;
+            left: 50%;
+            top: 8px;
+            transform: translate(-50%, 0);
+            max-width: 92%;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 2px solid #00aeef;
+            background: #fff;
+            font-size: 1.45rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            color: #1a2e26;
+            text-align: center;
+            line-height: 1.25;
+        }
+        .wq-chip.is-caught { border-color: #2e9a28; background: #e8fce3; }
+        .wq-chip.is-missed { border-color: #d32f2f; background: #fdecea; }
+        .wq-done { color: #1a7f34; }
+        .wq-rest { color: #1a2e26; }
+        .wq-input {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 10px;
+            padding: 12px 14px;
+            border: 2px solid #00aeef;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-family: inherit;
+        }
+        .wq-input:focus { outline: none; border-color: #008fc4; }
+        .wq-input.is-wrong { border-color: #d32f2f; }
+        .wq-end {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+            padding: 16px;
+            background: rgba(255,255,255,0.92);
+            font-weight: 700;
+            color: #1a2e26;
         }
 
         /* Listening Game Styles */
@@ -509,7 +565,7 @@
                     <div class="selection-grid">
                         <div class="selection-card active" data-skill="reading"><div class="icon">📖</div><div class="label">Reading Quiz</div></div>
                         <div class="selection-card" data-skill="listening"><div class="icon">🎧</div><div class="label">Listening Quiz</div></div>
-                        <div class="selection-card" data-skill="writing"><div class="icon">✍️</div><div class="label">Writing Task</div></div>
+                        <div class="selection-card" data-skill="writing"><div class="icon">✍️</div><div class="label">Writing Quiz</div></div>
                         <div class="selection-card" data-skill="speaking"><div class="icon">🎤</div><div class="label">Speaking Task</div></div>
                         <div class="selection-card" data-skill="moral"><div class="icon">💖</div><div class="label">Moral Activity</div></div>
                     </div>
@@ -590,6 +646,7 @@
         }
 
         function loadGame(level, skill) {
+            stopWritingQuiz();
             const gameDisplay = document.getElementById('game-display');
             const gameTitle = gameDisplay.querySelector('.game-title');
             const gameContent = gameDisplay.querySelector('.game-content');
@@ -657,7 +714,7 @@
             const names = {
                 'reading': 'Reading',
                 'speaking': 'Speaking',
-                'writing': 'Writing',
+                'writing': 'Writing Quiz',
                 'listening': 'Listening',
                 'moral': 'Good Moral Activity'
             };
@@ -942,126 +999,237 @@
             }
         }
 
-        let currentWritingPromptIndex = 0;
+        const WRITING_QUIZ_BANK = {
+            'Little Seeds': {
+                letters: ['A', 'B', 'C', 'D', 'M', 'S', 'T', 'O'],
+                words: ['cat', 'mom', 'dad', 'sun', 'red', 'big', 'dog', 'hat', 'cup', 'ball', 'fish', 'book']
+            },
+            'Sprouts': {
+                letters: ['B', 'T', 'P', 'H', 'F', 'J', 'W', 'K'],
+                words: ['book', 'tree', 'fish', 'bird', 'play', 'jump', 'rain', 'home', 'frog', 'blue', 'milk', 'duck']
+            },
+            'Saplings': {
+                letters: ['S', 'H', 'F', 'W', 'G', 'R', 'L', 'N'],
+                sentences: [
+                    'I like my school.',
+                    'We share our toys.',
+                    'I can try again.',
+                    'Books help me learn.',
+                    'We read every day.',
+                    'Thank you friend.',
+                    'I want to play.',
+                    'My family is kind.'
+                ]
+            },
+            'Young Stewards': {
+                letters: ['R', 'E', 'C', 'P', 'H', 'K', 'G', 'W'],
+                sentences: [
+                    'We care for the Earth.',
+                    'Please recycle paper at home.',
+                    'Kind words help our friends.',
+                    'Trees give us shade.',
+                    'Clean water helps life.',
+                    'I can help my family.',
+                    'Be kind every day.',
+                    'We keep our park clean.'
+                ]
+            }
+        };
 
-        function getWritingGame(level) {
-            const prompts = gameData[level].writing;
-            currentWritingPromptIndex = 0;
+        function isLowWritingLevel(level) {
+            return level === 'Little Seeds' || level === 'Sprouts';
+        }
 
+        function writingExtraMode(level) {
+            return isLowWritingLevel(level) ? 'words' : 'sentences';
+        }
+
+        function writingExtraLabel(level) {
+            return isLowWritingLevel(level) ? '3–4 letters' : 'Sentences';
+        }
+
+        function writingHint(mode) {
+            if (mode === 'sentences') return 'Type the short sentence before it reaches the bottom.';
+            if (mode === 'words') return 'Type the 3–4 letter word before it reaches the bottom.';
+            return 'Type the falling letter before it reaches the bottom.';
+        }
+
+        function writingCore(text) {
+            return String(text || '').replace(/[.!?]+$/g, '');
+        }
+
+        let writingQuiz = null;
+        let writingQuizTimer = 0;
+        let writingQuizGen = 0;
+
+        function getWritingGame() {
+            const level = selectedLevel || 'Little Seeds';
+            const extra = writingExtraMode(level);
             return `
-                <div class="writing-prompt">
-                    <h3>Writing Prompt ${currentWritingPromptIndex + 1}</h3>
-                    <p id="writing-prompt-text">${prompts[0]}</p>
+                <div class="wq-toolbar">
+                    <button type="button" class="wq-tab" id="wq-tab-letters" onclick="startWritingQuiz('letters')">Letters</button>
+                    <button type="button" class="wq-tab is-active" id="wq-tab-extra" onclick="startWritingQuiz('${extra}')">${writingExtraLabel(level)}</button>
+                    <span class="wq-score">Caught <strong id="wq-caught">0</strong> · Missed <strong id="wq-missed">0</strong></span>
                 </div>
-                <textarea class="writing-area" id="writing-area" placeholder="Start writing here... Write your response to the prompt above." oninput="updateWordCount()"></textarea>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                    <div style="font-size: 0.85rem; color: #666;">
-                        <span id="word-count">0 words</span> | <span id="char-count">0 characters</span>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
-                    ${prompts.map((prompt, idx) => 
-                        `<button class="option-btn" onclick="changeWritingPrompt(${idx})">Prompt ${idx + 1}</button>`
-                    ).join('')}
-                    <button class="next-btn" onclick="saveWriting()">💾 Save My Writing</button>
-                </div>
-                <div class="feedback-message" id="writing-feedback" style="display: none;"></div>
-                <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; color: #666;">
-                    <strong>💡 Tip:</strong> Take your time to write a thoughtful response. You can save multiple writings and review them later.
-                </div>
+                <p class="wq-hint" id="wq-hint">${writingHint(extra)}</p>
+                <div class="wq-lane" id="wq-lane" onclick="focusWritingInput()"></div>
+                <input class="wq-input" id="wq-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type here" oninput="onWritingInput(this)" />
             `;
         }
 
-        function changeWritingPrompt(index) {
-            const prompts = gameData[selectedLevel].writing;
-            currentWritingPromptIndex = index;
-            const promptElement = document.getElementById('writing-prompt-text');
-            const promptTitle = document.querySelector('.writing-prompt h3');
-            
-            if (promptElement) {
-                promptElement.textContent = prompts[index];
+        function stopWritingQuiz() {
+            writingQuizGen += 1;
+            if (writingQuizTimer) cancelAnimationFrame(writingQuizTimer);
+            writingQuizTimer = 0;
+            writingQuiz = null;
+        }
+
+        function focusWritingInput() {
+            const input = document.getElementById('wq-input');
+            if (input) input.focus();
+        }
+
+        function startWritingQuiz(mode) {
+            const gen = writingQuizGen + 1;
+            stopWritingQuiz();
+            writingQuizGen = gen;
+            const level = selectedLevel || 'Little Seeds';
+            const pack = WRITING_QUIZ_BANK[level] || WRITING_QUIZ_BANK['Little Seeds'];
+            const chosen = mode === 'letters' ? 'letters' : writingExtraMode(level);
+            const bank = pack[chosen] || pack.letters;
+            const items = shuffleArray(bank).slice(0, 8);
+            const duration = chosen === 'sentences' ? 24000 : chosen === 'words' ? 14000 : 11000;
+            writingQuiz = {
+                gen: gen,
+                mode: chosen,
+                items: items,
+                index: 0,
+                caught: 0,
+                missed: 0,
+                matched: 0,
+                started: performance.now(),
+                duration: duration,
+                active: true,
+                locked: false
+            };
+            const lettersTab = document.getElementById('wq-tab-letters');
+            const extraTab = document.getElementById('wq-tab-extra');
+            if (lettersTab) lettersTab.classList.toggle('is-active', writingQuiz.mode === 'letters');
+            if (extraTab) extraTab.classList.toggle('is-active', writingQuiz.mode !== 'letters');
+            const hint = document.getElementById('wq-hint');
+            if (hint) hint.textContent = writingHint(writingQuiz.mode);
+            const lane = document.getElementById('wq-lane');
+            if (lane) lane.innerHTML = '<div class="wq-chip" id="wq-chip"></div>';
+            const input = document.getElementById('wq-input');
+            if (input) {
+                input.value = '';
+                input.disabled = false;
+                input.focus();
             }
-            if (promptTitle) {
-                promptTitle.textContent = `Writing Prompt ${index + 1}`;
+            paintWritingScore();
+            paintWritingChip();
+            writingQuizTimer = requestAnimationFrame(tickWritingQuiz);
+        }
+
+        function paintWritingScore() {
+            const caught = document.getElementById('wq-caught');
+            const missed = document.getElementById('wq-missed');
+            if (!writingQuiz) return;
+            if (caught) caught.textContent = String(writingQuiz.caught);
+            if (missed) missed.textContent = String(writingQuiz.missed);
+        }
+
+        function paintWritingChip() {
+            const chip = document.getElementById('wq-chip');
+            if (!chip || !writingQuiz) return;
+            const target = writingQuiz.items[writingQuiz.index] || '';
+            const n = writingQuiz.matched;
+            chip.classList.remove('is-caught', 'is-missed');
+            chip.innerHTML = '<span class="wq-done"></span><span class="wq-rest"></span>';
+            chip.querySelector('.wq-done').textContent = target.slice(0, n);
+            chip.querySelector('.wq-rest').textContent = target.slice(n);
+        }
+
+        function onWritingInput(input) {
+            if (!writingQuiz || !writingQuiz.active || writingQuiz.locked) return;
+            const target = writingQuiz.items[writingQuiz.index] || '';
+            const core = writingCore(target);
+            const typed = input.value;
+            const t = core.toLowerCase();
+            const u = typed.toLowerCase();
+            let n = 0;
+            while (n < u.length && n < t.length && u[n] === t[n]) n += 1;
+            const tail = typed.slice(n);
+            const finished = n === t.length && t.length > 0 && (tail === '' || /^[.!?]+$/.test(tail));
+            if (!finished && n < typed.length) {
+                input.value = core.slice(0, n);
+                input.classList.add('is-wrong');
+                setTimeout(function () { input.classList.remove('is-wrong'); }, 180);
             }
-            
-            const writingArea = document.getElementById('writing-area');
-            if (writingArea) {
-                writingArea.value = '';
-                writingArea.focus();
-            }
-            
-            // Hide any previous feedback
-            const feedback = document.getElementById('writing-feedback');
-            if (feedback) {
-                feedback.style.display = 'none';
+            writingQuiz.matched = n;
+            paintWritingChip();
+            if (finished) {
+                resolveWritingItem('catch');
             }
         }
 
-        async function saveWriting() {
-            const writing = document.getElementById('writing-area').value;
-            const feedback = document.getElementById('writing-feedback');
-            
-            if (!writing.trim()) {
-                if (feedback) {
-                    feedback.innerHTML = '<p style="color: #d32f2f;">⚠️ Please write something before saving!</p>';
-                    feedback.className = 'feedback-message error';
-                    feedback.style.display = 'block';
-                }
+        function tickWritingQuiz(now) {
+            if (!writingQuiz || !writingQuiz.active || writingQuiz.locked) return;
+            if (writingQuiz.gen !== writingQuizGen) return;
+            const chip = document.getElementById('wq-chip');
+            const lane = document.getElementById('wq-lane');
+            if (!chip || !lane) return;
+            const travel = Math.max(24, lane.clientHeight - chip.offsetHeight - 12);
+            const t = Math.min(1, (now - writingQuiz.started) / writingQuiz.duration);
+            chip.style.transform = 'translate(-50%, ' + (t * travel) + 'px)';
+            if (t >= 1) {
+                resolveWritingItem('miss');
                 return;
             }
-            
-            try {
-                // Save to localStorage
-                const savedWritings = JSON.parse(localStorage.getItem('studentWritings') || '[]');
-                const writingEntry = {
-                    level: selectedLevel,
-                    skill: 'writing',
-                    prompt: document.getElementById('writing-prompt-text').textContent,
-                    content: writing,
-                    timestamp: new Date().toISOString(),
-                    date: new Date().toLocaleDateString()
-                };
-                
-                savedWritings.push(writingEntry);
-                localStorage.setItem('studentWritings', JSON.stringify(savedWritings));
-                
-                // Show success feedback
-                if (feedback) {
-                    feedback.innerHTML = `
-                        <div style="padding: 12px; background: #e8f5e9; border-radius: 8px; border: 1px solid #c3e6cb;">
-                            <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight: 600;">✅ Writing saved successfully!</p>
-                            <p style="margin: 0; color: #2e7d32; font-size: 0.9rem;">Your writing has been saved. You can view it in your profile.</p>
-                        </div>
-                    `;
-                    feedback.className = 'feedback-message success';
-                    feedback.style.display = 'block';
+            writingQuizTimer = requestAnimationFrame(tickWritingQuiz);
+        }
+
+        function resolveWritingItem(kind) {
+            if (!writingQuiz || writingQuiz.locked) return;
+            const gen = writingQuiz.gen;
+            writingQuiz.locked = true;
+            if (writingQuizTimer) cancelAnimationFrame(writingQuizTimer);
+            writingQuizTimer = 0;
+            if (kind === 'catch') writingQuiz.caught += 1;
+            else writingQuiz.missed += 1;
+            paintWritingScore();
+            const chip = document.getElementById('wq-chip');
+            if (chip) chip.classList.add(kind === 'catch' ? 'is-caught' : 'is-missed');
+            const input = document.getElementById('wq-input');
+            if (input) input.value = '';
+            setTimeout(function () {
+                if (!writingQuiz || writingQuiz.gen !== gen || gen !== writingQuizGen) return;
+                writingQuiz.index += 1;
+                writingQuiz.locked = false;
+                writingQuiz.matched = 0;
+                if (writingQuiz.index >= writingQuiz.items.length) {
+                    finishWritingQuiz();
+                    return;
                 }
-                
-                // Optionally save to server
-                const token = localStorage.getItem('token');
-                if (token) {
-                    try {
-                        await fetch('/api/student/save-writing', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(writingEntry)
-                        });
-                    } catch (err) {
-                        console.log('Server save failed, but local save succeeded:', err);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('Error saving writing:', error);
-                if (feedback) {
-                    feedback.innerHTML = '<p style="color: #d32f2f;">❌ Error saving writing. Please try again.</p>';
-                    feedback.className = 'feedback-message error';
-                    feedback.style.display = 'block';
-                }
+                writingQuiz.started = performance.now();
+                paintWritingChip();
+                if (input) input.focus();
+                writingQuizTimer = requestAnimationFrame(tickWritingQuiz);
+            }, 450);
+        }
+
+        function finishWritingQuiz() {
+            if (!writingQuiz) return;
+            writingQuiz.active = false;
+            const caught = writingQuiz.caught;
+            const total = writingQuiz.items.length;
+            const mode = writingQuiz.mode;
+            awardStars(caught, 'Writing Quiz');
+            const lane = document.getElementById('wq-lane');
+            const input = document.getElementById('wq-input');
+            if (input) input.disabled = true;
+            if (lane) {
+                lane.innerHTML = '<div class="wq-end"><div>You typed ' + caught + ' of ' + total + '.</div><button type="button" class="wq-tab is-active" onclick="startWritingQuiz(\'' + mode + '\')">Play again</button></div>';
             }
         }
 
@@ -1319,21 +1487,6 @@
             }
         }
 
-        function updateWordCount() {
-            const textarea = document.getElementById('writing-area');
-            const wordCountEl = document.getElementById('word-count');
-            const charCountEl = document.getElementById('char-count');
-            
-            if (textarea && wordCountEl && charCountEl) {
-                const text = textarea.value.trim();
-                const words = text ? text.split(/\s+/).filter(word => word.length > 0) : [];
-                const chars = text.length;
-                
-                wordCountEl.textContent = `${words.length} word${words.length !== 1 ? 's' : ''}`;
-                charCountEl.textContent = `${chars} character${chars !== 1 ? 's' : ''}`;
-            }
-        }
-
         function initializeGame(skill) {
             // Reset game state
             if (skill === 'reading') {
@@ -1357,9 +1510,7 @@
                     recordingStream = null;
                 }
             } else if (skill === 'writing') {
-                currentWritingPromptIndex = 0;
-                // Initialize word count
-                setTimeout(updateWordCount, 100);
+                startWritingQuiz(writingExtraMode(selectedLevel));
             }
         }
 

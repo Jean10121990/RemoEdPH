@@ -14,7 +14,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Student book UI | `public/student-book.html` |
 | Book API | `server/student.js` (`POST /book-class`), `server/studentController.js`, `server/services/studentBookSlotService.js`, legacy `POST /api/teacher/book-class` in `server/teacher.js` |
 | Teacher ID resolve | `server/services/teacherSlotResolve.js`, `teacherBookingKey` in `server/teacher.js` |
-| Credits / expiry | `server/services/studentCreditSummary.js`, `server/services/creditExpiry.js`, `server/services/creditLots.js` — each purchase is a **credit lot** with its own `expiresAt`. Class finish burns FIFO (earliest lot first). When a lot expires, only that lot’s remaining credits zero; newer plans keep theirs. |
+| Credits / expiry | `server/services/studentCreditSummary.js`, `server/services/creditExpiry.js`, `server/services/creditLots.js` — each purchase is a **credit lot** with its own `expiresAt`. The Credits page countdown is the **longer** remaining date. Class finish burns FIFO by purchase date (older plan first). When a lot expires, only that lot’s remaining credits zero; newer plans keep theirs. |
 | Class schedule / issue | `public/teacher-class-table.html`, `POST /report-issue` + `GET /check-class-issues` in `server/teacher.js` |
 | Applicant → teacher docs | `server/utils/applicantDocuments.js`, teacher signup in `server/auth.js` |
 | Live classroom (AV / locks) | `public/live-classroom.html`, `public/css/live-classroom-redesign.css`, `public/js/virtual-background.js`, `public/images/virtual-bg/`, socket maps in `server/index.js` |
@@ -77,7 +77,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Unchecking **Pen / annotate** stops student drawing on the lesson and the board; teacher pen still works. Leaving Board still sends students back to Lesson.
 - [ ] **Student microphone** / **Student camera** switches match the rail pills: one side of each pair is highlighted (Allow = green, Mute/Cam off = amber). Student is muted / cam-off until Allow.
 - [ ] **Your camera background** in Settings applies Off / Blur / Office / Classroom / Nature / Custom on the teacher camera (photos under `public/images/virtual-bg/*.jpg`). Hard-refresh after deploy so `?v=` cache-bust is not stale.
-- [ ] Student joining before the teacher sees the **waiting overlay** (Play stars / Watch loop). When the teacher joins, the overlay closes. Camera/mic/speaker use Lucide **video** / **mic** / **volume** icons, not C/M/A letters. Teacher student-lock chips are icons only (`mic-off` / `mic` / `video-off` / `video`). Flagged chat shows asterisks to students; teachers can reveal possible flagged words.
+- [ ] Student joining before the teacher sees the **waiting overlay** (Play candies and toys / Watch loop). When the teacher joins, the overlay closes. Camera/mic/speaker use Lucide **video** / **mic** / **volume** icons, not C/M/A letters. Teacher student-lock chips are icons only (`mic-off` / `mic` / `video-off` / `video`). Flagged chat shows asterisks to students; teachers can reveal possible flagged words.
 
 ### Auth isolation
 
