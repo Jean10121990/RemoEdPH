@@ -171,7 +171,7 @@
             try {
                 if (!document.querySelector('script[data-remoed-notif-helper]')) {
                     var s = document.createElement('script');
-                    s.src = 'js/remoed-notifications.js?v=profile-reminders-1';
+                    s.src = 'js/remoed-notifications.js?v=profile-reminders-2';
                     s.async = true;
                     s.setAttribute('data-remoed-notif-helper', '1');
                     document.head.appendChild(s);

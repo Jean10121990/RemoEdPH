@@ -123,7 +123,7 @@
             return { label: 'Subscribe to Book', href: 'index.html#plans' };
         }
         if (hasTrial && acct !== 'trial_completed' && !readStoredSubscribed()) {
-            return { label: 'Book Free Trial', href: 'student-book.html' };
+            return { label: 'Book Class', href: 'student-book.html' };
         }
         return { label: 'Book Class', href: 'student-book.html' };
     }

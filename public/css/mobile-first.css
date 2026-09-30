@@ -985,19 +985,34 @@ canvas {
     display: none;
   }
 
-  .remoed-sidebar .remoed-menu li {
-    justify-content: center;
-    padding: 12px 8px;
-    font-size: 0;
-    line-height: 0;
-    color: transparent;
-    overflow: hidden;
+  .remoed-sidebar > .remoed-menu {
+    align-items: center;
   }
 
-  .remoed-sidebar .remoed-menu li svg {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
+  .remoed-sidebar .remoed-menu li,
+  .remoed-sidebar .sidebar-logout-btn {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    height: 40px;
+    margin: 2px auto;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 0;
+    line-height: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .remoed-sidebar .remoed-menu li svg,
+  .remoed-sidebar .sidebar-logout-btn svg {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    flex: 0 0 20px;
+    margin: 0;
   }
 
   .remoed-sidebar .remoed-menu li#logout-nav {

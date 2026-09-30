@@ -18,15 +18,17 @@
             display: flex; 
             min-height: 100vh; 
         }
-        .remoed-content { 
+        body.page-student-book .remoed-content { 
             flex: 1; 
             padding: 20px 32px 20px 32px;
             min-width: 0;
+            width: auto !important;
             background: #f8fafc;
             min-height: 100vh;
             box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
         }
         
         .content-scrollable {
@@ -173,16 +175,35 @@
         }
         
         /* Weekly Grid */
-        .weekly-grid {
+        body.page-student-book .weekly-grid {
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
             overflow: auto;
-            max-height: calc(100vh - 120px);
-            min-height: calc(100vh - 120px);
-            max-width: 100%;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            align-self: stretch !important;
+            max-height: calc(100vh - 180px);
+            min-height: 280px;
             box-sizing: border-box;
             border: 1px solid rgba(28, 167, 231, 0.1);
+        }
+        body.page-student-book .book-toolbar-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        body.page-student-book .week-navigation {
+            flex-wrap: wrap;
+        }
+        body.page-student-book #timezone-select {
+            min-width: 180px;
+            max-width: 100%;
+            flex: 1 1 220px;
         }
         .schedule-table {
             width: 100%;
@@ -1050,16 +1071,16 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
-    <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-3">
-    <link rel="stylesheet" href="css/student-sidebar.css?v=app-shell-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
     <link rel="stylesheet" href="css/remoed-layers.css?v=page-pass-3">
 </head>
 <body class="student-portal page-student-book">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=app-shell-9"></script>
-        <script src="js/student-page-header.js?v=header-actions-2"></script>
+        <script src="js/student-sidebar.js?v=book-label-1"></script>
+        <script src="js/student-page-header.js?v=notif-layout-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'book');
             StudentPageHeader.render('book');
@@ -1072,7 +1093,7 @@
                 </div>
                 
                 <!-- Combined Navigation and Action Buttons Row -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                <div class="book-toolbar-row">
                     <!-- Week Navigation -->
                     <div class="week-navigation" style="display: flex; align-items: center; gap: 8px;">
                         <button class="nav-btn" id="prev-week">← Prev</button>
@@ -1116,7 +1137,6 @@
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Day full (2 / 1 hr)</span>
                     </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -1236,7 +1256,6 @@
                 </div>
             </div>
         </div>
-    </div>
     <script>
         (function () {
             var modal = document.getElementById('booking-modal');
@@ -1309,7 +1328,9 @@
             container.style.display = 'flex';
             container.style.alignItems = 'center';
             container.style.gap = '8px';
-            container.style.margin = '8px 0';
+            container.style.margin = '0 0 8px';
+            container.style.width = '100%';
+            container.style.flexWrap = 'wrap';
             
             const label = document.createElement('span');
             label.textContent = 'Timezone:';
@@ -1322,7 +1343,9 @@
             select.style.padding = '6px 10px';
             select.style.borderRadius = '6px';
             select.style.border = '1px solid #d1d5db';
-            select.style.minWidth = '200px';
+            select.style.minWidth = '180px';
+            select.style.maxWidth = '100%';
+            select.style.flex = '1 1 220px';
             
             const zones = (window.TimezoneUtils && TimezoneUtils.listTimezones()) || ['UTC'];
             zones.forEach(z => {
@@ -1350,7 +1373,10 @@
             container.appendChild(select);
             
             const host = document.getElementById('week-display');
-            if (host && host.parentElement) {
+            const toolbar = host && host.closest('.book-toolbar-row');
+            if (toolbar && toolbar.parentElement) {
+                toolbar.parentElement.insertBefore(container, toolbar.nextSibling);
+            } else if (host && host.parentElement) {
                 host.parentElement.appendChild(container);
             } else {
                 document.body.prepend(container);
@@ -1819,7 +1845,7 @@
             for (let i = 0; i < 7; i++) {
                 const day = monday.plus({ days: i });
                 weekDates.push(day.toISODate());
-                html += `<div>${day.toFormat('ccc LLLL d')}</div>`;
+                html += `<div>${day.toFormat('ccc d')}</div>`;
             }
             html += '</div>';
             

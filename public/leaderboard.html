@@ -57,9 +57,9 @@
   <title>Leaderboard - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css" id="modern-styles-css" />
   <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3" />
-  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3" />
-  <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-3" id="student-layout-css" />
-  <link rel="stylesheet" href="css/student-sidebar.css?v=app-shell-1" id="student-sidebar-css" />
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1" />
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1" id="student-layout-css" />
+  <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1" id="student-sidebar-css" />
   <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1" id="teacher-brand-css" />
   <link rel="stylesheet" href="css/leaderboard.css?v=lb-admin-2" />
   <style>
@@ -454,7 +454,7 @@
       ts.onload = function () {
         TeacherSidebar.render('teacher-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/teacher-page-header.js?v=header-actions-2';
+        h.src = 'js/teacher-page-header.js?v=notif-layout-1';
         h.onload = function () {
           if (window.TeacherPageHeader) TeacherPageHeader.render('leaderboard');
         };
@@ -466,11 +466,11 @@
       body.classList.remove('teacher-portal', 'admin-portal');
       root.id = 'student-sidebar-root';
       var ss = document.createElement('script');
-      ss.src = 'js/student-sidebar.js?v=app-shell-4';
+      ss.src = 'js/student-sidebar.js?v=book-label-1';
       ss.onload = function () {
         StudentSidebar.render('student-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/student-page-header.js?v=header-actions-2';
+        h.src = 'js/student-page-header.js?v=notif-layout-1';
         h.onload = function () {
           if (window.StudentPageHeader) StudentPageHeader.render('leaderboard');
         };

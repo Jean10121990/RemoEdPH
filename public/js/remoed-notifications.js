@@ -116,9 +116,33 @@
     } catch (_e) {}
   }
 
+  function ensureNotifStyles() {
+    if (document.getElementById('remoed-notif-panel-style')) return;
+    var style = document.createElement('style');
+    style.id = 'remoed-notif-panel-style';
+    style.textContent =
+      'body>#notifications-dropdown,body>#admin-notifications-dropdown,body>#upcoming-classes-dropdown{' +
+      'background:#fff!important;border:1px solid #e2e8f0!important;border-radius:12px!important;' +
+      'box-shadow:0 12px 32px rgba(15,23,42,.18)!important;width:min(380px,calc(100vw - 24px))!important;' +
+      'min-width:min(320px,calc(100vw - 24px))!important;max-width:min(380px,calc(100vw - 24px))!important;' +
+      'max-height:min(480px,calc(100vh - 80px))!important;overflow:auto!important;padding:0!important;' +
+      'box-sizing:border-box!important;color:#1e293b!important;z-index:var(--z-dropdown,9000)!important;}' +
+      'body>#notifications-dropdown .nav-dropdown-header,body>#admin-notifications-dropdown .nav-dropdown-header{' +
+      'display:flex!important;align-items:center;justify-content:space-between;padding:12px 14px!important;' +
+      'border-bottom:1px solid #e2e8f0!important;font-weight:700!important;background:#fff!important;}' +
+      'body>#notifications-dropdown .nav-dropdown-item,body>#notifications-dropdown a.nav-dropdown-item,' +
+      'body>#admin-notifications-dropdown .nav-dropdown-item{' +
+      'display:block!important;width:auto!important;margin:0!important;padding:10px 14px!important;' +
+      'white-space:normal!important;overflow-wrap:anywhere;background:#fff!important;color:#1e293b!important;' +
+      'text-decoration:none!important;box-sizing:border-box!important;}' +
+      'body>#notifications-dropdown .remoed-notif-filter{width:auto!important;flex:0 0 auto!important;}';
+    document.head.appendChild(style);
+  }
+
   function renderItems(contentEl, list, opts) {
     opts = opts || {};
     if (!contentEl) return;
+    ensureNotifStyles();
     var role = opts.role || 'student';
     var retention = opts.retentionDays || 31;
     var filter = opts.filter || getFilter();
@@ -190,17 +214,17 @@
             '" style="margin-top:4px;font-size:11px;border:none;background:transparent;color:#0369a1;cursor:pointer;padding:0;">Remind again in 5 min</button>'
           : '';
       var inner =
-        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
-        '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:0.9rem;">' +
+        '<div style="display:flex;flex-direction:column;gap:6px;min-width:0;">' +
+        '<div style="font-size:0.9rem;line-height:1.4;color:#1e293b;">' +
         msg +
         '</div>' +
-        '<div style="font-size:0.75rem;color:#64748b;margin-top:2px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+        '<span style="font-size:0.75rem;color:#64748b;">' +
         escapeHtml(time) +
+        '</span>' +
+        pill +
         '</div>' +
         snooze +
-        '</div>' +
-        pill +
         '</div>';
 
       var cls = 'nav-dropdown-item' + (n.read ? ' read' : '');
@@ -392,6 +416,7 @@
       };
     }
     if (open) {
+      ensureNotifStyles();
       var openEls = document.querySelectorAll('.nav-dropdown.show');
       for (var i = 0; i < openEls.length; i++) {
         if (openEls[i] !== dropdown) setNavDropdownOpen(openEls[i], false);

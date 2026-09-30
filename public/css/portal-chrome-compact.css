@@ -1637,3 +1637,55 @@ body.page-teacher-referrals .grid-stats .stat-card {
   }
 }
 
+/* Menu icons share one vertical line — student, teacher, and admin.
+   Do not center an icon+label group in a full-width row (longer names shove the icon). */
+.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.remoed-sidebar .remoed-menu li svg,
+.remoed-sidebar .sidebar-logout-btn svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  flex: 0 0 20px !important;
+  margin: 0 !important;
+  display: block !important;
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  body:not(.student-portal) .remoed-sidebar > .remoed-menu,
+  body:not(.student-portal) .remoed-sidebar .sidebar-logout-footer {
+    align-items: center !important;
+  }
+
+  body:not(.student-portal) .remoed-sidebar .sidebar-logout-footer {
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  body:not(.student-portal) .remoed-sidebar .remoed-menu li,
+  body:not(.student-portal) .remoed-sidebar .sidebar-logout-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    height: 40px !important;
+    margin: 2px auto !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  body:not(.student-portal) .remoed-sidebar .remoed-menu .menu-label,
+  body:not(.student-portal) .remoed-sidebar .sidebar-logout-btn .menu-label {
+    display: none !important;
+  }
+}
+

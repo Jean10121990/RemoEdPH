@@ -241,6 +241,27 @@ body.student-portal .remoed-sidebar .remoed-menu li {
 body.student-portal .remoed-sidebar .remoed-menu li svg {
   color: rgba(255, 255, 255, 0.92) !important;
   stroke: currentColor;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  flex: 0 0 20px !important;
+  margin: 0 !important;
+  display: block !important;
+}
+
+/* Beat the compact-chrome charcoal label color on the blue student rail */
+body.student-portal #student-sidebar-root .remoed-menu li:not(.active),
+body.student-portal #student-sidebar-root .remoed-menu li:not(.active) .menu-label {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+body.student-portal .remoed-sidebar:not(.sidebar-collapsed) > .remoed-menu {
+  align-items: stretch;
+}
+
+body.student-portal .remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li {
+  justify-content: flex-start !important;
 }
 
 body.student-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover {

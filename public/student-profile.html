@@ -44,9 +44,9 @@
                 width: 100%;
             }
             .phone-input-row .remoed-flag-picker {
-                width: 7.5rem;
-                flex: 0 0 7.5rem;
-                min-width: 7.5rem;
+                width: 9.5rem;
+                flex: 0 0 9.5rem;
+                min-width: 9.5rem;
             }
             .phone-input-row .remoed-flag-picker-btn {
                 border-radius: 6px 0 0 6px;
@@ -280,6 +280,7 @@
             display: flex;
             align-items: stretch;
             width: 100%;
+            container-type: inline-size;
         }
         .phone-input-row .remoed-flag-picker-btn {
             border-radius: 12px 0 0 12px;
@@ -289,6 +290,26 @@
             flex: 1;
             min-width: 0;
             border-radius: 0 12px 12px 0;
+        }
+        @container (max-width: 340px) {
+            .phone-input-row {
+                flex-wrap: wrap;
+            }
+            .phone-input-row .remoed-flag-picker {
+                flex: 1 1 100%;
+                max-width: none;
+                width: 100%;
+            }
+            .phone-input-row .remoed-flag-picker-btn {
+                border-radius: 12px 12px 0 0;
+                border-right: 3px solid #E8F4FD;
+                border-bottom: 0;
+            }
+            .phone-input-row .form-input[type="tel"] {
+                flex: 1 1 100%;
+                width: 100%;
+                border-radius: 0 0 12px 12px;
+            }
         }
         
         .form-input {
@@ -697,17 +718,17 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-6">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-6">
-    <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-6">
-    <link rel="stylesheet" href="css/student-sidebar.css?v=app-shell-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-badges.css?v=1">
     <link rel="stylesheet" href="css/password-toggle.css">
 </head>
 <body class="student-portal page-student-profile">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=app-shell-9"></script>
-        <script src="js/student-page-header.js?v=header-actions-2"></script>
+        <script src="js/student-sidebar.js?v=book-label-1"></script>
+        <script src="js/student-page-header.js?v=notif-layout-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'profile');
             StudentPageHeader.render('profile');
@@ -996,7 +1017,7 @@
 
     <script src="avatar-helper.js"></script>
     <script src="js/age-from-birthday.js?v=1"></script>
-    <script src="js/intl-mobile.js?v=3"></script>
+    <script src="js/intl-mobile.js?v=5"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script>
         /** Bearer for /api/student/* — aligns with remoed_student_auth / remoed_student_token from login. */

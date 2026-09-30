@@ -191,6 +191,77 @@ body > .nav-dropdown.show,
   cursor: pointer;
 }
 
+/* Bell panel is moved to document.body on pages other than the dashboard.
+   Page CSS only styles .nav-header .nav-dropdown, so the hoisted panel needs its own card. */
+body > #notifications-dropdown,
+body > #admin-notifications-dropdown,
+body > #upcoming-classes-dropdown {
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18) !important;
+  width: min(380px, calc(100vw - 24px)) !important;
+  min-width: min(320px, calc(100vw - 24px)) !important;
+  max-width: min(380px, calc(100vw - 24px)) !important;
+  max-height: min(480px, calc(100vh - 80px)) !important;
+  overflow: auto !important;
+  z-index: var(--z-dropdown, 9000) !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  color: #1e293b !important;
+}
+
+body > #notifications-dropdown .nav-dropdown-header,
+body > #admin-notifications-dropdown .nav-dropdown-header,
+body > #upcoming-classes-dropdown .nav-dropdown-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  font-weight: 700 !important;
+  background: #fff !important;
+}
+
+body > #notifications-dropdown .nav-dropdown-content,
+body > #admin-notifications-dropdown .nav-dropdown-content,
+body > #upcoming-classes-dropdown .nav-dropdown-content {
+  padding: 0 !important;
+  background: #fff !important;
+}
+
+body > #notifications-dropdown .nav-dropdown-item,
+body > #admin-notifications-dropdown .nav-dropdown-item,
+body > #upcoming-classes-dropdown .nav-dropdown-item,
+body > #notifications-dropdown a.nav-dropdown-item,
+body > #admin-notifications-dropdown a.nav-dropdown-item {
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  background: #fff !important;
+  color: #1e293b !important;
+  text-decoration: none !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+
+body > #notifications-dropdown .remoed-notif-toolbar,
+body > #notifications-dropdown .remoed-notif-footer {
+  background: #fff !important;
+}
+
+body > #notifications-dropdown .remoed-notif-filter,
+body > #admin-notifications-dropdown .remoed-notif-filter {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+}
+
 @media (max-width: 768px) {
   #remoed-app-actions,
   .remoed-app-actions,

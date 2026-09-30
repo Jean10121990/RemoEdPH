@@ -109,9 +109,9 @@
     var style = document.createElement('style');
     style.id = 'remoed-flag-picker-style';
     style.textContent = [
-      '.remoed-flag-picker{position:relative;flex:0 0 8.25rem;width:8.25rem;min-width:8.25rem;}',
+      '.remoed-flag-picker{position:relative;flex:0 1 auto;width:auto;min-width:8.75rem;max-width:11.5rem;}',
       '.remoed-flag-picker .remoed-flag-native{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;padding:0!important;border:0!important;overflow:hidden!important;}',
-      '.remoed-flag-picker-btn{width:100%;height:100%;min-height:48px;display:flex;align-items:center;gap:6px;padding:10px 8px;border:3px solid #E8F4FD;border-radius:12px;background:#fff;color:#1E3A5F;font:600 0.95rem "Segoe UI",Tahoma,Geneva,Verdana,sans-serif;cursor:pointer;box-sizing:border-box;}',
+      '.remoed-flag-picker-btn{width:100%;height:100%;min-height:48px;display:flex;align-items:center;gap:6px;padding:10px 10px;border:3px solid #E8F4FD;border-radius:12px;background:#fff;color:#1E3A5F;font:600 0.95rem "Segoe UI",Tahoma,Geneva,Verdana,sans-serif;cursor:pointer;box-sizing:border-box;white-space:nowrap;}',
       '.remoed-flag-picker-btn:disabled{background:#f8f9fa;color:#495057;cursor:not-allowed;}',
       '.remoed-flag-picker-btn:focus{outline:none;border-color:#1CA7E7;box-shadow:0 0 0 4px rgba(28,167,231,.1);}',
       '.remoed-flag-picker-btn.is-invalid{border-color:#e11d48;box-shadow:0 0 0 3px rgba(225,29,72,.12);}',
@@ -149,7 +149,7 @@
     picker.btn.replaceChildren();
     if (country) picker.btn.appendChild(flagImage(country.iso));
     var label = document.createElement('span');
-    label.textContent = country ? '+' + country.dial : 'Code';
+    label.textContent = country ? '+' + country.dial : 'Country code';
     picker.btn.appendChild(label);
     picker.btn.title = country ? country.name : 'Country calling code';
     picker.btn.setAttribute('aria-label', country ? country.name + ' +' + country.dial : 'Country calling code');
@@ -267,7 +267,7 @@
     selectEl.innerHTML = '';
     var empty = document.createElement('option');
     empty.value = '';
-    empty.textContent = 'Code';
+    empty.textContent = 'Country code';
     selectEl.appendChild(empty);
     sorted.forEach(function (c) {
       var opt = document.createElement('option');
