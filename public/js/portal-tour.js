@@ -143,7 +143,7 @@
       this.tourSteps.length +
       '</span>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-      '<button type="button" id="tour-skip" style="padding:8px 14px;border:0;background:transparent;color:#64748b;cursor:pointer;font-weight:600;font-size:0.88rem;">Skip</button>' +
+      '<button type="button" id="tour-skip" style="padding:8px 14px;border:2px solid #cbd5e1;background:#fff;color:#475569;border-radius:8px;cursor:pointer;font-weight:700;font-size:0.88rem;">Skip</button>' +
       (stepIndex > 0
         ? '<button type="button" id="tour-prev" style="padding:8px 14px;border:2px solid ' +
           accent +
@@ -205,17 +205,64 @@
   PortalTour.prototype.endTour = function () {
     this.tourActive = false;
     if (global.__activePortalTour === this) global.__activePortalTour = null;
-    ['tour-overlay', 'tour-highlight', 'tour-tooltip'].forEach(function (id) {
+    ['tour-overlay', 'tour-highlight', 'tour-tooltip', 'tour-welcome'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.remove();
     });
     document.querySelectorAll('[id^="tour-"]').forEach(function (el) {
+      if (el.id === 'tour-button') return;
       el.remove();
     });
     try {
       localStorage.setItem(this.storageKey, 'true');
     } catch (e) {}
+    if (typeof this.onDismiss === 'function') {
+      try { this.onDismiss(); } catch (_e) {}
+    }
   };
+
+  function showWelcomeChoice(message, onOk, onSkip) {
+    var existing = document.getElementById('tour-welcome');
+    if (existing) existing.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'tour-welcome';
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,0.45);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+    var card = document.createElement('div');
+    card.style.cssText =
+      'background:#fff;border-radius:16px;max-width:460px;width:100%;padding:22px 22px 16px;box-shadow:0 20px 50px rgba(0,0,0,0.22);';
+    var text = document.createElement('p');
+    text.style.cssText = 'margin:0 0 18px;color:#1e293b;line-height:1.55;white-space:pre-wrap;font-size:0.95rem;';
+    text.textContent = message;
+    var actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+    var skip = document.createElement('button');
+    skip.type = 'button';
+    skip.id = 'tour-welcome-skip';
+    skip.textContent = 'Skip';
+    skip.style.cssText =
+      'padding:8px 16px;border:2px solid #cbd5e1;background:#fff;color:#475569;border-radius:8px;cursor:pointer;font-weight:700;';
+    var ok = document.createElement('button');
+    ok.type = 'button';
+    ok.id = 'tour-welcome-ok';
+    ok.textContent = 'OK';
+    ok.style.cssText =
+      'padding:8px 18px;border:none;background:#008fc4;color:#fff;border-radius:8px;cursor:pointer;font-weight:700;';
+    skip.addEventListener('click', function () {
+      overlay.remove();
+      onSkip();
+    });
+    ok.addEventListener('click', function () {
+      overlay.remove();
+      onOk();
+    });
+    actions.appendChild(skip);
+    actions.appendChild(ok);
+    card.appendChild(text);
+    card.appendChild(actions);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  }
 
   PortalTour.prototype.cleanup = function () {
     this.endTour();
@@ -265,9 +312,11 @@
     var welcomeConfirm = options.welcomeConfirm !== false;
     if (!completed && skipIfCompleted && tourInstance.welcomeMessage && welcomeConfirm) {
       setTimeout(function () {
-        if (confirm(tourInstance.welcomeMessage)) {
-          tourInstance.startTour();
-        }
+        showWelcomeChoice(
+          tourInstance.welcomeMessage,
+          function () { tourInstance.startTour(); },
+          function () { tourInstance.endTour(); }
+        );
       }, 900);
     }
   }

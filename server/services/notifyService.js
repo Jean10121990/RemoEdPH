@@ -36,6 +36,9 @@ const ACTIONABLE_TYPES = new Set([
   'cancellation-rejected',
   'peer-message',
   'class-completed',
+  'profile-reminder',
+  'tos-reminder',
+  'privacy-reminder',
 ]);
 
 const DEFAULT_PREFS = {

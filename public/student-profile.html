@@ -43,11 +43,14 @@
                 align-items: stretch;
                 width: 100%;
             }
-            .phone-country-select {
-                width: 7.25rem;
-                flex: 0 0 7.25rem;
-                border-radius: 6px 0 0 6px !important;
-                border-right: 0 !important;
+            .phone-input-row .remoed-flag-picker {
+                width: 7.5rem;
+                flex: 0 0 7.5rem;
+                min-width: 7.5rem;
+            }
+            .phone-input-row .remoed-flag-picker-btn {
+                border-radius: 6px 0 0 6px;
+                border-right: 0;
                 font-size: 0.85rem;
                 padding-left: 8px;
                 padding-right: 4px;
@@ -271,6 +274,21 @@
             font-weight: 700;
             color: #1E3A5F;
             font-size: 0.95rem;
+        }
+
+        .phone-input-row {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+        }
+        .phone-input-row .remoed-flag-picker-btn {
+            border-radius: 12px 0 0 12px;
+            border-right: 0;
+        }
+        .phone-input-row .form-input[type="tel"] {
+            flex: 1;
+            min-width: 0;
+            border-radius: 0 12px 12px 0;
         }
         
         .form-input {
@@ -766,29 +784,29 @@
                                     <input type="text" class="form-input" id="firstName" placeholder="First Name" required disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Middle Name</label>
-                                    <input type="text" class="form-input" id="middleName" placeholder="Middle Name" disabled>
+                                    <label class="form-label">Middle Name *</label>
+                                    <input type="text" class="form-input" id="middleName" placeholder="Middle Name" required disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Last Name *</label>
                                     <input type="text" class="form-input" id="lastName" placeholder="Last Name" required disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Nickname</label>
-                                    <input type="text" class="form-input" id="nickname" placeholder="e.g. Louie" maxlength="40" disabled>
+                                    <label class="form-label">Nickname *</label>
+                                    <input type="text" class="form-input" id="nickname" placeholder="e.g. Louie" maxlength="40" required disabled>
                                     <small style="display:block;margin-top:4px;color:#64748b;font-size:0.75rem;">Shown in the live classroom instead of your full name</small>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Gender</label>
-                                    <select class="form-input" id="gender" disabled>
+                                    <label class="form-label">Gender *</label>
+                                    <select class="form-input" id="gender" required disabled>
                                         <option value="">Select Gender</option>
                                         <option value="male">Male</option>
                                         <option value="female">Female</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Birthday</label>
-                                    <input type="date" class="form-input" id="birthday" disabled>
+                                    <label class="form-label">Birthday *</label>
+                                    <input type="date" class="form-input" id="birthday" required disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Age</label>
@@ -814,17 +832,17 @@
                                     </div>
                                 </div>
                                 <div class="form-group full-width">
-                                    <label class="form-label">Address</label>
-                                    <textarea class="form-textarea" id="address" placeholder="Complete Address" disabled></textarea>
+                                    <label class="form-label">Address *</label>
+                                    <textarea class="form-textarea" id="address" placeholder="Complete Address" required disabled></textarea>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- About Section -->
                         <div class="info-section">
-                            <h4 class="info-section-title">About Me</h4>
+                            <h4 class="info-section-title">About Me *</h4>
                             <div class="form-group full-width">
-                                <textarea class="form-textarea" id="aboutMe" placeholder="Tell us about yourself, your interests, and learning goals..." disabled style="min-height: 150px;"></textarea>
+                                <textarea class="form-textarea" id="aboutMe" placeholder="Tell us about yourself, your interests, and learning goals..." required disabled style="min-height: 150px;"></textarea>
                             </div>
                         </div>
                         
@@ -833,12 +851,12 @@
                             <h4 class="info-section-title">Interests & Hobbies</h4>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">Language</label>
-                                    <input type="text" class="form-input" id="language" placeholder="Primary Language" disabled>
+                                    <label class="form-label">Language *</label>
+                                    <input type="text" class="form-input" id="language" placeholder="Primary Language" required disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Hobbies</label>
-                                    <input type="text" class="form-input" id="hobbies" placeholder="Hobbies" disabled>
+                                    <label class="form-label">Hobbies *</label>
+                                    <input type="text" class="form-input" id="hobbies" placeholder="Hobbies" required disabled>
                                 </div>
                             </div>
                         </div>
@@ -848,34 +866,34 @@
                             <h4 class="info-section-title">Family & Emergency Contact</h4>
                             <div class="form-grid family-contact-grid">
                                 <div class="form-group">
-                                    <label class="form-label">Parent/Guardian Name</label>
-                                    <input type="text" class="form-input" id="parentName" placeholder="Parent/Guardian Name" disabled>
+                                    <label class="form-label">Parent/Guardian Name *</label>
+                                    <input type="text" class="form-input" id="parentName" placeholder="Parent/Guardian Name" required disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Emergency Contact Person</label>
-                                    <input type="text" class="form-input" id="emergencyContactPerson" placeholder="Emergency contact person" disabled>
+                                    <label class="form-label">Emergency Contact Person *</label>
+                                    <input type="text" class="form-input" id="emergencyContactPerson" placeholder="Emergency contact person" required disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Phone Number</label>
+                                    <label class="form-label">Phone Number *</label>
                                     <div class="phone-input-row">
-                                        <select class="form-input phone-country-select" id="parentContactCountry" aria-label="Parent country calling code" disabled>
+                                        <select class="form-input phone-country-select" id="parentContactCountry" aria-label="Parent country calling code" required disabled>
                                             <option value="">Code</option>
                                         </select>
-                                        <input type="tel" class="form-input" id="parentContact" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" disabled>
+                                        <input type="tel" class="form-input" id="parentContact" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" required disabled>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Phone Number</label>
+                                    <label class="form-label">Phone Number *</label>
                                     <div class="phone-input-row">
-                                        <select class="form-input phone-country-select" id="emergencyContactCountry" aria-label="Emergency country calling code" disabled>
+                                        <select class="form-input phone-country-select" id="emergencyContactCountry" aria-label="Emergency country calling code" required disabled>
                                             <option value="">Code</option>
                                         </select>
-                                        <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" disabled>
+                                        <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="Phone number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" required disabled>
                                     </div>
                                 </div>
                                 <div class="form-group full-width">
-                                    <label class="form-label">Parent/Guardian Email</label>
-                                    <input type="email" class="form-input" id="parentEmail" placeholder="parent@example.com" autocomplete="email" disabled>
+                                    <label class="form-label">Parent/Guardian Email *</label>
+                                    <input type="email" class="form-input" id="parentEmail" placeholder="parent@example.com" autocomplete="email" required disabled>
                                 </div>
                                 <div class="form-group full-width" id="emergency-contact-legacy-wrap" style="display: none;">
                                     <label class="form-label">Emergency Contact (previous notes)</label>
@@ -978,7 +996,7 @@
 
     <script src="avatar-helper.js"></script>
     <script src="js/age-from-birthday.js?v=1"></script>
-    <script src="js/intl-mobile.js?v=1"></script>
+    <script src="js/intl-mobile.js?v=3"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script>
         /** Bearer for /api/student/* — aligns with remoed_student_auth / remoed_student_token from login. */
@@ -1064,8 +1082,15 @@
             el.setAttribute('aria-invalid', 'true');
             el.setCustomValidity(message || 'Invalid');
             try { el.reportValidity(); } catch (_e) {}
-            el.focus();
+            const focusEl = el._remoedFlagButton || el;
+            focusEl.focus();
             return false;
+        }
+
+        function requireFilled(id) {
+            const el = document.getElementById(id);
+            if (!String(el && el.value || '').trim()) return setFieldError(el, 'Required');
+            return true;
         }
 
         function wireClearErrorOnEdit(el) {
@@ -1080,7 +1105,7 @@
             RemoedIntlMobile.fillCountrySelect(document.getElementById('contactCountry'), '');
             RemoedIntlMobile.fillCountrySelect(document.getElementById('parentContactCountry'), '');
             RemoedIntlMobile.fillCountrySelect(document.getElementById('emergencyContactCountry'), '');
-            ['firstName', 'lastName', 'email', 'contact', 'contactCountry', 'parentEmail', 'parentContact', 'parentContactCountry', 'emergencyContactNumber', 'emergencyContactCountry'].forEach(function (id) {
+            ['firstName', 'middleName', 'lastName', 'nickname', 'gender', 'birthday', 'email', 'contact', 'contactCountry', 'address', 'aboutMe', 'language', 'hobbies', 'parentName', 'parentEmail', 'parentContact', 'parentContactCountry', 'emergencyContactPerson', 'emergencyContactNumber', 'emergencyContactCountry'].forEach(function (id) {
                 wireClearErrorOnEdit(document.getElementById(id));
             });
         }
@@ -1857,7 +1882,11 @@
                 const lastName = String(lastNameEl.value || '').trim();
                 const emailVal = String(emailEl.value || '').trim();
                 if (!firstName) return setFieldError(firstNameEl, 'Required');
+                if (!requireFilled('middleName')) return;
                 if (!lastName) return setFieldError(lastNameEl, 'Required');
+                if (!requireFilled('nickname')) return;
+                if (!requireFilled('gender')) return;
+                if (!requireFilled('birthday')) return;
                 if (!emailVal) return setFieldError(emailEl, 'Required');
                 if (!isValidEmail(emailVal)) return setFieldError(emailEl, 'Enter a valid email');
 
@@ -1866,40 +1895,35 @@
                 const contactNational = contactEl.value;
                 const contactNorm = RemoedIntlMobile.normalizeIntlMobile(contactCountryEl.value, contactNational);
                 if (!contactNorm.ok) return setFieldError(contactEl, contactNorm.error);
+                if (!requireFilled('address')) return;
+                if (!requireFilled('aboutMe')) return;
+                if (!requireFilled('language')) return;
+                if (!requireFilled('hobbies')) return;
+                if (!requireFilled('parentName')) return;
 
-                const parentCountry = document.getElementById('parentContactCountry')?.value || '';
+                const parentCountryEl = document.getElementById('parentContactCountry');
+                const parentCountry = parentCountryEl?.value || '';
                 const parentNational = document.getElementById('parentContact').value;
-                let parentContact = '';
-                let parentContactCountry = '';
-                if (String(parentNational || '').trim() || parentCountry) {
-                    const pNorm = RemoedIntlMobile.normalizeIntlMobile(parentCountry, parentNational);
-                    if (!pNorm.ok) {
-                        const pEl = parentCountry ? document.getElementById('parentContact') : document.getElementById('parentContactCountry');
-                        return setFieldError(pEl, pNorm.error);
-                    }
-                    parentContact = pNorm.e164;
-                    parentContactCountry = pNorm.iso;
-                }
+                if (!parentCountry) return setFieldError(parentCountryEl, 'Required');
+                const pNorm = RemoedIntlMobile.normalizeIntlMobile(parentCountry, parentNational);
+                if (!pNorm.ok) return setFieldError(document.getElementById('parentContact'), pNorm.error);
+                const parentContact = pNorm.e164;
+                const parentContactCountry = pNorm.iso;
 
                 const parentEmailEl = document.getElementById('parentEmail');
                 const parentEmailVal = String(parentEmailEl.value || '').trim();
-                if (parentEmailVal && !isValidEmail(parentEmailVal)) {
-                    return setFieldError(parentEmailEl, 'Enter a valid email');
-                }
+                if (!parentEmailVal) return setFieldError(parentEmailEl, 'Required');
+                if (!isValidEmail(parentEmailVal)) return setFieldError(parentEmailEl, 'Enter a valid email');
 
-                const emergCountry = document.getElementById('emergencyContactCountry')?.value || '';
+                if (!requireFilled('emergencyContactPerson')) return;
+                const emergCountryEl = document.getElementById('emergencyContactCountry');
+                const emergCountry = emergCountryEl?.value || '';
                 const emergNational = document.getElementById('emergencyContactNumber').value;
-                let emergencyContactNumber = '';
-                let emergencyContactCountry = '';
-                if (String(emergNational || '').trim() || emergCountry) {
-                    const eNorm = RemoedIntlMobile.normalizeIntlMobile(emergCountry, emergNational);
-                    if (!eNorm.ok) {
-                        const eEl = emergCountry ? document.getElementById('emergencyContactNumber') : document.getElementById('emergencyContactCountry');
-                        return setFieldError(eEl, eNorm.error);
-                    }
-                    emergencyContactNumber = eNorm.e164;
-                    emergencyContactCountry = eNorm.iso;
-                }
+                if (!emergCountry) return setFieldError(emergCountryEl, 'Required');
+                const eNorm = RemoedIntlMobile.normalizeIntlMobile(emergCountry, emergNational);
+                if (!eNorm.ok) return setFieldError(document.getElementById('emergencyContactNumber'), eNorm.error);
+                const emergencyContactNumber = eNorm.e164;
+                const emergencyContactCountry = eNorm.iso;
 
                 const profileData = {
                     firstName: firstName,

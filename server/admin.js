@@ -1531,7 +1531,15 @@ router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) 
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
-    const notifications = enrichNotificationList(raw);
+    let notifications = enrichNotificationList(raw);
+    try {
+      const Admin = require('./models/Admin');
+      const { adminAccountReminders } = require('./services/accountReminders');
+      const me = await Admin.findOne({ username }).select(
+        'firstName lastName address contactPhone birthday email tosAgreement privacyPolicy'
+      );
+      if (me) notifications = adminAccountReminders(me).concat(notifications);
+    } catch (_e) { /* ignore */ }
     const unreadCount = notifications.filter(n => !n.read).length;
     res.json({
       success: true,

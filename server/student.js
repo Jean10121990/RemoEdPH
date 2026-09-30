@@ -1328,14 +1328,18 @@ router.get('/notifications', verifyToken, requireStudent, async (req, res) => {
           .limit(50)
           .lean()
       : [];
-    const notifications = enrichNotificationList(raw);
-    const unreadCount = notifications.filter((n) => !n.read).length;
-    const actionableUnreadCount = countActionableUnread(notifications);
+    let notifications = enrichNotificationList(raw);
     let prefs = DEFAULT_PREFS;
     try {
-      const me = await Student.findById(req.user.studentId).select('notificationPrefs').lean();
+      const { studentAccountReminders } = require('./services/accountReminders');
+      const me = await Student.findById(req.user.studentId).select(
+        'notificationPrefs firstName middleName lastName nickname gender birthday email contact address language hobbies aboutMe parentName parentContact parentEmail emergencyContactPerson emergencyContactNumber'
+      );
       prefs = mergePrefs(me && me.notificationPrefs);
+      if (me) notifications = studentAccountReminders(me).concat(notifications);
     } catch (_e) { /* ignore */ }
+    const unreadCount = notifications.filter((n) => !n.read).length;
+    const actionableUnreadCount = countActionableUnread(notifications);
 
     res.json({
       success: true,

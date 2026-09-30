@@ -2119,15 +2119,19 @@ router.get('/notifications', verifyToken, requireTeacher, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
-    const notifications = enrichNotificationList(raw);
-    const unreadCount = notifications.filter((n) => !n.read).length;
-    const actionableUnreadCount = countActionableUnread(notifications);
+    let notifications = enrichNotificationList(raw);
     let prefs = DEFAULT_PREFS;
     try {
       const Teacher = require('./models/Teacher');
-      const me = await Teacher.findOne({ teacherId: req.user.teacherId }).select('notificationPrefs').lean();
+      const { teacherAccountReminders } = require('./services/accountReminders');
+      const me = await Teacher.findOne({ teacherId: req.user.teacherId }).select(
+        'notificationPrefs firstName lastName nickname birthday hireDate gender language hobbies address contact email username emergencyContact tosAgreement privacyPolicy'
+      );
       prefs = mergePrefs(me && me.notificationPrefs);
+      if (me) notifications = teacherAccountReminders(me).concat(notifications);
     } catch (_e) { /* ignore */ }
+    const unreadCount = notifications.filter((n) => !n.read).length;
+    const actionableUnreadCount = countActionableUnread(notifications);
     res.json({
       success: true,
       notifications,

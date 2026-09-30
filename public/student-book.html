@@ -310,36 +310,26 @@
         
         /* Booking Modal — must sit on document.body (see showBookingModal) so fixed
            positioning is not trapped by .remoed-content / overflow parents. */
-        .booking-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: var(--z-modal, 10050);
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            box-sizing: border-box;
-        }
-        
-        .booking-modal.show {
-            display: flex;
+        #booking-modal.booking-modal {
+            display: none !important;
         }
 
-        body > .booking-modal {
+        #booking-modal.booking-modal.show {
+            display: flex !important;
             position: fixed !important;
             inset: 0 !important;
+            z-index: var(--z-modal, 10050) !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
             max-width: none !important;
             margin: 0 !important;
-            z-index: var(--z-modal, 10050) !important;
+            background-color: rgba(15, 23, 42, 0.45);
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 16px;
+            box-sizing: border-box;
         }
         
         .booking-modal-content {
@@ -1247,6 +1237,15 @@
             </div>
         </div>
     </div>
+    <script>
+        (function () {
+            var modal = document.getElementById('booking-modal');
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.hidden = true;
+            if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        })();
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script src="timezone-utils.js"></script>
@@ -2362,19 +2361,11 @@
             // The modal will be shown when clicking a "Book Now" button or similar
         }
         
-        // Modal functions — hoist to body so the panel centers over the viewport
-        // (not trapped as a side column inside .remoed-content).
-        let bookingModalHomeParent = null;
-        let bookingModalHomeNext = null;
-
         function showBookingModal() {
             const modal = document.getElementById('booking-modal');
             if (!modal) return;
-            if (modal.parentElement !== document.body) {
-                bookingModalHomeParent = modal.parentElement;
-                bookingModalHomeNext = modal.nextSibling;
-                document.body.appendChild(modal);
-            }
+            if (modal.parentElement !== document.body) document.body.appendChild(modal);
+            modal.hidden = false;
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
@@ -2383,13 +2374,7 @@
             const modal = document.getElementById('booking-modal');
             if (modal) {
                 modal.classList.remove('show');
-                if (bookingModalHomeParent && modal.parentElement === document.body) {
-                    if (bookingModalHomeNext && bookingModalHomeNext.parentNode === bookingModalHomeParent) {
-                        bookingModalHomeParent.insertBefore(modal, bookingModalHomeNext);
-                    } else {
-                        bookingModalHomeParent.appendChild(modal);
-                    }
-                }
+                modal.hidden = true;
             }
             document.body.style.overflow = '';
             

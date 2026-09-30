@@ -103,6 +103,8 @@
                     return (
                         '<div class="nav-dropdown-item admin-notif-item" data-id="' +
                         escapeHtml(n._id) +
+                        '" data-action-url="' +
+                        escapeHtml(n.actionUrl || '') +
                         '" data-read="' +
                         (n.read ? '1' : '0') +
                         '" style="' +
@@ -169,7 +171,7 @@
             try {
                 if (!document.querySelector('script[data-remoed-notif-helper]')) {
                     var s = document.createElement('script');
-                    s.src = 'js/remoed-notifications.js';
+                    s.src = 'js/remoed-notifications.js?v=profile-reminders-1';
                     s.async = true;
                     s.setAttribute('data-remoed-notif-helper', '1');
                     document.head.appendChild(s);
@@ -218,8 +220,14 @@
 
                     if (item) {
                         event.stopPropagation();
+                        var actionUrl = item.getAttribute('data-action-url') || '';
+                        var itemId = item.getAttribute('data-id') || '';
+                        if (actionUrl && String(itemId).indexOf('reminder-') === 0) {
+                            window.location.href = actionUrl;
+                            return;
+                        }
                         (async function () {
-                            var id = item.getAttribute('data-id');
+                            var id = itemId;
                             var token = getAdminToken();
                             if (!id || !token) return;
                             if (item.getAttribute('data-read') === '1') return;

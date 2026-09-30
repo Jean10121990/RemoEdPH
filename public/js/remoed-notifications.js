@@ -47,7 +47,10 @@
       t === 'teacher-joined' ||
       t === 'teacher-late' ||
       t === 'peer-message' ||
-      t === 'cancellation-request'
+      t === 'cancellation-request' ||
+      t === 'profile-reminder' ||
+      t === 'tos-reminder' ||
+      t === 'privacy-reminder'
     );
   }
 
@@ -467,6 +470,7 @@
       var id = item.getAttribute('data-id');
       var token2 = getToken();
       if (!id || !token2) return;
+      if (String(id).indexOf('reminder-') === 0) return;
       // Mark read; navigation follows <a href> naturally
       fetch(apiBase + '/notifications/' + encodeURIComponent(id) + '/mark-read', {
         method: 'PATCH',
