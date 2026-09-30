@@ -84,7 +84,6 @@
               <th>Student</th>
               <th>Contact</th>
               <th>Plan</th>
-              <th>Amount</th>
               <th>Your commission</th>
               <th>Status</th>
             </tr>
@@ -173,7 +172,6 @@
             '<td><strong>' + escapeHtml(r.studentName || '—') + '</strong><br><span class="muted">' + escapeHtml(r.studentEmail || '') + '</span></td>' +
             '<td>' + escapeHtml(r.studentContact || '—') + '</td>' +
             '<td>' + escapeHtml(r.subscriptionPlan || '—') + '</td>' +
-            '<td>' + fmtPeso(r.amountPaid) + '</td>' +
             '<td>' + fmtPeso(r.commissionAmount) + '</td>' +
             '<td>' + escapeHtml(r.status || 'successful') + '</td>' +
             '</tr>'

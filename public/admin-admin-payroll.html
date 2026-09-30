@@ -91,7 +91,10 @@
             </div>
 
             <div class="remoed-section">
-                <div class="remoed-section-title">Payment History Management</div>
+                <div class="remoed-section-title">Payment History · this cut-off</div>
+                <div style="margin: 0 0 14px 0; color: #64748b; font-size: 0.85rem;">
+                    Earnings stay on the cut-off. <strong>Withdrawn</strong> means the admin already submitted MariBank withdraw for that period (same as Teaching Fee).
+                </div>
                 <div style="margin-bottom: 20px;">
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <label for="admin-filter" style="font-weight: 600; color: #333;">Filter by Admin:</label>
@@ -100,9 +103,10 @@
                         </select>
                         <label for="status-filter" style="font-weight: 600; color: #333;">Filter by Status:</label>
                         <select id="status-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;">
-                            <option value="">All Status</option>
-                            <option value="Success">Paid</option>
-                            <option value="Pending">Pending</option>
+                        <option value="">All Status</option>
+                        <option value="Disbursed">Released (not withdrawn)</option>
+                        <option value="Withdrawn">Withdrawn</option>
+                        <option value="Pending">Pending</option>
                         </select>
                         <button type="button" class="btn btn-primary" id="ap-load-history">🔍 Load Records</button>
                         <button type="button" class="btn btn-success" id="ap-export-history">📊 Export CSV</button>
@@ -233,30 +237,33 @@
             '<th>Hours Worked</th>' +
             '<th>8h Shifts</th>' +
             '<th>Gross Sales Pool</th>' +
-            '<th>Fee (1%)</th>' +
+            '<th>Earnings</th>' +
             '<th>Status</th>' +
+            '<th>Withdrawn</th>' +
             '</tr></thead><tbody>' +
             admins.map(function (a) {
                 var paid = a.paymentStatus === 'Paid';
                 var pending = a.paymentStatus === 'Pending';
                 var life = a.payoutLifecycle || '';
-                var statusText = paid
-                    ? (life === 'withdrawal_requested'
-                        ? 'Processing withdraw'
-                        : life === 'disbursed'
-                          ? 'Released'
-                          : life === 'completed'
-                            ? '✓ Completed'
-                            : '✓ Released')
-                    : pending
-                      ? 'Pending'
-                      : 'Ineligible';
-                var statusColor = paid
-                    ? (life === 'withdrawal_requested' ? '#f59e0b' : life === 'disbursed' ? '#1ca7e7' : '#27ae60')
-                    : pending
-                      ? '#888'
-                      : '#94a3b8';
+                var withdrawn = a.withdrawn === true || life === 'withdrawal_requested' || life === 'completed';
+                var statusText = 'Ineligible';
+                var statusColor = '#94a3b8';
+                if (withdrawn) {
+                    statusText = life === 'completed' ? 'Withdrawn' : 'Withdrawn · processing';
+                    statusColor = '#15803d';
+                } else if (paid && life === 'disbursed') {
+                    statusText = 'Released';
+                    statusColor = '#1ca7e7';
+                } else if (pending) {
+                    statusText = 'Pending';
+                    statusColor = '#888';
+                }
                 var feeColor = pending || paid ? '#27ae60' : '#94a3b8';
+                var withdrawnBadge = withdrawn
+                    ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:700;font-size:0.78rem;">Withdrawn</span>'
+                    : (paid
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:700;font-size:0.78rem;">Not yet</span>'
+                        : '<span style="color:#94a3b8;">—</span>');
                 return (
                     '<tr>' +
                     '<td><strong>' + esc(a.name || a.username) + '</strong><br><span style="color:#94a3b8;font-size:0.78rem;">' + esc(a.username) + '</span></td>' +
@@ -264,8 +271,9 @@
                     '<td>' + esc(a.totalHours) + '</td>' +
                     '<td>' + esc(a.completedShifts) + ' / ' + esc(a.totalShifts) + '</td>' +
                     '<td>' + peso(meta.grossSales) + '</td>' +
-                    '<td style="font-weight:600;color:' + feeColor + ';">' + peso(a.feeAmount) + '</td>' +
+                    '<td style="font-weight:600;color:' + feeColor + ';">' + peso(a.earnings != null ? a.earnings : a.feeAmount) + '</td>' +
                     '<td style="color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
+                    '<td>' + withdrawnBadge + '</td>' +
                     '</tr>'
                 );
             }).join('') +
@@ -323,6 +331,7 @@
 
             status.textContent = 'Loaded ' + (data.admins || []).length + ' admins';
             status.style.color = '#27ae60';
+            loadPaymentHistory();
             setTimeout(function () {
                 if (status.textContent.indexOf('Loaded') === 0) status.textContent = '';
             }, 3000);
@@ -403,6 +412,7 @@
             var st = document.getElementById('status-filter').value;
             if (username) params.append('username', username);
             if (st) params.append('status', st);
+            if (selectedPeriodKey) params.append('period', selectedPeriodKey);
 
             var url = '/api/admin/admin-fee/payment-history' + (params.toString() ? '?' + params.toString() : '');
             var response = await adminApiFetch(url);
@@ -438,21 +448,21 @@
         }
         container.innerHTML =
             '<table class="payroll-table"><thead><tr>' +
-            '<th>Admin</th><th>Period</th><th>Issue Date</th><th>Amount</th><th>Status</th><th>Actions</th>' +
+            '<th>Admin</th><th>Cut-off</th><th>Issue Date</th><th>Earnings</th><th>Withdrawn</th><th>Actions</th>' +
             '</tr></thead><tbody>' +
             payments.map(function (p) {
                 var st = String(p.status || '');
                 var statusText = '⏳ Pending';
                 var statusColor = '#f39c12';
                 if (st === 'Success' || st === 'Completed') {
-                    statusText = '✅ Completed';
-                    statusColor = '#27ae60';
+                    statusText = 'Withdrawn';
+                    statusColor = '#15803d';
                 } else if (st === 'Disbursed') {
-                    statusText = 'Released';
+                    statusText = 'Released — not withdrawn';
                     statusColor = '#1ca7e7';
                 } else if (st === 'WithdrawalRequested') {
-                    statusText = 'Processing withdraw';
-                    statusColor = '#f59e0b';
+                    statusText = 'Withdrawn · processing';
+                    statusColor = '#15803d';
                 } else if (st === 'Void') {
                     statusText = 'Void';
                     statusColor = '#94a3b8';
@@ -466,13 +476,18 @@
                 var actions = p.canMarkCompleted
                     ? '<button type="button" class="btn btn-success" style="padding:4px 8px;font-size:12px;border-radius:6px;" data-complete-id="' + esc(p._id) + '">Mark Completed</button>'
                     : '—';
+                var withdrawnMark = (p.withdrawn || st === 'WithdrawalRequested' || st === 'Success' || st === 'Completed')
+                    ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:700;font-size:0.78rem;">Withdrawn</span>'
+                    : (st === 'Disbursed'
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:700;font-size:0.78rem;">Not yet</span>'
+                        : '<span style="color:#94a3b8;">—</span>');
                 return (
                     '<tr>' +
                     '<td>' + esc(p.adminUsername || 'N/A') + '</td>' +
                     '<td>' + esc(p.period || p.periodKey || 'N/A') + masked + '</td>' +
                     '<td>' + esc(issue) + '</td>' +
-                    '<td style="font-weight:600;color:#e74c3c;">' + peso(p.amount) + '</td>' +
-                    '<td style="color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
+                    '<td style="font-weight:600;color:#0f172a;">' + peso(p.amount) + '</td>' +
+                    '<td>' + withdrawnMark + '<div style="margin-top:4px;color:' + statusColor + ';font-size:0.78rem;font-weight:600;">' + statusText + '</div></td>' +
                     '<td>' + actions + '</td>' +
                     '</tr>'
                 );

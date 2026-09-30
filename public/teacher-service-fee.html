@@ -96,6 +96,45 @@
       background: #e8f5e8 !important;
       border: 1px solid #c8e6c9 !important;
     }
+    #fee-wallet-amount-box { position: relative; min-width: 180px; }
+    #net-amount { white-space: nowrap; }
+    .fee-wallet-label-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fee-info-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid #86efac;
+      background: #fff;
+      color: #15803d;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      flex: 0 0 auto;
+    }
+    .fee-info-btn svg { width: 14px; height: 14px; }
+    .fee-info-pop {
+      position: absolute;
+      z-index: 5;
+      left: 0;
+      top: calc(100% + 6px);
+      width: min(320px, 80vw);
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+      color: #334155;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+    .fee-wallet-notes { grid-column: 1 / -1; }
     @media (max-width: 900px) {
       .payment-summary-body {
         grid-template-columns: 1fr;
@@ -385,18 +424,25 @@
 
             <div class="payment-summary-body">
               <div class="service-summary" id="fee-wallet-amount-box" style="background: #e8f5e8; padding: 12px 14px; border-radius: 8px; border: 2px solid #c8e6c9;">
-                <div class="label" id="fee-wallet-amount-label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Withdrawable this cut-off</div>
+                <div class="label fee-wallet-label-row" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">
+                  <span id="fee-wallet-amount-label">Withdrawable this cut-off</span>
+                  <button type="button" class="fee-info-btn" id="fee-withdraw-info-btn" aria-expanded="false" aria-controls="fee-withdraw-info-pop" title="Minimum withdraw amount" aria-label="Minimum withdraw amount">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  </button>
+                </div>
+                <div class="fee-info-pop" id="fee-withdraw-info-pop" hidden>
+                  Minimum withdrawable amount is ₱100. Amounts below ₱100, and any balance not withdrawn, are added to the next cut-off. MariBank daily limit is ₱50,000.
+                </div>
                 <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
               </div>
-              <p id="fee-maribank-daily-limit-note" hidden style="display:none;margin:8px 0 0;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:0.78rem;line-height:1.4;font-weight:600;">
+              <div class="fee-wallet-notes">
+              <p id="fee-maribank-daily-limit-note" hidden style="display:none;margin:0;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:0.78rem;line-height:1.4;font-weight:600;">
                 Note: MariBank maximum daily withdrawal limit is up to ₱50,000. If your Available to Withdraw exceeds ₱50,000, you may need more than one day (or split transfers) to complete withdrawal.
               </p>
-              <p id="fee-min-withdraw-note" hidden style="display:none;margin:8px 0 0;padding:8px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1e3a8a;font-size:0.78rem;line-height:1.4;font-weight:600;">
+              <p id="fee-min-withdraw-note" hidden style="display:none;margin:0;padding:8px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1e3a8a;font-size:0.78rem;line-height:1.4;font-weight:600;">
                 Minimum withdrawable amount is ₱100. Amounts below ₱100 (and any balance not withdrawn) are added to the next cut-off.
               </p>
-              <p id="fee-withdraw-rules-note" style="margin:8px 0 0;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;color:#475569;font-size:0.72rem;line-height:1.45;">
-                Withdraw rules: minimum ₱100 per MariBank withdrawal · daily MariBank limit ₱50,000 · any amount not withdrawn rolls into the next cut-off.
-              </p>
+              </div>
               <div style="margin-top:8px;background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;">
                 <div style="font-size:0.72rem;color:#64748b;font-weight:600;">Pending Earnings</div>
                 <div id="fee-pending-earnings" style="font-size:1rem;font-weight:700;color:#0f172a;">₱0.00</div>
@@ -565,6 +611,22 @@
 
     // Defer DOM writes until DOM is ready and guard element access.
     document.addEventListener('DOMContentLoaded', function () {
+      var feeInfoBtn = document.getElementById('fee-withdraw-info-btn');
+      var feeInfoPop = document.getElementById('fee-withdraw-info-pop');
+      if (feeInfoBtn && feeInfoPop) {
+        feeInfoBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = feeInfoPop.hidden;
+          feeInfoPop.hidden = !open;
+          feeInfoBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        document.addEventListener('click', function (e) {
+          if (!feeInfoPop.hidden && !feeInfoBtn.contains(e.target) && !feeInfoPop.contains(e.target)) {
+            feeInfoPop.hidden = true;
+            feeInfoBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
       const avatarTextEl = document.getElementById('avatar-text');
       if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
 

@@ -198,6 +198,16 @@ router.get('/summary', async (req, res) => {
       payoutStatus: existingPayout ? existingPayout.status : 'none',
       payoutId: existingPayout ? String(existingPayout._id) : null,
       canWithdraw: !!(existingPayout && isDisbursed(existingPayout.status) && estimatedPayout > 0),
+      withdrawn: !!(
+        existingPayout &&
+        (isWithdrawRequested(existingPayout.status) || isCompleted(existingPayout.status))
+      ),
+      walletLabel:
+        existingPayout && (isWithdrawRequested(existingPayout.status) || isCompleted(existingPayout.status))
+          ? 'Withdrawn'
+          : existingPayout && isDisbursed(existingPayout.status)
+            ? 'Withdrawable this cut-off'
+            : 'Pending earnings',
       payoutLifecycleLabel: existingPayout
         ? uiLifecycleLabel(existingPayout.status)
         : 'Pending Admin Release',
@@ -457,8 +467,10 @@ router.get('/payroll', async (req, res) => {
         grossSales,
         commissionRate: COMMISSION_RATE,
         feeAmount: amount,
-        paymentStatus,
-        payoutLifecycle,
+      paymentStatus,
+      payoutLifecycle,
+      withdrawn: payoutLifecycle === 'withdrawal_requested' || payoutLifecycle === 'completed',
+      earnings: amount,
         payoutLifecycleLabel: uiLifecycleLabel(
           payoutLifecycle === 'completed'
             ? 'completed'
@@ -738,6 +750,7 @@ router.get('/payment-history', async (req, res) => {
   try {
     const usernameFilter = String(req.query.username || req.query.adminUsername || '').trim();
     const statusFilter = String(req.query.status || '').trim().toLowerCase();
+    const periodKey = String(req.query.period || req.query.periodKey || '').trim();
     const q = {};
     if (usernameFilter) {
       q.adminUsername = new RegExp(
@@ -745,8 +758,13 @@ router.get('/payment-history', async (req, res) => {
         'i'
       );
     }
+    if (periodKey && parsePayPeriodKey(periodKey)) {
+      q.periodKey = periodKey;
+    }
     if (statusFilter === 'paid' || statusFilter === 'success' || statusFilter === 'completed') {
       q.status = { $in: ['paid', 'completed'] };
+    } else if (statusFilter === 'withdrawn') {
+      q.status = { $in: ['withdrawal_requested', 'completed', 'paid'] };
     } else if (statusFilter === 'pending') {
       q.status = { $in: ['draft', 'generated', 'disbursed', 'withdrawal_requested'] };
     } else if (statusFilter === 'withdrawal_requested' || statusFilter === 'processing') {
@@ -782,12 +800,49 @@ router.get('/payment-history', async (req, res) => {
         paidBy: p.paidBy || '',
         notes: p.notes || '',
         canMarkCompleted: isWithdrawRequested(p.status),
+        withdrawn: isWithdrawRequested(p.status) || isCompleted(p.status),
       };
     });
 
     res.json({ success: true, payments });
   } catch (e) {
     console.error('GET /admin-fee/payment-history', e);
+    res.status(500).json({ success: false, message: e.message || 'Failed to load payment history' });
+  }
+});
+
+/** Signed-in admin's own fee history (Admin Fee page). */
+router.get('/my-payment-history', async (req, res) => {
+  try {
+    const username = String(req.user.username || '').trim();
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'Admin username missing' });
+    }
+    const rows = await AdminPayout.find({
+      adminUsername: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+    })
+      .sort({ periodKey: -1, updatedAt: -1 })
+      .limit(40)
+      .lean();
+    const payments = rows.map((p) => ({
+      _id: String(p._id),
+      period: p.periodKey,
+      periodKey: p.periodKey,
+      amount: Number(p.totalAmount) || 0,
+      status: p.status,
+      withdrawn: isWithdrawRequested(p.status) || isCompleted(p.status),
+      released: isReleased(p.status),
+      issueDate: p.paidAt || p.disbursedAt || p.generatedAt || p.updatedAt || p.createdAt,
+      walletLabel:
+        isWithdrawRequested(p.status) || isCompleted(p.status)
+          ? 'Withdrawn'
+          : isDisbursed(p.status)
+            ? 'Available to Withdraw'
+            : 'Pending',
+    }));
+    res.json({ success: true, payments });
+  } catch (e) {
+    console.error('GET /admin-fee/my-payment-history', e);
     res.status(500).json({ success: false, message: e.message || 'Failed to load payment history' });
   }
 });

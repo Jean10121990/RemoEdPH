@@ -129,7 +129,7 @@
                     <div class="af-stat"><div class="lbl">Gross subscription sales</div><div class="val" id="af-gross">₱0</div></div>
                     <div class="af-stat"><div class="lbl">1% Admin share</div><div class="val" id="af-share">₱0</div></div>
                     <div class="af-stat"><div class="lbl">Hours worked</div><div class="val" id="af-hours">0</div></div>
-                    <div class="af-stat"><div class="lbl">Estimated payout</div><div class="val" id="af-payout">₱0</div></div>
+                    <div class="af-stat"><div class="lbl" id="af-wallet-label">Pending earnings</div><div class="val" id="af-payout">₱0</div></div>
                 </div>
 
                 <div class="af-grid">
@@ -147,7 +147,27 @@
                     </div>
                 </div>
 
-                <div class="af-card">
+                <div class="af-card" style="margin-top:14px;">
+                    <h2>Payment history</h2>
+                    <p class="af-muted" style="margin-top:0;">Each cut-off keeps its earnings. After you withdraw, that row is marked <strong>Withdrawn</strong>.</p>
+                    <div class="af-table-wrap">
+                        <table class="af-table">
+                            <thead>
+                                <tr>
+                                    <th>Cut-off</th>
+                                    <th>Issue date</th>
+                                    <th>Earnings</th>
+                                    <th>Withdrawn</th>
+                                </tr>
+                            </thead>
+                            <tbody id="af-pay-history-body">
+                                <tr><td colspan="4" class="af-muted">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="af-card" style="margin-top:14px;">
                     <h2>Attendance history</h2>
                     <div class="af-table-wrap">
                         <table class="af-table">
@@ -295,14 +315,25 @@
         document.getElementById('af-hours').textContent = String(d.totalEligibleHours || 0);
         var payEl = document.getElementById('af-payout');
         payEl.textContent = peso(d.estimatedPayout);
-        payEl.className = 'val ' + (d.eligible ? 'ok' : 'warn');
+        var walletLabel = document.getElementById('af-wallet-label');
+        if (walletLabel) walletLabel.textContent = d.walletLabel || 'Pending earnings';
+        if (d.withdrawn) {
+            payEl.className = 'val';
+            payEl.style.color = '#0f172a';
+        } else if (d.canWithdraw) {
+            payEl.className = 'val ok';
+            payEl.style.color = '';
+        } else {
+            payEl.className = 'val warn';
+            payEl.style.color = '';
+        }
         document.getElementById('af-period-label').textContent = d.periodLabel || period;
         var statusEl = document.getElementById('af-payout-status');
         var wBtn = document.getElementById('af-withdraw-btn');
         if (statusEl) {
-            statusEl.textContent = d.payoutLifecycleLabel
-                ? ('Payout status: ' + d.payoutLifecycleLabel)
-                : '';
+            statusEl.textContent = d.withdrawn
+                ? 'This cut-off is Withdrawn. The earnings amount stays on the period.'
+                : (d.payoutLifecycleLabel ? ('Payout status: ' + d.payoutLifecycleLabel) : '');
         }
         if (wBtn) {
             if (d.canWithdraw && d.payoutId) {
@@ -375,6 +406,33 @@
         }
     }
 
+    async function loadPaymentHistory() {
+        var body = document.getElementById('af-pay-history-body');
+        if (!body) return;
+        try {
+            var d = await api('/api/admin/admin-fee/my-payment-history');
+            var rows = d.payments || [];
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="4" class="af-muted">No fee records yet.</td></tr>';
+                return;
+            }
+            body.innerHTML = rows.map(function (p) {
+                var when = p.issueDate ? new Date(p.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                var mark = p.withdrawn
+                    ? '<span class="badge-ok">Withdrawn</span>'
+                    : (p.released ? '<span class="badge-info">Not yet</span>' : '<span class="badge-warn">Pending</span>');
+                return '<tr>' +
+                    '<td>' + esc(p.periodKey || p.period || '—') + '</td>' +
+                    '<td>' + esc(when) + '</td>' +
+                    '<td>' + peso(p.amount) + '</td>' +
+                    '<td>' + mark + '<div class="af-muted" style="margin-top:4px;">' + esc(p.walletLabel || '') + '</div></td>' +
+                    '</tr>';
+            }).join('');
+        } catch (e) {
+            body.innerHTML = '<tr><td colspan="4" class="af-muted">' + esc(e.message || 'Could not load payment history') + '</td></tr>';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (!token()) {
             window.location.href = (window.RemoedAdminSession && RemoedAdminSession.getLoginPath && RemoedAdminSession.getLoginPath()) || 'admin-login.html';
@@ -385,7 +443,7 @@
             loadSummary().catch(function (e) { toast(e.message); });
         });
         document.getElementById('af-refresh').addEventListener('click', function () {
-            loadSummary().catch(function (e) { toast(e.message); });
+            loadSummary().then(loadPaymentHistory).catch(function (e) { toast(e.message); });
         });
         document.getElementById('af-open-payslip').addEventListener('click', openPayslip);
         var afWithdraw = document.getElementById('af-withdraw-btn');
@@ -408,7 +466,7 @@
                     idField: 'payoutId',
                     getToken: token,
                     onSuccess: function () {
-                        loadSummary().catch(function (e) { toast(e.message); });
+                        loadSummary().then(loadPaymentHistory).catch(function (e) { toast(e.message); });
                     }
                 });
             });
@@ -428,7 +486,7 @@
                 toast(e.message || 'Save failed');
             }
         });
-        loadSummary().catch(function (e) { toast(e.message); });
+        loadSummary().then(loadPaymentHistory).catch(function (e) { toast(e.message); });
     });
 })();
     </script>

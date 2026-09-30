@@ -157,7 +157,7 @@
                                 </small>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Birthday</label>
+                                <label class="form-label">Birthday *</label>
                                 <input type="date" class="form-input" id="birthday" name="birthday" disabled>
                             </div>
                             <div class="form-group">
@@ -166,11 +166,11 @@
                                 <small style="display:block;margin-top:4px;color:#64748b;font-size:0.75rem;">Updates automatically from your birthday each year</small>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Hire Date</label>
+                                <label class="form-label">Hire Date *</label>
                                 <input type="date" class="form-input" id="hire-date-input" name="hireDate" disabled>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Gender</label>
+                                <label class="form-label">Gender *</label>
                                     <select class="form-input" id="gender" name="gender" disabled>
                                     <option value="">Select Gender</option>
                                     <option value="Male">Male</option>
@@ -178,7 +178,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Language</label>
+                                <label class="form-label">Language *</label>
                                 <select class="form-input" id="language" name="language" disabled>
                                     <option value="">Select Language</option>
                                     <option value="English">English</option>
@@ -189,11 +189,11 @@
                                 </select>
                             </div>
                                                          <div class="form-group full-width">
-                                 <label class="form-label">Hobbies & Interests</label>
+                                 <label class="form-label">Hobbies & Interests *</label>
                                  <textarea class="form-textarea" id="hobbies" name="hobbies" rows="3" placeholder="e.g., Reading, Traveling, Music, Sports, Cooking..." disabled></textarea>
                              </div>
                             <div class="form-group full-width">
-                                <label class="form-label">Address</label>
+                                <label class="form-label">Address *</label>
                                 <textarea class="form-textarea" id="address" name="address" rows="1" disabled></textarea>
                             </div>
                             <div class="form-group">
@@ -214,10 +214,10 @@
                                 <small class="form-help">You can change your username to something more personal</small>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Emergency Contact</label>
+                                <label class="form-label">Emergency Contact *</label>
                                 <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
                                     <span class="phone-prefix" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;">+63</span>
-                                    <input type="tel" class="form-input" id="emergency-contact" name="emergency-contact" inputmode="numeric" pattern="[0-9]*" autocomplete="tel-national" placeholder="Optional" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                    <input type="tel" class="form-input" id="emergency-contact" name="emergency-contact" inputmode="numeric" pattern="[0-9]*" autocomplete="tel-national" placeholder="9XXXXXXXXX" disabled style="border-radius:0 6px 6px 0;flex:1;">
                                 </div>
                             </div>
                         </div>
@@ -524,6 +524,7 @@
                             <div class="form-group">
                                 <label class="form-label">Current Password</label>
                                 <input type="password" class="form-input" id="current-password" name="current-password" placeholder="Enter current password">
+                                <a href="forgot-password.html" style="display:inline-block;margin-top:8px;font-size:0.88rem;font-weight:600;color:#0d8bd9;text-decoration:none;">Forgot password?</a>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">New Password</label>
@@ -538,7 +539,6 @@
                         <div style="display: flex; gap: 8px; margin-top: 10px;">
                             <button type="button" class="save-btn" onclick="updateSettings()">Update Settings</button>
                             <button type="button" class="cancel-btn" onclick="resetSettingsForm()">Reset Form</button>
-                            <button type="button" class="edit-btn" onclick="goToForgotPassword()">🔑 Forgot Password</button>
                         </div>
                         
                         <div id="settings-message" style="margin-top: 10px;"></div>
@@ -3047,15 +3047,18 @@
                 'email': 'Email',
                 'username': 'Username',
                 'contact': 'Contact Number',
+                'birthday': 'Birthday',
+                'hire-date-input': 'Hire Date',
+                'gender': 'Gender',
+                'language': 'Language',
+                'hobbies': 'Hobbies & Interests',
+                'address': 'Address',
+                'emergency-contact': 'Emergency Contact',
                 'introduction': 'Introduction',
                 'profilePicture': 'Profile Picture'
             };
             
             const optionalFields = {
-                'birthday': 'Birthday',
-                'gender': 'Gender',
-                'address': 'Address',
-                'hobbies': 'Hobbies',
                 'experience': 'Experience',
                 'education': 'Education',
                 'workExperience': 'Work Experience',
