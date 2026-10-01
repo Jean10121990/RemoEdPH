@@ -14,6 +14,7 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
+      'Pre-Level',
       'Little Seeds',
       'Sprouts',
       'Saplings',

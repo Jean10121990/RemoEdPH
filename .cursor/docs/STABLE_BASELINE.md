@@ -428,7 +428,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 
 ## Curriculum levels — Pre-Level
 
-- `Pre-Level` (Free Trial) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). Lessons Library create/edit accepts it and lists it first.
+- `Pre-Level` (Free Trial) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). Lessons Library create/edit accepts it and lists it first. Student booking shows **Pre-Level** only when the student has no active subscription, and the four growth levels only when they do. A welcome-trial booking saves `Booking.studentLevel` as `Pre-Level` and is limited to Lesson 1 (`SUBSCRIPTION_REQUIRED_LEVEL` if an unpaid student sends a growth level).
 - Do **not** add it to `CURRICULUM_LEVELS`, `Booking.studentLevel`, or `normalizeCurriculumLevel` — those drive student leveling, credits and the leaderboard.
 
 ## Ops notes (out of code scope)

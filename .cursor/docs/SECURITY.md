@@ -18,6 +18,7 @@ Rules:
 
 - Never trust `teacherId`, `studentId`, `username`, or `email` from the query or body to pick *whose* data to return. Use it only to reject a mismatch.
 - `Booking.studentId` is the student **username**; `Booking.teacherId` is canonical `Teacher.teacherId`.
+- Unpaid students may book **Pre-Level** only (`SUBSCRIPTION_REQUIRED_LEVEL` on `POST /api/student/book-class`). Growth levels require an active subscription. A welcome-trial booking is Pre-Level Lesson 1.
 - Student JWTs may call only the teacher-route allowlist in `server/authMiddleware.js` (`studentMayCallThisTeacherRoute`). **Extend** it for new student needs; do not remove the `WRONG_PORTAL_TOKEN` gate.
 - Do not apply blanket `verifyAdminApiAuth` to all `/api/admin/*` — first-time 2FA enrollment (`POST /verify-2fa` with an enrollment Bearer) must still work.
 - Scoped admin roles get plain 403 on forbidden APIs; only 401 or `ADMIN_2FA_REQUIRED` / `WRONG_PORTAL_TOKEN` / `ADMIN_SESSION_REVOKED` end the session.

@@ -1196,10 +1196,6 @@
                                     <label for="student-level">Student Level <span style="color: #dc3545;">*</span></label>
                                     <select id="student-level" required onchange="clearFieldError('student-level'); loadLessonsForLevel();">
                                         <option value="">Select level</option>
-                                        <option value="Little Seeds">Little Seeds</option>
-                                        <option value="Sprouts">Sprouts</option>
-                                        <option value="Saplings">Saplings</option>
-                                        <option value="Young Stewards">Young Stewards</option>
                                     </select>
                                     <div class="error-message" id="student-level-error"></div>
                                 </div>
@@ -2394,6 +2390,7 @@
             modal.hidden = false;
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
+            applyStudentLevelOptions();
         }
         
         function closeBookingModal() {
@@ -3557,6 +3554,7 @@
             const normalize = (raw) => {
                 const s = String(raw || '').toLowerCase().trim();
                 if (!s) return '';
+                if (s.includes('free trial') || s.includes('pre-level') || s.includes('pre level') || s === 'prelevel') return 'pre-level';
                 if (s.includes('little seeds') || s === 'nursery' || s === 'level 1') return 'little seeds';
                 if (s.includes('sprouts') || s.includes('kindergarten') || s === 'level 2') return 'sprouts';
                 if (s.includes('saplings') || s.includes('preparatory') || s === 'level 3') return 'saplings';
@@ -3677,6 +3675,33 @@
             }
         }
 
+        const GROWTH_BOOKING_LEVELS = ['Little Seeds', 'Sprouts', 'Saplings', 'Young Stewards'];
+
+        function appendLevelOption(levelSelect, value, label) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            levelSelect.appendChild(option);
+        }
+
+        async function applyStudentLevelOptions() {
+            await refreshTrialBookingFlag();
+            const levelSelect = document.getElementById('student-level');
+            if (!levelSelect) return;
+            const previous = levelSelect.value;
+            levelSelect.innerHTML = '';
+            appendLevelOption(levelSelect, '', 'Select level');
+            if (studentHasPaidPlan) {
+                GROWTH_BOOKING_LEVELS.forEach((level) => appendLevelOption(levelSelect, level, level));
+                if (GROWTH_BOOKING_LEVELS.indexOf(previous) !== -1) levelSelect.value = previous;
+                return;
+            }
+            appendLevelOption(levelSelect, 'Pre-Level', 'Pre-Level');
+            levelSelect.value = 'Pre-Level';
+            clearFieldError('student-level');
+            await loadLessonsForLevel();
+        }
+
         async function applyJourneyLevelPrefill() {
             try {
                 const lvl = sessionStorage.getItem('prefillJourneyLevel');
@@ -3784,7 +3809,7 @@
                             studentMaxBookableLesson +
                             ' (next on your trail) or any earlier lesson — including reschedules. Later lessons stay locked until you finish the ones before them.';
                     } else if (studentTrialBookingActive) {
-                        hintEl.textContent = 'Free trial: Lesson 1 is open. Other lessons are listed but locked until you enroll in a plan.';
+                        hintEl.textContent = 'Free trial: Pre-Level Lesson 1 is open. Later Pre-Level lessons stay locked until you subscribe.';
                     } else {
                         hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
                     }

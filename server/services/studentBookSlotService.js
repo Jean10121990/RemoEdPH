@@ -251,7 +251,16 @@ async function runBookSlot(req, res) {
       });
     }
 
-    // Free trial: only Lesson 1 (any curriculum level) may be booked.
+    const { normalizeCurriculumDocLevel, PRE_LEVEL } = require('../config/curriculumLevels');
+    const bookedDocLevel = normalizeCurriculumDocLevel(studentLevel);
+    if (!effectiveSubscribed && bookedDocLevel !== PRE_LEVEL) {
+      return res.status(403).json({
+        error: 'Little Seeds, Sprouts, Saplings, and Young Stewards need a subscription. With no plan, book Pre-Level.',
+        code: 'SUBSCRIPTION_REQUIRED_LEVEL',
+      });
+    }
+
+    // Free trial: only Pre-Level Lesson 1 may be booked.
     if (trialOnlyBooking) {
       const Lesson = require('../models/Lesson');
       let lessonNum = null;
@@ -504,9 +513,12 @@ async function runBookSlot(req, res) {
       const timeStr = timeUtc.replace(':', '');
       const classroomId = `${dateStr}${timeStr}${usernamePart}${studentBookingCount + 1}`;
 
-      const { normalizeCurriculumLevel, DEFAULT_CURRICULUM_LEVEL } = require('../config/curriculumLevels');
+      const { normalizeCurriculumLevel, normalizeCurriculumDocLevel, DEFAULT_CURRICULUM_LEVEL, PRE_LEVEL } = require('../config/curriculumLevels');
+      const docLevel = normalizeCurriculumDocLevel(studentLevel);
       const canonicalStudentLevel =
-        normalizeCurriculumLevel(studentLevel) || DEFAULT_CURRICULUM_LEVEL;
+        docLevel === PRE_LEVEL
+          ? PRE_LEVEL
+          : (normalizeCurriculumLevel(studentLevel) || DEFAULT_CURRICULUM_LEVEL);
 
       const b = new Booking({
         studentId,
