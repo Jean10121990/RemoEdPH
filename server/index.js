@@ -2550,6 +2550,13 @@ io.on('connection', socket => {
         realtime.noteClassroomPeerJoined(room, socket);
     });
     
+    socket.on('ready', ({ room } = {}) => {
+        if (realtime.isClassroomObserver(socket)) return;
+        const target = room || socket.room;
+        if (!target) return;
+        socket.emit('ready');
+    });
+
     socket.on('offer', ({ room, offer }) => {
         console.log('📤 Forwarding offer to room:', room);
         console.log('📤 Offer type:', offer.type);

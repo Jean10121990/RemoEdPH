@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-app-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-resolve-1" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-quiet-1" />
   <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -1253,6 +1253,7 @@
             modal.hidden = true;
             modal.setAttribute('hidden', '');
             modal.style.display = 'none';
+            btn.classList.remove('is-open');
           }
           function openSos() {
             picked = '';
@@ -1260,6 +1261,7 @@
             modal.hidden = false;
             modal.removeAttribute('hidden');
             modal.style.display = 'flex';
+            btn.classList.add('is-open');
           }
           closeSos();
           btn.addEventListener('click', function (e) {
@@ -2995,9 +2997,15 @@
               }, 1000);
               return;
             }
-            // Perfect negotiation: do not create a new offer if already stable (avoids InvalidStateError)
-            if (signalingState === 'stable') {
-              console.log('⚠️ Teacher: already stable, ignoring duplicate ready');
+            // A new connection is 'stable' with no descriptions. That is when the offer must be sent.
+            // Ignore only a call that is already up.
+            if (
+              signalingState === 'stable' &&
+              peerConnection.localDescription &&
+              peerConnection.remoteDescription &&
+              (connectionState === 'connected' || connectionState === 'connecting')
+            ) {
+              console.log('⚠️ Teacher: call already up, ignoring duplicate ready');
               return;
             }
             
