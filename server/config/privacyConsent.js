@@ -1,6 +1,6 @@
 /** Current parent privacy and recording policy. A new string forces the checkbox again. */
 const PRIVACY_CONSENT_VERSION = '2026-10-01';
-const CONSENT_SOURCES = ['register', 'booking', 'checkout'];
+const CONSENT_SOURCES = ['register', 'booking', 'checkout', 'profile'];
 
 function clientIp(req) {
   const forwarded = req && req.headers && req.headers['x-forwarded-for'];

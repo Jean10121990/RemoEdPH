@@ -126,7 +126,7 @@ const studentSchema = new mongoose.Schema({
       acceptedAt: { type: Date, default: Date.now },
       ip: { type: String, default: '' },
       userAgent: { type: String, default: '' },
-      source: { type: String, enum: ['register', 'booking', 'checkout'], default: 'register' },
+      source: { type: String, enum: ['register', 'booking', 'checkout', 'profile'], default: 'register' },
     },
   ],
   /** Optional. Separate from the privacy policy acceptance. */

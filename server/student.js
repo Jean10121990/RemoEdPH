@@ -310,7 +310,8 @@ router.post('/privacy-consent', verifyToken, requireStudent, async (req, res) =>
     const student = await Student.findById(req.user.studentId);
     if (!student) return res.status(404).json({ error: 'Student not found' });
     const now = new Date();
-    const source = req.body && req.body.source === 'checkout' ? 'checkout' : 'booking';
+    const requested = req.body && req.body.source;
+    const source = requested === 'checkout' || requested === 'profile' ? requested : 'booking';
     const set = {
       privacyConsentVersion: PRIVACY_CONSENT_VERSION,
       privacyConsentAcceptedAt: now,

@@ -7,16 +7,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Classroom SOS — RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-16">
+    <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/admin-hub-shell.css">
+    <style>
+        body.page-admin-incidents { background: #f6fbff; }
+        .page-admin-incidents .remoed-section {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(28, 167, 231, 0.07);
+            padding: 16px 18px;
+        }
+        .page-admin-incidents .remoed-section-title {
+            color: #1ca7e7;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .sos-filters { display: flex; align-items: flex-end; gap: 12px; margin: 14px 0; }
+        .sos-filters label { font-size: 0.8rem; font-weight: 600; color: #374151; display: flex; flex-direction: column; gap: 4px; }
+        .sos-filters select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; min-width: 180px; }
+        .sos-empty { color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 16px; }
+        .sos-card { background: #f8fafc; border-radius: 10px; padding: 14px; margin-bottom: 10px; border-left: 4px solid #1ca7e7; }
+        .sos-card h3 { margin: 0 0 6px; font-size: 1rem; color: #1e293b; }
+        .sos-meta { color: #475569; font-size: 0.9rem; line-height: 1.45; }
+        .sos-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    </style>
 </head>
-<body class="admin-hub-page">
+<body class="page-admin-incidents admin-hub-page has-admin-page-header">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
-        <script src="js/admin-page-header.js?v=sock-auth-1"></script>
+        <script src="js/admin-page-header.js?v=sos-2"></script>
         <script src="js/admin-notifications.js?v=sock-auth-1"></script>
         <script src="js/admin-sidebar.js?v=app-shell-16"></script>
         <script src="js/admin-access-guard.js?v=sos-1"></script>
@@ -24,7 +51,8 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Classroom SOS</div>
-                <p class="muted" style="margin-top:0;">Open incidents from live classes. Observe joins without a camera. Pause and end apply to that room only.</p>
+                <p class="muted" style="margin-top:0;">A teacher presses Emergency SOS in the live classroom. This page lists those alerts. Observe joins that class without a camera. Pause and End apply to that room only. An empty list means no teacher has sent an SOS.</p>
+                <div class="sos-filters">
                 <label>Status
                   <select id="incident-status">
                     <option value="open">Open</option>
@@ -36,6 +64,7 @@
                     <option value="all">All</option>
                   </select>
                 </label>
+                </div>
                 <div id="incident-list" style="margin-top:16px;"></div>
             </div>
         </div>
@@ -76,22 +105,22 @@
         }
         var rows = body.incidents || [];
         if (!rows.length) {
-          list.textContent = 'No incidents for this status.';
+          list.innerHTML = '<div class="sos-empty">No incidents for this status.</div>';
           return;
         }
         list.innerHTML = rows.map(function (row) {
           var when = row.createdAt ? new Date(row.createdAt).toLocaleString() : '';
-          return '<article style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:10px;">' +
-            '<strong>' + esc(row.categoryLabel || row.category) + '</strong> · Tier ' + esc(row.tier) +
-            ' · ' + esc(row.status) +
-            '<div>Class ' + esc(row.classroomId) + ' · Student ' + esc(row.studentId) + ' · Teacher ' + esc(row.teacherId) + '</div>' +
-            '<div class="muted">' + esc(when) + (row.creditRestored ? ' · Credit restored' : '') + '</div>' +
-            (row.description ? '<p>' + esc(row.description) + '</p>' : '') +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
-            '<button type="button" data-act="observe" data-id="' + esc(row.id) + '">Observe</button>' +
-            '<button type="button" data-act="pause" data-id="' + esc(row.id) + '">Pause</button>' +
-            '<button type="button" data-act="terminate" data-id="' + esc(row.id) + '">End class</button>' +
-            '<button type="button" data-act="resolve" data-id="' + esc(row.id) + '">Resolve</button>' +
+          return '<article class="sos-card">' +
+            '<h3>' + esc(row.categoryLabel || row.category) + '</h3>' +
+            '<div class="sos-meta">Tier ' + esc(row.tier) + ' · ' + esc(row.status) + '</div>' +
+            '<div class="sos-meta">Class ' + esc(row.classroomId) + ' · Student ' + esc(row.studentId) + ' · Teacher ' + esc(row.teacherId) + '</div>' +
+            '<div class="sos-meta">' + esc(when) + (row.creditRestored ? ' · Credit restored' : '') + '</div>' +
+            (row.description ? '<p class="sos-meta">' + esc(row.description) + '</p>' : '') +
+            '<div class="sos-actions">' +
+            '<button type="button" class="remoed-btn remoed-btn-primary" data-act="observe" data-id="' + esc(row.id) + '">Observe</button>' +
+            '<button type="button" class="remoed-btn remoed-btn-warning" data-act="pause" data-id="' + esc(row.id) + '">Pause</button>' +
+            '<button type="button" class="remoed-btn remoed-btn-danger" data-act="terminate" data-id="' + esc(row.id) + '">End class</button>' +
+            '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="resolve" data-id="' + esc(row.id) + '">Resolve</button>' +
             '</div></article>';
         }).join('');
       }

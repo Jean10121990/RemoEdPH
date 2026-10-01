@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emergency guidelines — RemoEdPH</title>
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-10">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-12">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
@@ -14,28 +15,80 @@
     <script src="js/user-session.js"></script>
     <script src="js/teacher-session-gate.js?v=2"></script>
     <script src="js/remoed-auth-token.js?v=2"></script>
+    <style>
+        body.page-teacher-emergency-guidelines { background: #f6fbff; }
+        .guide-lead {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(28, 167, 231, 0.07);
+            padding: 16px 18px;
+            margin-bottom: 16px;
+            color: #334155;
+            line-height: 1.5;
+        }
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .guide-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(28, 167, 231, 0.07);
+            padding: 16px 18px;
+            border-top: 4px solid #1ca7e7;
+        }
+        .guide-card h2 {
+            margin: 0 0 8px;
+            font-size: 1.05rem;
+            color: #1e3a5f;
+        }
+        .guide-card p { margin: 0; color: #475569; line-height: 1.5; }
+        .guide-card--1 { border-top-color: #16a34a; }
+        .guide-card--2 { border-top-color: #f59e0b; }
+        .guide-card--3 { border-top-color: #dc2626; }
+        .guide-kicker {
+            display: inline-block;
+            margin-bottom: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+    </style>
 </head>
-<body class="teacher-portal">
+<body class="page-teacher-emergency-guidelines teacher-portal">
     <div class="remoed-main">
-        <div class="nav-header">
-            <div class="nav-left"><h1><span class="nav-title-text">Emergency guidelines</span></h1></div>
-        </div>
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
+        <script src="js/teacher-page-header.js?v=guidelines-1"></script>
         <script>
           if (window.RemoedTeacherSession) RemoedTeacherSession.requireTeacher();
           TeacherSidebar.render('teacher-sidebar-root', 'emergency-guidelines');
+          if (window.TeacherPageHeader) TeacherPageHeader.render('emergency-guidelines');
         </script>
-        <div class="remoed-content" style="padding:24px;">
-            <section style="max-width:720px;">
-                <p>Use <strong>Emergency SOS</strong> in the live classroom. Students do not see that button. Confirm sends the alert to RemoEd admins.</p>
-                <h2>Tier 1 — Technical failure</h2>
-                <p>Power or internet has failed. Press SOS, tell the student to wait, and stay if you can. An admin may end the class and restore the lesson.</p>
-                <h2>Tier 2 — Unaccompanied child under 6</h2>
-                <p>Press SOS and ask for a parent. Do not continue the lesson alone with a child under 6.</p>
-                <h2>Tier 3 — Unauthorized adult or safety</h2>
-                <p>A behavioral issue, an unauthorized adult, or distress and inappropriate content. Press SOS, stop the activity, and stay in the room until an admin joins or ends it. Do not argue with the adult.</p>
-            </section>
+        <div class="remoed-content">
+            <div class="guide-lead">
+                Use <strong>Emergency SOS</strong> in the live classroom, beside Settings. Students do not see that button. Confirm sends the alert to RemoEd admins. You can withdraw it for 15 seconds.
+            </div>
+            <div class="guide-grid">
+                <article class="guide-card guide-card--1">
+                    <span class="guide-kicker">Tier 1</span>
+                    <h2>Technical failure</h2>
+                    <p>Power or internet has failed. Press SOS, tell the student to wait, and stay if you can. An admin may end the class and restore the lesson.</p>
+                </article>
+                <article class="guide-card guide-card--2">
+                    <span class="guide-kicker">Tier 2</span>
+                    <h2>Unaccompanied child under 6</h2>
+                    <p>Press SOS and ask for a parent. Do not continue the lesson alone with a child under 6.</p>
+                </article>
+                <article class="guide-card guide-card--3">
+                    <span class="guide-kicker">Tier 3</span>
+                    <h2>Unauthorized adult or safety</h2>
+                    <p>A behavioral issue, an unauthorized adult, or distress and inappropriate content. Press SOS, stop the activity, and stay in the room until an admin joins or ends it. Do not argue with the adult.</p>
+                </article>
+            </div>
         </div>
     </div>
 </body>

@@ -42,7 +42,9 @@
         person:
             '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>',
         monitor:
-            '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>'
+            '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>',
+        alert:
+            '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 18v-6a5 5 0 0 1 10 0v6"/><path d="M5 21h14v-1a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2z"/><path d="M12 2v1"/><path d="M12 12v6"/></svg>'
     };
 
     var ACTION = {
@@ -73,7 +75,8 @@
         'training-course': { title: 'Training Course', icon: 'book' },
         assessment: { title: 'Assessment', icon: 'chart' },
         'view-assessment': { title: 'Assessment Results', icon: 'chart' },
-        payslip: { title: 'Payslip', icon: 'money' }
+        payslip: { title: 'Payslip', icon: 'money' },
+        'emergency-guidelines': { title: 'Emergency guidelines', icon: 'alert' }
     };
 
     function escapeHtml(s) {

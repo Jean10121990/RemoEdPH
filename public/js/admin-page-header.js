@@ -21,6 +21,7 @@
         dashboard: 'Admin Dashboard',
         'hr-hub': 'HR Hub',
         'qa-hub': 'QA Hub',
+        incidents: 'Classroom SOS',
         'accounting-hub': 'Accounting Hub',
         'admin-fee': 'Admin Fee',
         marketing: 'Marketing Hub',
@@ -158,6 +159,7 @@
         var path = (window.location.pathname || '').replace(/^\//, '') || '';
         if (path.indexOf('admin-dashboard') !== -1) return 'dashboard';
         if (path.indexOf('admin-hr-hub') !== -1) return 'hr-hub';
+        if (path.indexOf('admin-incidents') !== -1) return 'incidents';
         if (path.indexOf('admin-qa-hub') !== -1) return 'qa-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-marketing-hub') !== -1) return 'marketing';
