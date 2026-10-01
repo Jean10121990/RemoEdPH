@@ -1089,7 +1089,7 @@
             <div style="flex-shrink: 0;">
                 <div class="header-info">
                 <div class="info-item">
-                    <span class="quota" id="available-slots-info">Select a time slot to book a class. Limit: 6 classes (3 hours) per day.</span>
+                    <span class="quota" id="available-slots-info">Select a time slot to book a class.</span>
                 </div>
                 
                 <!-- Combined Navigation and Action Buttons Row -->
@@ -1131,10 +1131,6 @@
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
                         <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 2px; border: 1px solid #6c757d; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #6c757d; font-size: 7px;">—</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Unavailable</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
-                        <div style="width: 12px; height: 12px; background: #fff7ed; border-radius: 2px; border: 1px solid #fdba74; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #9a3412; font-size: 6px;">2</div>
-                        <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Day full (2 / 1 hr)</span>
                     </div>
                     </div>
                 </div>
@@ -1437,7 +1433,7 @@
         /** Local date-time keys where the logged-in student already has a booking (wins over "available" when another teacher is still open). */
         let ownBookedSlotKeys = new Set();
         /** Count of this student's non-cancelled classes per local YYYY-MM-DD. Max 2 / day. */
-        const MAX_CLASSES_PER_DAY = 6;
+        const MAX_CLASSES_PER_DAY = Infinity; // no daily booking cap
         let ownClassesByDate = new Map();
 
         /** Case-insensitive teacher id / email for slot maps and dropdown matching. */

@@ -430,7 +430,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 | `SUBSCRIPTION_REQUIRED_LESSON_2` | Not subscribed / no credits / no trial |
 | `CREDITS_EXPIRED` | Unused credits expired after validity window |
 | `INSUFFICIENT_CREDITS` | `creditBalance` is 0 |
-| `DAILY_CLASS_LIMIT` | Student may book at most 6 classes (3 hours) per local day |
+| `DAILY_CLASS_LIMIT` | Removed: students have no per-day booking cap |
 | `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
 | `LESSON_AHEAD_OF_PROGRESS` | No longer applied to paid bookings. Paid students with credits may book any lesson in the selected level. |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
