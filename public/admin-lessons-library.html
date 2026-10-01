@@ -1741,7 +1741,15 @@
             if (selectedFiles.length > 0) {
                 document.getElementById('upload-btn').disabled = false;
                 document.getElementById('upload-btn').textContent = 'Upload Files';
-                showAlert('info', `${selectedFiles.length} file(s) selected. Click "Upload Files" to upload.`);
+                let msg = `${selectedFiles.length} file(s) selected. Click "Upload Files" to upload.`;
+                const OFFICE_VIEWER_MAX_BYTES = 10 * 1024 * 1024;
+                const bigDecks = selectedFiles.filter((f) => /\.pptx?$/i.test(f.name) && f.size > OFFICE_VIEWER_MAX_BYTES);
+                if (bigDecks.length) {
+                    const names = bigDecks.map((f) => `"${f.name}" (${(f.size / 1048576).toFixed(1)} MB)`).join(', ');
+                    msg += ` Over 10 MB: ${names}. Microsoft PowerPoint opens decks up to 10 MB, so large pictures will be compressed automatically after upload.` +
+                        (bigDecks.some((f) => /\.ppt$/i.test(f.name)) ? ' Old .ppt files cannot be compressed: save them as .pptx first.' : '');
+                }
+                showAlert('info', msg);
             }
         }
 
@@ -1825,6 +1833,7 @@
                 }
 
                 const isHtml5 = currentUploadMode === 'html5_zip';
+                const uploadWarnings = [];
                 uploadBtn.textContent = isHtml5 ? 'Uploading ZIP…' : 'Uploading...';
                 const total = selectedFiles.length;
 
@@ -1845,7 +1854,7 @@
                         : (isHtml5 ? 'Uploading HTML5 ZIP…' : (/\.pptx?$/i.test(file.name) ? 'Uploading & converting slides…' : 'Uploading…'));
                     showUploadProgress(label, 0, file.name);
 
-                    await uploadWithProgress(
+                    const uploadResult = await uploadWithProgress(
                         `/api/lessons/lesson/${currentLessonId}/upload-file`,
                         form,
                         token,
@@ -1858,12 +1867,15 @@
                         }
                     );
                     showUploadProgress(label, ((i + 1) / total) * 100, file.name);
+                    if (uploadResult && uploadResult.warning) uploadWarnings.push(`${file.name}: ${uploadResult.warning}`);
                 }
 
                 showUploadProgress('Complete', 100, `${total} file(s) uploaded`);
-                showAlert('success', isHtml5
+                const uploadedMsg = isHtml5
                     ? 'HTML5 ZIP uploaded successfully!'
-                    : `Successfully uploaded ${total} file(s)!`);
+                    : `Successfully uploaded ${total} file(s)!`;
+                showAlert(uploadWarnings.length ? 'info' : 'success',
+                    uploadedMsg + (uploadWarnings.length ? ' ' + uploadWarnings.join(' ') : ''));
                 selectedFiles = [];
                 const fileInput = document.getElementById('file-input');
                 const zipInput = document.getElementById('zip-file-input');
@@ -2670,6 +2682,7 @@
 
                 // Upload the required file
                 const file = fileInput.files[0];
+                let createUploadWarning = '';
                 const maxSize = 50 * 1024 * 1024; // 50MB
                 if (file.size > maxSize) {
                     showAlert('error', `File "${file.name}" is too large. Maximum size is 50MB.`);
@@ -2701,6 +2714,8 @@
                         const errorData = await uploadResponse.json().catch(() => ({ error: 'File upload failed' }));
                         throw new Error(errorData.error || 'File upload failed');
                     }
+                    const uploadResult = await uploadResponse.json().catch(() => ({}));
+                    if (uploadResult && uploadResult.warning) createUploadWarning = uploadResult.warning;
                 } catch (uploadError) {
                     // If file upload fails, delete the lesson that was created
                     try {
@@ -2717,7 +2732,8 @@
                     throw uploadError;
                 }
 
-                showAlert('success', 'Lesson created successfully!');
+                showAlert(createUploadWarning ? 'info' : 'success',
+                    'Lesson created successfully!' + (createUploadWarning ? ' ' + createUploadWarning : ''));
                 
                 // Clear form
                 document.getElementById('new-lesson-number').value = '';
@@ -2846,7 +2862,7 @@
             container.appendChild(alert);
             setTimeout(() => {
                 alert.remove();
-            }, 5000);
+            }, String(message).length > 140 ? 15000 : 5000);
         }
     </script>
 </body>

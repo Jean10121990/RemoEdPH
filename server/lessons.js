@@ -27,8 +27,11 @@ const {
   buildLessonPptxPreviewPdf,
   convertPptxUploadAssets,
   countSlidesInPptx,
+  findCachedPreviewPdf,
   publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
+const { buildOfficeViewerEmbedUrl } = require('./utils/officeViewerLink');
+const { compressPptxIfLarge, OFFICE_VIEWER_MAX_BYTES } = require('./utils/pptxCompress');
 const { isMongoObjectId, isBsonOrCastIdError } = require('./utils/mongoObjectId');
 const { saveUploadTree } = require('./services/uploadStore');
 
@@ -896,6 +899,7 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
 // Supports JSON (legacy base64) and multipart/form-data (preferred for PPTX / large files).
 router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, parseOptionalMultipartLessonUpload, async (req, res) => {
   let tmpCleanupPath = null;
+  let compression = null;
   try {
     const { lessonId } = req.params;
     if (!isMongoObjectId(lessonId)) {
@@ -1000,6 +1004,16 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
         return res.status(400).json({ error: 'Missing file data' });
       }
 
+      if (isPptPresentation(fileName, fileType)) {
+        // Microsoft's online viewer only opens decks up to ~10 MB: shrink pictures first.
+        compression = await compressPptxIfLarge(destPath);
+        if (compression.compressed) {
+          console.log(
+            `[UPLOAD] PPTX compressed file=${fileId} ${compression.beforeBytes} -> ${compression.afterBytes} bytes`
+          );
+        }
+      }
+
       let storedSize = fileSize;
       try {
         storedSize = (await fsp.stat(destPath)).size;
@@ -1065,10 +1079,21 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
     const savedLesson = await Lesson.findById(lessonId).select('files');
     const addedFile = savedLesson.files[savedLesson.files.length - 1];
 
-    res.json({
+    const payload = {
       message: 'File uploaded successfully',
       file: serializeLessonFileMeta(addedFile)
-    });
+    };
+    if (compression) {
+      payload.compression = compression;
+      if (compression.overLimit) {
+        const mb = (compression.afterBytes / (1024 * 1024)).toFixed(1);
+        payload.warning =
+          `This deck is still ${mb} MB${compression.compressed ? ' after compression' : ''}. ` +
+          `Microsoft PowerPoint may not open decks over ${OFFICE_VIEWER_MAX_BYTES / (1024 * 1024)} MB in class. ` +
+          (/\.pptx$/i.test(fileName) ? 'Reduce videos or large images and upload again.' : 'Save it as .pptx, reduce videos or large images, and upload again.');
+      }
+    }
+    res.json(payload);
   } catch (error) {
     console.error('❌ [UPLOAD] Error uploading lesson file:', error);
     res.status(500).json({ error: error.message || 'Failed to upload file' });
@@ -1135,7 +1160,7 @@ router.get('/presentation/:fileId/view', authenticateToken, async (req, res) => 
 
 /**
  * Read-only embed metadata for Lessons Library preview (no direct download URL).
- * Prefer same-origin PDF conversion — Microsoft Office Online cannot fetch auth-gated /uploads.
+ * Uploaded decks open in Microsoft PowerPoint through a signed, short-lived file link.
  */
 router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, res) => {
   try {
@@ -1180,7 +1205,19 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
       return res.status(404).json({ error: 'No embeddable presentation source' });
     }
 
-    // Convert to PDF for authenticated same-origin preview (library + classroom).
+    const officeEmbedUrl = (await findCachedPreviewPdf(file)) ? '' : buildOfficeViewerEmbedUrl(req, file);
+    if (officeEmbedUrl) {
+      return res.json({
+        success: true,
+        mode: 'office_embed',
+        officeViewer: true,
+        embedUrl: officeEmbedUrl,
+        previewUrl: officeEmbedUrl,
+        fileName,
+        downloadAllowed: false,
+      });
+    }
+
     try {
       await buildLessonPptxPreviewPdf(file);
       const previewPdfPath = `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`;
@@ -1199,7 +1236,7 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
       return res.status(500).json({
         error:
           convErr.message ||
-          'Could not convert this PowerPoint for preview. Ensure the file exists on the server and LibreOffice is available.',
+          'Could not open this PowerPoint. Open it on the live https site so Microsoft PowerPoint can show it.',
       });
     }
   } catch (error) {
@@ -1208,8 +1245,8 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
 });
 
 /**
- * PPTX preview: convert to PDF once and cache beside the file.
- * Used when Microsoft Office Online cannot fetch private/localhost URLs (live class + library).
+ * PPTX preview for live class + library: existing slide images or cached PDF first,
+ * otherwise Microsoft PowerPoint (signed file link). LibreOffice only on local/http setups.
  */
 router.get('/presentation/:fileId/local-preview', authenticateToken, async (req, res) => {
   try {
@@ -1269,6 +1306,21 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
         slideUrls: existingSlideUrls,
         convertedPdfUrl: file.convertedPdfUrl || previewUrl
       });
+    }
+
+    if (!(await findCachedPreviewPdf(file))) {
+      const officeEmbedUrl = buildOfficeViewerEmbedUrl(req, file);
+      if (officeEmbedUrl) {
+        return res.json({
+          success: true,
+          mode: 'office_embed',
+          officeViewer: true,
+          embedUrl: officeEmbedUrl,
+          previewUrl: officeEmbedUrl,
+          fileName: file.fileName,
+          slideCount: file.slideCount != null ? file.slideCount : null
+        });
+      }
     }
 
     const result = await buildLessonPptxPreviewPdf(file);

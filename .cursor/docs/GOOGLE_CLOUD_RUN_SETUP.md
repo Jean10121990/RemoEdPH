@@ -7,7 +7,6 @@ This guide provides step-by-step instructions for configuring environment variab
 - Google Cloud account with Cloud Run API enabled
 - Your Cloud Run service already created (or create it after setting these variables)
 - MongoDB Atlas account (or your MongoDB connection string)
-- Cloudmersive API account (optional, for PPTX conversion)
 
 ---
 
@@ -41,7 +40,6 @@ Click **"ADD VARIABLE"** for each of the following:
 
 | Variable Name | Value | Description |
 |--------------|-------|-------------|
-| `CLOUDMERSIVE_API_KEY` | `your-cloudmersive-api-key` | API key for PPTX to PNG conversion (get from [Cloudmersive](https://www.cloudmersive.com/)) |
 | `SENTRY_DSN` | `https://…@o….ingest.sentry.io/…` | Optional Sentry DSN for server error tracking (`@sentry/node`) |
 | `SENTRY_ENVIRONMENT` | `production` | Optional Sentry environment label (defaults to `NODE_ENV`) |
 | `SMTP_HOST` | `smtp.gmail.com` | SMTP server hostname for email sending |
@@ -79,13 +77,6 @@ For sensitive data like passwords and API keys, use **Secrets** instead of regul
 4. **Secret value:** Your complete MongoDB connection string
 5. Click **"CREATE SECRET"**
 
-**For CLOUDMERSIVE_API_KEY:**
-1. Go to **Secret Manager**
-2. Click **"CREATE SECRET"**
-3. **Secret name:** `cloudmersive-api-key`
-4. **Secret value:** Your Cloudmersive API key
-5. Click **"CREATE SECRET"**
-
 ##### Referencing Secrets in Cloud Run:
 
 After creating secrets, go back to Cloud Run service editing:
@@ -96,7 +87,6 @@ After creating secrets, go back to Cloud Run service editing:
 4. Repeat for other secrets:
    - `smtp-password` → `SMTP_PASS`
    - `mongodb-uri` → `MONGODB_URI`
-   - `cloudmersive-api-key` → `CLOUDMERSIVE_API_KEY`
 
 #### Step 5: Deploy
 1. Scroll to the bottom
@@ -142,9 +132,6 @@ echo -n "mongodb+srv://username:password@cluster.mongodb.net/database" | gcloud 
 
 # Create SMTP password secret
 echo -n "your-smtp-password" | gcloud secrets create smtp-password --data-file=-
-
-# Create Cloudmersive API key secret
-echo -n "your-cloudmersive-api-key" | gcloud secrets create cloudmersive-api-key --data-file=-
 ```
 
 Then grant Cloud Run access and update service:
@@ -165,14 +152,10 @@ gcloud secrets add-iam-policy-binding smtp-password \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/secretmanager.secretAccessor"
 
-gcloud secrets add-iam-policy-binding cloudmersive-api-key \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor"
-
 # Update service to use secrets
 gcloud run services update remoedph \
   --region europe-west1 \
-  --update-secrets="JWT_SECRET=jwt-secret:latest,MONGODB_URI=mongodb-uri:latest,SMTP_PASS=smtp-password:latest,CLOUDMERSIVE_API_KEY=cloudmersive-api-key:latest"
+  --update-secrets="JWT_SECRET=jwt-secret:latest,MONGODB_URI=mongodb-uri:latest,SMTP_PASS=smtp-password:latest"
 ```
 
 ---
@@ -191,7 +174,6 @@ gcloud run services update remoedph \
 
 | Variable Name | Type | Example Value | Required For |
 |--------------|------|---------------|--------------|
-| `CLOUDMERSIVE_API_KEY` | Secret | `abc123def456ghi789` | PPTX to PNG conversion feature |
 | `SMTP_HOST` | Variable | `smtp.gmail.com` | Email functionality (password reset) |
 | `SMTP_PORT` | Variable | `587` | Email functionality |
 | `SMTP_USER` | Variable | `your-email@gmail.com` | Email functionality |
@@ -300,11 +282,10 @@ After deployment, verify your configuration:
 - For Gmail, ensure you're using an **App Password**, not regular password
 - Check if 2FA is enabled on your Gmail account
 
-### Issue: "PPTX conversion failing"
+### Issue: "Lesson PowerPoint does not open"
 **Solution:**
-- Verify `CLOUDMERSIVE_API_KEY` is set correctly
-- Check your Cloudmersive account has active credits
-- Verify API key hasn't expired
+- Lessons open in Microsoft PowerPoint. `FRONTEND_URL` must be the public https site so Microsoft can fetch the signed lesson file link.
+- Microsoft's viewer accepts PowerPoint files up to about 10 MB. Compress pictures in PowerPoint for larger decks.
 
 ---
 

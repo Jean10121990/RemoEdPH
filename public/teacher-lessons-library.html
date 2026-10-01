@@ -1104,7 +1104,16 @@
 
             if (selectedFiles.length > 0) {
                 document.getElementById('upload-btn').disabled = false;
-                showAlert('info', `${selectedFiles.length} file(s) selected. Click "Upload Files" to upload.`);
+                let msg = `${selectedFiles.length} file(s) selected. Click "Upload Files" to upload.`;
+                const OFFICE_VIEWER_MAX_BYTES = 10 * 1024 * 1024;
+                const bigDecks = selectedFiles.filter(f => /\.pptx?$/i.test(f.name) && f.size > OFFICE_VIEWER_MAX_BYTES);
+                if (bigDecks.length) {
+                    const names = bigDecks.map(f => `"${f.name}" (${(f.size / 1048576).toFixed(1)} MB)`).join(', ');
+                    const hasOldPpt = bigDecks.some(f => /\.ppt$/i.test(f.name));
+                    msg += ` Over 10 MB: ${names}. Microsoft PowerPoint opens decks up to 10 MB, so large pictures will be compressed automatically after upload.` +
+                        (hasOldPpt ? ' Old .ppt files cannot be compressed: save them as .pptx first.' : '');
+                }
+                showAlert('info', msg);
             }
         }
 
@@ -1117,6 +1126,7 @@
             const uploadBtn = document.getElementById('upload-btn');
             uploadBtn.disabled = true;
             uploadBtn.textContent = 'Uploading...';
+            const uploadWarnings = [];
 
             try {
                 for (const file of selectedFiles) {
@@ -1140,9 +1150,12 @@
                         const error = await response.json().catch(() => ({ error: 'Upload failed' }));
                         throw new Error(error.error || 'Upload failed');
                     }
+                    const result = await response.json().catch(() => ({}));
+                    if (result && result.warning) uploadWarnings.push(`${file.name}: ${result.warning}`);
                 }
 
-                showAlert('success', `Successfully uploaded ${selectedFiles.length} file(s)!`);
+                showAlert(uploadWarnings.length ? 'info' : 'success',
+                    `Successfully uploaded ${selectedFiles.length} file(s)!` + (uploadWarnings.length ? ' ' + uploadWarnings.join(' ') : ''));
                 selectedFiles = [];
                 document.getElementById('file-input').value = '';
                 uploadBtn.textContent = 'Upload Files';
@@ -1256,9 +1269,8 @@
                             <p>${escapeHtml(message || 'Could not open this presentation.')}</p>
                             <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
                             <p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;line-height:1.45;">
-                              Preview converts PPTX → PDF on the server. Production needs <code>CLOUDMERSIVE_API_KEY</code>
-                              (or LibreOffice). On localhost, the .pptx must also exist under <code>uploads/</code>
-                              (or be pulled via <code>FRONTEND_URL</code> / <code>UPLOADS_FETCH_TOKEN</code>).
+                              Lessons open in Microsoft PowerPoint on the live https site. On localhost Microsoft cannot reach the file,
+                              so preview needs LibreOffice and the .pptx under <code>uploads/</code>.
                             </p>
                         </div>
                     `;
@@ -1307,7 +1319,7 @@
                         throw new Error('Sign in again to preview this lesson.');
                     }
 
-                    // Prefer same-origin PDF/slide conversion (Office Online cannot fetch auth-gated /uploads).
+                    // Server returns Microsoft PowerPoint (signed file link) or an already-converted PDF.
                     const localRes = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/local-preview', {
                         headers: { Authorization: 'Bearer ' + tok },
                         credentials: 'include'
@@ -1594,7 +1606,7 @@
             container.appendChild(alert);
             setTimeout(() => {
                 alert.remove();
-            }, 5000);
+            }, String(message).length > 140 ? 15000 : 5000);
         }
 
         // Logout

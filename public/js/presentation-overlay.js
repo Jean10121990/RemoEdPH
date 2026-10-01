@@ -825,7 +825,7 @@
       var src = buildIframeSrc(material, i);
       if (!src) {
         showUnavailableMessage(
-          '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">Microsoft Office Online cannot open PowerPoint files from localhost. RemoEd will convert this lesson to PDF for class.</p>'
+          '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">Microsoft PowerPoint cannot open lesson files from localhost. Open the class on the live https site.</p>'
         );
         return;
       }

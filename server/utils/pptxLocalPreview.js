@@ -1,14 +1,13 @@
 /**
- * Convert a .ppt/.pptx file to a cached preview.pdf (+ optional slide PNGs)
- * for in-app viewing. Microsoft Office Online cannot fetch localhost or
- * login-gated URLs, so Lessons Library / live class use same-origin assets.
+ * Optional LibreOffice conversion of a .ppt/.pptx to preview.pdf (+ slide PNGs).
+ * On the live site lessons open in Microsoft PowerPoint (server/utils/officeViewerLink.js);
+ * this path is used only when slide images already exist or on local/http setups.
  */
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const { promisify } = require('util');
-const FormData = require('form-data');
 const axios = require('axios');
 const libre = require('libreoffice-convert');
 const AdmZip = require('adm-zip');
@@ -174,28 +173,6 @@ async function materializePptxSource(file) {
   );
 }
 
-async function convertViaCloudmersive(sourcePath, fileName) {
-  const apiKey = String(process.env.CLOUDMERSIVE_API_KEY || '').trim().replace(/^["']|["']$/g, '');
-  if (!apiKey || apiKey === 'your-api-key-here') {
-    throw new Error('CLOUDMERSIVE_API_KEY not configured');
-  }
-  const form = new FormData();
-  form.append('file', fs.createReadStream(sourcePath), {
-    filename: fileName || path.basename(sourcePath)
-  });
-  const response = await axios.post('https://api.cloudmersive.com/convert/pptx/to/pdf', form, {
-    headers: {
-      ...form.getHeaders(),
-      Apikey: apiKey
-    },
-    responseType: 'arraybuffer',
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity,
-    timeout: 180000
-  });
-  return Buffer.from(response.data);
-}
-
 async function convertViaLibreOffice(sourcePath) {
   const pptBuffer = await fsp.readFile(sourcePath);
   return libreConvertAsync(pptBuffer, '.pdf', undefined);
@@ -204,7 +181,7 @@ async function convertViaLibreOffice(sourcePath) {
 /**
  * Ensure preview.pdf exists beside the PPTX. Returns absolute path to PDF.
  */
-async function ensurePptxPreviewPdf({ sourcePath, fileName }) {
+async function ensurePptxPreviewPdf({ sourcePath }) {
   if (!sourcePath) throw new Error('Missing source path');
   if (!(await fileExists(sourcePath))) {
     throw new Error('Presentation file missing on this machine (uploads/presentations). Re-upload the PPTX locally.');
@@ -217,25 +194,16 @@ async function ensurePptxPreviewPdf({ sourcePath, fileName }) {
   }
 
   let pdfBuffer = null;
-  let method = '';
+  const method = 'libreoffice';
   try {
-    pdfBuffer = await convertViaCloudmersive(sourcePath, fileName);
-    method = 'cloudmersive';
-  } catch (cloudErr) {
-    console.warn('[pptxLocalPreview] Cloudmersive failed, trying LibreOffice:', cloudErr.message || cloudErr);
-    try {
-      pdfBuffer = await convertViaLibreOffice(sourcePath);
-      method = 'libreoffice';
-    } catch (libreErr) {
-      const msg =
-        'Could not convert this PowerPoint to PDF for preview. ' +
-        'Set CLOUDMERSIVE_API_KEY on the server (Cloud Run secret), or install LibreOffice (soffice). ' +
+    pdfBuffer = await convertViaLibreOffice(sourcePath);
+  } catch (libreErr) {
+    throw new Error(
+      'Could not turn this PowerPoint into slide images on this server. ' +
+        'Lessons open in Microsoft PowerPoint on the live site instead. ' +
         'Details: ' +
-        (cloudErr && cloudErr.message ? cloudErr.message : 'Cloudmersive unavailable') +
-        ' / ' +
-        (libreErr && libreErr.message ? libreErr.message : 'LibreOffice unavailable');
-      throw new Error(msg);
-    }
+        (libreErr && libreErr.message ? libreErr.message : 'LibreOffice unavailable')
+    );
   }
 
   await fsp.writeFile(previewPath, pdfBuffer);
@@ -251,10 +219,7 @@ async function buildLessonPptxPreviewPdf(file) {
   if (loc.cachedPreview && (await fileExists(loc.cachedPreview))) {
     return { previewPath: loc.cachedPreview, cached: true };
   }
-  const result = await ensurePptxPreviewPdf({
-    sourcePath: loc.sourcePath,
-    fileName: file.fileName
-  });
+  const result = await ensurePptxPreviewPdf({ sourcePath: loc.sourcePath });
   const expected = path.join(loc.destDir, 'preview.pdf');
   if (result.previewPath !== expected) {
     try {
@@ -265,6 +230,18 @@ async function buildLessonPptxPreviewPdf(file) {
     }
   }
   return result;
+}
+
+/** An already-converted preview.pdf on disk, without starting a new conversion. */
+async function findCachedPreviewPdf(file) {
+  if (!file || !file._id) return '';
+  const dirs = [path.join(PRESENTATIONS_ROOT, String(file._id))];
+  if (file.html5PackagePath) dirs.push(file.html5PackagePath);
+  for (const dir of dirs) {
+    const p = path.join(dir, 'preview.pdf');
+    if (await fileExists(p)) return p;
+  }
+  return '';
 }
 
 function publicPreviewUrl(fileId) {
@@ -445,7 +422,7 @@ async function renderPdfPagesToPngs(pdfPath, slidesDir, fileId) {
 /**
  * On PPTX upload: convert to PDF + slide images and return Lesson.files metadata.
  */
-async function convertPptxUploadAssets({ sourcePath, fileName, fileId, destDir }) {
+async function convertPptxUploadAssets({ sourcePath, fileId, destDir }) {
   const id = String(fileId || '');
   if (!id) throw new Error('Missing presentation id');
   if (!sourcePath) throw new Error('Missing source path');
@@ -453,7 +430,7 @@ async function convertPptxUploadAssets({ sourcePath, fileName, fileId, destDir }
   const dir = destDir || path.join(PRESENTATIONS_ROOT, id);
   await fsp.mkdir(dir, { recursive: true });
 
-  const pdfResult = await ensurePptxPreviewPdf({ sourcePath, fileName });
+  const pdfResult = await ensurePptxPreviewPdf({ sourcePath });
   const previewPath = path.join(dir, 'preview.pdf');
   if (pdfResult.previewPath !== previewPath) {
     await fsp.copyFile(pdfResult.previewPath, previewPath);
@@ -491,6 +468,7 @@ module.exports = {
   buildLessonPptxPreviewPdf,
   convertPptxUploadAssets,
   countSlidesInPptx,
+  findCachedPreviewPdf,
   publicPreviewUrl,
   publicSlideUrl,
   fileExists

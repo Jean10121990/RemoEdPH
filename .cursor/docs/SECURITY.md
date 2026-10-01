@@ -34,7 +34,8 @@ Rules:
 - `POST /api/student/book-class` (student JWT) and the equivalent `POST /api/teacher/book-class`
 - `GET /api/auth/admin-login-path` and the obfuscated admin login page (path hiding is not the access control — 2FA + RBAC are)
 - `/api/public/*` assessment routes (rate limited, `express-validator`), `POST /api/applications`
-- `GET /api/rtc-config`, `/api/health`, `/api`
+- `GET /api/office-viewer/presentation/:fileId/:token/:name` — Microsoft PowerPoint fetches the lesson deck here with no login. The token is a per-file JWT signed with `JWT_SECRET + ':office-viewer'` (cannot pass as a portal login), valid 6 hours, issued only by authenticated `local-preview` / `secure-embed`. Serves `.ppt` / `.pptx` only; rate limited.
+- `GET /api/rtc-config` (registered before the `/api` routers that run `verifyToken`, or it returns 401 and the classroom loses TURN), `/api/health`, `/api`
 - Uploads under `teacher-profiles/` only (`server/middleware/uploadsAccess.js`); every other `/uploads/*` needs a token
 
 ## 2. No debug or test endpoints in production routers

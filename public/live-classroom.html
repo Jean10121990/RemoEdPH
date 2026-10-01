@@ -1930,7 +1930,7 @@
           }
         }
       }
-      // Watchdogs: restart ICE if stuck in new/checking 5s; force reconnect if failed or disconnected 3s
+      // Watchdogs: restart ICE if stuck in new/checking 15s; force reconnect if failed or disconnected 3s
       let iceRestartWatchdogId = null;
       let disconnectedWatchdogId = null;
       let disconnectedSince = null;
@@ -1938,7 +1938,7 @@
       /** Prevents offer/ICE-restart storms when the peer never answers or the network blocks UDP (common on mobile). */
       let lastIceRestartOfferAt = 0;
       let lastStudentIceRestartRequestAt = 0;
-      const ICE_RESTART_COOLDOWN_MS = 14000;
+      const ICE_RESTART_COOLDOWN_MS = 20000;
 
       function emitStudentIceRestartRequest(note) {
         if (userType === 'teacher' || !room) return false;
@@ -1973,6 +1973,9 @@
       const rtcConfigPromise = fetch('/api/rtc-config', { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : {}))
         .then((j) => {
+          if (j && j.turnConfigured === false) {
+            console.warn('⚠️ No TURN relay configured on the server. Calls across different networks may not connect.');
+          }
           if (j.iceServers && Array.isArray(j.iceServers) && j.iceServers.length) {
             // Filter invalid urls to avoid RTCPeerConnection constructor errors
             const cleaned = j.iceServers
@@ -2895,7 +2898,7 @@
               startIceRestartWatchdog();
               return;
             }
-            console.warn('🧊 ICE stuck in', s, 'for 5s - triggering restart');
+            console.warn('🧊 ICE stuck in', s, 'for 15s - triggering restart');
             createOfferWithIceRestart();
           } else {
             if (!emitStudentIceRestartRequest('(ICE watchdog)')) {
@@ -2904,7 +2907,7 @@
             }
             startIceRestartWatchdog();
           }
-        }, 5000);
+        }, 15000);
       }
 
       function createOfferWithIceRestart() {
@@ -3397,6 +3400,9 @@
         if (pType === 'pdf_preview') {
           return material;
         }
+        if (pType === 'office_embed' && material.embedUrl && material.officeViewer) {
+          return material;
+        }
         // True public Office/OneDrive embeds (not wrapping our private /uploads) can stay as-is.
         if (pType === 'office_embed' && material.embedUrl) {
           const emb = String(material.embedUrl);
@@ -3439,7 +3445,6 @@
               embedUrl: data.previewUrl || material.embedUrl
             });
           }
-          // Never mount Office Online for private lesson files — require PDF / slide images.
           if (data.mode === 'office_embed' || data.mode === 'office_online') {
             if (Array.isArray(data.slideUrls) && data.slideUrls.length) {
               return Object.assign({}, material, {
@@ -3450,9 +3455,16 @@
                 convertedPdfUrl: data.convertedPdfUrl || material.convertedPdfUrl || ''
               });
             }
-            throw new Error(
-              'This PowerPoint is not converted yet. Open Lessons Library once to convert it, or ensure Cloudmersive/LibreOffice is configured on the server.'
-            );
+            const officeUrl = data.embedUrl || data.previewUrl || '';
+            if (!officeUrl) {
+              throw new Error('Microsoft PowerPoint could not open this lesson.');
+            }
+            return Object.assign({}, material, {
+              presentationType: 'office_embed',
+              embedUrl: officeUrl,
+              officeViewer: true,
+              slideCount: data.slideCount != null ? data.slideCount : material.slideCount
+            });
           }
           if (data.mode === 'pdf') {
             const slideUrls =
@@ -3898,7 +3910,7 @@
           lessonFileViewer.innerHTML =
             '<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:240px;color:#334155;font-family:Segoe UI,sans-serif;padding:24px;text-align:center;">' +
             '<div><p style="font-weight:700;margin:0 0 8px;">Preparing lesson slides…</p>' +
-            '<p style="margin:0;color:#64748b;">Converting PowerPoint for classroom view</p></div></div>';
+            '<p style="margin:0;color:#64748b;">Opening the PowerPoint for class</p></div></div>';
           material = await resolvePresentationMaterialForViewer(material);
           if (material.__pptPreviewError) {
             currentDisplayedMaterialId = null;
@@ -3907,11 +3919,11 @@
               '<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:280px;padding:28px;text-align:center;font-family:Segoe UI,sans-serif;color:#334155;">' +
               '<div style="max-width:480px;">' +
               '<p style="font-weight:800;font-size:1.15rem;margin:0 0 10px;color:#b91c1c;">Could not open lesson slides</p>' +
-              '<p style="margin:0 0 12px;line-height:1.55;color:#475569;">RemoEd converts PowerPoint to PDF/slides for live class. Microsoft Office Online cannot open private lesson files, so conversion is required.</p>' +
+              '<p style="margin:0 0 12px;line-height:1.55;color:#475569;">Lessons open in Microsoft PowerPoint. This lesson could not be opened right now.</p>' +
               '<p style="margin:0 0 14px;font-size:0.92rem;color:#64748b;">' +
               escapeHtml(material.__pptPreviewError) +
               '</p>' +
-              '<p style="margin:0;font-size:0.9rem;color:#64748b;">Ensure <code>CLOUDMERSIVE_API_KEY</code> (or LibreOffice) is configured on the server, then reload. First conversion of a large PPTX can take up to a minute.</p>' +
+              '<p style="margin:0;font-size:0.9rem;color:#64748b;">Reload the class. If it still fails, ask an admin to check the lesson file in Lessons Library.</p>' +
               '</div></div>';
             return;
           }
@@ -5085,6 +5097,7 @@
                   html5EntryUrl: material.html5EntryUrl || '',
                   embedUrl: material.embedUrl || '',
                   presentationType: material.presentationType || 'file',
+                  officeViewer: !!material.officeViewer,
                   slideCount: material.slideCount != null ? material.slideCount : null,
                   slideUrls: Array.isArray(material.slideUrls) ? material.slideUrls : [],
                   previewPdfPath: material.previewPdfPath || '',

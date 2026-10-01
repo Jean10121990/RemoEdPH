@@ -538,6 +538,43 @@ app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
 app.use('/api/leaderboard', noStoreProtectedResponse, require('./routes/leaderboard'));
+/**
+ * WebRTC ICE servers for live-classroom.html (public: no Bearer on the classroom fetch).
+ * Registered before the `/api` routers that run verifyToken for every path.
+ * STUN for NAT discovery; TURN relays when P2P fails.
+ * Optional: TURN_URL (comma-separated allowed), TURN_USERNAME, TURN_CREDENTIAL in .env.
+ */
+app.get('/api/rtc-config', (req, res) => {
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ];
+
+  const turnUrls = String(process.env.TURN_URL || '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean);
+  if (turnUrls.length) {
+    const server = { urls: turnUrls.length === 1 ? turnUrls[0] : turnUrls };
+    const user = String(process.env.TURN_USERNAME || '').trim();
+    if (user) {
+      server.username = user;
+      server.credential = String(process.env.TURN_CREDENTIAL || '');
+    }
+    iceServers.push(server);
+  }
+
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.json({ iceServers, turnConfigured: turnUrls.length > 0 });
+});
+
+// Public: Microsoft PowerPoint viewer pulls the lesson deck with a signed per-file token.
+app.get(
+  '/api/office-viewer/presentation/:fileId/:token/:name',
+  rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false }),
+  require('./officeViewerRoutes').officeViewerPresentationHandler
+);
+
 // Public teacher application form: POST /api/applications
 app.use('/api', applicationRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
@@ -563,29 +600,6 @@ app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
 app.use('/api/lessons', noStoreProtectedResponse, lessonRoutes);
-
-/**
- * WebRTC ICE servers for live-classroom.html
- * STUN for NAT discovery; TURN relays when P2P fails.
- * Optional: TURN_URL, TURN_USERNAME, TURN_CREDENTIAL in .env (e.g. turn:host:3478).
- */
-app.get('/api/rtc-config', (req, res) => {
-  const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
-
-  const turnUrl = String(process.env.TURN_URL || '').trim();
-  if (turnUrl) {
-    const server = { urls: turnUrl };
-    const user = String(process.env.TURN_USERNAME || '').trim();
-    if (user) {
-      server.username = user;
-      server.credential = String(process.env.TURN_CREDENTIAL || '');
-    }
-    iceServers.push(server);
-  }
-
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.json({ iceServers });
-});
 
 const { findActivePassedInvitation, inviteErrorMessage, applicantPayload, canShowSignupPage } = require('./utils/teacherInvitation');
 
@@ -3669,6 +3683,12 @@ const startServer = () => {
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🔗 API base: http://localhost:${PORT}/api`);
       console.log(`🔌 Socket.IO signaling server running on 0.0.0.0:${PORT}`);
+      if (String(process.env.NODE_ENV || '').toLowerCase() === 'production') {
+        try {
+          const status = require('./utils/officeViewerLink').describeOfficeViewerOrigin();
+          (status.ok ? console.log : console.warn)(status.message);
+        } catch (_e) { /* never block startup */ }
+      }
 
       // Redis: connect in background — never block listen; cache paths use getRedis() with fast timeouts.
       primeRedisConnection();
