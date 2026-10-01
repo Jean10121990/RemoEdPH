@@ -922,6 +922,15 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="info-section">
+                            <h4 class="info-section-title">Student Privacy</h4>
+                            <p id="profile-privacy-status" style="margin:0 0 12px; color:#475569; line-height:1.5;">Classes are recorded for safety, quality assurance, and parent review.</p>
+                            <p style="margin:0; display:flex; flex-wrap:wrap; gap:16px;">
+                                <a href="/legal/student-privacy" target="_blank" rel="noopener" style="color:#1CA7E7; font-weight:700;">Student Privacy and Recording Policy</a>
+                                <a href="/legal/terms" target="_blank" rel="noopener" style="color:#1CA7E7; font-weight:700;">Terms</a>
+                            </p>
+                        </div>
                     </div>
                     
                     <!-- Trophy Cabinet / Badges Tab -->
@@ -1753,6 +1762,16 @@
                 }
             }
             document.getElementById('aboutMe').value = profile.aboutMe || '';
+
+            const privacyStatus = document.getElementById('profile-privacy-status');
+            if (privacyStatus) {
+                const consent = profile.privacyConsent || {};
+                if (consent.accepted) {
+                    privacyStatus.textContent = 'Privacy policy accepted' + (consent.version ? ' (version ' + consent.version + ').' : '.') + ' Classes are recorded for safety, quality assurance, and parent review.';
+                } else {
+                    privacyStatus.textContent = 'Privacy policy not accepted yet. Classes are recorded for safety, quality assurance, and parent review.';
+                }
+            }
 
             // Update profile display
             const displayName = profile.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : profile.username || 'Student';
