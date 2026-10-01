@@ -78,7 +78,6 @@
     <div class="top-buttons">
       <div class="top-bar__session-actions" id="lc-session-actions">
         <button type="button" class="nav-action-btn finish-btn top-bar__action" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
-        <button type="button" class="nav-action-btn absent-btn top-bar__action" id="absent-btn" title="Mark Absent" style="display:none;">Absent</button>
         <button type="button" class="nav-action-btn leave-btn top-bar__action" id="leave-btn" title="Leave Classroom" style="display:none;">Leave</button>
       </div>
       <button type="button" id="lc-notes-toggle" class="top-bar__ghost top-bar__icon-btn" title="Teacher notes" aria-label="Teacher notes" hidden>Notes</button>
@@ -8265,11 +8264,6 @@
         if (finishBtn) {
           finishBtn.style.display = 'block';
           finishBtn.style.visibility = 'visible';
-        }
-        if (absentBtn) {
-          absentBtn.style.display = 'block';
-          absentBtn.style.visibility = 'visible';
-          updateTeacherAbsentButtonEligibility();
         }
         if (leaveBtn) leaveBtn.style.display = 'none';
         syncTeacherNotesChrome(true);

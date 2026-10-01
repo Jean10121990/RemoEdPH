@@ -3631,9 +3631,19 @@ router.get('/pending-feedback-bookings', verifyToken, requireTeacher, async (req
   try {
     const teacherId = req.user.teacherId;
     const now = new Date();
+    // Student absent is the finished record. Do not keep asking for stars and a comment.
+    const repairedAbsent = await Booking.updateMany(
+      {
+        teacherId,
+        status: 'pending_feedback',
+        absentMarkedAt: { $ne: null },
+      },
+      { $set: { status: 'absent' } }
+    );
     const raw = await Booking.find({
       teacherId,
       status: 'pending_feedback',
+      $or: [{ absentMarkedAt: { $exists: false } }, { absentMarkedAt: null }],
     })
       .select(
         'date time lesson studentId dateTimeUtc teacherLocalZone studentLocalZone finishedAt sessionEndedAt'
@@ -3690,6 +3700,7 @@ router.get('/pending-feedback-bookings', verifyToken, requireTeacher, async (req
       success: true,
       count: items.length,
       items,
+      repaired: repairedAbsent.modifiedCount || 0,
     });
   } catch (err) {
     console.error('pending-feedback-bookings:', err);
@@ -5706,10 +5717,26 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
     }
     
     // Check if booking is already marked as absent or completed
-    if (booking.status === 'completed' || booking.absentMarkedAt) {
+    if (booking.status === 'completed' && !booking.absentMarkedAt) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Cannot mark student as absent for a completed or already absent-marked class' 
+        error: 'Cannot mark student as absent for a completed class' 
+      });
+    }
+    if (booking.absentMarkedAt) {
+      if (String(booking.status || '').toLowerCase() !== 'absent') {
+        booking.status = 'absent';
+        await booking.save();
+      }
+      return res.json({
+        success: true,
+        message: 'Student already marked absent. No further feedback is required.',
+        booking: {
+          id: booking._id,
+          status: 'absent',
+          absentMarkedAt: booking.absentMarkedAt,
+          absentType: booking.absentType || 'student',
+        },
       });
     }
     

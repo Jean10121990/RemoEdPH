@@ -631,6 +631,10 @@
         }
         const items = data.items || [];
         const total = typeof data.count === 'number' ? data.count : items.length;
+        if (data.repaired > 0 && !window.__absentFeedbackRepairReload) {
+          window.__absentFeedbackRepairReload = true;
+          loadScheduleData();
+        }
         pendingFeedbackCount = total;
         window.pendingFeedbackCount = total;
         try {

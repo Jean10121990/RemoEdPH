@@ -951,10 +951,27 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     }
     
     // Check if booking is already finalized for pay/credits or absent-marked
-    if (isBookingSessionFinalized(booking) || booking.absentMarkedAt) {
+    if (isBookingSessionFinalized(booking)) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Cannot mark student as absent for a finalized or already absent-marked class' 
+        error: 'Cannot mark student as absent for a finalized class' 
+      });
+    }
+    if (booking.absentMarkedAt) {
+      if (String(booking.status || '').toLowerCase() !== 'absent') {
+        booking.status = 'absent';
+        await booking.save();
+        await emitBookingsUpdatedForTeacher(teacherId, booking);
+      }
+      return res.json({
+        success: true,
+        message: 'Student already marked absent. No further feedback is required.',
+        booking: {
+          id: booking._id,
+          status: 'absent',
+          absentMarkedAt: booking.absentMarkedAt,
+          absentType: booking.absentType || 'student',
+        },
       });
     }
     

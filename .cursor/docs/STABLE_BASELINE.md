@@ -70,7 +70,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
-- [ ] Live-classroom **Absent** closes that classroom tab. **Give Feedback** still offers **Student Absent** and **Report Issue**. A class with `absentMarkedAt` is not a pending-feedback cell.
+- [ ] Live classroom has **Finish** only. **Student Absent** is on Class Schedule. An absent class is not pending feedback and does not ask for stars or a comment.
 - [ ] After submit, schedule refresh does not clear the teacher session.
 
 ### Live classroom (teacher Settings + student locks)
