@@ -667,17 +667,43 @@
         alert((payload && payload.message) || 'Could not authenticate the live classroom connection. Please refresh and try again.');
       });
       
+      function releaseClassroomCamera() {
+        try {
+          if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+          }
+        } catch (_pc) {}
+        try {
+          if (localStream && localStream.getTracks) {
+            localStream.getTracks().forEach(function (track) { track.stop(); });
+            localStream = null;
+          }
+        } catch (_media) {}
+        var localEl = document.getElementById('local-video');
+        var remoteEl = document.getElementById('remote-video');
+        if (localEl) localEl.srcObject = null;
+        if (remoteEl) remoteEl.srcObject = null;
+      }
+
       // Handle disconnects gracefully
+      socket.on('classroom-replaced', function () {
+        window.__lcClassroomReplaced = true;
+        if (socket && socket.io) socket.io.reconnection(false);
+        releaseClassroomCamera();
+      });
       socket.on('disconnect', (reason) => {
         console.log('Disconnected:', reason);
+        if (window.__lcClassroomReplaced || reason === 'io server disconnect') {
+          releaseClassroomCamera();
+          return;
+        }
         if (reason === 'transport close') {
           socket.connect(); // attempt reconnection
         }
-        // Also handle server disconnect
-        if (reason === 'io server disconnect') {
-          // Server disconnected, will attempt to reconnect
-          console.log('🔄 Server disconnected, will attempt to reconnect...');
-        }
+      });
+      window.addEventListener('pagehide', function () {
+        releaseClassroomCamera();
       });
 
       // Determine classroom/room id from query param or a data attribute
@@ -2128,11 +2154,7 @@
           const settings = typeof track.getSettings === 'function' ? track.getSettings() : null;
           if (settings && settings.displaySurface) return true;
         } catch (_s) {}
-        try {
-          if (track.contentHint === 'detail' || track.contentHint === 'text') return true;
-        } catch (_c) {}
-        const label = String(track.label || '');
-        return /screen|window|tab|web-contents|display|monitor|entire|present/i.test(label);
+        return false;
       }
 
       function streamLooksLikePresentation(stream) {
@@ -2471,6 +2493,7 @@
       });
 
       function ensurePeerConnection() {
+        if (window.__lcObserver) return;
         if (!rtcConfigReady) {
           rtcConfigPromise.then(() => ensurePeerConnection());
           return;
@@ -6544,6 +6567,10 @@
       }
 
       async function initializeWebcam() {
+        if (window.__lcObserver) {
+          void emitSocketJoin();
+          return;
+        }
         try {
           // Check secure context first
           if (!isSecureContext()) {
@@ -7195,6 +7222,7 @@
 
       // Connection health check
       function startConnectionMonitoring() {
+        if (window.__lcObserver) return;
         if (connectionCheckInterval) {
           clearInterval(connectionCheckInterval);
         }
@@ -7415,9 +7443,10 @@
       socket.on('connect', () => {
         console.log('✅ Socket connected, socket ID:', socket.id);
         reconnectAttempts = 0;
-        
-        // Ensure peer connection exists
-        ensurePeerConnection();
+        if (window.__lcObserver) {
+          void emitSocketJoin();
+          return;
+        }
         
         // Re-initialize webcam if it failed before due to socket issues
         if (!localStream) {

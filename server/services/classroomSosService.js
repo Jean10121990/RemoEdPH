@@ -237,7 +237,7 @@ async function actOnIncident(incidentId, action, adminId) {
       incidentId: String(incident._id),
       wasPaused,
     });
-    realtime.schedulePeerReady(incident.classroomId);
+    if (wasPaused) realtime.schedulePeerReady(incident.classroomId);
   }
   return { incident };
 }

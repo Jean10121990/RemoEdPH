@@ -2584,7 +2584,7 @@ io.on('connection', socket => {
         }
         
         if (realtime.isClassroomObserver(socket)) return;
-        realtime.emitToClassroomPeers(room, 'offer', { offer }, socket.id);
+        realtime.emitToOppositeRole(room, socket, 'offer', { offer });
         console.log('📤 Offer forwarded successfully');
     });
 
@@ -2607,19 +2607,19 @@ io.on('connection', socket => {
     socket.on('answer', ({ room, answer }) => {
         console.log('📤 Forwarding answer to room:', room);
         if (realtime.isClassroomObserver(socket)) return;
-        realtime.emitToClassroomPeers(room, 'answer', { answer }, socket.id);
+        realtime.emitToOppositeRole(room, socket, 'answer', { answer });
     });
     
     socket.on('ice-candidate', ({ room, candidate }) => {
         console.log('📤 Forwarding ICE candidate to room:', room);
         if (realtime.isClassroomObserver(socket)) return;
-        realtime.emitToClassroomPeers(room, 'ice-candidate', { candidate }, socket.id);
+        realtime.emitToOppositeRole(room, socket, 'ice-candidate', { candidate });
     });
 
     socket.on('request-ice-restart', ({ room }) => {
         console.log('🔄 ICE restart requested in room:', room);
         if (realtime.isClassroomObserver(socket)) return;
-        realtime.emitToClassroomPeers(room, 'request-ice-restart', {}, socket.id);
+        realtime.emitToOppositeRole(room, socket, 'request-ice-restart', {});
     });
     
     // Handle chat messages
@@ -2769,7 +2769,7 @@ io.on('connection', socket => {
                 socket.to(room).emit('room-users', { count: updatedCount });
                 console.log('👥 Sent updated participant count after user left:', updatedCount);
             }
-            if (String(userType || '') === 'observer' && room) {
+            if (room && String(userType || '') !== 'observer') {
                 realtime.schedulePeerReady(room);
             }
         }
