@@ -717,12 +717,36 @@ body.page-live-classroom .video.is-waiting-peer .video-header p {
   color: var(--lc-muted) !important;
 }
 
+body.page-live-classroom .video,
+body.page-live-classroom .video.is-peer,
+body.page-live-classroom .video.is-local,
+body.page-live-classroom .video.teacher,
+body.page-live-classroom .video.student,
+body.page-live-classroom .video.is-peer:not(.is-waiting-peer),
+body.page-live-classroom .video.is-local:not(.is-waiting-peer),
+body.page-live-classroom .video.teacher:not(.is-waiting-peer),
+body.page-live-classroom .video.student:not(.is-waiting-peer) {
+  flex-shrink: 1;
+  min-height: 0;
+  aspect-ratio: auto;
+  max-height: 128px;
+}
+
 body.page-live-classroom .right-panel video,
 body.page-live-classroom .video video,
 body.page-live-classroom #remote-video,
 body.page-live-classroom #local-video {
   border-radius: 0 !important;
-  max-height: 168px !important;
+  min-height: 0 !important;
+  max-height: 96px !important;
+}
+
+@media (min-width: 769px) {
+  body.page-live-classroom .chat-section,
+  body.page-live-classroom #classChat {
+    flex: 1 1 180px;
+    min-height: 148px;
+  }
 }
 
 /* Chat */
@@ -756,7 +780,7 @@ body.page-live-classroom .chat-empty {
   background: var(--lc-green-mist) !important;
   border: 1px dashed rgba(71, 188, 62, 0.28) !important;
   border-radius: 12px !important;
-  padding: 16px 12px !important;
+  padding: 8px 10px !important;
 }
 
 body.page-live-classroom .chat-messages {
@@ -764,6 +788,8 @@ body.page-live-classroom .chat-messages {
   border: 1px solid var(--lc-border) !important;
   border-radius: 12px !important;
   padding: 8px !important;
+  flex: 1 1 auto;
+  min-height: 56px;
 }
 
 body.page-live-classroom .chat-form {
@@ -775,7 +801,9 @@ body.page-live-classroom .chat-input {
   border: 1px solid var(--lc-border) !important;
   border-radius: 12px !important;
   background: #fff !important;
-  padding: 10px 12px !important;
+  padding: 6px 10px !important;
+  min-height: 0 !important;
+  max-height: 36px !important;
   box-shadow: none !important;
 }
 
@@ -789,8 +817,10 @@ body.page-live-classroom .chat-send {
   background: linear-gradient(135deg, var(--lc-green-deep), var(--lc-green)) !important;
   border: none !important;
   border-radius: 12px !important;
-  width: 44px !important;
-  height: 44px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
   box-shadow: 0 8px 16px -10px rgba(46, 154, 40, 0.55) !important;
 }
 
@@ -1010,18 +1040,19 @@ body.page-live-classroom .lc-stage-video-toolbar {
   }
 
   body.page-live-classroom .lc-teacher-media-controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding: 6px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 6px;
   }
 
   body.page-live-classroom .lc-media-lock-btn {
-    min-height: 40px;
-    width: auto;
-    height: auto;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
     font-size: 0;
-    padding: 8px 10px;
   }
 
   body.page-live-classroom .tabs,
@@ -1087,10 +1118,13 @@ body.page-live-classroom .lc-stage-video-toolbar {
 }
 
 .lc-teacher-media-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 2px 2px 4px;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+  flex: 0 0 auto;
 }
 
 .lc-teacher-media-controls[hidden] {
@@ -1101,9 +1135,12 @@ body.page-live-classroom .lc-stage-video-toolbar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-height: 36px;
-  padding: 6px 8px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  flex: 0 0 auto;
   border: 1px solid #99f6e4;
   border-radius: 999px;
   background: #ecfdf5;
@@ -1113,8 +1150,8 @@ body.page-live-classroom .lc-stage-video-toolbar {
   cursor: pointer;
 }
 .lc-media-lock-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: block;
 }
 
