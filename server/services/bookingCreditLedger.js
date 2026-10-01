@@ -79,6 +79,12 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
   if (!student) return null;
   const now = new Date();
   const session = opts && opts.session ? opts.session : undefined;
+  const { PRE_LEVEL, normalizeCurriculumDocLevel } = require('../config/curriculumLevels');
+  if (normalizeCurriculumDocLevel(booking.studentLevel) === PRE_LEVEL && !booking.isFreePlanBooking) {
+    booking.creditConsumedAt = now;
+    booking.creditsFinalized = true;
+    return student._id;
+  }
   if (booking.isFreePlanBooking) {
     booking.creditConsumedAt = now;
     booking.creditsFinalized = true;

@@ -3752,8 +3752,11 @@
             levelSelect.innerHTML = '';
             appendLevelOption(levelSelect, '', 'Select level');
             if (studentHasPaidPlan) {
+                appendLevelOption(levelSelect, 'Pre-Level', 'Pre-Level');
                 GROWTH_BOOKING_LEVELS.forEach((level) => appendLevelOption(levelSelect, level, level));
-                if (GROWTH_BOOKING_LEVELS.indexOf(previous) !== -1) levelSelect.value = previous;
+                if (previous === 'Pre-Level' || GROWTH_BOOKING_LEVELS.indexOf(previous) !== -1) {
+                    levelSelect.value = previous;
+                }
                 return;
             }
             appendLevelOption(levelSelect, 'Pre-Level', 'Pre-Level');
@@ -3848,8 +3851,8 @@
                     }
                 }
 
-                // Always show the full catalog. Trial / unpaid students can only pick Lesson 1;
-                // paid students may pick up to the next trail stop (and earlier for reschedule).
+                // Always show the full catalog. Free-plan students can only pick the next Pre-Level lesson.
+                // A paid plan with credits can book any lesson in the selected level.
 
                 // De-dupe by lessonNumber + title
                 const seen = new Set();
@@ -3863,11 +3866,12 @@
                 
                 const hintEl = document.getElementById('lesson-catalog-hint');
                 if (hintEl) {
-                    if (studentHasPaidPlan) {
+                    if (studentHasPaidPlan && curriculumLevelsMatch(selectedLevel, 'Pre-Level')) {
                         hintEl.textContent =
-                            'You can book Lesson ' +
-                            studentMaxBookableLesson +
-                            ' (next on your trail) or any earlier lesson — including reschedules. Later lessons stay locked until you finish the ones before them.';
+                            'Pre-Level lessons are free trial lessons. You can book any of them, and they do not use a credit.';
+                    } else if (studentHasPaidPlan) {
+                        hintEl.textContent =
+                            'Your plan is active. You can book any lesson in this level. Each class uses one credit.';
                     } else if (studentFreePlanSequenceDone) {
                         hintEl.innerHTML = 'You finished all 22 free Pre-Level lessons. <a href="student-credits.html">Subscribe to Book</a> the next levels.';
                     } else if (studentFreePlanActive && !studentFreePlanCanBook) {
@@ -3894,20 +3898,13 @@
                         }
                         
                         const num = Number(lesson.lessonNumber);
-                        const aheadOfProgress =
-                            studentHasPaidPlan &&
-                            Number.isFinite(num) &&
-                            num > studentMaxBookableLesson;
                         const isNextFreeLesson =
                             studentFreePlanActive &&
                             studentFreePlanCanBook &&
                             num === studentFreePlanNextLesson;
-                        const locked = studentHasPaidPlan ? aheadOfProgress : !isNextFreeLesson;
+                        const locked = studentHasPaidPlan ? false : !isNextFreeLesson;
                         option.value = lesson._id.toString(); // Ensure it's a string
-                        if (locked && aheadOfProgress) {
-                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (finish earlier lessons first)`;
-                            option.title = 'Complete earlier lessons before booking this one';
-                        } else if (locked && studentFreePlanActive) {
+                        if (locked && studentFreePlanActive) {
                             option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
                             option.title = 'Subscribe to book this lesson now, or wait for your next free month';
                         } else if (locked) {
@@ -3931,14 +3928,9 @@
                             (o) => o.value && !o.disabled
                         );
                         if (firstOpen) lessonSelect.value = firstOpen.value;
-                    } else if (studentHasPaidPlan) {
-                        const nextOpt = Array.from(lessonSelect.options).find(
-                            (o) =>
-                                o.value &&
-                                !o.disabled &&
-                                o.dataset.lessonNumber === String(studentMaxBookableLesson)
-                        );
-                        if (nextOpt && !lessonSelect.value) lessonSelect.value = nextOpt.value;
+                    } else if (studentHasPaidPlan && !lessonSelect.value) {
+                        const firstOpen = Array.from(lessonSelect.options).find((o) => o.value && !o.disabled);
+                        if (firstOpen) lessonSelect.value = firstOpen.value;
                     }
 
                     applyJourneyLessonPrefill(levelSelect, lessonSelect);

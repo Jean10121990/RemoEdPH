@@ -29,6 +29,9 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Admin login / first-setup | `server/utils/adminRouteConfig.js`, `ADMIN_LOGIN_PATH` in `.env`, `public/admin-login.html` (served only at obfuscated path), `public/admin-first-setup.html`, `public/js/admin-session.js`, `GET /api/auth/admin-login-path` + `POST /api/auth/admin-first-setup` in `server/auth.js` |
 | Admin HR staff documents | `public/admin-hr-documents.html`, `GET/PATCH /api/admin/hr-documents*` in `server/admin.js`; teacher NBI: `Teacher.nbiClearanceStatus` + `documents.nbiClearances` |
 | Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
+| Student privacy consent | `server/config/privacyConsent.js` (version `2026-10-01`), `Student.privacyConsents`, `POST /api/student/privacy-consent`, `public/legal/student-privacy.html`, `public/legal/terms.html`. Profile checkbox source is `profile`. Students are international; the Philippine Data Privacy Act still covers the accounts RemoEd holds. |
+| Classroom SOS | `server/models/IncidentReport.js`, `server/services/classroomSosService.js`, `server/classroomSosRoutes.js`, `public/admin-incidents.html`, permission `incident:manage` (Super-Admin and QA). Live button is Emergency SOS beside Settings. |
+| Teacher emergency guidelines | `GET /teacher/emergency-guidelines` → `public/teacher-emergency-guidelines.html`. Assets and `<base href="/">` must stay root-absolute. A relative `css/` or `js/` path 404s under `/teacher/` and the sidebar and header disappear. |
 | Student My Level / CEFR guides | `public/student-assessment.html`, `public/images/cefr/remoed-kids-cefr-guide.jpg`, `public/images/cefr/remoed-teens-cefr-guide.jpg` |
 | Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + **Admin Payroll** + Student Subscriptions); Admin Payroll UI: `public/admin-admin-payroll.html` |
 | Admin Fee & Attendance | `public/admin-fee.html` (no Time In/Out), `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; clock via Dashboard / header `public/js/admin-time-tracking.js` + `/api/admin/time-tracking/*` in `server/admin.js` |
@@ -61,9 +64,10 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Signed-in student with `creditBalance > 0` can open **Book a Class**, see open slots, and complete `POST /api/student/book-class` (Network 2xx).
 - [ ] **Booking Details** opens as a centered body-level modal (not a side column inside `.remoed-content`).
-- [ ] Paid students cannot select / book a lesson ahead of their trail stop (`LESSON_AHEAD_OF_PROGRESS`); earlier lessons stay bookable for reschedule.
+- [ ] A paid student with credits can book any lesson in the selected level, including Pre-Level. Completing a Pre-Level class does not subtract a credit. Growth levels still use one credit. Free-plan students still book only the next Pre-Level lesson.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
 - [ ] A student without the current privacy version gets `CONSENT_REQUIRED` on book and logged-in checkout, then can continue after accepting. Booking confirmation and the student waiting room say classes are recorded for safety, quality assurance, and parent review.
+- [ ] **My Profile → Personal Information → Student Privacy** shows the accept checkbox for the parent or the student. Checking it saves the current version. If that version is already accepted, the box stays checked.
 - [ ] Booking for a teacher whose slot `teacherId` is a username (not email) still succeeds when the UI sends their email.
 
 ### Teacher schedule / issue
@@ -71,6 +75,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
 - [ ] Live classroom has **Finish** only. **Student Absent** is on Class Schedule. An absent class is not pending feedback and does not ask for stars or a comment.
+- [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend.
 - [ ] After submit, schedule refresh does not clear the teacher session.
 
 ### Live classroom (teacher Settings + student locks)
@@ -82,6 +87,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] **Your camera background** in Settings applies Off / Blur / Office / Classroom / Nature / Custom on the teacher camera (photos under `public/images/virtual-bg/*.jpg`). Hard-refresh after deploy so `?v=` cache-bust is not stale.
 - [ ] Student joining before the teacher sees the **waiting overlay** (Play candies and toys / Watch loop). When the teacher joins, the overlay closes. Camera/mic/speaker use Lucide **video** / **mic** / **volume** icons, not C/M/A letters. Teacher student-lock chips are icons only (`mic-off` / `mic` / `video-off` / `video`). Flagged chat shows asterisks to students; teachers can reveal possible flagged words.
 - [ ] Teacher **Emergency SOS** (Lucide siren) sits beside Settings. Students do not see it. Confirm creates one incident; a second confirm in the same open class returns that incident. Withdraw within 15 seconds marks it withdrawn. Admin Observe (`observer=1`) does not publish a camera and does not clear the student waiting state. Pause and end stop media in that room only and do not delete room settings or virtual backgrounds. Tier-1 end restores a credit only if one was already spent. Tier 2 and 3 do not change credits.
+- [ ] Admin **Classroom SOS** (`admin-incidents.html`) keeps the admin sidebar and top bar. The status menu has a legend: Open, Withdrawn, Observing, Paused, Ended, Resolved, All. Empty Open means no teacher has sent an SOS.
 
 ### Auth isolation
 
@@ -426,12 +432,12 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 | `INSUFFICIENT_CREDITS` | `creditBalance` is 0 |
 | `DAILY_CLASS_LIMIT` | Student may book at most 6 classes (3 hours) per local day |
 | `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
-| `LESSON_AHEAD_OF_PROGRESS` | Paid book blocked: lesson is past the next trail stop (earlier / reschedule OK) |
+| `LESSON_AHEAD_OF_PROGRESS` | No longer applied to paid bookings. Paid students with credits may book any lesson in the selected level. |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
 
 ## Curriculum levels — Pre-Level
 
-- `Pre-Level` (Free Trial) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). It stays out of `CURRICULUM_LEVELS`. Lessons Library lists it first. The free plan (`server/services/freePlanAccess.js`) books **the next** Pre-Level lesson once per student-local month (`freeLessonCompletedCount`, `freeLessonPeriodKey`, `freeLessonActiveBookingId`). Paid students (spark/steady/scholar/summit lot with credits left, or an active paid subscription) keep the credit path and the four growth levels. A leftover welcome credit does not unlock growth levels. New registration does not grant that credit. Cancel before start clears the month; class completion advances the index and does not debit credits (`Booking.isFreePlanBooking`). Videos, the learning journey, and garden actions stay locked for free students (`FREE_PLAN_LOCKED`). Play & Learn stays open.
+- `Pre-Level` (Free Trial) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). It stays out of `CURRICULUM_LEVELS`. Lessons Library lists it first. The free plan (`server/services/freePlanAccess.js`) books **the next** Pre-Level lesson once per student-local month (`freeLessonCompletedCount`, `freeLessonPeriodKey`, `freeLessonActiveBookingId`). Paid students (spark/steady/scholar/summit lot with credits left, or an active paid subscription) keep the credit path and the four growth levels. A leftover welcome credit does not unlock growth levels. New registration does not grant that credit. Cancel before start clears the month; class completion advances the index and does not debit credits (`Booking.isFreePlanBooking`). Videos, the learning journey, and garden actions stay locked for free students (`FREE_PLAN_LOCKED`). Play & Learn stays open. A paid student’s Pre-Level booking does not decrement `creditBalance` on completion (`deductCreditOnClassOutcome` returns before the lot burn).
 - Do **not** add it to `CURRICULUM_LEVELS`, `Booking.studentLevel`, or `normalizeCurriculumLevel` — those drive student leveling, credits and the leaderboard.
 
 ## Ops notes (out of code scope)
@@ -452,3 +458,17 @@ Surfaces locked in on this date (extend around; do not rewrite). Details above.
 | Marketing Hub | Unique Link Commissions under sidebar **Marketing Hub** (below Accounting); Accounting Hub = Payroll + Subscriptions only. |
 | `admin_marketing` | Restricted sidebar + hub-guard + `adminRoleGate`; role in Admins dropdown; first-time setup token for blank-password creates. |
 | Teaching Fee Bonus / Incentive | Period-scoped amount on Payroll; read-only on Teaching Fee; in net pay / dispense / payslip. |
+
+## Baseline updates — 2026-09-27 to 2026-10-01
+
+Checklist: [FEATURES_SINCE_2026-09-27.md](FEATURES_SINCE_2026-09-27.md).
+
+| Area | What shipped |
+|------|----------------|
+| Announcements | Topic list and post-history filter. |
+| Phones / layout | Country calling codes. Sidebar icons stay on one vertical line. Notification dropdown sits under the bell. |
+| Credits / Play & Learn | Typing quiz. Credit lots still expire and burn FIFO. |
+| Pre-Level free plan | Next Pre-Level lesson, one per student-local month. Growth levels stay paid. Videos, journey, and garden stay locked. |
+| Privacy | Version `2026-10-01`. Required on register, book, and logged-in checkout. Accept checkbox on My Profile. International students, same rules. |
+| Absent | Live classroom is Finish only. Student Absent is on Class Schedule and closes pending feedback. |
+| Classroom SOS | Teacher Emergency SOS, admin Classroom SOS with status legend, emergency guidelines page with sidebar and header. |
