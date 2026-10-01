@@ -216,6 +216,16 @@ body.page-live-classroom .lc-sos-actions {
   justify-content: flex-end;
 }
 
+body.page-live-classroom #lc-sos-admin-resolve {
+  background: #15803d;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 body.page-live-classroom #lc-sos-confirm,
 body.page-live-classroom #lc-sos-admin-end {
   background: #b91c1c;

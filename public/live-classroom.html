@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-app-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-admin-1" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-resolve-1" />
   <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -231,7 +231,7 @@
       Chat<span class="lc-mobile-chat-unread" id="lc-mobile-chat-unread" hidden></span>
     </button>
   </nav>
-  <div id="lc-sos-modal" class="lc-sos-modal" hidden>
+  <div id="lc-sos-modal" class="lc-sos-modal" hidden style="display:none">
     <div class="lc-sos-card">
       <h2>Emergency SOS</h2>
       <p class="lc-sos-lead">Choose what is happening. Confirm sends this to RemoEd admins.</p>
@@ -243,7 +243,7 @@
       </div>
     </div>
   </div>
-  <div id="lc-sos-admin-alert" class="lc-sos-modal" hidden>
+  <div id="lc-sos-admin-alert" class="lc-sos-modal" hidden style="display:none">
     <div class="lc-sos-card">
       <h2>Classroom SOS</h2>
       <p id="lc-sos-admin-text" class="lc-sos-lead"></p>
@@ -251,6 +251,7 @@
       <div class="lc-sos-actions">
         <button type="button" id="lc-sos-admin-close">Close</button>
         <button type="button" id="lc-sos-admin-pause">Pause class</button>
+        <button type="button" id="lc-sos-admin-resolve">Resolved</button>
         <button type="button" id="lc-sos-admin-end">End class</button>
       </div>
     </div>
@@ -1251,14 +1252,34 @@
           function closeSos() {
             modal.hidden = true;
             modal.setAttribute('hidden', '');
+            modal.style.display = 'none';
           }
-          btn.addEventListener('click', function () {
+          function openSos() {
             picked = '';
             if (status) status.textContent = '';
             modal.hidden = false;
             modal.removeAttribute('hidden');
+            modal.style.display = 'flex';
+          }
+          closeSos();
+          btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openSos();
           });
-          if (cancelBtn) cancelBtn.addEventListener('click', closeSos);
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              closeSos();
+            });
+          }
+          modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeSos();
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !modal.hidden) closeSos();
+          });
           confirmBtn.addEventListener('click', async function () {
             if (!picked) {
               if (status) status.textContent = 'Choose a category, then confirm.';
@@ -1326,7 +1347,9 @@
           if (!modal) return;
           modal.hidden = true;
           modal.setAttribute('hidden', '');
+          modal.style.display = 'none';
         }
+        closeTeacherSos();
         if (cancelBtn) cancelBtn.addEventListener('click', closeTeacherSos);
         if (userType !== 'teacher') {
           if (sosBtn) {
@@ -1345,6 +1368,7 @@
           var statusEl = document.getElementById('lc-sos-admin-status');
           var closeBtn = document.getElementById('lc-sos-admin-close');
           var pauseBtn = document.getElementById('lc-sos-admin-pause');
+          var resolveBtn = document.getElementById('lc-sos-admin-resolve');
           var endBtn = document.getElementById('lc-sos-admin-end');
           if (!alertEl) return;
           var currentId = '';
@@ -1353,6 +1377,7 @@
             dismissedId = currentId;
             alertEl.hidden = true;
             alertEl.setAttribute('hidden', '');
+            alertEl.style.display = 'none';
           }
           function isActive(row) {
             var st = row && row.status;
@@ -1370,6 +1395,7 @@
             if (statusEl) statusEl.textContent = '';
             alertEl.hidden = false;
             alertEl.removeAttribute('hidden');
+            alertEl.style.display = 'flex';
           }
           if (closeBtn) closeBtn.addEventListener('click', hideAlert);
           async function act(action, btn) {
@@ -1390,14 +1416,30 @@
               });
               var body = await res.json().catch(function () { return {}; });
               if (!res.ok) throw new Error(body.error || 'Action failed.');
-              if (statusEl) statusEl.textContent = action === 'pause' ? 'Class paused.' : 'Class ended.';
+              if (statusEl) {
+                statusEl.textContent = action === 'pause'
+                  ? 'Class paused.'
+                  : action === 'resolve'
+                    ? 'Resolved. Leaving so the teacher and student can continue.'
+                    : 'Class ended.';
+              }
+              return true;
             } catch (err) {
               if (statusEl) statusEl.textContent = err.message || 'Action failed.';
+              return false;
             } finally {
               if (btn) btn.disabled = false;
             }
           }
           if (pauseBtn) pauseBtn.addEventListener('click', function () { act('pause', pauseBtn); });
+          if (resolveBtn) {
+            resolveBtn.addEventListener('click', async function () {
+              var ok = await act('resolve', resolveBtn);
+              if (!ok) return;
+              hideAlert();
+              window.location.href = '/admin-incidents.html';
+            });
+          }
           if (endBtn) endBtn.addEventListener('click', function () { act('terminate', endBtn); });
           async function pullOpen() {
             try {
@@ -1445,6 +1487,23 @@
           applyIncomingClassSettings(data);
         });
         socket.on('classroom-session-command', function (data) {
+          var command = data && data.command;
+          if (command === 'resume') {
+            var pausedNote = document.getElementById('lc-session-command-note');
+            if (pausedNote) pausedNote.remove();
+            if (!window.__lcObserver) {
+              var liveTracks = (typeof localStream !== 'undefined' && localStream && localStream.getTracks)
+                ? localStream.getTracks()
+                : [];
+              var mediaDead = !liveTracks.length || liveTracks.every(function (track) {
+                return track.readyState === 'ended';
+              });
+              if (mediaDead && typeof initializeWebcam === 'function') {
+                initializeWebcam();
+              }
+            }
+            return;
+          }
           try {
             if (typeof localStream !== 'undefined' && localStream && localStream.getTracks) {
               localStream.getTracks().forEach(function (track) {
@@ -1460,7 +1519,6 @@
             note.style.cssText = 'position:fixed;inset:0;z-index:var(--z-blocking);background:rgba(15,23,42,0.78);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:1.15rem;';
             document.body.appendChild(note);
           }
-          var command = data && data.command;
           note.textContent = command === 'terminate'
             ? 'RemoEd has ended this class. You can leave the room.'
             : 'RemoEd has paused this class. Please wait.';
@@ -2816,6 +2874,7 @@
       }
 
       socket.on('joined', () => {
+        if (window.__lcObserver) return;
         console.log('✅ Joined room (first user), ensuring peer connection, userType:', userType);
         ensurePeerConnection();
         
@@ -2835,6 +2894,7 @@
       });
 
       socket.on('ready', () => {
+        if (window.__lcObserver) return;
         console.log('✅ Room ready, userType:', userType, 'hasPeerConnection:', !!peerConnection, 'hasLocalStream:', !!localStream);
         // Only teacher creates the offer to avoid race condition
         // Student will wait for the offer from teacher
@@ -3090,7 +3150,7 @@
       }
 
       socket.on('offer', ({ offer } = {}) => {
-        if (!offer) return;
+        if (window.__lcObserver || !offer) return;
         console.log('📨 Received offer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
         ensurePeerConnection();
         if (!peerConnection) {
@@ -3144,7 +3204,7 @@
       }
 
       socket.on('answer', ({ answer } = {}) => {
-        if (!answer) return;
+        if (window.__lcObserver || !answer) return;
         console.log('📨 Received answer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
         if (!peerConnection) {
           console.warn('⚠️ No peer connection, cannot set remote description');
@@ -3180,6 +3240,7 @@
       });
 
       socket.on('ice-candidate', ({ candidate } = {}) => {
+        if (window.__lcObserver) return;
         if (!peerConnection) {
           console.warn('⚠️ Cannot add ICE candidate: no peer connection');
           return;

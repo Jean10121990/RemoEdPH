@@ -2343,18 +2343,7 @@ io.on('connection', socket => {
             }
         }
         
-        if (clients.size === 1) {
-            console.log('👤 First user in room, emitting joined');
-            socket.emit('joined');
-        } else if (clients.size === 2) {
-            console.log('👥 Second user joined, both users ready for WebRTC');
-            // Emit ready to both users in the room
-            io.to(room).emit('ready');
-            
-            // Notify other users in the room that someone joined
-            socket.to(room).emit('user-joined', { userType, userId, username, room });
-            console.log('📢 Notified room about user join:', username);
-        }
+        realtime.noteClassroomPeerJoined(room, socket);
         
         // Send updated participant count to all users in the room
         io.to(room).emit('room-users', { count: clients.size });
@@ -2558,18 +2547,7 @@ io.on('connection', socket => {
             }
         }
         
-        if (clients.size === 1) {
-            console.log('👤 First user in room, emitting joined');
-            socket.emit('joined');
-        } else if (clients.size === 2) {
-            console.log('👥 Second user joined, both users ready for WebRTC');
-            // Emit ready to both users in the room
-            io.to(room).emit('ready');
-            
-            // Notify other users in the room that someone joined
-            socket.to(room).emit('user-joined', { userType, userId, username, room });
-            console.log('📢 Notified room about user join:', username);
-        }
+        realtime.noteClassroomPeerJoined(room, socket);
     });
     
     socket.on('offer', ({ room, offer }) => {
@@ -2598,7 +2576,8 @@ io.on('connection', socket => {
             console.log('❌ Sender is NOT in the room!');
         }
         
-        socket.to(room).emit('offer', { offer });
+        if (realtime.isClassroomObserver(socket)) return;
+        realtime.emitToClassroomPeers(room, 'offer', { offer }, socket.id);
         console.log('📤 Offer forwarded successfully');
     });
 
@@ -2620,17 +2599,20 @@ io.on('connection', socket => {
     
     socket.on('answer', ({ room, answer }) => {
         console.log('📤 Forwarding answer to room:', room);
-        socket.to(room).emit('answer', { answer });
+        if (realtime.isClassroomObserver(socket)) return;
+        realtime.emitToClassroomPeers(room, 'answer', { answer }, socket.id);
     });
     
     socket.on('ice-candidate', ({ room, candidate }) => {
         console.log('📤 Forwarding ICE candidate to room:', room);
-        socket.to(room).emit('ice-candidate', { candidate });
+        if (realtime.isClassroomObserver(socket)) return;
+        realtime.emitToClassroomPeers(room, 'ice-candidate', { candidate }, socket.id);
     });
 
     socket.on('request-ice-restart', ({ room }) => {
         console.log('🔄 ICE restart requested in room:', room);
-        socket.to(room).emit('request-ice-restart');
+        if (realtime.isClassroomObserver(socket)) return;
+        realtime.emitToClassroomPeers(room, 'request-ice-restart', {}, socket.id);
     });
     
     // Handle chat messages
@@ -2779,6 +2761,9 @@ io.on('connection', socket => {
             if (updatedCount > 0) {
                 socket.to(room).emit('room-users', { count: updatedCount });
                 console.log('👥 Sent updated participant count after user left:', updatedCount);
+            }
+            if (String(userType || '') === 'observer' && room) {
+                realtime.schedulePeerReady(room);
             }
         }
         

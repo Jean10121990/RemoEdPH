@@ -218,11 +218,20 @@ async function actOnIncident(incidentId, action, adminId) {
     emitSos(incident, { event: 'terminated', creditRestored });
     return { incident, creditRestored };
   }
+  const wasPaused = incident.status === 'paused';
   incident.status = 'resolved';
   incident.resolvedBy = String(adminId || '');
   incident.resolvedAt = new Date();
   await incident.save();
   emitSos(incident, { event: 'resolved' });
+  if (incident.classroomId) {
+    realtime.emitToRoom(incident.classroomId, 'classroom-session-command', {
+      command: 'resume',
+      incidentId: String(incident._id),
+      wasPaused,
+    });
+    realtime.schedulePeerReady(incident.classroomId);
+  }
   return { incident };
 }
 
