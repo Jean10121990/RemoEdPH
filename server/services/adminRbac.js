@@ -32,6 +32,7 @@ const PERMISSION_CATALOG = [
   { key: 'qa:recordings_view', module: 'QA Hub', label: 'Class Recordings — View', sortOrder: 340 },
   { key: 'qa:issues_view', module: 'QA Hub', label: 'Issue Management — View', sortOrder: 350 },
   { key: 'qa:issues_manage', module: 'QA Hub', label: 'Issue Management — Manage', sortOrder: 360 },
+  { key: 'incident:manage', module: 'QA Hub', label: 'Classroom SOS — Manage', sortOrder: 370 },
   // HR
   { key: 'hr:users_view', module: 'HR Hub', label: 'Staff Directory — View', sortOrder: 400 },
   { key: 'hr:users_edit', module: 'HR Hub', label: 'Staff Directory — Edit', sortOrder: 410 },
@@ -97,6 +98,7 @@ const ROLE_SEED_PERMISSIONS = {
     'qa:recordings_view',
     'qa:issues_view',
     'qa:issues_manage',
+    'incident:manage',
   ],
   admin_accounting: [
     ...SHARED_GENERAL,
@@ -146,6 +148,7 @@ const NAV_ID_TO_PERM = {
   dashboard: 'nav:dashboard',
   'hr-hub': 'nav:hr_hub',
   'qa-hub': 'nav:qa_hub',
+  incidents: 'incident:manage',
   'accounting-hub': 'nav:accounting_hub',
   'admin-fee': 'nav:admin_fee',
   marketing: 'nav:marketing',
@@ -164,6 +167,7 @@ const NAV_ID_TO_PERM = {
 const PATH_PERMISSION_RULES = [
   { re: /admin-settings|\/settings\/|super-monitor/, key: 'nav:settings' },
   { re: /admin-hr-hub|admin-users|admin-hr-documents|admin-teacher-pipeline|admin-teacher-training|admin-teacher-schedule|admin-teacher-assessments|admin-assessment-answer-key/, key: 'nav:hr_hub' },
+  { re: /admin-incidents/, key: 'incident:manage' },
   { re: /admin-qa-hub|admin-lessons-library|admin-classroom-recordings|admin-issue-management/, key: 'nav:qa_hub' },
   { re: /admin-accounting-hub|admin-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
   { re: /admin-fee/, key: 'nav:admin_fee' },
@@ -237,6 +241,8 @@ async function seedAdminRbac() {
           { slug },
           { $set: { permissions: perms, isSystem: true, name: meta.name } }
         );
+      } else if (slug === 'admin_qa' && existing.permissions.indexOf('incident:manage') === -1) {
+        await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'incident:manage' } });
       }
     }
     return true;

@@ -94,6 +94,16 @@
             <div class="checkout-validity" id="checkout-validity">Valid for 3 Months</div>
           </div>
 
+          <label id="privacy-consent-row" style="display:none; gap:8px; align-items:flex-start; margin:12px 0; font-size:0.92rem;">
+            <input type="checkbox" id="privacy-consent-check" style="margin-top:3px;">
+            <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>.</span>
+          </label>
+          <script>
+            if (new URLSearchParams(window.location.search).get('consent') === 'required') {
+              var consentRow = document.getElementById('privacy-consent-row');
+              if (consentRow) consentRow.style.display = 'flex';
+            }
+          </script>
           <button type="button" class="primary-btn checkout-pay-btn" id="refill-pay-btn" onclick="startRefillCheckout()">
             <svg class="checkout-lock-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -346,6 +356,30 @@
       if (statusEl) {
         statusEl.style.display = 'block';
         statusEl.textContent = 'Creating secure checkout…';
+      }
+      try {
+        var profileRes = await fetch('/api/student/profile', { headers: { Authorization: 'Bearer ' + token } });
+        var profileBody = await profileRes.json().catch(function () { return {}; });
+        var consent = profileBody.profile && profileBody.profile.privacyConsent;
+        if (consent && consent.accepted !== true) {
+          var row = document.getElementById('privacy-consent-row');
+          var box = document.getElementById('privacy-consent-check');
+          if (row) row.style.display = 'flex';
+          if (!box || !box.checked) {
+            throw new Error('Accept the Student Privacy and Recording Policy before checkout.');
+          }
+          var save = await fetch('/api/student/privacy-consent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ privacyConsentAccepted: true, source: 'checkout' }),
+          });
+          if (!save.ok) throw new Error('Could not save privacy consent.');
+        }
+      } catch (consentErr) {
+        alert(consentErr.message || 'Privacy consent is required.');
+        btn.disabled = false;
+        if (statusEl) statusEl.textContent = '';
+        return;
       }
       try {
         var payload = {

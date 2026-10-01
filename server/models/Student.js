@@ -117,6 +117,21 @@ const studentSchema = new mongoose.Schema({
   freeLessonPeriodKey: { type: String, default: '' },
   /** Upcoming free-plan booking. Cleared on cancel or when the class is completed. */
   freeLessonActiveBookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', default: null },
+  /** Latest accepted Student Privacy and Recording Policy version. */
+  privacyConsentVersion: { type: String, default: '' },
+  privacyConsentAcceptedAt: { type: Date, default: null },
+  privacyConsents: [
+    {
+      version: { type: String, default: '' },
+      acceptedAt: { type: Date, default: Date.now },
+      ip: { type: String, default: '' },
+      userAgent: { type: String, default: '' },
+      source: { type: String, enum: ['register', 'booking', 'checkout'], default: 'register' },
+    },
+  ],
+  /** Optional. Separate from the privacy policy acceptance. */
+  marketingConsent: { type: Boolean, default: false },
+  marketingConsentAt: { type: Date, default: null },
   // Lesson credits (used for flexible scheduling)
   creditBalance: { type: Number, default: 0 }, // pool of purchased credits not yet consumed by finished lessons
   /** Credits held for upcoming bookings (deducted from "available" until class is finished or cancelled). */

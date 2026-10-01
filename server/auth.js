@@ -1128,6 +1128,13 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       message: 'Student first name and last name are required',
     });
   }
+  if (req.body.privacyConsentAccepted !== true) {
+    return res.status(400).json({
+      success: false,
+      code: 'CONSENT_REQUIRED',
+      message: 'A parent or guardian must accept the Student Privacy and Recording Policy before creating an account.',
+    });
+  }
 
   // Check if database is connected
   if (mongoose.connection.readyState !== 1) {
@@ -1227,6 +1234,8 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
 
     // Free plan is Pre-Level, one lesson a month. Do not grant a welcome credit or trial flags.
     const now = new Date();
+    const { PRIVACY_CONSENT_VERSION, consentRecord } = require('./config/privacyConsent');
+    const marketingOn = req.body.marketingConsent === true;
     const profileSet = {
       isSubscribed: false,
       hasFreeTrial: false,
@@ -1236,6 +1245,10 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       freeLessonActiveBookingId: null,
       firstName: safeFirstName,
       lastName: safeLastName,
+      privacyConsentVersion: PRIVACY_CONSENT_VERSION,
+      privacyConsentAcceptedAt: now,
+      marketingConsent: marketingOn,
+      marketingConsentAt: marketingOn ? now : null,
     };
 
     let assessmentTrialActivated = false;
@@ -1261,7 +1274,10 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       }
     }
 
-    await Student.updateOne({ _id: student._id }, { $set: profileSet });
+    await Student.updateOne(
+      { _id: student._id },
+      { $set: profileSet, $push: { privacyConsents: consentRecord(req, 'register') } }
+    );
 
     if (assessmentTrialActivated) {
       return res.json({

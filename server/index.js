@@ -517,6 +517,7 @@ app.get('/api', (req, res) => {
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
+app.use('/api/teacher', noStoreProtectedResponse, require('./classroomSosRoutes').teacherSosRouter);
 app.use('/api/teacher/training', noStoreProtectedResponse, teacherTrainingRoutes);
 {
   const landingHandler =
@@ -549,6 +550,7 @@ const adminApiCombined = express.Router();
 adminApiCombined.use('/training', adminTrainingRoutes);
 adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
 adminApiCombined.use(require('./adminRbacRoutes'));
+adminApiCombined.use(require('./classroomSosRoutes').adminSosRouter);
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
@@ -742,6 +744,16 @@ try {
 // Prefer 302 redirect over serving stub HTML for legacy login URLs
 protectedHtmlFiles.delete('teacher-login.html');
 protectedHtmlFiles.delete('student-login.html');
+
+app.get('/legal/student-privacy', (req, res) => {
+  res.sendFile(path.join(publicDir, 'legal', 'student-privacy.html'));
+});
+app.get('/legal/terms', (req, res) => {
+  res.sendFile(path.join(publicDir, 'legal', 'terms.html'));
+});
+app.get('/teacher/emergency-guidelines', (req, res) => {
+  res.sendFile(path.join(publicDir, 'teacher-emergency-guidelines.html'));
+});
 
 protectedHtmlFiles.forEach((htmlName) => {
   app.get(`/${htmlName}`, noStoreProtectedResponse, (req, res) => {
@@ -946,7 +958,8 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
       });
     }
     
-    // Mark as absent
+    // Mark as absent. Status must be absent so a later Finish cannot turn this into pending feedback.
+    booking.status = 'absent';
     booking.absentMarkedAt = new Date();
     booking.absentType = 'student';
     booking.absentReason = 'Marked as absent by teacher';
@@ -999,6 +1012,7 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     }
     
     console.log('✅ Student marked as absent successfully');
+    await emitBookingsUpdatedForTeacher(teacherId, booking);
     
     res.json({
       success: true,
@@ -1040,7 +1054,20 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
     }
 
     const st = String(booking.status || '').toLowerCase();
-    if (['absent', 'cancelled', 'canceled'].includes(st)) {
+    if (booking.absentMarkedAt || st === 'absent') {
+      if (st !== 'absent') {
+        booking.status = 'absent';
+        await booking.save();
+      }
+      return res.json({
+        success: true,
+        alreadyAbsent: true,
+        code: 'ALREADY_ABSENT',
+        message: 'Student is already marked absent. This class does not need finish feedback.',
+        booking: { id: booking._id, status: 'absent', absentMarkedAt: booking.absentMarkedAt },
+      });
+    }
+    if (['cancelled', 'canceled'].includes(st)) {
       return res.status(400).json({ success: false, error: 'Invalid booking state for end-session' });
     }
     if (isBookingSessionFinalized(booking)) {
@@ -2132,11 +2159,25 @@ io.on('connection', socket => {
     });
     
     socket.on('join', async (data) => {
-        const { room, userType, userId, username } = data;
+        const { room, userId, username } = data || {};
+        let userType = data && data.userType;
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
 
         if (!(await disconnectIfClassroomUnauthenticated(socket, room))) {
             return;
+        }
+
+        if (String(userType || '') === 'observer') {
+            const who = await resolveSocketIdentity(socket, data || {});
+            if (!who || who.role !== 'admin') {
+                socket.emit('entry-denied', {
+                    code: 'OBSERVER_FORBIDDEN',
+                    message: 'Observer join requires an admin session.',
+                });
+                return;
+            }
+            socket.userType = 'observer';
+            userType = 'observer';
         }
 
         if (room && room !== 'default-room') {

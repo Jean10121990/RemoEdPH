@@ -96,6 +96,9 @@
           .trim()
           .toLowerCase();
       } catch (_e2) {}
+      if (typeParam === 'observer') {
+        return firstNonEmpty(ls('remoed_admin_token'), ss('remoed_admin_token'), ls('remoed_admin_auth'), ss('remoed_admin_auth'));
+      }
       if (typeParam === 'teacher') return getTeacherToken();
       if (typeParam === 'student') return getStudentToken();
       if (global.RemoedTeacherSession && typeof global.RemoedTeacherSession.isTeacherSession === 'function') {

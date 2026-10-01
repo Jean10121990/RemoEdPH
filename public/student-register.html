@@ -362,7 +362,19 @@
             </div>
           </div>
         </div>
-        <button type="submit" class="btn" id="register-btn">Create Account</button>
+        <div class="field">
+          <label style="display:flex; gap:8px; align-items:flex-start; font-weight:600;">
+            <input type="checkbox" id="privacy-consent" style="margin-top:4px;">
+            <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>. Classes are recorded for safety, quality assurance, and parent review.</span>
+          </label>
+        </div>
+        <div class="field">
+          <label style="display:flex; gap:8px; align-items:flex-start;">
+            <input type="checkbox" id="marketing-consent" style="margin-top:4px;">
+            <span>(Optional) I grant RemoEd permission to use anonymized learning quotes or media for an educational showcase.</span>
+          </label>
+        </div>
+        <button type="submit" class="btn" id="register-btn" disabled>Create Account</button>
       </form>
       <div class="register-error" id="student-register-error"></div>
 
@@ -376,7 +388,7 @@
     <div class="visual">
       <div>
         <h3>Welcome to RemoEdPH</h3>
-        <p>Live classes, games, and progress tracking — built for young English learners in the Philippines.</p>
+        <p>Live classes, games, and progress tracking — for young English learners in the Philippines and around the world.</p>
         <ul>
           <li>Book your free Lesson 1 trial</li>
           <li>Learn with certified teachers</li>
@@ -566,6 +578,13 @@
       validatePassword(e.target.value);
     });
 
+    const privacyToggle = document.getElementById('privacy-consent');
+    const registerBtn = document.getElementById('register-btn');
+    if (privacyToggle && registerBtn) {
+      privacyToggle.addEventListener('change', function () {
+        registerBtn.disabled = !privacyToggle.checked;
+      });
+    }
     document.getElementById('student-register-form').onsubmit = async function (e) {
       e.preventDefault();
       const firstName = document.getElementById('student-register-first-name').value.trim();
@@ -610,6 +629,13 @@
       }
       userEl.setCustomValidity('');
 
+      const privacyBox = document.getElementById('privacy-consent');
+      if (!privacyBox || !privacyBox.checked) {
+        errorDiv.textContent = 'A parent or guardian must accept the Student Privacy and Recording Policy.';
+        errorDiv.className = 'register-error';
+        errorDiv.style.display = 'block';
+        return;
+      }
       if (!validatePassword(password)) {
         errorDiv.textContent = 'Please ensure your password meets all requirements.';
         errorDiv.className = 'register-error';
@@ -631,7 +657,9 @@
             email,
             password,
             referralCode: localStorage.getItem('referralCode') || '',
-            assessmentTrialToken: urlTrialToken || undefined
+            assessmentTrialToken: urlTrialToken || undefined,
+            privacyConsentAccepted: true,
+            marketingConsent: !!(document.getElementById('marketing-consent') && document.getElementById('marketing-consent').checked)
           })
         });
 

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom SOS — RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/admin-hub-shell.css">
+</head>
+<body class="admin-hub-page">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js?v=sock-auth-1"></script>
+        <script src="js/admin-notifications.js?v=sock-auth-1"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-16"></script>
+        <script src="js/admin-access-guard.js?v=sos-1"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'incidents');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">Classroom SOS</div>
+                <p class="muted" style="margin-top:0;">Open incidents from live classes. Observe joins without a camera. Pause and end apply to that room only.</p>
+                <label>Status
+                  <select id="incident-status">
+                    <option value="open">Open</option>
+                    <option value="observing">Observing</option>
+                    <option value="paused">Paused</option>
+                    <option value="withdrawn">Withdrawn</option>
+                    <option value="terminated">Ended</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="all">All</option>
+                  </select>
+                </label>
+                <div id="incident-list" style="margin-top:16px;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function () {
+      function token() {
+        try {
+          if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) {
+            var t = RemoedAdminSession.getAuthToken();
+            if (t) return t;
+          }
+        } catch (_e) {}
+        return localStorage.getItem('remoed_admin_token') || '';
+      }
+      function esc(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+      var list = document.getElementById('incident-list');
+      var statusSel = document.getElementById('incident-status');
+      async function load() {
+        var status = statusSel ? statusSel.value : 'open';
+        var res = await fetch('/api/admin/incidents?status=' + encodeURIComponent(status), {
+          headers: { Authorization: 'Bearer ' + token() }
+        });
+        var body = await res.json().catch(function () { return {}; });
+        if (res.status === 403) {
+          list.textContent = 'You do not have permission to manage classroom SOS.';
+          return;
+        }
+        if (!res.ok) {
+          list.textContent = body.error || 'Could not load incidents.';
+          return;
+        }
+        var rows = body.incidents || [];
+        if (!rows.length) {
+          list.textContent = 'No incidents for this status.';
+          return;
+        }
+        list.innerHTML = rows.map(function (row) {
+          var when = row.createdAt ? new Date(row.createdAt).toLocaleString() : '';
+          return '<article style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:10px;">' +
+            '<strong>' + esc(row.categoryLabel || row.category) + '</strong> · Tier ' + esc(row.tier) +
+            ' · ' + esc(row.status) +
+            '<div>Class ' + esc(row.classroomId) + ' · Student ' + esc(row.studentId) + ' · Teacher ' + esc(row.teacherId) + '</div>' +
+            '<div class="muted">' + esc(when) + (row.creditRestored ? ' · Credit restored' : '') + '</div>' +
+            (row.description ? '<p>' + esc(row.description) + '</p>' : '') +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
+            '<button type="button" data-act="observe" data-id="' + esc(row.id) + '">Observe</button>' +
+            '<button type="button" data-act="pause" data-id="' + esc(row.id) + '">Pause</button>' +
+            '<button type="button" data-act="terminate" data-id="' + esc(row.id) + '">End class</button>' +
+            '<button type="button" data-act="resolve" data-id="' + esc(row.id) + '">Resolve</button>' +
+            '</div></article>';
+        }).join('');
+      }
+      list.addEventListener('click', async function (event) {
+        var btn = event.target.closest('button[data-act]');
+        if (!btn) return;
+        btn.disabled = true;
+        var res = await fetch('/api/admin/incidents/' + encodeURIComponent(btn.getAttribute('data-id')) + '/action', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token()
+          },
+          body: JSON.stringify({ action: btn.getAttribute('data-act') })
+        });
+        var body = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+          alert(body.error || 'Action failed.');
+        } else if (body.observeUrl) {
+          window.open(body.observeUrl, '_blank', 'noopener');
+        }
+        load();
+      });
+      if (statusSel) statusSel.addEventListener('change', load);
+      load();
+      setInterval(load, 8000);
+      function listen() {
+        var socket = window.__remoedNotifSocket;
+        if (!socket || typeof socket.on !== 'function') return false;
+        socket.on('classroom-sos', load);
+        return true;
+      }
+      if (!listen()) setTimeout(listen, 2500);
+    })();
+    </script>
+</body>
+</html>

@@ -213,6 +213,10 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       resolvedEmail = resolvedStudent.email || resolvedEmail;
       resolvedParentName = resolvedStudent.parentName || resolvedParentName;
       passwordHash = resolvedStudent.password || '';
+      const { hasCurrentConsent, consentRequiredBody } = require('./config/privacyConsent');
+      if (!hasCurrentConsent(resolvedStudent)) {
+        return res.status(403).json(consentRequiredBody());
+      }
     } else {
       if (!resolvedUsername || !resolvedEmail || !password) {
         return res.status(400).json({ success: false, error: 'username, email, password, and planId are required' });

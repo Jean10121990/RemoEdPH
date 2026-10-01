@@ -39,7 +39,7 @@
     try {
       var q = new URLSearchParams(global.location.search || '');
       var t = String(q.get('type') || q.get('userType') || '').toLowerCase();
-      if (t === 'teacher' || t === 'admin') return false;
+      if (t === 'teacher' || t === 'admin' || t === 'observer' || q.get('observer') === '1') return false;
       if (t === 'student') return true;
     } catch (_e) {}
     try {
@@ -78,6 +78,13 @@
     overlay.hidden = false;
     overlay.removeAttribute('hidden');
     document.body.classList.add('lc-student-waiting');
+    if (!document.getElementById('lc-wait-recording')) {
+      var note = document.createElement('p');
+      note.id = 'lc-wait-recording';
+      note.textContent = 'Classes are recorded for safety, quality assurance, and parent review.';
+      var card = overlay.querySelector('.lc-wait-card') || overlay;
+      card.appendChild(note);
+    }
     setStatus('Waiting for your teacher…');
     startPlay();
   }

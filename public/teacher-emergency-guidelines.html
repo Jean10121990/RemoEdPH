@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency guidelines — RemoEdPH</title>
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-10">
+    <link rel="stylesheet" href="css/global-portal.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
+    <script src="js/security-guard.js?v=4"></script>
+    <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
+    <script src="js/remoed-auth-token.js?v=2"></script>
+</head>
+<body class="teacher-portal">
+    <div class="remoed-main">
+        <div class="nav-header">
+            <div class="nav-left"><h1><span class="nav-title-text">Emergency guidelines</span></h1></div>
+        </div>
+        <div id="teacher-sidebar-root"></div>
+        <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
+        <script>
+          if (window.RemoedTeacherSession) RemoedTeacherSession.requireTeacher();
+          TeacherSidebar.render('teacher-sidebar-root', 'emergency-guidelines');
+        </script>
+        <div class="remoed-content" style="padding:24px;">
+            <section style="max-width:720px;">
+                <p>Use <strong>Emergency SOS</strong> in the live classroom. Students do not see that button. Confirm sends the alert to RemoEd admins.</p>
+                <h2>Tier 1 — Technical failure</h2>
+                <p>Power or internet has failed. Press SOS, tell the student to wait, and stay if you can. An admin may end the class and restore the lesson.</p>
+                <h2>Tier 2 — Unaccompanied child under 6</h2>
+                <p>Press SOS and ask for a parent. Do not continue the lesson alone with a child under 6.</p>
+                <h2>Tier 3 — Unauthorized adult or safety</h2>
+                <p>A behavioral issue, an unauthorized adult, or distress and inappropriate content. Press SOS, stop the activity, and stay in the room until an admin joins or ends it. Do not argue with the adult.</p>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

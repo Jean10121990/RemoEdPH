@@ -215,6 +215,10 @@ async function runBookSlot(req, res) {
     if (!student) {
       return res.status(400).json({ error: 'Student not found' });
     }
+    const { hasCurrentConsent, consentRequiredBody } = require('../config/privacyConsent');
+    if (!hasCurrentConsent(student)) {
+      return res.status(403).json(consentRequiredBody());
+    }
     const { applyExpiredCreditsIfNeeded } = require('./creditExpiry');
     const expiryResult = await applyExpiredCreditsIfNeeded(req.user.studentId, student.toObject());
     if (expiryResult.applied) {

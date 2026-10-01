@@ -63,12 +63,14 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] **Booking Details** opens as a centered body-level modal (not a side column inside `.remoed-content`).
 - [ ] Paid students cannot select / book a lesson ahead of their trail stop (`LESSON_AHEAD_OF_PROGRESS`); earlier lessons stay bookable for reschedule.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
+- [ ] A student without the current privacy version gets `CONSENT_REQUIRED` on book and logged-in checkout, then can continue after accepting. Booking confirmation and the student waiting room say classes are recorded for safety, quality assurance, and parent review.
 - [ ] Booking for a teacher whose slot `teacherId` is a username (not email) still succeeds when the UI sends their email.
 
 ### Teacher schedule / issue
 
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
+- [ ] Live-classroom **Absent** closes that classroom tab. **Give Feedback** still offers **Student Absent** and **Report Issue**. A class with `absentMarkedAt` is not a pending-feedback cell.
 - [ ] After submit, schedule refresh does not clear the teacher session.
 
 ### Live classroom (teacher Settings + student locks)
@@ -79,6 +81,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] **Student microphone** / **Student camera** switches match the rail pills: one side of each pair is highlighted (Allow = green, Mute/Cam off = amber). Student is muted / cam-off until Allow.
 - [ ] **Your camera background** in Settings applies Off / Blur / Office / Classroom / Nature / Custom on the teacher camera (photos under `public/images/virtual-bg/*.jpg`). Hard-refresh after deploy so `?v=` cache-bust is not stale.
 - [ ] Student joining before the teacher sees the **waiting overlay** (Play candies and toys / Watch loop). When the teacher joins, the overlay closes. Camera/mic/speaker use Lucide **video** / **mic** / **volume** icons, not C/M/A letters. Teacher student-lock chips are icons only (`mic-off` / `mic` / `video-off` / `video`). Flagged chat shows asterisks to students; teachers can reveal possible flagged words.
+- [ ] Teacher **Emergency SOS** (Lucide siren) sits beside Settings. Students do not see it. Confirm creates one incident; a second confirm in the same open class returns that incident. Withdraw within 15 seconds marks it withdrawn. Admin Observe (`observer=1`) does not publish a camera and does not clear the student waiting state. Pause and end stop media in that room only and do not delete room settings or virtual backgrounds. Tier-1 end restores a credit only if one was already spent. Tier 2 and 3 do not change credits.
 
 ### Auth isolation
 

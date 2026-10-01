@@ -713,6 +713,8 @@
         <nav class="site-footer__col" aria-label="Legal">
           <h3 class="site-footer__heading">Legal</h3>
           <a href="/site-privacy.html">Privacy Policy</a>
+          <a href="/legal/student-privacy">Student privacy</a>
+          <a href="/legal/terms">Terms</a>
         </nav>
       </div>
       <p class="site-footer__copy">&copy; <span id="footer-year">2026</span> RemoEdPH. All rights reserved.</p>
@@ -968,6 +970,10 @@
               body: JSON.stringify(payload),
             });
             const result = await response.json();
+            if (result.code === "CONSENT_REQUIRED") {
+              window.location.href = "/student-credits.html?consent=required";
+              return;
+            }
             if (!response.ok || !result.success || !result.checkout_url) {
               throw new Error(
                 result.error ||

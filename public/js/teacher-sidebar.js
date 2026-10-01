@@ -82,6 +82,7 @@
         { id: 'dashboard', label: 'Dashboard', href: 'teacher-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
         { id: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M5 8H3a2 2 0 000 4h2M19 8h2a2 2 0 010 4h-2"/></svg>' },
         { id: 'class-schedule', label: 'Class Schedule', href: 'teacher-class-table.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>' },
+        { id: 'emergency-guidelines', label: 'Emergency guidelines', href: '/teacher/emergency-guidelines', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M7 18v-6a5 5 0 0110 0v6"/><path d="M5 21h14v-1a2 2 0 00-2-2H7a2 2 0 00-2 2z"/></svg>' },
         { id: 'class-configuration', label: 'Class Configuration', href: 'teacher-open-class.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>' },
         { id: 'device-check', label: 'Device Check', href: 'device-check.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
         { id: 'lessons-library', label: 'Lessons Library', href: 'teacher-lessons-library.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
@@ -97,6 +98,7 @@
     function getActiveFromPath() {
         var path = (window.location.pathname || '').replace(/^\//, '') || window.location.href;
         if (path.indexOf('teacher-dashboard') !== -1) return 'dashboard';
+        if (path.indexOf('emergency-guidelines') !== -1) return 'emergency-guidelines';
         if (path.indexOf('teacher-class-table') !== -1) return 'class-schedule';
         if (path.indexOf('teacher-schedule') !== -1) return 'class-schedule';
         if (path.indexOf('teacher-open-class') !== -1) return 'class-configuration';

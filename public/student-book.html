@@ -1247,6 +1247,13 @@
                             </form>
                             
                             <div id="booking-message" class="message hidden"></div>
+                            <div id="booking-privacy-consent" hidden style="margin-top:10px;">
+                              <label style="display:flex; gap:8px; align-items:flex-start;">
+                                <input type="checkbox" id="booking-privacy-check" style="margin-top:4px;">
+                                <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>.</span>
+                              </label>
+                              <button type="button" id="booking-privacy-save" style="margin-top:8px;">Save and continue</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3232,6 +3239,18 @@
                     const errorMsg = result.error || result.message || 'Booking failed';
                     const errorDetails = result.details || {};
 
+                    if (result.code === 'CONSENT_REQUIRED') {
+                        showMessage(errorMsg, 'error');
+                        var consentBox = document.getElementById('booking-privacy-consent');
+                        if (consentBox) {
+                          consentBox.hidden = false;
+                          consentBox.removeAttribute('hidden');
+                        }
+                        bookBtn.disabled = false;
+                        bookBtnText.textContent = 'Book Class';
+                        return;
+                    }
+
                     if (result.code === 'DAILY_CLASS_LIMIT') {
                         showMessage(errorMsg, 'error');
                         closeBookingModal();
@@ -3311,7 +3330,7 @@
                     ? ` Remaining credits: ${remainingCredits}.`
                     : '';
                 showNotification(
-                    'Booking Successful! Your class has been scheduled.' + creditNote,
+                    'Booking Successful! Your class has been scheduled.' + creditNote + ' Classes are recorded for safety, quality assurance, and parent review.',
                     'success'
                 );                
             } catch (error) {
@@ -3351,6 +3370,38 @@
                 messageDiv.classList.add('hidden');
             }, 5000);
         }
+
+        (function wireBookingPrivacySave() {
+          var saveBtn = document.getElementById('booking-privacy-save');
+          if (!saveBtn) return;
+          saveBtn.addEventListener('click', async function () {
+            var box = document.getElementById('booking-privacy-check');
+            if (!box || !box.checked) {
+              showMessage('Accept the Student Privacy and Recording Policy to continue.', 'error');
+              return;
+            }
+            saveBtn.disabled = true;
+            try {
+              var res = await fetch('/api/student/privacy-consent', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: 'Bearer ' + getStudentAuthToken()
+                },
+                body: JSON.stringify({ privacyConsentAccepted: true, source: 'booking' })
+              });
+              var body = await res.json().catch(function () { return {}; });
+              if (!res.ok) throw new Error(body.error || body.message || 'Could not save privacy consent.');
+              var panel = document.getElementById('booking-privacy-consent');
+              if (panel) panel.hidden = true;
+              showMessage('Privacy policy accepted. You can book this class now.', 'success');
+            } catch (err) {
+              showMessage(err.message || 'Could not save privacy consent.', 'error');
+            } finally {
+              saveBtn.disabled = false;
+            }
+          });
+        })();
 
         function showNotification(message, type) {
             const notification = document.createElement('div');

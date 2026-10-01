@@ -385,10 +385,63 @@ async function logEmergencyCreditRetained(booking) {
   return student._id;
 }
 
+/**
+ * Tier-1 technical SOS. Restores one credit only if this class already spent one.
+ * Free-plan classes clear the month so it can be booked again, and do not add a credit.
+ */
+async function restoreCreditAfterTechnicalSos(booking) {
+  if (!booking) return { restored: false, freeMonthCleared: false };
+  const student = await findStudentForBooking(booking);
+  if (booking.isFreePlanBooking) {
+    if (student) {
+      await Student.updateOne(
+        { _id: student._id },
+        { $set: { freeLessonActiveBookingId: null, freeLessonPeriodKey: '' } }
+      );
+    }
+    return { restored: false, freeMonthCleared: true };
+  }
+  if (!booking.creditConsumedAt || !student) {
+    return { restored: false, freeMonthCleared: false };
+  }
+  const now = new Date();
+  const balanceAfter = Math.max(0, Number(student.creditBalance) || 0) + 1;
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $inc: { creditBalance: 1 },
+      $push: {
+        creditTransactions: {
+          date: now,
+          type: 'adjustment',
+          plan: 'sos-restore',
+          description: 'Technical SOS — lesson credit restored',
+          credits: 1,
+          balanceAfter,
+          amountPaid: 0,
+        },
+        creditHistory: {
+          date: now,
+          plan: 'Technical SOS restore',
+          credits: 1,
+          amountPaid: 0,
+          paymentId: 'sos-restore:' + String(booking._id),
+          entryType: 'adjustment',
+          balanceAfter,
+        },
+      },
+    }
+  );
+  booking.creditConsumedAt = null;
+  booking.creditsFinalized = false;
+  return { restored: true, freeMonthCleared: false };
+}
+
 module.exports = {
   findStudentForBooking,
   deductCreditOnClassOutcome,
   consumeReservedCreditForBooking,
   releaseReservedCreditForBooking,
   logEmergencyCreditRetained,
+  restoreCreditAfterTechnicalSos,
 };

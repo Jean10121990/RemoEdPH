@@ -81,7 +81,7 @@
 <body class="page-teacher-class-table teacher-portal">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js?v=app-shell-11"></script>
+    <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
     <script src="js/teacher-page-header.js?v=sock-auth-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
@@ -292,7 +292,11 @@
         <div class="feedback-details">
           <p><strong>Class:</strong> <span id="feedback-class-info"></span></p>
           <p><strong>Student:</strong> <span id="feedback-student-info"></span></p>
-          <p style="color: #666; font-style: italic; margin-bottom: 15px;">Stars and comments finalize this lesson, student credits, and your teaching fee. If you clicked Finish in the live room first, you are in the right place.</p>
+          <p style="color: #666; font-style: italic; margin-bottom: 15px;">Stars and comments finalize a class that happened. If the student did not attend, choose Student Absent. Use Report Issue for a class problem.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 16px;">
+            <button type="button" class="remoed-btn remoed-btn-warning" onclick="markStudentAbsent()">Student Absent</button>
+            <button type="button" class="remoed-btn remoed-btn-danger" onclick="reportClassIssueFromFeedback()">Report Issue</button>
+          </div>
         
           <div class="form-group">
             <label for="feedback-rating">Student Rating:</label>
@@ -588,6 +592,7 @@
     function bookingNeedsTeacherFeedbackCell(booking) {
       if (!booking) return false;
       if (booking.feedbackSubmitted === true || booking.hasTeacherFeedback === true) return false;
+      if (booking.absentMarkedAt) return false;
       const st = String(booking.status || '').toLowerCase();
       if (st === 'completed' || st === 'cancelled' || st === 'canceled' || st === 'absent') return false;
       if (booking.feedbackSubmitted === false) return true;
@@ -2235,6 +2240,8 @@
             
             if (response.ok) {
                 showNotification('Student marked as absent successfully', 'success');
+                const feedbackModal = document.getElementById('class-feedback-modal');
+                if (feedbackModal) feedbackModal.classList.remove('show');
                 closeClassInfo();
                 loadScheduleData(); // Refresh schedule
             } else {
@@ -2713,6 +2720,12 @@
         }
     }
     
+    function reportClassIssueFromFeedback() {
+        const feedbackModal = document.getElementById('class-feedback-modal');
+        if (feedbackModal) feedbackModal.classList.remove('show');
+        reportClassIssue().catch(console.error);
+    }
+
     // Report class issue — close Class Info first so the issue modal is not stacked behind it
     async function reportClassIssue() {
         if (!currentBooking) {

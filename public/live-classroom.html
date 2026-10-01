@@ -8,8 +8,8 @@
   <script src="js/security-guard.js?v=lc-token-2"></script>
   <script src="js/user-session.js?v=lc-no-crossrole-logout-1"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
-  <script src="js/remoed-auth-token.js?v=1"></script>
-  <script src="js/lucide-icons.js?v=1"></script>
+  <script src="js/remoed-auth-token.js?v=2"></script>
+  <script src="js/lucide-icons.js?v=2"></script>
   <script src="js/chat-language-filter.js?v=1"></script>
   <title>Live Classroom</title>
   <!-- PDF.js library for embedded free PDF viewer -->
@@ -113,6 +113,7 @@
         <button class="active" data-tab="lesson-content">Lesson</button>
         <button data-tab="whiteboard">Board</button>
         <button data-tab="videos" id="lc-videos-tab-btn">Videos</button>
+        <button type="button" id="lc-sos-btn" hidden title="Emergency SOS" style="margin-left:8px; padding:6px 10px; border-radius:8px; border:1px solid #b91c1c; background:#fef2f2; color:#991b1b; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><span data-lucide="siren" style="width:18px;height:18px;display:inline-flex;"></span>Emergency SOS</button>
         <div id="lc-class-settings" class="lc-class-settings" hidden>
           <button type="button" id="lc-class-settings-btn" class="lc-class-settings-btn" title="Class settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="lc-class-settings-overlay">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -231,11 +232,24 @@
       Chat<span class="lc-mobile-chat-unread" id="lc-mobile-chat-unread" hidden></span>
     </button>
   </nav>
+  <div id="lc-sos-modal" hidden style="position:fixed; inset:0; z-index:var(--z-modal); background:rgba(15,23,42,0.45); display:flex; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#fff; border-radius:16px; max-width:420px; width:100%; padding:20px; box-shadow:0 16px 40px rgba(15,23,42,0.2);">
+      <h2 style="margin:0 0 8px; font-size:1.15rem;">Emergency SOS</h2>
+      <p style="margin:0 0 12px; color:#475569;">Choose what is happening. Confirm sends this to RemoEd admins.</p>
+      <div id="lc-sos-categories" style="display:flex; flex-direction:column; gap:8px;"></div>
+      <p id="lc-sos-status" style="min-height:1.2em; color:#991b1b;"></p>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button type="button" id="lc-sos-cancel">Cancel</button>
+        <button type="button" id="lc-sos-confirm" style="background:#b91c1c; color:#fff; border:0; border-radius:8px; padding:8px 12px; font-weight:700;">Confirm SOS</button>
+      </div>
+    </div>
+  </div>
   <div id="lc-student-waiting" class="lc-student-waiting-overlay" hidden>
     <div class="lc-wait-card">
       <p class="lc-wait-kicker"><span data-lucide="clock"></span> Waiting room</p>
       <h1>Your teacher is on the way</h1>
       <p>Stay here and play or watch. You will join the class automatically when they enter.</p>
+      <p id="lc-wait-recording">Classes are recorded for safety, quality assurance, and parent review.</p>
       <p id="lc-wait-status">Checking for your teacher…</p>
       <div class="lc-wait-toolbar">
         <button type="button" class="lc-wait-tab is-active" id="lc-wait-tab-game">Play</button>
@@ -497,6 +511,10 @@
           const typeParam = String(new URLSearchParams(window.location.search).get('type') || '')
             .trim()
             .toLowerCase();
+          const observerParam = String(new URLSearchParams(window.location.search).get('observer') || '');
+          if (typeParam === 'observer' || observerParam === '1') {
+            return localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || '';
+          }
           if (typeParam === 'teacher' && window.RemoedTeacherSession && RemoedTeacherSession.getToken) {
             const t = RemoedTeacherSession.getToken();
             if (t) return t;
@@ -654,11 +672,13 @@
 
       // Determine user type - check query param first, then localStorage
       const typeParam = getQueryParam('type');
+      const observerParam = getQueryParam('observer');
       // Determine user type: URL parameter takes highest priority
       let userType = 'student'; // default
-      
-      // Priority 1: URL parameter (most reliable)
-      if (typeParam === 'teacher') {
+      if (observerParam === '1' || typeParam === 'observer') {
+        userType = 'observer';
+        window.__lcObserver = true;
+      } else if (typeParam === 'teacher') {
         userType = 'teacher';
       } else if (typeParam === 'student') {
         userType = 'student';
@@ -1123,6 +1143,11 @@
       }
 
       if (userType === 'teacher' && classSettingsWrap) {
+        var sosBtn = document.getElementById('lc-sos-btn');
+        if (sosBtn) {
+          sosBtn.hidden = false;
+          sosBtn.removeAttribute('hidden');
+        }
         classSettingsWrap.hidden = false;
         classSettingsWrap.removeAttribute('hidden');
         applyStudentVideosAccess(studentVideosAllowed);
@@ -1182,6 +1207,103 @@
             }
           });
         }
+        (function wireTeacherSos() {
+          var btn = document.getElementById('lc-sos-btn');
+          var modal = document.getElementById('lc-sos-modal');
+          var list = document.getElementById('lc-sos-categories');
+          var status = document.getElementById('lc-sos-status');
+          var confirmBtn = document.getElementById('lc-sos-confirm');
+          var cancelBtn = document.getElementById('lc-sos-cancel');
+          if (!btn || !modal || !list || !confirmBtn) return;
+          var cats = [
+            ['technical_failure', 'Technical failure (power or internet)'],
+            ['unaccompanied_child', 'Unaccompanied child under 6 without a parent'],
+            ['unauthorized_adult', 'Behavioral issue or an unauthorized adult'],
+            ['safety_distress', 'Safety, distress, or inappropriate content']
+          ];
+          var picked = '';
+          list.innerHTML = '';
+          cats.forEach(function (pair) {
+            var label = document.createElement('label');
+            label.style.cssText = 'display:flex; gap:8px; align-items:flex-start;';
+            var input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'lc-sos-cat';
+            input.value = pair[0];
+            input.addEventListener('change', function () { picked = pair[0]; });
+            var span = document.createElement('span');
+            span.textContent = pair[1];
+            label.appendChild(input);
+            label.appendChild(span);
+            list.appendChild(label);
+          });
+          function closeSos() {
+            modal.hidden = true;
+            modal.setAttribute('hidden', '');
+          }
+          btn.addEventListener('click', function () {
+            picked = '';
+            if (status) status.textContent = '';
+            modal.hidden = false;
+            modal.removeAttribute('hidden');
+          });
+          if (cancelBtn) cancelBtn.addEventListener('click', closeSos);
+          confirmBtn.addEventListener('click', async function () {
+            if (!picked) {
+              if (status) status.textContent = 'Choose a category, then confirm.';
+              return;
+            }
+            confirmBtn.disabled = true;
+            try {
+              var token = resolveLiveClassroomAuthToken();
+              var res = await fetch('/api/teacher/classroom-sos', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                  bookingId: getQueryParam('bookingId') || getQueryParam('bookingid') || '',
+                  classroomId: room,
+                  category: picked
+                })
+              });
+              var body = await res.json().catch(function () { return {}; });
+              if (!res.ok || !body.incident) {
+                throw new Error(body.error || 'SOS was not sent.');
+              }
+              var incident = body.incident;
+              if (status) {
+                status.textContent = body.created
+                  ? 'SOS sent. You can withdraw for 15 seconds.'
+                  : 'An open SOS is already on file for this class.';
+              }
+              var createdAt = new Date(incident.createdAt).getTime();
+              var left = 15000 - (Date.now() - createdAt);
+              if (incident.status === 'open' && left > 0) {
+                var withdraw = document.createElement('button');
+                withdraw.type = 'button';
+                withdraw.textContent = 'Withdraw SOS';
+                withdraw.addEventListener('click', async function () {
+                  withdraw.disabled = true;
+                  var w = await fetch('/api/teacher/classroom-sos/' + encodeURIComponent(incident.id) + '/withdraw', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token }
+                  });
+                  var wb = await w.json().catch(function () { return {}; });
+                  if (status) status.textContent = w.ok ? 'SOS withdrawn. Admins still see it as withdrawn.' : (wb.error || 'Withdraw was rejected.');
+                });
+                if (status) status.appendChild(document.createElement('br'));
+                if (status) status.appendChild(withdraw);
+                setTimeout(function () { withdraw.disabled = true; }, left);
+              }
+            } catch (err) {
+              if (status) status.textContent = err.message || 'SOS was not sent.';
+            } finally {
+              confirmBtn.disabled = false;
+            }
+          });
+        })();
       }
 
       if (userType === 'student') {
@@ -1192,6 +1314,27 @@
       if (socket) {
         socket.on('classroom-settings', function (data) {
           applyIncomingClassSettings(data);
+        });
+        socket.on('classroom-session-command', function (data) {
+          try {
+            if (typeof localStream !== 'undefined' && localStream && localStream.getTracks) {
+              localStream.getTracks().forEach(function (track) {
+                try { track.stop(); } catch (_stop) {}
+              });
+            }
+          } catch (_media) {}
+          var note = document.getElementById('lc-session-command-note');
+          if (!note) {
+            note = document.createElement('div');
+            note.id = 'lc-session-command-note';
+            note.setAttribute('role', 'status');
+            note.style.cssText = 'position:fixed;inset:0;z-index:var(--z-blocking);background:rgba(15,23,42,0.78);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:1.15rem;';
+            document.body.appendChild(note);
+          }
+          var command = data && data.command;
+          note.textContent = command === 'terminate'
+            ? 'RemoEd has ended this class. You can leave the room.'
+            : 'RemoEd has paused this class. Please wait.';
         });
         socket.on('classroom-settings-ack', function (data) {
           if (userType !== 'teacher') return;
@@ -6095,6 +6238,9 @@
 
       // Cross-browser getUserMedia compatibility
       function getUserMedia(constraints) {
+        if (window.__lcObserver) {
+          return Promise.resolve(new MediaStream());
+        }
         // Check secure context first
         if (!isSecureContext()) {
           return Promise.reject(new Error('SECURE_CONTEXT_REQUIRED'));
@@ -8327,13 +8473,16 @@
                     }
                   }
                 );
+                const ed = await endRes.json().catch(() => ({}));
                 if (!endRes.ok) {
-                  const ed = await endRes.json().catch(() => ({}));
                   if (ed.code === 'TOO_EARLY_TO_FINISH' || endRes.status === 400) {
                     alert(ed.error || 'You can finish only after 15 minutes from the scheduled start.');
                     return;
                   }
                   console.warn('end-session:', ed.error || endRes.status);
+                } else if (ed.alreadyAbsent || ed.code === 'ALREADY_ABSENT') {
+                  closeLiveClassroomAfterAbsent();
+                  return;
                 } else {
                   // Wire LessonProgress API (server also upserts on end-session / finalize)
                   try {
@@ -8387,6 +8536,34 @@
         });
       }
 
+      function closeLiveClassroomAfterAbsent() {
+        try {
+          if (socket && socket.connected) {
+            socket.emit('class-finished', {
+              room,
+              userType: 'teacher',
+              teacherId: userId || username,
+              reason: 'student-absent'
+            });
+          }
+        } catch (emitErr) {
+          console.warn('student-absent close emit:', emitErr);
+        }
+        if (peerConnection) {
+          peerConnection.close();
+          peerConnection = null;
+        }
+        if (localStream) {
+          localStream.getTracks().forEach((track) => track.stop());
+          localStream = null;
+        }
+        if (socket) socket.disconnect();
+        window.close();
+        setTimeout(function () {
+          window.location.href = 'teacher-class-table.html';
+        }, 300);
+      }
+
       if (absentBtn) {
         absentBtn.addEventListener('click', async () => {
           if (absentBtn.disabled) return;
@@ -8421,11 +8598,11 @@
             });
             const data = await response.json().catch(() => ({}));
             if (response.ok) {
-              alert(data.message || 'Student marked as absent.');
               if (absentBtnPollId != null) {
                 clearInterval(absentBtnPollId);
                 absentBtnPollId = null;
               }
+              closeLiveClassroomAfterAbsent();
             } else {
               alert(data.error || 'Failed to mark student absent.');
               updateTeacherAbsentButtonEligibility();
@@ -8601,7 +8778,11 @@
         console.log('🏁 [CLIENT] Class finished event received:', data);
         if (data && userType === 'student') {
           // Show notification to student
-          alert('The teacher has finished the class. The classroom will close now.');
+          alert(
+            data.reason === 'student-absent'
+              ? 'This class was marked absent. The classroom will close now.'
+              : 'The teacher has finished the class. The classroom will close now.'
+          );
           
           // Cleanup: Close peer connection and stop streams
           if (peerConnection) {
@@ -8965,7 +9146,7 @@
 
     })();
     </script>
-    <script src="js/student-class-wait.js?v=treats-1"></script>
+    <script src="js/student-class-wait.js?v=treats-2"></script>
 </body>
 </html>
 

@@ -185,7 +185,8 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         !cached.profile ||
         !cached.profile.freePlan ||
         typeof cached.profile.freePlan.isFree !== 'boolean';
-      if (!cacheExpired && !cacheMissingFreePlan) {
+      const cacheMissingConsent = !cached.profile || !cached.profile.privacyConsent;
+      if (!cacheExpired && !cacheMissingFreePlan && !cacheMissingConsent) {
         scheduleTrialBookingReminderSideEffect(req.user.studentId);
         return res.json(cached);
       }
@@ -282,6 +283,7 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         creditsExpired: creditExpiry.creditsExpired,
         creditBalance: Math.max(0, Number(student.creditBalance) || 0),
         freePlan: await require('./services/freePlanAccess').freePlanProfile(student, null),
+        privacyConsent: require('./config/privacyConsent').privacyConsentPayload(student),
       }
     };
     await studentController.setStudentProfileCache(req.user.studentId, body);
@@ -295,6 +297,37 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
           ? 'Server error'
           : String(error && error.message ? error.message : 'Server error'),
     });
+  }
+});
+
+/** Later acceptance for accounts created before the current privacy version. Student JWT only. */
+router.post('/privacy-consent', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { PRIVACY_CONSENT_VERSION, consentRecord, privacyConsentPayload, consentRequiredBody } = require('./config/privacyConsent');
+    if (req.body && req.body.privacyConsentAccepted !== true) {
+      return res.status(400).json(consentRequiredBody());
+    }
+    const student = await Student.findById(req.user.studentId);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    const now = new Date();
+    const source = req.body && req.body.source === 'checkout' ? 'checkout' : 'booking';
+    const set = {
+      privacyConsentVersion: PRIVACY_CONSENT_VERSION,
+      privacyConsentAcceptedAt: now,
+    };
+    if (req.body && typeof req.body.marketingConsent === 'boolean') {
+      set.marketingConsent = req.body.marketingConsent === true;
+      set.marketingConsentAt = set.marketingConsent ? now : null;
+    }
+    await Student.updateOne(
+      { _id: student._id },
+      { $set: set, $push: { privacyConsents: consentRecord(req, source) } }
+    );
+    await studentController.invalidateStudentProfileCache(req.user.studentId);
+    res.json({ success: true, privacyConsent: privacyConsentPayload(set) });
+  } catch (error) {
+    console.error('POST /privacy-consent:', error);
+    res.status(500).json({ error: 'Could not save privacy consent' });
   }
 });
 

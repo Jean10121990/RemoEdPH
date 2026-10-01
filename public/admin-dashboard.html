@@ -850,10 +850,61 @@
         <script src="js/admin-session.js"></script>
         <script src="js/admin-page-header.js?v=sock-auth-1"></script>
         <script src="js/admin-notifications.js?v=sock-auth-1"></script>
-        <script src="js/admin-sidebar.js?v=app-shell-4"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-16"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="margin-top:60px;">
-            
+            <div id="admin-sos-banner" hidden style="margin:0 0 16px; padding:12px 14px; border-radius:10px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-weight:700;"></div>
+            <script>
+            (function () {
+              function adminToken() {
+                try {
+                  if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) {
+                    var t = RemoedAdminSession.getAuthToken();
+                    if (t) return t;
+                  }
+                } catch (_e) {}
+                return localStorage.getItem('remoed_admin_token') || '';
+              }
+              function paint(count) {
+                var el = document.getElementById('admin-sos-banner');
+                if (!el) return;
+                el.textContent = '';
+                if (!count) {
+                  el.hidden = true;
+                  return;
+                }
+                el.hidden = false;
+                var link = document.createElement('a');
+                link.href = 'admin-incidents.html';
+                link.style.color = '#991b1b';
+                link.textContent = count + ' open classroom SOS — review now';
+                el.appendChild(link);
+              }
+              function refresh() {
+                var token = adminToken();
+                if (!token) return;
+                fetch('/api/admin/incidents?status=open', {
+                  headers: { Authorization: 'Bearer ' + token }
+                }).then(function (r) {
+                  if (!r.ok) return null;
+                  return r.json();
+                }).then(function (body) {
+                  if (!body || !body.incidents) return;
+                  var open = body.incidents.filter(function (row) { return row.status === 'open'; });
+                  paint(open.length);
+                }).catch(function () {});
+              }
+              function listen() {
+                var socket = window.__remoedNotifSocket;
+                if (!socket || typeof socket.on !== 'function') return false;
+                socket.on('classroom-sos', refresh);
+                return true;
+              }
+              refresh();
+              setInterval(refresh, 15000);
+              if (!listen()) setTimeout(listen, 2500);
+            })();
+            </script>
 
                         <!-- Main Dashboard Content -->
             <div class="dashboard-main">

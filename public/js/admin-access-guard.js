@@ -15,6 +15,7 @@
         { re: /admin-settings/, key: 'nav:settings' },
         { re: /super-monitor/, key: 'nav:super_monitor' },
         { re: /admin-hr-hub|admin-users|admin-hr-documents|admin-teacher-pipeline|admin-teacher-training|admin-teacher-schedule|admin-teacher-assessments|admin-assessment-answer-key/, key: 'nav:hr_hub' },
+        { re: /admin-incidents/, key: 'incident:manage' },
         { re: /admin-qa-hub|admin-lessons-library|admin-classroom-recordings|admin-issue-management/, key: 'nav:qa_hub' },
         { re: /admin-accounting-hub|admin-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
         { re: /admin-fee/, key: 'nav:admin_fee' },
