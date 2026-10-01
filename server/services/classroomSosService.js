@@ -126,7 +126,7 @@ async function raiseSos(teacherRaw, body) {
     '.';
   try {
     await notifyAdmin('classroom-sos', message, {
-      actionUrl: '/admin-incidents.html',
+      actionUrl: '/admin-qa-hub.html#sos',
       meta: { incidentId: String(incident._id), classroomId: booking.classroomId || '' },
     });
   } catch (e) {
@@ -137,7 +137,7 @@ async function raiseSos(teacherRaw, body) {
     await emailService.sendRawEmail(
       'admin@remoedph.com',
       'RemoEd SOS: ' + label,
-      '<p>' + message + '</p><p><a href="https://remoedph.com/admin-incidents.html">Open incidents</a></p>',
+      '<p>' + message + '</p><p><a href="https://remoedph.com/admin-qa-hub.html#sos">Open Classroom SOS</a></p>',
       message
     );
   } catch (e) {
@@ -206,8 +206,9 @@ async function actOnIncident(incidentId, action, adminId) {
     if (incident.category === 'technical_failure' && booking) {
       const result = await restoreCreditAfterTechnicalSos(booking);
       creditRestored = !!result.restored;
-      booking.status = 'cancelled';
-      booking.cancellationTime = new Date();
+    }
+    if (booking) {
+      booking.scheduleRemark = 'Ended by admin';
       await booking.save();
     }
     incident.status = 'terminated';
@@ -223,6 +224,12 @@ async function actOnIncident(incidentId, action, adminId) {
   incident.resolvedBy = String(adminId || '');
   incident.resolvedAt = new Date();
   await incident.save();
+  if (incident.bookingId) {
+    await Booking.updateOne(
+      { _id: incident.bookingId },
+      { $set: { scheduleRemark: 'Resolved' } }
+    );
+  }
   emitSos(incident, { event: 'resolved' });
   if (incident.classroomId) {
     realtime.emitToRoom(incident.classroomId, 'classroom-session-command', {
@@ -235,6 +242,36 @@ async function actOnIncident(incidentId, action, adminId) {
   return { incident };
 }
 
+async function ensureSosScheduleRemarks(teacherId) {
+  const id = String(teacherId || '').trim();
+  if (!id) return;
+  const incidents = await IncidentReport.find({
+    teacherId: id,
+    status: { $in: ['terminated', 'resolved'] },
+    bookingId: { $ne: null },
+  })
+    .select('bookingId status')
+    .limit(200)
+    .lean();
+  for (const inc of incidents) {
+    const remark = inc.status === 'terminated' ? 'Ended by admin' : 'Resolved';
+    const booking = await Booking.findById(inc.bookingId);
+    if (!booking) continue;
+    const wasCancelled = String(booking.status || '') === 'cancelled';
+    if (booking.scheduleRemark === remark && !wasCancelled) continue;
+    booking.scheduleRemark = remark;
+    if (wasCancelled) booking.status = 'Booked';
+    try {
+      await booking.save();
+    } catch (err) {
+      if (wasCancelled) {
+        booking.status = 'cancelled';
+        await booking.save();
+      }
+    }
+  }
+}
+
 module.exports = {
   CATEGORY_TIER,
   publicIncident,
@@ -242,4 +279,5 @@ module.exports = {
   withdrawSos,
   listIncidents,
   actOnIncident,
+  ensureSosScheduleRemarks,
 };

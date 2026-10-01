@@ -223,6 +223,10 @@
             <span class="cim-field-label">Classroom ID</span>
             <span class="cim-field-value cim-field-value--id" id="classroom-id"></span>
           </div>
+          <div class="cim-field cim-field--wide" id="class-sos-remark-row" hidden>
+            <span class="cim-field-label">Remark</span>
+            <span class="cim-field-value" id="class-sos-remark"></span>
+          </div>
         </div>
 
         <div class="cim-primary">
@@ -593,6 +597,7 @@
       if (!booking) return false;
       if (booking.feedbackSubmitted === true || booking.hasTeacherFeedback === true) return false;
       if (booking.absentMarkedAt) return false;
+      if (booking.scheduleRemark) return false;
       const st = String(booking.status || '').toLowerCase();
       if (st === 'completed' || st === 'cancelled' || st === 'canceled' || st === 'absent') return false;
       if (booking.feedbackSubmitted === false) return true;
@@ -1302,11 +1307,14 @@
           
           // Set embossed label (indicator + student name + enter cue)
           const studentFirstName = bookingStudentDisplayName(booking, 'Student');
+          const labelPrefix = booking.scheduleRemark || indicator;
           if (!skipDefaultSlotLabel) {
-            setEmbossedSlotLabel(slotElement, `${indicator} - ${studentFirstName}`);
+            setEmbossedSlotLabel(slotElement, `${labelPrefix} - ${studentFirstName}`);
           }
           let statusText = '';
-          if (booking.status === 'absent') {
+          if (booking.scheduleRemark) {
+            statusText = booking.scheduleRemark;
+          } else if (booking.status === 'absent') {
             // Check if teacher entered the classroom to determine who was absent
             const teacherEntered = booking.attendance?.teacherEntered || false;
             const studentEntered = booking.attendance?.studentEntered || false;
@@ -1625,6 +1633,13 @@
       queueClassStudentPhoto(rosterPic);
       document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
       document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
+      const remarkRow = document.getElementById('class-sos-remark-row');
+      const remarkEl = document.getElementById('class-sos-remark');
+      if (remarkRow && remarkEl) {
+        const remark = String(booking.scheduleRemark || '').trim();
+        remarkEl.textContent = remark;
+        remarkRow.hidden = !remark;
+      }
       document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
       loadClassLessonProgressStatus(booking);
       

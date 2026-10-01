@@ -22,7 +22,6 @@
         { id: 'dashboard', label: 'Dashboard', href: 'admin-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
         { id: 'hr-hub', label: 'HR Hub', href: 'admin-hr-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>' },
         { id: 'qa-hub', label: 'QA Hub', href: 'admin-qa-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
-        { id: 'incidents', label: 'Classroom SOS', href: 'admin-incidents.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M7 18v-6a5 5 0 0110 0v6"/><path d="M5 21h14v-1a2 2 0 00-2-2H7a2 2 0 00-2 2z"/><path d="M12 2v1M21 12h1M2 12h1"/></svg>' },
         { id: 'accounting-hub', label: 'Accounting Hub', href: 'admin-accounting-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>' },
         { id: 'admin-fee', label: 'Admin Fee', href: 'admin-fee.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4h4v-4h-4z"/></svg>' },
         { id: 'marketing', label: 'Marketing Hub', href: 'admin-marketing-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>' },
@@ -56,7 +55,7 @@
         if (path.indexOf('admin-announcements') !== -1) return 'announcements';
         if (path.indexOf('admin-videos') !== -1) return 'videos';
         if (path.indexOf('admin-reports') !== -1) return 'reports';
-        if (path.indexOf('admin-incidents') !== -1) return 'incidents';
+        if (path.indexOf('admin-incidents') !== -1) return 'qa-hub';
         if (path.indexOf('admin-qa-hub') !== -1) return 'qa-hub';
         if (path.indexOf('admin-issue-management') !== -1) return 'qa-hub';
         if (path.indexOf('admin-classroom-recordings') !== -1) return 'qa-hub';

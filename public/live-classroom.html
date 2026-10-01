@@ -1472,7 +1472,7 @@
             var ok = await act(action, btn);
             if (!ok) return;
             hideAlert();
-            window.location.href = '/admin-incidents.html';
+            window.location.href = '/admin-qa-hub.html#sos';
           }
           if (pauseBtn) pauseBtn.addEventListener('click', function () { act('pause', pauseBtn); });
           if (barPause) barPause.addEventListener('click', function () { act('pause', barPause); });

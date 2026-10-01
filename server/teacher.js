@@ -1340,6 +1340,14 @@ router.get('/slots', async (req, res) => {
       String(allSlots || '') === '1' ||
       String(allSlots || '').toLowerCase() === 'true' ||
       allSlots === true;
+    if (allSlotsFlag && actualTeacherId) {
+      try {
+        await require('./services/classroomSosService').ensureSosScheduleRemarks(actualTeacherId);
+      } catch (sosRemarkErr) {
+        console.warn('[sos] schedule remark repair failed:', sosRemarkErr.message || sosRemarkErr);
+      }
+    }
+
     const tCached = await slotsRedisCache.readTeacherSlotsCache(
       actualTeacherId,
       week,
@@ -1362,7 +1370,12 @@ router.get('/slots', async (req, res) => {
               { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
             ],
           },
-          { status: { $ne: 'cancelled' } },
+          {
+            $or: [
+              { status: { $ne: 'cancelled' } },
+              { scheduleRemark: { $in: ['Ended by admin', 'Resolved'] } },
+            ],
+          },
           {
             $or: [
               { dateTimeUtc: { $gte: weekWindow.startUtc, $lt: weekWindow.endUtc } },
@@ -1404,7 +1417,11 @@ router.get('/slots', async (req, res) => {
               .lean()
           : [];
       const wrapSet = new Set(wrapRows.map((f) => String(f.bookingId)));
-      tCached.bookings = cachedBookingList.map((b) => {
+      const listedIds = new Set(cachedBookingList.map((b) => String(b && b._id)));
+      const remarkExtras = freshBookingsForOverlay.filter(
+        (b) => b && b.scheduleRemark && !listedIds.has(String(b._id))
+      );
+      tCached.bookings = cachedBookingList.concat(remarkExtras).map((b) => {
         const id = String(b._id || '');
         const fresh = freshById.get(id);
         const submitted =
@@ -1418,6 +1435,7 @@ router.get('/slots', async (req, res) => {
                 status: fresh.status,
                 attendance: fresh.attendance,
                 finishedAt: fresh.finishedAt,
+                scheduleRemark: fresh.scheduleRemark || '',
               }
             : {}),
           hasTeacherFeedback: submitted,
@@ -1480,7 +1498,12 @@ router.get('/slots', async (req, res) => {
             { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
           ],
         },
-        { status: { $ne: 'cancelled' } },
+        {
+          $or: [
+            { status: { $ne: 'cancelled' } },
+            { scheduleRemark: { $in: ['Ended by admin', 'Resolved'] } },
+          ],
+        },
         {
           $or: [
             { dateTimeUtc: { $gte: startUtcJs, $lt: endUtcJs } },

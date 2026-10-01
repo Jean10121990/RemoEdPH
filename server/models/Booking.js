@@ -73,6 +73,8 @@ const bookingSchema = new mongoose.Schema({
   /** Set when reserved credit is finalized to a used lesson (ledger). */
   creditConsumedAt: { type: Date, default: null },
   creditReservationReleasedAt: { type: Date, default: null },
+  /** Kept on the schedule after Classroom SOS. QA uses this remark. */
+  scheduleRemark: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 

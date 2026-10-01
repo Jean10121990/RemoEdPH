@@ -72,18 +72,19 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-page-header.js?v=sock-auth-1"></script>
-        <script src="js/admin-sidebar.js?v=app-shell-16"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-17"></script>
         <script src="js/admin-hub-guard.js" data-hub="qa"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'qa-hub');</script>
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">QA Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Lesson library, class recordings, and issue triage in one place.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Lesson library, class recordings, issue triage, and Classroom SOS in one place.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="QA Hub sections">
                     <button type="button" class="hub-tab hub-tab--active" role="tab" id="tab-library" aria-selected="true" aria-controls="qa-panel-library">Lesson Library</button>
                     <button type="button" class="hub-tab" role="tab" id="tab-recordings" aria-selected="false" aria-controls="qa-panel-recordings">Lesson recordings</button>
                     <button type="button" class="hub-tab" role="tab" id="tab-issues" aria-selected="false" aria-controls="qa-panel-issues">Issue Management</button>
+                    <button type="button" class="hub-tab" role="tab" id="tab-sos" aria-selected="false" aria-controls="qa-panel-sos">Classroom SOS</button>
                 </div>
 
                 <div id="qa-panel-library" class="hub-panel" role="tabpanel" aria-labelledby="tab-library">
@@ -176,6 +177,11 @@
                     </div>
                     <div id="issues-container"></div>
                     </div>
+                </div>
+
+                <div id="qa-panel-sos" class="hub-panel" role="tabpanel" aria-labelledby="tab-sos" hidden>
+                    <p class="muted" style="margin-top:0;margin-bottom:10px;">Teacher emergency alerts. Observe, pause, end, or resolve a class. Ended and resolved classes stay on the schedule for QA.</p>
+                    <iframe id="iframe-classroom-sos" class="hub-iframe" title="Classroom SOS"></iframe>
                 </div>
             </div>
         </div>
@@ -284,7 +290,7 @@
 
         function setQaHash(tab) {
             try {
-                var h = tab === 'issues' ? '#issues' : tab === 'recordings' ? '#recordings' : '#library';
+                var h = tab === 'issues' ? '#issues' : tab === 'recordings' ? '#recordings' : tab === 'sos' ? '#sos' : '#library';
                 if (window.location.hash !== h) {
                     history.replaceState(null, '', 'admin-qa-hub.html' + h);
                 }
@@ -298,29 +304,42 @@
             f.setAttribute('data-loaded', '1');
         }
 
+        function ensureSosIframe() {
+            var f = document.getElementById('iframe-classroom-sos');
+            if (!f || f.getAttribute('data-loaded')) return;
+            f.src = '/admin-incidents.html?adminEmbed=1';
+            f.setAttribute('data-loaded', '1');
+        }
+
         function showQaTab(tab) {
             var tabLib = document.getElementById('tab-library');
             var tabRec = document.getElementById('tab-recordings');
             var tabIss = document.getElementById('tab-issues');
+            var tabSos = document.getElementById('tab-sos');
             var panLib = document.getElementById('qa-panel-library');
             var panRec = document.getElementById('qa-panel-recordings');
             var panIss = document.getElementById('qa-panel-issues');
-            if (!tabLib || !tabRec || !tabIss || !panLib || !panRec || !panIss) return;
+            var panSos = document.getElementById('qa-panel-sos');
+            if (!tabLib || !tabRec || !tabIss || !tabSos || !panLib || !panRec || !panIss || !panSos) return;
 
             var isLib = tab === 'library';
             var isRec = tab === 'recordings';
             var isIss = tab === 'issues';
+            var isSos = tab === 'sos';
 
             tabLib.classList.toggle('hub-tab--active', isLib);
             tabRec.classList.toggle('hub-tab--active', isRec);
             tabIss.classList.toggle('hub-tab--active', isIss);
+            tabSos.classList.toggle('hub-tab--active', isSos);
             tabLib.setAttribute('aria-selected', isLib);
             tabRec.setAttribute('aria-selected', isRec);
             tabIss.setAttribute('aria-selected', isIss);
+            tabSos.setAttribute('aria-selected', isSos);
 
             panLib.hidden = !isLib;
             panRec.hidden = !isRec;
             panIss.hidden = !isIss;
+            panSos.hidden = !isSos;
 
             setQaHash(tab);
 
@@ -332,6 +351,9 @@
             } else if (isIss) {
                 stopRecUploadPoll();
                 loadIssues();
+            } else if (isSos) {
+                stopRecUploadPoll();
+                ensureSosIframe();
             }
         }
 
@@ -1139,6 +1161,9 @@
             document.getElementById('tab-issues').addEventListener('click', function () {
                 showQaTab('issues');
             });
+            document.getElementById('tab-sos').addEventListener('click', function () {
+                showQaTab('sos');
+            });
 
             var qaIssuesPanel = document.getElementById('qa-panel-issues');
             if (qaIssuesPanel) {
@@ -1240,6 +1265,7 @@
                 var h = window.location.hash;
                 if (h === '#issues') showQaTab('issues');
                 else if (h === '#recordings') showQaTab('recordings');
+                else if (h === '#sos') showQaTab('sos');
                 else showQaTab('library');
             }
             applyHash();

@@ -1,6 +1,13 @@
 /* Used with html.admin-embed when admin pages load inside hub iframes */
 
-html.admin-embed #admin-sidebar-root {
+html.admin-embed body.page-admin-incidents .nav-header,
+html.admin-embed body.page-admin-incidents .remoed-app-topbar {
+  display: none !important;
+}
+html.admin-embed body.page-admin-incidents .remoed-content {
+  margin-top: 0 !important;
+  padding-top: 8px !important;
+}
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
