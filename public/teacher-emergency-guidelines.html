@@ -56,6 +56,22 @@
             text-transform: uppercase;
             color: #64748b;
         }
+        .guide-legend {
+            margin-top: 16px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(28, 167, 231, 0.07);
+            padding: 16px 18px;
+        }
+        .guide-legend h2 {
+            margin: 0 0 10px;
+            font-size: 1.05rem;
+            color: #1ca7e7;
+        }
+        .guide-legend dl { margin: 0; }
+        .guide-legend div { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; padding: 8px 0; border-top: 1px solid #e2e8f0; }
+        .guide-legend dt { font-weight: 700; color: #1e3a5f; }
+        .guide-legend dd { margin: 0; color: #475569; line-height: 1.45; }
     </style>
 </head>
 <body class="page-teacher-emergency-guidelines teacher-portal">
@@ -89,6 +105,17 @@
                     <p>A behavioral issue, an unauthorized adult, or distress and inappropriate content. Press SOS, stop the activity, and stay in the room until an admin joins or ends it. Do not argue with the adult.</p>
                 </article>
             </div>
+            <section class="guide-legend" aria-label="SOS status legend">
+                <h2>What each SOS status means</h2>
+                <dl>
+                    <div><dt>Open</dt><dd>You just sent the alert. Admins have not acted yet. You can withdraw it for 15 seconds.</dd></div>
+                    <div><dt>Withdrawn</dt><dd>You cancelled the SOS in those 15 seconds. Admins still see it, marked withdrawn. The class is not ended.</dd></div>
+                    <div><dt>Observing</dt><dd>An admin joined the class to watch. They have no camera, so the student does not see them as the teacher.</dd></div>
+                    <div><dt>Paused</dt><dd>An admin paused the call. Microphones and cameras in that room stop until the class continues or ends.</dd></div>
+                    <div><dt>Ended</dt><dd>An admin ended the class. A technical failure can restore the lesson. Other reasons do not change credits.</dd></div>
+                    <div><dt>Resolved</dt><dd>An admin closed the alert after it was handled.</dd></div>
+                </dl>
+            </section>
         </div>
     </div>
 </body>

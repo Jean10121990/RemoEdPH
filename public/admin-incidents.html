@@ -37,6 +37,10 @@
         .sos-card h3 { margin: 0 0 6px; font-size: 1rem; color: #1e293b; }
         .sos-meta { color: #475569; font-size: 0.9rem; line-height: 1.45; }
         .sos-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .sos-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 16px; margin: 12px 0 4px; }
+        .sos-legend div { background: #f8fafc; border-radius: 8px; padding: 8px 10px; }
+        .sos-legend strong { display: block; color: #1e3a5f; font-size: 0.85rem; }
+        .sos-legend span { color: #475569; font-size: 0.85rem; line-height: 1.4; }
     </style>
 </head>
 <body class="page-admin-incidents admin-hub-page has-admin-page-header">
@@ -52,6 +56,15 @@
             <div class="remoed-section">
                 <div class="remoed-section-title">Classroom SOS</div>
                 <p class="muted" style="margin-top:0;">A teacher presses Emergency SOS in the live classroom. This page lists those alerts. Observe joins that class without a camera. Pause and End apply to that room only. An empty list means no teacher has sent an SOS.</p>
+                <div class="sos-legend" aria-label="Status legend">
+                    <div><strong>Open</strong><span>Teacher just sent the SOS. No admin action yet. The teacher can withdraw it for 15 seconds.</span></div>
+                    <div><strong>Withdrawn</strong><span>Teacher cancelled it within 15 seconds. The alert stays on record. The class is not ended.</span></div>
+                    <div><strong>Observing</strong><span>An admin joined to watch, with no camera. The student waiting state does not treat them as the teacher.</span></div>
+                    <div><strong>Paused</strong><span>The call in that room is paused. Microphones and cameras stop.</span></div>
+                    <div><strong>Ended</strong><span>The class was ended. A technical failure can restore one lesson credit. Other reasons do not change credits.</span></div>
+                    <div><strong>Resolved</strong><span>The alert is closed after it was handled.</span></div>
+                    <div><strong>All</strong><span>Shows every status together.</span></div>
+                </div>
                 <div class="sos-filters">
                 <label>Status
                   <select id="incident-status">
