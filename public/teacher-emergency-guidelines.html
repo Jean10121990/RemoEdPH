@@ -5,16 +5,17 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
     <title>Emergency guidelines — RemoEdPH</title>
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-12">
-    <link rel="stylesheet" href="css/global-portal.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
-    <script src="js/security-guard.js?v=4"></script>
-    <script src="js/user-session.js"></script>
-    <script src="js/teacher-session-gate.js?v=2"></script>
-    <script src="js/remoed-auth-token.js?v=2"></script>
+    <link rel="stylesheet" href="/css/teacher-sidebar.css?v=app-shell-12">
+    <link rel="stylesheet" href="/css/global-portal.css">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="/css/remoed-layers.css?v=app-shell-11">
+    <script src="/js/security-guard.js?v=4"></script>
+    <script src="/js/user-session.js"></script>
+    <script src="/js/teacher-session-gate.js?v=2"></script>
+    <script src="/js/remoed-auth-token.js?v=2"></script>
     <style>
         body.page-teacher-emergency-guidelines { background: #f6fbff; }
         .guide-lead {
@@ -77,8 +78,8 @@
 <body class="page-teacher-emergency-guidelines teacher-portal">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
-        <script src="js/teacher-page-header.js?v=guidelines-1"></script>
+        <script src="/js/teacher-sidebar.js?v=app-shell-12"></script>
+        <script src="/js/teacher-page-header.js?v=guidelines-1"></script>
         <script>
           if (window.RemoedTeacherSession) RemoedTeacherSession.requireTeacher();
           TeacherSidebar.render('teacher-sidebar-root', 'emergency-guidelines');

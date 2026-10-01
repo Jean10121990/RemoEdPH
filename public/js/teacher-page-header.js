@@ -92,7 +92,7 @@
         var l = document.createElement('link');
         l.id = 'remoed-header-actions-css';
         l.rel = 'stylesheet';
-        l.href = 'css/portal-header-actions.css?v=notif-panel-2';
+        l.href = '/css/portal-header-actions.css?v=notif-panel-2';
         document.head.appendChild(l);
     }
 
