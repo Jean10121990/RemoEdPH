@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-app-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-quiet-1" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-admin-bar-1" />
   <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -77,6 +77,11 @@
     </div>
     <div class="top-buttons">
       <div class="top-bar__session-actions" id="lc-session-actions">
+        <div id="lc-sos-admin-bar" class="lc-sos-admin-bar" hidden style="display:none">
+          <button type="button" id="lc-sos-admin-bar-pause">Pause</button>
+          <button type="button" id="lc-sos-admin-bar-resolve">Resolved</button>
+          <button type="button" id="lc-sos-admin-bar-end">End class</button>
+        </div>
         <button type="button" class="nav-action-btn finish-btn top-bar__action" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
         <button type="button" class="nav-action-btn leave-btn top-bar__action" id="leave-btn" title="Leave Classroom" style="display:none;">Leave</button>
       </div>
@@ -1372,21 +1377,43 @@
           var pauseBtn = document.getElementById('lc-sos-admin-pause');
           var resolveBtn = document.getElementById('lc-sos-admin-resolve');
           var endBtn = document.getElementById('lc-sos-admin-end');
+          var bar = document.getElementById('lc-sos-admin-bar');
+          var barPause = document.getElementById('lc-sos-admin-bar-pause');
+          var barResolve = document.getElementById('lc-sos-admin-bar-resolve');
+          var barEnd = document.getElementById('lc-sos-admin-bar-end');
           if (!alertEl) return;
           var currentId = '';
-          var dismissedId = '';
-          function hideAlert() {
-            dismissedId = currentId;
+          var panelClosed = false;
+          function hideModal() {
             alertEl.hidden = true;
             alertEl.setAttribute('hidden', '');
             alertEl.style.display = 'none';
+          }
+          function showBar() {
+            if (!bar || !currentId) return;
+            bar.hidden = false;
+            bar.removeAttribute('hidden');
+            bar.style.display = 'flex';
+          }
+          function hideBar() {
+            if (!bar) return;
+            bar.hidden = true;
+            bar.setAttribute('hidden', '');
+            bar.style.display = 'none';
+          }
+          function hideAlert() {
+            panelClosed = false;
+            currentId = '';
+            hideModal();
+            hideBar();
           }
           function isActive(row) {
             var st = row && row.status;
             return st === 'open' || st === 'observing' || st === 'paused';
           }
           function showAlert(incident) {
-            if (!incident || !incident.id || incident.id === dismissedId || !isActive(incident)) return;
+            if (!incident || !incident.id || !isActive(incident)) return;
+            if (incident.id !== currentId) panelClosed = false;
             currentId = incident.id;
             if (textEl) {
               textEl.textContent =
@@ -1395,11 +1422,19 @@
                 '. Status: ' + (incident.status || 'open') + '.';
             }
             if (statusEl) statusEl.textContent = '';
+            showBar();
+            if (panelClosed) return;
             alertEl.hidden = false;
             alertEl.removeAttribute('hidden');
             alertEl.style.display = 'flex';
           }
-          if (closeBtn) closeBtn.addEventListener('click', hideAlert);
+          if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+              panelClosed = true;
+              hideModal();
+              showBar();
+            });
+          }
           async function act(action, btn) {
             if (!currentId) {
               if (statusEl) statusEl.textContent = 'No open SOS for this class yet.';
@@ -1433,16 +1468,18 @@
               if (btn) btn.disabled = false;
             }
           }
-          if (pauseBtn) pauseBtn.addEventListener('click', function () { act('pause', pauseBtn); });
-          if (resolveBtn) {
-            resolveBtn.addEventListener('click', async function () {
-              var ok = await act('resolve', resolveBtn);
-              if (!ok) return;
-              hideAlert();
-              window.location.href = '/admin-incidents.html';
-            });
+          async function finishAndLeave(action, btn) {
+            var ok = await act(action, btn);
+            if (!ok) return;
+            hideAlert();
+            window.location.href = '/admin-incidents.html';
           }
-          if (endBtn) endBtn.addEventListener('click', function () { act('terminate', endBtn); });
+          if (pauseBtn) pauseBtn.addEventListener('click', function () { act('pause', pauseBtn); });
+          if (barPause) barPause.addEventListener('click', function () { act('pause', barPause); });
+          if (resolveBtn) resolveBtn.addEventListener('click', function () { finishAndLeave('resolve', resolveBtn); });
+          if (barResolve) barResolve.addEventListener('click', function () { finishAndLeave('resolve', barResolve); });
+          if (endBtn) endBtn.addEventListener('click', function () { finishAndLeave('terminate', endBtn); });
+          if (barEnd) barEnd.addEventListener('click', function () { finishAndLeave('terminate', barEnd); });
           async function pullOpen() {
             try {
               var token = resolveLiveClassroomAuthToken();

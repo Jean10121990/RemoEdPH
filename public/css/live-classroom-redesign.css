@@ -147,7 +147,38 @@ body.page-live-classroom .tabs button {
   background: transparent !important;
 }
 
-body.page-live-classroom #lc-sos-btn[hidden],
+body.page-live-classroom .lc-sos-admin-bar[hidden] {
+  display: none !important;
+}
+
+body.page-live-classroom .lc-sos-admin-bar:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+body.page-live-classroom .lc-sos-admin-bar button {
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #1e293b;
+}
+
+body.page-live-classroom #lc-sos-admin-bar-end {
+  background: #b91c1c;
+  color: #fff;
+  border-color: #b91c1c;
+}
+
+body.page-live-classroom #lc-sos-admin-bar-resolve {
+  background: #15803d;
+  color: #fff;
+  border-color: #15803d;
+}
 body.page-live-classroom #lc-sos-modal[hidden],
 body.page-live-classroom #lc-sos-admin-alert[hidden] {
   display: none !important;
