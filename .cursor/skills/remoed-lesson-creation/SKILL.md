@@ -12,7 +12,7 @@ description: >-
 
 Apply these rules whenever generating or restyling RemoEd lesson slides. Prefer attached reference photos over inventing a new art style.
 
-**Before any lesson or brand work:** read [`docs/lesson-references/`](../../../docs/lesson-references/) — start with [`README.md`](../../../docs/lesson-references/README.md) (character stills, logo, chrome, curriculum PDFs, page counts, active lesson brief). Also align with https://www.remoedph.com. If `docs/lesson-references`, the website, and the codebase disagree, **stop and ask** before generating. Do **not** use workspace-root `reference.md` as the lesson brief.
+**Before any lesson or brand work:** read [`docs/lesson-references/`](../../../docs/lesson-references/) for stills, logo, and curriculum files — start with [`README.md`](../../docs/lesson-references/README.md). Also align with https://www.remoedph.com. If the lesson references, the website, and the codebase disagree, **stop and ask** before generating. Do **not** use [`.cursor/docs/reference.md`](../../docs/reference.md) as the lesson brief.
 
 ## Core style (always)
 
@@ -32,6 +32,14 @@ Please generate/style lesson so that all slides match the exact 3D Pixar-style a
 - Do **not** include Teacher Scripts
 - Do **not** change existing 3D background artwork or characters when only adding chrome/overlays (see below)
 - Do **not** depict Remo as a white robot
+
+## File size
+
+Every finished `.pptx` must be **under 10 MB** (file size less than 10 × 1024 × 1024 bytes) before it is copied to the laptop folder or uploaded.
+
+- Export each slide as JPEG. Start near quality 80. If the saved deck is still 10 MB or larger, lower JPEG quality (then cap the long edge, around 1920 px) and rebuild until it is under 10 MB.
+- Check the `.pptx` size on disk after save. Do not ship, copy, or upload a deck that is 10 MB or larger.
+- Compression only. Do not change lesson text, chrome, characters, or the 3D scene to make the file smaller.
 
 ## Per-lesson inputs (ask if missing)
 
@@ -83,6 +91,7 @@ Lesson Progress:
 - [ ] Every page: top-left lesson label, top-right N / total badge
 - [ ] Every page: bottom-right “{LEVEL}! MONTH {M}” (white, drop shadow) + RemoEd PH logo (drop shadow), no white card
 - [ ] Overlays only — do not alter existing 3D backgrounds/characters unless user asks to regenerate art
+- [ ] Finished PPTX is under 10 MB (recompress JPEGs until the file size is less than 10 × 1024 × 1024 bytes)
 - [ ] Copy finished PPTX to laptop: `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Level {N}\` as `RemoEd …pptx` (Level 1–4 folders)
 ```
 
@@ -91,7 +100,7 @@ Lesson Progress:
 - Produce or restyle the requested page range only
 - Keep chrome text consistent across pages (same lesson label; badge increments)
 - If regenerating art, still follow character and style rules above
-- **After generation:** save/copy each deck into the matching **Level 1 / Level 2 / Level 3 / Level 4** folder under `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\` (build scripts do this for L2M1 via `build_l2m1_lessons_7_9.build_lesson`)
+- **After generation:** confirm the `.pptx` is under 10 MB, then save/copy each deck into the matching **Level 1 / Level 2 / Level 3 / Level 4** folder under `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\` (build scripts do this for L2M1 via `build_l2m1_lessons_7_9.build_lesson`)
 
 # RemoEd PH Mission
 

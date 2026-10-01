@@ -1,6 +1,6 @@
 # RemoEdPH Product Skills & Specs
 
-Agent-facing product specs that feature work should extend. Lesson slide chrome remains in [`.cursor/skills/remoed-lesson-creation/SKILL.md`](.cursor/skills/remoed-lesson-creation/SKILL.md). Portal layout and auth surfaces: [`docs/STABLE_BASELINE.md`](docs/STABLE_BASELINE.md).
+Agent-facing product specs that feature work should extend. Lesson slide chrome remains in [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../skills/remoed-lesson-creation/SKILL.md). Portal layout and auth surfaces: [`.cursor/docs/STABLE_BASELINE.md`](STABLE_BASELINE.md).
 
 ---
 

@@ -200,20 +200,25 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
       );
     } else {
       // Refresh subscription display fields from remaining lots
-      const after = await Student.findById(fresh._id).lean();
+      // Must share the transaction session: a session-less write to this student blocks on the
+      // transaction's own pending write and deadlocks wrap-up until Mongo aborts (~60s per retry).
+      const after = await attachSession(Student.findById(fresh._id), session).lean();
       if (after) {
         ensureCreditLotsBackfilled(after, now);
         const sync = syncSubscriptionFieldsFromLots(after, now);
-        await Student.updateOne(
-          { _id: fresh._id },
-          {
-            $set: {
-              subscriptionEndDate: sync.subscriptionEndDate,
-              subscriptionPlan: sync.subscriptionPlan,
-              subscriptionStatus: sync.subscriptionStatus,
-              isSubscribed: sync.subscriptionStatus === 'active',
-            },
-          }
+        await attachSession(
+          Student.updateOne(
+            { _id: fresh._id },
+            {
+              $set: {
+                subscriptionEndDate: sync.subscriptionEndDate,
+                subscriptionPlan: sync.subscriptionPlan,
+                subscriptionStatus: sync.subscriptionStatus,
+                isSubscribed: sync.subscriptionStatus === 'active',
+              },
+            }
+          ),
+          session
         );
       }
     }

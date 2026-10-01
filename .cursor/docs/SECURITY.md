@@ -1,6 +1,6 @@
 # RemoEdPH Security Guidelines
 
-Checklist for every feature that adds a route, socket event, page, or query. Read with [`STABLE_BASELINE.md`](STABLE_BASELINE.md) (§ Security) and [`.cursor/rules/remoed-stable-surfaces.mdc`](../.cursor/rules/remoed-stable-surfaces.mdc).
+Checklist for every feature that adds a route, socket event, page, or query. Read with [`STABLE_BASELINE.md`](STABLE_BASELINE.md) (§ Security) and [`.cursor/rules/remoed-stable-surfaces.mdc`](../rules/remoed-stable-surfaces.mdc).
 
 The database is MongoDB (Mongoose). There is no SQL layer, so "SQL injection" here means **NoSQL / operator injection** and unescaped `$regex`.
 

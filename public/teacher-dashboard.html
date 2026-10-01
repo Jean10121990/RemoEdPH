@@ -22,6 +22,11 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
     <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
+    <style>
+        .page-teacher-dashboard button.community-item { width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+        .page-teacher-dashboard .community-item:hover,
+        .page-teacher-dashboard .community-item.is-active { border-color: #47BC3E; background: #f0fdf4; box-shadow: 0 0 0 2px rgba(71, 188, 62, 0.18); }
+    </style>
 </head>
 <body class="page-teacher-dashboard teacher-portal">
     <!-- Main Layout: Sidebar + Content -->
@@ -249,56 +254,70 @@
                             </svg>
                             Community & Social Responsibility
                         </div>
-                        <div class="community-grid">
-                            <div class="community-item">
+                        <div class="community-grid" id="community-topic-grid">
+                            <button type="button" class="community-item" data-topic="family-day">
                                 <div class="community-icon">👨‍👩‍👧</div>
                                 <div>
                                     <h4>Family Day</h4>
                                     <p>Activities that encourage parent involvement and celebrate learning together.</p>
                                 </div>
-                            </div>
-                            <div class="community-item">
+                            </button>
+                            <button type="button" class="community-item" data-topic="teachers-day">
                                 <div class="community-icon">👩‍🏫</div>
                                 <div>
                                     <h4>Teachers’ Day</h4>
                                     <p>Recognizing teacher dedication through appreciation and community events.</p>
                                 </div>
-                            </div>
-                            <div class="community-item">
+                            </button>
+                            <button type="button" class="community-item" data-topic="students-day">
                                 <div class="community-icon">🧒</div>
                                 <div>
                                     <h4>Students’ Day</h4>
                                     <p>Celebrating student progress and building confidence through fun events.</p>
                                 </div>
-                            </div>
-                            <div class="community-item">
+                            </button>
+                            <button type="button" class="community-item" data-topic="feeding-program">
                                 <div class="community-icon">🥣</div>
                                 <div>
                                     <h4>Feeding Program</h4>
                                     <p>Supporting learner wellness through food assistance and community outreach.</p>
                                 </div>
-                            </div>
-                            <div class="community-item">
+                            </button>
+                            <button type="button" class="community-item" data-topic="waste-management">
                                 <div class="community-icon">♻️</div>
                                 <div>
                                     <h4>Waste Management</h4>
                                     <p>Promoting proper segregation and eco-friendly habits at home and in school.</p>
                                 </div>
-                            </div>
-                            <div class="community-item">
+                            </button>
+                            <button type="button" class="community-item" data-topic="mental-health">
                                 <div class="community-icon">🧠</div>
                                 <div>
                                     <h4>Mental Health Support</h4>
                                     <p>Resources and awareness activities to support a safe, positive learning environment.</p>
                                 </div>
-                            </div>
-                            <div class="community-item">
+                            </button>
+                            <button type="button" class="community-item" data-topic="sustainability">
                                 <div class="community-icon">🌱</div>
                                 <div>
                                     <h4>Sustainability Projects</h4>
                                     <p>Simple projects and activities that build care for the environment.</p>
                                 </div>
+                            </button>
+                            <button type="button" class="community-item" data-topic="others">
+                                <div class="community-icon">📌</div>
+                                <div>
+                                    <h4>Others</h4>
+                                    <p>Announcements that are not one of the topics above.</p>
+                                </div>
+                            </button>
+                        </div>
+                        <div id="community-topic-history" style="margin-top:12px;display:none;border:1px solid #e0e6ed;border-radius:10px;background:#fff;padding:12px 14px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                                <h3 id="community-topic-history-title" style="margin:0;font-size:1rem;color:#0f172a;">Posts</h3>
+                                <button type="button" id="community-topic-history-close" style="border:none;background:none;color:#0f766e;font-weight:700;font-size:0.85rem;cursor:pointer;">Close</button>
                             </div>
+                            <div id="community-topic-history-list" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;"></div>
                         </div>
                     </div>
                 </div>
@@ -1313,6 +1332,7 @@
     
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOM Content Loaded - Starting dashboard initialization');
+      bindCommunityAnnouncementTopics();
       // Initialize the dashboard asynchronously
       initializeDashboardAsync();
     });
@@ -1337,8 +1357,8 @@
         console.log(`📢 Displaying ${list.length} announcements`);
         listDiv.innerHTML = list.map(a => `
           <div style='background:#fafdff;border-radius:8px;padding:14px 18px;margin-bottom:10px;'>
-            <div style='font-weight:500;white-space:pre-line;'>${a.content}</div>
-            <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines ? window.TimezoneUtils.formatDateTimePhilippines(new Date(a.updatedAt)) : (a.updatedAt ? new Date(a.updatedAt).toLocaleString() : '')}</div>
+            <div style='font-weight:500;white-space:pre-line;'>${escapeAnnouncementHtml(a.content)}</div>
+            <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${announcementWhen(a)}</div>
           </div>
         `).join('');
       } catch (error) {
@@ -1346,6 +1366,94 @@
         const listDiv = document.getElementById('announcement-content');
         listDiv.innerHTML = '<div style="color:#888;">Unable to load announcements</div>';
       }
+    }
+
+    const COMMUNITY_TOPIC_LABELS = {
+      'family-day': 'Family Day',
+      'teachers-day': 'Teachers’ Day',
+      'students-day': 'Students’ Day',
+      'feeding-program': 'Feeding Program',
+      'waste-management': 'Waste Management',
+      'mental-health': 'Mental Health Support',
+      sustainability: 'Sustainability Projects',
+      others: 'Others'
+    };
+
+    function escapeAnnouncementHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function announcementWhen(a) {
+      if (!a || !a.updatedAt) return '';
+      const d = new Date(a.updatedAt);
+      return window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
+        ? window.TimezoneUtils.formatDateTimePhilippines(d)
+        : d.toLocaleString();
+    }
+
+    function announcementTopicLabel(a) {
+      const key = a && a.topic ? a.topic : 'others';
+      const base = COMMUNITY_TOPIC_LABELS[key] || 'Others';
+      return key === 'others' && a && a.topicOther ? 'Others · ' + a.topicOther : base;
+    }
+
+    function renderTopicHistoryCards(list) {
+      if (!Array.isArray(list) || !list.length) {
+        return '<div style="color:#888;">No announcements for this topic yet.</div>';
+      }
+      return list.map(function (a) {
+        return '<div style="background:#fafdff;border:1px solid #e9ecef;border-radius:8px;padding:12px 14px;">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">'
+          + '<span style="font-size:0.75rem;font-weight:600;color:#0f766e;background:#ccfbf1;padding:2px 8px;border-radius:999px;">' + escapeAnnouncementHtml(announcementTopicLabel(a)) + '</span>'
+          + '<span style="font-size:0.8rem;color:#888;">' + escapeAnnouncementHtml(announcementWhen(a)) + '</span>'
+          + '</div>'
+          + '<div style="font-weight:500;white-space:pre-line;color:#333;">' + escapeAnnouncementHtml(a.content) + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function hideCommunityTopicHistory() {
+      document.querySelectorAll('#community-topic-grid .community-item').forEach(function (btn) {
+        btn.classList.remove('is-active');
+      });
+      const panel = document.getElementById('community-topic-history');
+      if (panel) panel.style.display = 'none';
+    }
+
+    async function showCommunityTopicHistory(topic) {
+      const panel = document.getElementById('community-topic-history');
+      const title = document.getElementById('community-topic-history-title');
+      const listEl = document.getElementById('community-topic-history-list');
+      document.querySelectorAll('#community-topic-grid .community-item').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-topic') === topic);
+      });
+      if (panel) panel.style.display = 'block';
+      if (title) title.textContent = (COMMUNITY_TOPIC_LABELS[topic] || 'Topic') + ' — post history';
+      if (listEl) listEl.innerHTML = '<div style="color:#888;">Loading…</div>';
+      try {
+        const response = await fetch('/api/announcement?role=teacher&topic=' + encodeURIComponent(topic));
+        const list = await response.json();
+        if (listEl) listEl.innerHTML = renderTopicHistoryCards(Array.isArray(list) ? list : []);
+      } catch (_e) {
+        if (listEl) listEl.innerHTML = '<div style="color:#888;">Unable to load posts.</div>';
+      }
+      if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function bindCommunityAnnouncementTopics() {
+      document.querySelectorAll('#community-topic-grid .community-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const topic = btn.getAttribute('data-topic');
+          if (btn.classList.contains('is-active')) hideCommunityTopicHistory();
+          else showCommunityTopicHistory(topic);
+        });
+      });
+      const closeBtn = document.getElementById('community-topic-history-close');
+      if (closeBtn) closeBtn.addEventListener('click', hideCommunityTopicHistory);
     }
     
     // Helper function to set up intervals

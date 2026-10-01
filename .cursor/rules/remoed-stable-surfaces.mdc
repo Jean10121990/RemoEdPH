@@ -5,7 +5,7 @@ alwaysApply: true
 
 # RemoEdPH Stable Surfaces
 
-Before changing shared auth, booking, class schedule, or Mongo scripts, read [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md). Prefer **new routes and thin wrappers** beside these paths; do not “simplify” them.
+Before changing shared auth, booking, class schedule, or Mongo scripts, read [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md). Prefer **new routes and thin wrappers** beside these paths; do not “simplify” them.
 
 ## Live data / Mongo
 
@@ -44,7 +44,7 @@ Before changing shared auth, booking, class schedule, or Mongo scripts, read [do
 
 ## Live classroom (Settings, locks, VBG)
 
-Do not rewrite `public/live-classroom.html` socket/settings/VBG unless the user asks. Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Live classroom.
+Do not rewrite `public/live-classroom.html` socket/settings/VBG unless the user asks. Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Live classroom.
 
 - Teacher Settings is `#lc-class-settings-overlay` (body-level). Do not move the panel back into `.tabs` / `.center-panel`.
 - Room settings: `classroomSettingsByRoom` `{ videosAllowed, penAllowed }`. Queue early `classroom-settings` on `pendingClassroomSettingsBySocket`; flush on `join` / `join-room`. Students use `classroom-settings-request`. **Do not** delete room settings when the last socket leaves. **Do not** re-broadcast default `true` after teacher join (unlocks students).
@@ -54,7 +54,7 @@ Do not rewrite `public/live-classroom.html` socket/settings/VBG unless the user 
 
 ## Responsive / overlays
 
-Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Phone app shell.
+Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Phone app shell.
 
 - Tokens: [public/css/remoed-layers.css](public/css/remoed-layers.css). Breakpoints 768 / 1024 only for new portal CSS. Phone `.remoed-content` margin is 0 — do not reintroduce `margin-left: 260px` without a `max-width: 768` override.
 - Phone app chrome: hide `nav.remoed-sidebar`; titled top bar + 4 tabs + More sheet on `document.body` (`public/js/portal-layout.js`). Do not add a hamburger drawer or a second teacher drawer at 992 (`z-index: 9999`). Classroom keeps `#lc-mobile-dock` (Lesson / Camera / Chat).
@@ -64,14 +64,14 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Phone app shell.
 
 ## Landing culture / gender
 
-Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Landing culture / about and § Gender.
+Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Landing culture / about and § Gender.
 
 - Homepage culture blocks after hero stay in order Who we are → Principles → Pillars → HEART → Vision/Mission. Pillars/HEART use **icons**, not cropped culture photos.
 - Profile gender selects: **Male / Female only**. Do not restore Other. Teacher enum and profile saves must reject/clear Other.
 
 ## UI icons (Lucide)
 
-Details: [SKILLS.md](SKILLS.md) § UI icons and [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Icons / Password fields.
+Details: [SKILLS.md](../docs/SKILLS.md) § UI icons and [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Icons / Password fields.
 
 - Catalog: [https://lucide.dev/icons/](https://lucide.dev/icons/). Inline SVG via `public/js/lucide-icons.js`. Camera = **video** / **video-off**, mic, volume, send, clock.
 - Password toggles: Lucide **eye** / **eye-off** in `public/js/password-toggle.js`. No emoji, no “Show” text.
@@ -80,7 +80,7 @@ Details: [SKILLS.md](SKILLS.md) § UI icons and [docs/STABLE_BASELINE.md](docs/S
 
 ## Admin Marketing Hub
 
-Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing Hub and § Admin Roles and Access.
+Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Admin Marketing Hub and § Admin Roles and Access.
 
 - Sidebar order: **Accounting Hub** → **Admin Fee** → **Marketing Hub**. Marketing Hub owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
 - Accounting Hub tabs: Payroll Management, **Admin Payroll** (dispense admin fees), Student Subscriptions.
@@ -90,19 +90,19 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing H
 
 ## Teaching Fee bonus / incentive
 
-Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Teaching Fee — Bonus / Incentive.
+Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Teaching Fee — Bonus / Incentive.
 
 - Keep **Bonus / Incentive** under Period fee on Teaching Fee (read-only for teachers). Accounting edits it on Payroll per cut-off; include in net pay / dispense / payslip. Do not make it a fixed monthly entitlement.
 
 ## Security
 
-Details: [docs/SECURITY.md](docs/SECURITY.md) and [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Security.
+Details: [.cursor/docs/SECURITY.md](../docs/SECURITY.md) and [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Security.
 
 - Every new route states its auth: public allowlist, role, or role + ownership (identity from the JWT, never from query/body ids).
 - No debug/test routes in production routers. Socket personal rooms use `resolveSocketIdentity`. Escape API strings before `innerHTML`. Coerce query/body fields before Mongo queries; escape user regex.
-- When a route, socket room, or auth rule changes, update `docs/SECURITY.md` and `docs/STABLE_BASELINE.md`.
+- When a route, socket room, or auth rule changes, update `.cursor/docs/SECURITY.md` and `.cursor/docs/STABLE_BASELINE.md`.
 
 ## Before push
 
 - Run `node --check` on edited server entry files (`server/student.js`, `server/index.js`, etc.).
-- After production deploy, re-run the smoke checklist in `docs/STABLE_BASELINE.md`.
+- After production deploy, re-run the smoke checklist in `.cursor/docs/STABLE_BASELINE.md`.

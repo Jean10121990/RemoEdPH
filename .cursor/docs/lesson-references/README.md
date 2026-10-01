@@ -1,6 +1,6 @@
 # RemoEd lesson references
 
-Canonical source for **slide lesson generation**. The remoed-lesson-creation skill reads this folder — not workspace-root `reference.md`.
+Canonical notes for **slide lesson generation**. Stills, PDFs, and decks stay in `docs/lesson-references/`. The remoed-lesson-creation skill reads this file — not `.cursor/docs/reference.md`.
 
 Also align with https://www.remoedph.com. If this folder, the website, and the codebase disagree, **stop and ask** before generating.
 

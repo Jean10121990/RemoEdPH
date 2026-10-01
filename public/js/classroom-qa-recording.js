@@ -4,7 +4,7 @@
  *   to the student for slide/presentation share (sync behavior unchanged).
  * - Start is gated until the student remote video is live.
  * - live-classroom "Finish" calls ClassroomQaRecording.stopAndFinalize() before closing WebRTC.
- * See docs/CLASSROOM_RECORDING.md
+ * See .cursor/docs/CLASSROOM_RECORDING.md
  */
 (function () {
   'use strict';

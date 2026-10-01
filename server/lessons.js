@@ -45,7 +45,7 @@ function respondLessonRouteError(res, error, fallbackMessage) {
   return res.status(500).json({ error: fallbackMessage || 'Internal server error' });
 }
 
-const LESSON_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+const LESSON_UPLOAD_MAX_BYTES = 80 * 1024 * 1024;
 const lessonUploadTmp = path.join(os.tmpdir(), 'remoed-lesson-uploads');
 fs.mkdirSync(lessonUploadTmp, { recursive: true });
 fs.mkdirSync(PRESENTATIONS_ROOT, { recursive: true });
@@ -371,8 +371,8 @@ router.get('/curricula', authenticateToken, async (req, res) => {
       .select('title description level order');
     
     // Sort by growth-level order
-    const { LEVEL_ORDER } = require('./config/curriculumLevels');
-    const levelOrder = LEVEL_ORDER;
+    const { LEVEL_ORDER, PRE_LEVEL } = require('./config/curriculumLevels');
+    const levelOrder = { ...LEVEL_ORDER, [PRE_LEVEL]: 0 };
     curricula.sort((a, b) => {
       const orderA = levelOrder[a.level] || 99;
       const orderB = levelOrder[b.level] || 99;
@@ -404,10 +404,10 @@ router.post('/curriculum', authenticateToken, requireTeacher, async (req, res) =
     }
 
     // Validate level (accepts short names and legacy "(Age N)" labels)
-    const { CURRICULUM_LEVELS, normalizeCurriculumLevel } = require('./config/curriculumLevels');
-    const canonicalLevel = normalizeCurriculumLevel(level);
+    const { CURRICULUM_DOC_LEVELS, normalizeCurriculumDocLevel } = require('./config/curriculumLevels');
+    const canonicalLevel = normalizeCurriculumDocLevel(level);
     if (!canonicalLevel) {
-      return res.status(400).json({ error: `Invalid level. Must be one of: ${CURRICULUM_LEVELS.join(', ')}` });
+      return res.status(400).json({ error: `Invalid level. Must be one of: ${CURRICULUM_DOC_LEVELS.join(', ')}` });
     }
 
     // Check if curriculum with same title and level already exists
@@ -461,18 +461,18 @@ router.put('/curriculum/:curriculumId', authenticateToken, requireTeacher, async
       return res.status(404).json({ error: 'Curriculum not found' });
     }
 
-    const { CURRICULUM_LEVELS, normalizeCurriculumLevel } = require('./config/curriculumLevels');
+    const { CURRICULUM_DOC_LEVELS, normalizeCurriculumDocLevel } = require('./config/curriculumLevels');
     const nextTitle = title !== undefined ? String(title).trim() : curriculum.title;
     const nextLevelRaw = level !== undefined ? level : curriculum.level;
-    const nextLevel = normalizeCurriculumLevel(nextLevelRaw) || nextLevelRaw;
+    const nextLevel = normalizeCurriculumDocLevel(nextLevelRaw) || nextLevelRaw;
     const nextDescription = description !== undefined ? String(description) : curriculum.description;
     const nextOrder = order !== undefined ? parseInt(order, 10) : curriculum.order;
 
     if (!nextTitle) {
       return res.status(400).json({ error: 'Title is required' });
     }
-    if (!normalizeCurriculumLevel(nextLevel)) {
-      return res.status(400).json({ error: `Invalid level. Must be one of: ${CURRICULUM_LEVELS.join(', ')}` });
+    if (!normalizeCurriculumDocLevel(nextLevel)) {
+      return res.status(400).json({ error: `Invalid level. Must be one of: ${CURRICULUM_DOC_LEVELS.join(', ')}` });
     }
     if (Number.isNaN(nextOrder)) {
       return res.status(400).json({ error: 'Display order must be a number' });

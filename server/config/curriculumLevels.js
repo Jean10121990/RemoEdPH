@@ -146,6 +146,31 @@ function resolveStudentCurriculumLevel(student) {
   return null;
 }
 
+/**
+ * Curriculum-only level for free trial / pre-level lessons. Not a student growth
+ * level: never add it to CURRICULUM_LEVELS (credits, leveling, leaderboard use that list).
+ */
+const PRE_LEVEL = 'Pre-Level';
+
+/** Levels a Curriculum document may be created/edited with (growth levels + Pre-Level). */
+const CURRICULUM_DOC_LEVELS = [PRE_LEVEL].concat(CURRICULUM_LEVELS);
+
+/** Like normalizeCurriculumLevel, but also accepts Pre-Level / free-trial labels. */
+function normalizeCurriculumDocLevel(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (
+    s === 'pre-level' ||
+    s === 'pre level' ||
+    s === 'prelevel' ||
+    s === 'level 0' ||
+    s.includes('free trial') ||
+    s === 'trial'
+  ) {
+    return PRE_LEVEL;
+  }
+  return normalizeCurriculumLevel(raw);
+}
+
 /** All accepted enum values (canonical + legacy age labels). */
 const CURRICULUM_LEVEL_ENUM = CURRICULUM_LEVELS.concat(LEGACY_CURRICULUM_LEVELS);
 
@@ -157,6 +182,9 @@ module.exports = {
   LEVEL_ORDER,
   LEVEL_SHORT_NAME,
   CANONICAL_TO_LEGACY,
+  PRE_LEVEL,
+  CURRICULUM_DOC_LEVELS,
+  normalizeCurriculumDocLevel,
   normalizeCurriculumLevel,
   isValidCurriculumLevel,
   formatCurriculumLevelDisplay,

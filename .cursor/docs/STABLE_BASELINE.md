@@ -9,13 +9,13 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Area | Files |
 |------|--------|
 | Portal tokens | `public/js/user-session.js`, `public/js/remoed-auth-token.js`, `server/authMiddleware.js` |
-| Security guidelines | [`docs/SECURITY.md`](SECURITY.md) — route auth decisions, public allowlist, socket room binding, XSS, NoSQL injection, secrets |
+| Security guidelines | [`.cursor/docs/SECURITY.md`](SECURITY.md) — route auth decisions, public allowlist, socket room binding, XSS, NoSQL injection, secrets |
 | Forgot / set password | `POST /api/auth/forgot-password` (link, not a temp password), `POST /api/auth/reset-password`, `public/forgot-password.html`, `public/reset-password.html`, `public/change-password.html`, `POST /api/auth/change-password` |
-| UI icons (Lucide) | [lucide.dev/icons](https://lucide.dev/icons/), [`SKILLS.md`](../SKILLS.md) § UI icons; `public/js/lucide-icons.js`; password eye: `public/js/password-toggle.js` |
+| UI icons (Lucide) | [lucide.dev/icons](https://lucide.dev/icons/), [`SKILLS.md`](SKILLS.md) § UI icons; `public/js/lucide-icons.js`; password eye: `public/js/password-toggle.js` |
 | Student book UI | `public/student-book.html` |
 | Book API | `server/student.js` (`POST /book-class`), `server/studentController.js`, `server/services/studentBookSlotService.js`, legacy `POST /api/teacher/book-class` in `server/teacher.js` |
 | Teacher ID resolve | `server/services/teacherSlotResolve.js`, `teacherBookingKey` in `server/teacher.js` |
-| Credits / expiry | `server/services/studentCreditSummary.js`, `server/services/creditExpiry.js`, `server/services/creditLots.js` — each purchase is a **credit lot** with its own `expiresAt`. The Credits page countdown is the **longer** remaining date. Class finish burns FIFO by purchase date (older plan first). When a lot expires, only that lot’s remaining credits zero; newer plans keep theirs. |
+| Credits / expiry | `server/services/studentCreditSummary.js`, `server/services/creditExpiry.js`, `server/services/creditLots.js` — each purchase is a **credit lot** with its own `expiresAt`. The Credits page countdown is the **longer** remaining date. Class finish burns FIFO by purchase date (older plan first). When a lot expires, only that lot’s remaining credits zero; newer plans keep theirs. Every `Student` read/write inside the wrap-up transaction (`server/services/bookingCreditLedger.js`) must pass the session — a session-less write deadlocks **Complete Class & Submit Feedback**. |
 | Class schedule / issue | `public/teacher-class-table.html`, `POST /report-issue` + `GET /check-class-issues` in `server/teacher.js` |
 | Applicant → teacher docs | `server/utils/applicantDocuments.js`, teacher signup in `server/auth.js` |
 | Live classroom (AV / locks) | `public/live-classroom.html`, `public/css/live-classroom-redesign.css`, `public/js/virtual-background.js`, `public/images/virtual-bg/`, socket maps in `server/index.js` |
@@ -35,8 +35,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Admin Roles (dynamic RBAC) | `public/admin-settings.html` (Admin Roles and Access), `server/services/adminRbac.js`, `server/adminRbacRoutes.js` (RBAC paths only — skip enrollment), `AdminRole` / `AdminPermission`, `public/js/admin-access-guard.js`, `public/admin-403.html` |
 | Admin Messages | `public/admin-messages.html`, `GET/POST /api/admin/messages/*` — teachers, students, **and admins**; desktop viewport-fit messenger |
 | System monitor (Super-Admin) | `public/super-monitor.html`, `GET /api/admin/system-stats` — live unique students / teachers / admins via Socket.IO `userType` + `presenceKey` |
-| Virtual Garden / Eco-Drops | [`SKILLS.md`](../SKILLS.md), `public/student-virtual-garden.html`, `public/css/student-virtual-garden.css`, `server/services/ecoDropGardenService.js`, `GET/POST /api/student/garden*`; grant on first `LessonProgress` → completed |
-| Lesson slide generation (L2M1+) | [`docs/lesson-references/`](lesson-references/) ([`README.md`](lesson-references/README.md)), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md), `docs/lesson-references/build_l2m1_lessons_*.py` / `build_l3m1_lessons_*.py` → repo `docs/lesson-references/lessons/` **and** laptop `Level {1–4}` folders |
+| Virtual Garden / Eco-Drops | [`SKILLS.md`](SKILLS.md), `public/student-virtual-garden.html`, `public/css/student-virtual-garden.css`, `server/services/ecoDropGardenService.js`, `GET/POST /api/student/garden*`; grant on first `LessonProgress` → completed |
+| Lesson slide generation (L2M1+) | [`docs/lesson-references/`](lesson-references/) ([`README.md`](lesson-references/README.md)), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../skills/remoed-lesson-creation/SKILL.md), `docs/lesson-references/build_l2m1_lessons_*.py` / `build_l3m1_lessons_*.py` → repo `docs/lesson-references/lessons/` **and** laptop `Level {1–4}` folders |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | MariBank payroll withdraw | `public/js/payroll-withdraw-modal.js`, `server/services/payrollWithdrawService.js`; withdraw APIs; **Mark Completed** in Accounting Hub Payment History (`POST /api/admin/payroll/complete`, `POST /api/admin/admin-fee/complete`) — email to support is ops-only |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
@@ -100,7 +100,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 ### Landing / culture
 
 - [ ] Homepage after hero shows, in order: **Who we are?** → Foundational Principles → Core Cultural Pillars → H.E.A.R.T. Framework → Vision & Mission, then existing Why Learn / Teachers / Assessment / Plans.
-- [ ] Pillars and HEART use **icon circles** (`.remo-culture-icon`), not cropped stock photos under `public/images/culture/`. New portal chrome uses **[Lucide](https://lucide.dev/icons/)** (see [`SKILLS.md`](../SKILLS.md)); do not put emoji on password fields.
+- [ ] Pillars and HEART use **icon circles** (`.remo-culture-icon`), not cropped stock photos under `public/images/culture/`. New portal chrome uses **[Lucide](https://lucide.dev/icons/)** (see [`SKILLS.md`](SKILLS.md)); do not put emoji on password fields.
 - [ ] Password fields show a Lucide **eye** / **eye-off** toggle **inside** the field (`password-toggle.js`), not emoji or a “Show” chip. Set-password card is ~560px on desktop. New passwords need 8+ mixed case, a number, **and a symbol**.
 - [ ] Nav **About** and footer **About RemoEd** jump to `#who-we-are`.
 
@@ -240,7 +240,7 @@ Product copy and layout on `public/index.html` after the hero. Style in `public/
 
 Pillars and HEART use brand icon circles (same family as Foundational Principles / Why Learn cards). **Do not** reintroduce cropped mockup PNGs or a `public/images/culture/` photo set — those looked soft and blurry on the live page. Do not paste the full design-comp images as section backgrounds (duplicates titles and breaks a11y).
 
-**Product UI icons** (password, header chips, new controls): use **[Lucide](https://lucide.dev/icons/)** — spec in [`SKILLS.md`](../SKILLS.md) § UI icons. Inline SVG, `currentColor`, 24×24 viewBox. Password visibility is Lucide **eye** / **eye-off** via `public/js/password-toggle.js`. Do not use emoji for those controls. Existing landing Font Awesome circles may stay until a dedicated Lucide restyle; new icons should not introduce a third set.
+**Product UI icons** (password, header chips, new controls): use **[Lucide](https://lucide.dev/icons/)** — spec in [`SKILLS.md`](SKILLS.md) § UI icons. Inline SVG, `currentColor`, 24×24 viewBox. Password visibility is Lucide **eye** / **eye-off** via `public/js/password-toggle.js`. Do not use emoji for those controls. Existing landing Font Awesome circles may stay until a dedicated Lucide restyle; new icons should not introduce a third set.
 
 ## Password fields / change password
 
@@ -276,7 +276,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 
 ## Virtual Garden & Eco-Drops
 
-Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** stay separate from Eco-Drops.
+Product spec: [`SKILLS.md`](SKILLS.md) § Gamification. Lesson **credits** stay separate from Eco-Drops.
 
 - Page: [`public/student-virtual-garden.html`](../public/student-virtual-garden.html) + [`public/css/student-virtual-garden.css`](../public/css/student-virtual-garden.css) (`?v=garden-3+`). Sidebar id `garden` in `student-sidebar.js`; header Eco-Drop chip in `student-page-header.js`.
 - APIs (`server/student.js`, student Bearer): `GET /api/student/eco-drops`, `GET /api/student/garden`, `POST /api/student/garden/action`, `POST /api/student/lessons/complete` (backfill only).
@@ -387,7 +387,7 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 
 | Piece | Location |
 |-------|----------|
-| Brief / character rules | [`docs/lesson-references/README.md`](lesson-references/README.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../.cursor/skills/remoed-lesson-creation/SKILL.md) |
+| Brief / character rules | [`docs/lesson-references/README.md`](lesson-references/README.md), [`.cursor/skills/remoed-lesson-creation/SKILL.md`](../skills/remoed-lesson-creation/SKILL.md) |
 | In-repo canonical | `docs/lesson-references/lessons/L2M1-Lesson-{N}/` (+ flat copy under `docs/lesson-references/`) |
 | Build / chrome | `docs/lesson-references/build_l2m1_lessons_7_9.py` (`build_lesson`), `build_l2m1_lessons_10_12.py`, `build_l2m1_lessons_13_15.py`, `build_l2m1_lessons_16_18.py`, `build_l2m1_lessons_19_22.py`, `build_l3m1_lessons_1_3.py`, `build_l3m1_lessons_4_6.py` |
 | **Laptop download (required)** | `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Level {1\|2\|3\|4}\` |
@@ -398,13 +398,13 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 - Save **per Level folder** (`Level 1` … `Level 4`) — do not dump all levels into one flat directory.
 - `build_lesson` in `build_l2m1_lessons_7_9.py` copies to the laptop `Level {N}` path automatically (`lesson["level"]`, default **2**). If the desktop path is missing, log a warning but still write the repo copy.
 - Optional Drive upload remains manual ([Drive – Level 2 Month 1](https://drive.google.com/drive/u/0/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk)); laptop Level folders are the day-to-day download destination.
-- Style / chrome: green Remo, Filipino Ed/Sofie/Teacher Grace, no Teacher Scripts, level-month footer + logo overlays — see remoed-lesson-creation skill. **Lesson briefs, character stills, and curriculum PDFs live in `docs/lesson-references/`** ([`README.md`](lesson-references/README.md)); do not use workspace-root `reference.md` as the lesson brief.
+- Style / chrome: green Remo, Filipino Ed/Sofie/Teacher Grace, no Teacher Scripts, level-month footer + logo overlays — see remoed-lesson-creation skill. **Lesson briefs, character stills, and curriculum PDFs live in `docs/lesson-references/`** ([`README.md`](lesson-references/README.md)); do not use `.cursor/docs/reference.md` as the lesson brief.
 - Sprouts Month 1 lessons **19–22** (Honoring My Friends, Virtual Garden Challenge 1, Virtual Garden Challenge 2, Monthly Celebration) use `build_l2m1_lessons_19_22.py`. Uppercase A, B, and C are drawn in code on the phonics slides so the letter shapes stay correct. PDF footers that say Level 1 still publish as Level 2 – Sprouts.
 - `build_lesson` uses `lesson["footer"]` (default `SPROUTS! MONTH 1`) and the length of `lesson["pages"]` for the page badge. Saplings Month 1 lessons **1–6** (`build_l3m1_lessons_1_3.py`, `build_l3m1_lessons_4_6.py`) are Level 3, footer `SAPLINGS! MONTH 1`, **18** pages, laptop folder `Level 3`, filenames `RemoEd L3M1-Lesson-{N}-….pptx`. Phonics letters and the name badge are drawn in code. Lessons 4–6 cover asking before apps, “God made me unique!”, and honoring each person.
 
 ## Security — do not reopen
 
-Full checklist: [`docs/SECURITY.md`](SECURITY.md). Update both files whenever a route, socket room, or auth rule changes.
+Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whenever a route, socket room, or auth rule changes.
 
 - Public on purpose (keep open): `GET /api/teacher/slots`, public teacher profile / landing / directory, student booking, obfuscated admin login path, `/api/public/*` assessment, `POST /api/applications`, `teacher-profiles/` uploads.
 - Teacher debug routes stay removed: `/api/teacher/test`, `/timezone-debug`, `/booking-test/:id`, `/test-remove-slide`, and the unauthenticated `/api/teacher/teacher/completed-classes`.
@@ -425,6 +425,11 @@ Full checklist: [`docs/SECURITY.md`](SECURITY.md). Update both files whenever a 
 | `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
 | `LESSON_AHEAD_OF_PROGRESS` | Paid book blocked: lesson is past the next trail stop (earlier / reschedule OK) |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
+
+## Curriculum levels — Pre-Level
+
+- `Pre-Level` (Free Trial) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). Lessons Library create/edit accepts it and lists it first.
+- Do **not** add it to `CURRICULUM_LEVELS`, `Booking.studentLevel`, or `normalizeCurriculumLevel` — those drive student leveling, credits and the leaderboard.
 
 ## Ops notes (out of code scope)
 

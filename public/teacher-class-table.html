@@ -318,7 +318,7 @@
         </div>
         <div class="remoed-modal-footer">
           <button class="remoed-btn remoed-btn-secondary" onclick="closeClassFeedbackModal()">Cancel</button>
-          <button class="remoed-btn remoed-btn-success" onclick="submitClassFeedback().catch(console.error)">Complete Class & Submit Feedback</button>
+          <button class="remoed-btn remoed-btn-success" id="feedback-submit-btn" onclick="submitClassFeedback().catch(console.error)">Complete Class & Submit Feedback</button>
         </div>
       </div>
     </div>
@@ -2132,11 +2132,13 @@
             position: fixed;
             top: 20px;
             right: 20px;
+            z-index: var(--z-toast, 9500);
+            max-width: min(420px, calc(100vw - 40px));
             padding: 15px 20px;
             border-radius: 8px;
             color: white;
             font-weight: 600;
-            background: ${type === 'success' ? '#47BC3E' : '#dc3545'};
+            background: ${type === 'success' ? '#47BC3E' : type === 'info' ? '#0f766e' : '#dc3545'};
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         `;
         notification.textContent = message;
@@ -2523,12 +2525,39 @@
         }
     }
     
+    let feedbackSubmitInFlight = false;
+
+    function setFeedbackSubmitBusy(busy) {
+        feedbackSubmitInFlight = busy;
+        const btn = document.getElementById('feedback-submit-btn');
+        if (!btn) return;
+        btn.disabled = busy;
+        btn.style.opacity = busy ? '0.7' : '';
+        btn.textContent = busy ? 'Submitting…' : 'Complete Class & Submit Feedback';
+    }
+
     // Submit class feedback and complete class
     async function submitClassFeedback() {
+        if (feedbackSubmitInFlight) return;
         if (!currentBooking) {
             showNotification('No class selected', 'error');
             return;
         }
+        if (selectedRating === 0) {
+            showNotification('Please select a star rating before submitting.', 'error');
+            const stars = document.getElementById('feedback-star-rating');
+            if (stars && stars.scrollIntoView) stars.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        setFeedbackSubmitBusy(true);
+        try {
+            await submitClassFeedbackInner();
+        } finally {
+            setFeedbackSubmitBusy(false);
+        }
+    }
+
+    async function submitClassFeedbackInner() {
         
         // Check if feedback already exists for this booking
         try {
@@ -2597,17 +2626,33 @@
                 submittedAt: new Date().toISOString()
             };
             
-            const feedbackResponse = await fetch('/api/feedback/submit', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(feedbackData)
-            });
+            const submitAbort = new AbortController();
+            const submitTimer = setTimeout(() => submitAbort.abort(), 45000);
+            let feedbackResponse;
+            try {
+                feedbackResponse = await fetch('/api/feedback/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(feedbackData),
+                    signal: submitAbort.signal
+                });
+            } catch (netErr) {
+                showNotification(
+                    netErr && netErr.name === 'AbortError'
+                        ? 'Submitting is taking too long. Refresh the schedule to check if the class was completed, then try again.'
+                        : 'Network error while submitting feedback. Please try again.',
+                    'error'
+                );
+                return;
+            } finally {
+                clearTimeout(submitTimer);
+            }
             
             if (!feedbackResponse.ok) {
-                const errorData = await feedbackResponse.json();
+                const errorData = await feedbackResponse.json().catch(() => ({}));
                 showNotification(`Failed to submit feedback: ${errorData.error || 'Unknown error'}`, 'error');
                 return;
             }
