@@ -181,7 +181,11 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
     if (cached) {
       const cachedEnd = cached.profile && cached.profile.subscriptionEndDate;
       const cacheExpired = cachedEnd && new Date(cachedEnd).getTime() <= Date.now();
-      if (!cacheExpired) {
+      const cacheMissingFreePlan =
+        !cached.profile ||
+        !cached.profile.freePlan ||
+        typeof cached.profile.freePlan.isFree !== 'boolean';
+      if (!cacheExpired && !cacheMissingFreePlan) {
         scheduleTrialBookingReminderSideEffect(req.user.studentId);
         return res.json(cached);
       }
@@ -276,6 +280,8 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         expiryCountdownLabel: creditExpiry.expiryCountdownLabel,
         creditsExpireOnLabel: creditExpiry.creditsExpireOnLabel || null,
         creditsExpired: creditExpiry.creditsExpired,
+        creditBalance: Math.max(0, Number(student.creditBalance) || 0),
+        freePlan: await require('./services/freePlanAccess').freePlanProfile(student, null),
       }
     };
     await studentController.setStudentProfileCache(req.user.studentId, body);
@@ -746,6 +752,17 @@ router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => 
     await logEmergencyCreditRetained(booking);
 
     await booking.save();
+    if (booking.isFreePlanBooking) {
+      await Student.updateOne(
+        { _id: req.user.studentId, freeLessonActiveBookingId: booking._id },
+        { $set: { freeLessonActiveBookingId: null, freeLessonPeriodKey: '' } }
+      );
+    }
+    try {
+      await studentController.invalidateStudentProfileCache(req.user.studentId);
+    } catch (_cacheErr) {
+      /* non-fatal */
+    }
 
     try {
       const TeacherSlot = require('./models/TeacherSlot');
@@ -2721,14 +2738,21 @@ router.post('/peer-message', verifyToken, requireStudent, async (req, res) => {
 /** Library videos uploaded by admins — watchable in live classroom (student token). */
 router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
   try {
+    const { isPaidSubscriber } = require('./services/freePlanAccess');
+    const student = await Student.findById(req.user.studentId).select(
+      'isSubscribed subscriptionStatus paymentStatus creditLots'
+    );
+    const paid = isPaidSubscriber(student);
     const list = await PortalVideo.find({ active: true }).sort({ createdAt: -1 }).lean();
     res.json({
       success: true,
+      locked: !paid,
       videos: list.map((v) => ({
         id: String(v._id),
         title: v.title,
         description: v.description || '',
-        url: v.relativeUrl,
+        url: paid ? v.relativeUrl : null,
+        locked: !paid,
         mimeType: v.mimeType || 'video/mp4',
         createdAt: v.createdAt,
       })),
@@ -2770,6 +2794,13 @@ router.get('/garden', verifyToken, requireStudent, async (req, res) => {
     const state = await ecoDropGardenService.getGardenState(studentId, {
       ackCelebration: !!ack,
     });
+    const { isPaidSubscriber } = require('./services/freePlanAccess');
+    const studentDoc = req.user && req.user.studentId
+      ? await Student.findById(req.user.studentId).select(
+          'isSubscribed subscriptionStatus paymentStatus creditLots'
+        )
+      : null;
+    state.locked = !isPaidSubscriber(studentDoc);
     res.json(state);
   } catch (error) {
     console.error('GET /api/student/garden:', error);
@@ -2783,6 +2814,17 @@ router.get('/garden', verifyToken, requireStudent, async (req, res) => {
 
 router.post('/garden/action', verifyToken, requireStudent, async (req, res) => {
   try {
+    const { isPaidSubscriber } = require('./services/freePlanAccess');
+    const studentDoc = await Student.findById(req.user.studentId).select(
+      'isSubscribed subscriptionStatus paymentStatus creditLots'
+    );
+    if (!isPaidSubscriber(studentDoc)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Subscribe to use the garden.',
+        code: 'FREE_PLAN_LOCKED',
+      });
+    }
     const studentId = gardenStudentKey(req);
     const result = await ecoDropGardenService.gardenAction(studentId, req.body || {});
     res.json(result);

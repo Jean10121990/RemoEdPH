@@ -78,8 +78,23 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
   const student = await findStudentForBooking(booking);
   if (!student) return null;
   const now = new Date();
-  const isTrial = !!booking.isAssessmentFreeTrialBooking;
   const session = opts && opts.session ? opts.session : undefined;
+  if (booking.isFreePlanBooking) {
+    booking.creditConsumedAt = now;
+    booking.creditsFinalized = true;
+    await attachSession(
+      Student.updateOne(
+        { _id: student._id, freeLessonCompletedCount: { $lt: 22 } },
+        {
+          $inc: { freeLessonCompletedCount: 1 },
+          $set: { freeLessonActiveBookingId: null },
+        }
+      ),
+      session
+    );
+    return student._id;
+  }
+  const isTrial = !!booking.isAssessmentFreeTrialBooking;
 
   await persistExpiredLotsIfNeeded(student, now);
   // Reload after possible expiry write

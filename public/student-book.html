@@ -3545,6 +3545,10 @@
 
         // Load lessons for selected level
         let studentTrialBookingActive = false;
+        let studentFreePlanActive = false;
+        let studentFreePlanCanBook = false;
+        let studentFreePlanNextLesson = 1;
+        let studentFreePlanSequenceDone = false;
         let studentHasPaidPlan = false;
         /** Max linear lesson number the student may book for the selected level (next stop). */
         let studentMaxBookableLesson = 1;
@@ -3609,13 +3613,6 @@
             }
         }
 
-        function isLessonOne(lesson) {
-            const n = Number(lesson && lesson.lessonNumber);
-            if (n === 1) return true;
-            const title = String((lesson && (lesson.title || lesson.name)) || '');
-            return /\blesson\s*1\b/i.test(title) && !/\blesson\s*1\d/i.test(title);
-        }
-
         async function refreshTrialBookingFlag() {
             try {
                 const token = getStudentAuthToken();
@@ -3626,14 +3623,26 @@
                 if (!res.ok) return;
                 const data = await res.json();
                 const p = data.profile || data;
-                studentHasPaidPlan =
-                    p.isSubscribed === true ||
-                    (p.paymentStatus === 'paid' && p.subscriptionStatus === 'active');
-                studentTrialBookingActive =
-                    !studentHasPaidPlan &&
-                    (p.assessmentTrialCreditActive === true || p.hasFreeTrial === true);
+                if (p.freePlan && typeof p.freePlan.isFree === 'boolean') {
+                    studentFreePlanActive = p.freePlan.isFree === true;
+                    studentFreePlanCanBook = p.freePlan.canBookThisMonth === true;
+                    studentFreePlanNextLesson = Number(p.freePlan.nextLessonNumber) || 1;
+                    studentFreePlanSequenceDone = p.freePlan.sequenceDone === true;
+                    studentHasPaidPlan = !studentFreePlanActive;
+                } else {
+                    studentHasPaidPlan =
+                        p.isSubscribed === true &&
+                        p.paymentStatus === 'paid' &&
+                        p.subscriptionStatus === 'active';
+                    studentFreePlanActive = !studentHasPaidPlan;
+                    studentFreePlanCanBook = studentFreePlanActive;
+                    studentFreePlanNextLesson = 1;
+                    studentFreePlanSequenceDone = false;
+                }
+                studentTrialBookingActive = studentFreePlanActive;
                 try {
                     localStorage.setItem('studentIsSubscribed', studentHasPaidPlan ? '1' : '0');
+                    if (p.freePlan) localStorage.setItem('studentFreePlan', JSON.stringify(p.freePlan));
                 } catch (_e) {}
                 if (p.hasFreeTrial != null) {
                     localStorage.setItem('studentHasFreeTrial', p.hasFreeTrial ? '1' : '0');
@@ -3650,10 +3659,10 @@
                 } catch (_e2) {
                     studentHasPaidPlan = false;
                 }
-                studentTrialBookingActive =
-                    !studentHasPaidPlan &&
-                    (localStorage.getItem('studentHasFreeTrial') === '1' ||
-                        localStorage.getItem('studentAssessmentTrialActive') === '1');
+                studentFreePlanActive = !studentHasPaidPlan;
+                studentFreePlanCanBook = false;
+                studentFreePlanNextLesson = 1;
+                studentTrialBookingActive = studentFreePlanActive;
             }
         }
 
@@ -3808,8 +3817,12 @@
                             'You can book Lesson ' +
                             studentMaxBookableLesson +
                             ' (next on your trail) or any earlier lesson — including reschedules. Later lessons stay locked until you finish the ones before them.';
-                    } else if (studentTrialBookingActive) {
-                        hintEl.textContent = 'Free trial: Pre-Level Lesson 1 is open. Later Pre-Level lessons stay locked until you subscribe.';
+                    } else if (studentFreePlanSequenceDone) {
+                        hintEl.innerHTML = 'You finished all 22 free Pre-Level lessons. <a href="student-credits.html">Subscribe to Book</a> the next levels.';
+                    } else if (studentFreePlanActive && !studentFreePlanCanBook) {
+                        hintEl.innerHTML = 'This month\'s free lesson is already booked. Next month you can book Pre-Level Lesson ' + studentFreePlanNextLesson + '. <a href="student-credits.html">Subscribe to Book</a> any lesson now.';
+                    } else if (studentFreePlanActive) {
+                        hintEl.innerHTML = 'Free plan: Pre-Level Lesson ' + studentFreePlanNextLesson + ' is open this month. The other 21 titles stay listed. <a href="student-credits.html">Subscribe to Book</a> them now.';
                     } else {
                         hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
                     }
@@ -3829,24 +3842,26 @@
                             return; // Skip this lesson
                         }
                         
-                        const lessonOne = isLessonOne(lesson);
                         const num = Number(lesson.lessonNumber);
                         const aheadOfProgress =
                             studentHasPaidPlan &&
                             Number.isFinite(num) &&
                             num > studentMaxBookableLesson;
-                        const locked = studentHasPaidPlan
-                            ? aheadOfProgress
-                            : studentTrialBookingActive
-                              ? !lessonOne
-                              : true;
+                        const isNextFreeLesson =
+                            studentFreePlanActive &&
+                            studentFreePlanCanBook &&
+                            num === studentFreePlanNextLesson;
+                        const locked = studentHasPaidPlan ? aheadOfProgress : !isNextFreeLesson;
                         option.value = lesson._id.toString(); // Ensure it's a string
                         if (locked && aheadOfProgress) {
                             option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (finish earlier lessons first)`;
                             option.title = 'Complete earlier lessons before booking this one';
+                        } else if (locked && studentFreePlanActive) {
+                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
+                            option.title = 'Subscribe to book this lesson now, or wait for your next free month';
                         } else if (locked) {
-                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (unlock with a plan)`;
-                            option.title = 'Enroll in a learning plan to book this lesson';
+                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
+                            option.title = 'Subscribe to book this lesson';
                         } else {
                             option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
                             option.title = lesson.description || lesson.title || '';
@@ -3860,7 +3875,7 @@
                     });
                     lessonSelect.disabled = false;
                     
-                    if (studentTrialBookingActive && !studentHasPaidPlan) {
+                    if (studentFreePlanActive && studentFreePlanCanBook && !studentHasPaidPlan) {
                         const firstOpen = Array.from(lessonSelect.options).find(
                             (o) => o.value && !o.disabled
                         );

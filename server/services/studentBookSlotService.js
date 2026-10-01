@@ -223,23 +223,12 @@ async function runBookSlot(req, res) {
     if (await reconcileStudentCreditBalanceIfDrifted(req.user.studentId, student.toObject())) {
       student = await Student.findById(req.user.studentId);
     }
-    const effectiveSubscribed =
-      student.isSubscribed === true ||
-      (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active');
     const studentId = student.username;
     const availableCredits = getAvailableBookingCredits(student);
-    const canUseTrial =
-      !effectiveSubscribed &&
-      (!!student.assessmentTrialCreditActive || !!student.hasFreeTrial);
-    // Welcome trial adds 1 credit; still restrict to Lesson 1 while trial flags are active.
-    const trialOnlyBooking = canUseTrial;
-    if (!effectiveSubscribed && availableCredits <= 0 && !canUseTrial) {
-      return res.status(403).json({
-        error: 'Subscription required to book your next lesson.',
-        code: 'SUBSCRIPTION_REQUIRED_LESSON_2',
-      });
-    }
-    if (availableCredits <= 0 && !canUseTrial) {
+    const { isPaidSubscriber, assertFreePlanLesson, currentPeriodKey } = require('./freePlanAccess');
+    const paidBooking = isPaidSubscriber(student);
+    const freePlanBooking = !paidBooking;
+    if (paidBooking && availableCredits <= 0) {
       const expired =
         String(student.subscriptionStatus || '') === 'expired' ||
         (expiryResult && expiryResult.applied);
@@ -251,37 +240,8 @@ async function runBookSlot(req, res) {
       });
     }
 
-    const { normalizeCurriculumDocLevel, PRE_LEVEL } = require('../config/curriculumLevels');
-    const bookedDocLevel = normalizeCurriculumDocLevel(studentLevel);
-    if (!effectiveSubscribed && bookedDocLevel !== PRE_LEVEL) {
-      return res.status(403).json({
-        error: 'Little Seeds, Sprouts, Saplings, and Young Stewards need a subscription. With no plan, book Pre-Level.',
-        code: 'SUBSCRIPTION_REQUIRED_LEVEL',
-      });
-    }
-
-    // Free trial: only Pre-Level Lesson 1 may be booked.
-    if (trialOnlyBooking) {
-      const Lesson = require('../models/Lesson');
-      let lessonNum = null;
-      if (lessonId && mongoose.Types.ObjectId.isValid(String(lessonId))) {
-        const lessonDoc = await Lesson.findById(String(lessonId)).select('lessonNumber title').lean();
-        if (lessonDoc) lessonNum = Number(lessonDoc.lessonNumber);
-      }
-      if (lessonNum == null || Number.isNaN(lessonNum)) {
-        const m = String(lesson || '').match(/lesson\s*(\d+)/i);
-        if (m) lessonNum = parseInt(m[1], 10);
-      }
-      if (lessonNum !== 1) {
-        return res.status(400).json({
-          error: 'Free trial booking is limited to Lesson 1 for each level.',
-          code: 'TRIAL_LESSON_1_ONLY',
-        });
-      }
-    }
-
-    // Paid / credited: no jumping ahead — next trail stop + earlier (reschedule) only.
-    if (!trialOnlyBooking) {
+    // Paid plan: no jumping ahead — next trail stop + earlier (reschedule) only.
+    if (paidBooking) {
       const { assertLessonNotAheadOfProgress } = require('./studentLessonUnlock');
       const unlockIds = [
         student.username,
@@ -347,6 +307,23 @@ async function runBookSlot(req, res) {
       timezone && DateTime.now().setZone(String(timezone)).isValid
         ? String(timezone)
         : 'Asia/Manila';
+    if (freePlanBooking) {
+      const lessonGate = await assertFreePlanLesson({
+        student,
+        studentId: req.user.studentId,
+        studentLevel,
+        lessonId,
+        lessonTitle: lesson,
+        zone: studentZone,
+      });
+      if (!lessonGate.ok) {
+        const gateErr = lessonGate.error;
+        return res.status(gateErr.statusCode).json({
+          error: gateErr.message,
+          code: gateErr.code,
+        });
+      }
+    }
     const bookingLocalYmd = studentLocalYmdFromUtc(canonicalUtc, studentZone) || dateUtc;
     const identKeys = studentBookingKeys(student, req);
     const alreadyToday = await countStudentClassesOnLocalDay({
@@ -471,22 +448,30 @@ async function runBookSlot(req, res) {
         throw dailyClassLimitError(bookingLocalYmd, alreadyAtomic);
       }
 
-      // Gate: live balance > 0 (no reserve-on-book). Allow active free-trial booking.
-      let creditGateQ = Student.findOne({
-        _id: req.user.studentId,
-        $or: [
-          { creditBalance: { $gt: 0 } },
-          { assessmentTrialCreditActive: true },
-          { hasFreeTrial: true },
-        ],
-      });
-      if (session) creditGateQ = creditGateQ.session(session);
-      const creditGate = await creditGateQ;
-      if (!creditGate) {
-        const err = new Error('Insufficient credits. Please top up your plan.');
-        err.statusCode = 400;
-        err.code = 'INSUFFICIENT_CREDITS';
-        throw err;
+      if (freePlanBooking) {
+        const lessonGate = await assertFreePlanLesson({
+          studentId: req.user.studentId,
+          studentLevel,
+          lessonId,
+          lessonTitle: lesson,
+          zone: studentZone,
+          session,
+        });
+        if (!lessonGate.ok) throw lessonGate.error;
+      } else {
+        // Gate: live balance > 0 (no reserve-on-book).
+        let creditGateQ = Student.findOne({
+          _id: req.user.studentId,
+          creditBalance: { $gt: 0 },
+        });
+        if (session) creditGateQ = creditGateQ.session(session);
+        const creditGate = await creditGateQ;
+        if (!creditGate) {
+          const err = new Error('Insufficient credits. Please top up your plan.');
+          err.statusCode = 400;
+          err.code = 'INSUFFICIENT_CREDITS';
+          throw err;
+        }
       }
 
       // Match by _id + available only — teacherId on the row can differ in casing/legacy form from chosenTeacherId.
@@ -533,7 +518,8 @@ async function runBookSlot(req, res) {
         studentLevel: canonicalStudentLevel,
         classroomId,
         status: 'Booked',
-        isAssessmentFreeTrialBooking: trialOnlyBooking,
+        isAssessmentFreeTrialBooking: false,
+        isFreePlanBooking: freePlanBooking,
       });
       try {
         if (session) {
@@ -555,6 +541,19 @@ async function runBookSlot(req, res) {
           throw err;
         }
         throw saveErr;
+      }
+      if (freePlanBooking) {
+        let mark = Student.updateOne(
+          { _id: student._id },
+          {
+            $set: {
+              freeLessonPeriodKey: currentPeriodKey(studentZone),
+              freeLessonActiveBookingId: b._id,
+            },
+          }
+        );
+        if (session) mark = mark.session(session);
+        await mark;
       }
       return b;
     }
@@ -680,7 +679,7 @@ async function runBookSlot(req, res) {
       try {
         const refreshedForCredits = await Student.findById(req.user.studentId).lean();
         const bal = getAvailableBookingCredits(refreshedForCredits);
-        if (typeof bal === 'number' && bal <= 2 && bal >= 0) {
+        if (!freePlanBooking && typeof bal === 'number' && bal <= 2 && bal >= 0) {
           await notifyStudent(
             studentId,
             'credits-low',
@@ -709,6 +708,13 @@ async function runBookSlot(req, res) {
         realtime.emitAll('slotsUpdated', payload);
       } catch (socketError) {
         console.error('⚠️ bookingsUpdated/slotsUpdated emit:', socketError);
+      }
+
+      try {
+        const { invalidateStudentProfileCache } = require('../studentController');
+        await invalidateStudentProfileCache(req.user.studentId);
+      } catch (_cacheErr) {
+        /* non-fatal */
       }
 
       const refreshedStudent = await Student.findById(req.user.studentId).lean();

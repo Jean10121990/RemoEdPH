@@ -223,6 +223,27 @@ async function serveStoredUpload(req, res, rel) {
 async function serveAuthenticatedUpload(req, res) {
   try {
     const rel = req.uploadRelativePath || relativeUploadPathFromReq(req);
+    if (String(rel).indexOf('portal-videos/') === 0) {
+      const user = req.user || {};
+      const isStaff =
+        user.isAdmin === true ||
+        user.role === 'teacher' ||
+        user.role === 'admin' ||
+        user.role === 'service';
+      if (!isStaff && user.studentId) {
+        const Student = require('../models/Student');
+        const { isPaidSubscriber } = require('../services/freePlanAccess');
+        const student = await Student.findById(user.studentId).select(
+          'isSubscribed subscriptionStatus paymentStatus creditLots'
+        );
+        if (!isPaidSubscriber(student)) {
+          return res.status(403).json({
+            error: 'Subscribe to watch videos.',
+            code: 'FREE_PLAN_LOCKED',
+          });
+        }
+      }
+    }
     let abs = resolveSafeUploadFile(rel);
     if (!abs) {
       abs = resolveLegacyIssueScreenshot(rel);

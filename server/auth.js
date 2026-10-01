@@ -1225,54 +1225,17 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       console.warn('Referral signup tracking failed:', refSignupErr.message);
     }
 
-    // Always grant 1 welcome free-trial lesson on successful registration (never double-credit).
+    // Free plan is Pre-Level, one lesson a month. Do not grant a welcome credit or trial flags.
     const now = new Date();
-    const prevBal = Math.max(0, Number(student.creditBalance) || 0);
-    const reserved = Math.max(0, Number(student.reservedCredits) || 0);
-    const balanceAfterPool = prevBal + 1;
-    const welcomeUpdate = {
-      $inc: {
-        creditBalance: 1,
-        totalCreditsEarned: 1,
-        totalLessonsPurchased: 1,
-        'learningJourneyPurchasedByLevel.Little Seeds': 1,
-        'learningJourneyPurchasedByLevel.Sprouts': 1,
-        'learningJourneyPurchasedByLevel.Saplings': 1,
-        'learningJourneyPurchasedByLevel.Young Stewards': 1,
-        'learningJourneyPurchasedByLevel.Little Seeds (Age 3)': 1,
-        'learningJourneyPurchasedByLevel.Sprouts (Age 4)': 1,
-        'learningJourneyPurchasedByLevel.Saplings (Age 5)': 1,
-        'learningJourneyPurchasedByLevel.Young Stewards (Age 6)': 1,
-      },
-      $set: {
-        hasFreeTrial: true,
-        assessmentTrialCreditActive: true,
-        accountStatus: 'trial_active',
-        isSubscribed: false,
-        assessmentTrialGrantedAt: now,
-        firstName: safeFirstName,
-        lastName: safeLastName,
-      },
-      $push: {
-        creditHistory: {
-          date: now,
-          plan: 'Welcome Trial',
-          credits: 1,
-          amountPaid: 0,
-          paymentId: 'welcome-trial',
-          entryType: 'purchase',
-          balanceAfter: balanceAfterPool,
-        },
-        creditTransactions: {
-          date: now,
-          type: 'adjustment',
-          plan: 'welcome-trial',
-          description: 'Welcome! 1 Free Trial Lesson',
-          credits: 1,
-          balanceAfter: Math.max(balanceAfterPool - reserved, 0),
-          amountPaid: 0,
-        },
-      },
+    const profileSet = {
+      isSubscribed: false,
+      hasFreeTrial: false,
+      assessmentTrialCreditActive: false,
+      freeLessonCompletedCount: 0,
+      freeLessonPeriodKey: '',
+      freeLessonActiveBookingId: null,
+      firstName: safeFirstName,
+      lastName: safeLastName,
     };
 
     let assessmentTrialActivated = false;
@@ -1285,26 +1248,25 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       if (redeem) {
         assessmentTrialActivated = true;
         if (redeem.cefrLevel) {
-          welcomeUpdate.$set.cefrLevel = redeem.cefrLevel;
-          welcomeUpdate.$set.leveling = redeem.cefrLevel;
+          profileSet.cefrLevel = redeem.cefrLevel;
+          profileSet.leveling = redeem.cefrLevel;
         }
         if (redeem.score != null && redeem.score !== undefined) {
-          welcomeUpdate.$set.assessmentScore = Number(redeem.score) || 0;
+          profileSet.assessmentScore = Number(redeem.score) || 0;
         }
-        welcomeUpdate.$set.assessmentDate = new Date();
+        profileSet.assessmentDate = new Date();
         if (redeem.contactNumber) {
-          welcomeUpdate.$set.contact = redeem.contactNumber;
+          profileSet.contact = redeem.contactNumber;
         }
       }
-      // Redeem race: keep the new account; welcome trial is already granted
     }
 
-    await Student.updateOne({ _id: student._id }, welcomeUpdate);
+    await Student.updateOne({ _id: student._id }, { $set: profileSet });
 
     if (assessmentTrialActivated) {
       return res.json({
         success: true,
-        message: 'Student registered successfully. Log in to book your free trial class.',
+        message: 'Student registered successfully. Log in to book your free Pre-Level lesson.',
         studentId: student._id,
         assessmentTrialActivated: true,
       });
@@ -1312,9 +1274,9 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Student registered successfully. You received 1 free trial lesson.',
+      message: 'Student registered successfully. Log in to book your free Pre-Level lesson.',
       studentId: student._id,
-      welcomeTrialGranted: true,
+      welcomeTrialGranted: false,
     });
   } catch (err) {
     console.error('❌ Student registration error:', err);

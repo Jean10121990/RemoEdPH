@@ -101,30 +101,16 @@
         return cleaned || 'Student';
     }
 
-    function readStoredSubscribed() {
-        try {
-            if (localStorage.getItem('studentIsSubscribed') === '1') return true;
-            var ps = localStorage.getItem('studentPaymentStatus');
-            var ss = localStorage.getItem('studentSubscriptionStatus');
-            return ps === 'paid' && ss === 'active';
-        } catch (e) {
-            return false;
-        }
-    }
-
     function getBookNavSpec() {
-        var acct = 'standard';
-        var hasTrial = false;
         try {
-            acct = localStorage.getItem('studentAccountStatus') || 'standard';
-            hasTrial = localStorage.getItem('studentHasFreeTrial') === '1';
+            var raw = localStorage.getItem('studentFreePlan');
+            if (raw) {
+                var plan = JSON.parse(raw);
+                if (plan && plan.isFree === true && (plan.canBookThisMonth === false || plan.sequenceDone === true)) {
+                    return { label: 'Subscribe to Book', href: 'student-credits.html' };
+                }
+            }
         } catch (e) {}
-        if (acct === 'trial_completed' && !readStoredSubscribed()) {
-            return { label: 'Subscribe to Book', href: 'index.html#plans' };
-        }
-        if (hasTrial && acct !== 'trial_completed' && !readStoredSubscribed()) {
-            return { label: 'Book Class', href: 'student-book.html' };
-        }
         return { label: 'Book Class', href: 'student-book.html' };
     }
 
@@ -233,6 +219,9 @@
                 localStorage.setItem('studentAccountStatus', acct);
                 localStorage.setItem('studentHasFreeTrial', data.profile.hasFreeTrial ? '1' : '0');
                 localStorage.setItem('studentIsSubscribed', data.profile.isSubscribed ? '1' : '0');
+                if (data.profile.freePlan) {
+                    localStorage.setItem('studentFreePlan', JSON.stringify(data.profile.freePlan));
+                }
                 localStorage.setItem('studentPaymentStatus', data.profile.paymentStatus || 'unpaid');
                 localStorage.setItem('studentSubscriptionStatus', data.profile.subscriptionStatus || 'pending');
             } catch (e) {}

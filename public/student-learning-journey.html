@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-learning-journey.css?v=world-map-3">
+    <link rel="stylesheet" href="css/feature-lock.css?v=free-plan-1">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
 </head>
@@ -936,6 +937,31 @@
                     });
                 });
             });
+        })();
+    </script>
+    <script src="js/feature-access.js?v=free-plan-1"></script>
+    <script>
+        (function () {
+            var token =
+                (window.RemoedUserSession && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
+                localStorage.getItem('remoed_student_token') ||
+                localStorage.getItem('token');
+            if (!token) return;
+            fetch('/api/student/profile', { headers: { Authorization: 'Bearer ' + token } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    var plan = data && data.profile && data.profile.freePlan;
+                    if (!plan || plan.isFree !== true || !window.RemoedFeatureAccess) return;
+                    var host = document.querySelector('.lj-page');
+                    var nextNum = Number(plan.nextLessonNumber) || 1;
+                    RemoedFeatureAccess.mountFeatureLock(host, {
+                        featureName: 'Learning Journey',
+                        blurb: 'The paid trail stays closed on the free plan. Your open class is Pre-Level Lesson ' + nextNum + '.',
+                        altHref: 'student-book.html',
+                        altLabel: plan.canBookThisMonth ? ('Book Pre-Level Lesson ' + nextNum) : 'See booking',
+                    });
+                })
+                .catch(function () {});
         })();
     </script>
 </body>

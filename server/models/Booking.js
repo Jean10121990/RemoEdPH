@@ -53,6 +53,8 @@ const bookingSchema = new mongoose.Schema({
   creditsFinalized: { type: Boolean, default: false },
   /** Booking used the single free trial credit from the public level assessment flow. */
   isAssessmentFreeTrialBooking: { type: Boolean, default: false },
+  /** Free-plan Pre-Level lesson. One per student-local month. Does not spend credits. */
+  isFreePlanBooking: { type: Boolean, default: false },
   /** Set when starting-soon reminder notifications were sent. */
   classReminderSentAt: { type: Date, default: null },
   /** After student snoozes a reminder; classReminderService waits until this time. */

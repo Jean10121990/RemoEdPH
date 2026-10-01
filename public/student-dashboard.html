@@ -843,7 +843,12 @@
             </div>
 
             <div id="free-lesson-cta" class="dash-free-trial-cta">
-                <a href="student-book.html">Book My Free Trial Class</a>
+                <a href="student-book.html">Book My Free Pre-Level Lesson</a>
+            </div>
+
+            <div id="free-plan-upgrade" style="display:none; margin: 0 0 16px; padding: 14px 18px; border-radius: 12px; background: #f0f9ff; border: 1px solid #bae6fd; color: #0c4a6e;">
+                Free plan: one Pre-Level lesson each month. Play &amp; Learn stays open.
+                <a href="student-credits.html" style="font-weight: 800; color: #0369a1;">Unlock Premium</a>
             </div>
 
             <div id="trial-completed-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border: 1px solid #a5b4fc; color: #312e81; box-shadow: 0 2px 8px rgba(99,102,241,0.12);">
@@ -1096,6 +1101,27 @@
                     } else {
                         creditExpiryBanner.style.display = 'none';
                     }
+                }
+
+                var freePlan = profile.freePlan || null;
+                if (freePlan && freePlan.isFree === true) {
+                    if (paywall) paywall.style.display = 'none';
+                    var upgrade = document.getElementById('free-plan-upgrade');
+                    if (upgrade) upgrade.style.display = 'block';
+                    if (freeCta) freeCta.style.display = freePlan.canBookThisMonth ? 'block' : 'none';
+                    if (toastEl) toastEl.style.display = 'none';
+                    if (trialBanner) trialBanner.style.display = 'none';
+                    try {
+                        localStorage.setItem('studentFreePlan', JSON.stringify(freePlan));
+                        localStorage.setItem('studentIsSubscribed', '0');
+                    } catch (_freeStore) {}
+                    try {
+                        var freeRoot = document.getElementById('student-sidebar-root');
+                        if (window.StudentSidebar && typeof window.StudentSidebar.refreshBookNavItem === 'function' && freeRoot) {
+                            window.StudentSidebar.refreshBookNavItem(freeRoot);
+                        }
+                    } catch (_freeNav) {}
+                    return;
                 }
 
                 if (acct === 'trial_completed' && !sub) {

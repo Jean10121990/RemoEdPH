@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
   <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
+  <link rel="stylesheet" href="css/feature-lock.css?v=free-plan-1">
   <script src="js/user-session.js"></script>
   <style>
     .page-student-videos .sv-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 32px; }
@@ -309,14 +310,15 @@
         statusEl.style.display = 'none';
         gridEl.style.display = 'grid';
         gridEl.innerHTML = videos.map(function (v) {
-          var url = v.url || '';
+          var locked = v.locked === true || !v.url;
+          var url = locked ? '' : (v.url || '');
           var title = v.title || 'Untitled';
           var desc = v.description || '';
           var id = String(v.id || '');
           return (
-            '<article class="sv-card" data-video-id="' + escHtml(id) + '">' +
+            '<article class="sv-card' + (locked ? ' sv-card--locked' : '') + '" data-video-id="' + escHtml(id) + '">' +
               '<div class="sv-card-thumb" role="button" tabindex="0" data-action="modal" aria-label="Play ' + escHtml(title) + ' larger">' +
-                '<video muted playsinline preload="metadata" poster="/images/remoed-favicon.png" src="' + escHtml(thumbSrc(url)) + '"></video>' +
+                '<video muted playsinline preload="metadata" poster="/images/remoed-favicon.png"' + (url ? ' src="' + escHtml(thumbSrc(url)) + '"' : '') + '></video>' +
                 '<div class="sv-card-play" aria-hidden="true"><span>&#9654;</span></div>' +
               '</div>' +
               '<div class="sv-card-body">' +
@@ -343,6 +345,15 @@
           var thumb = card.querySelector('.sv-card-thumb video');
           if (tEl) title = tEl.textContent || '';
           if (dEl) desc = dEl.textContent.replace(/\u00a0/g, '').trim();
+          if (card.classList.contains('sv-card--locked')) {
+            if (window.RemoedFeatureAccess) {
+              RemoedFeatureAccess.mountFeatureLock(card, {
+                featureName: 'Videos',
+                blurb: 'Watch lesson clips with a learning plan.',
+              });
+            }
+            return;
+          }
           if (thumb && thumb.getAttribute('src')) {
             url = thumb.getAttribute('src').split('#')[0];
           }
@@ -425,5 +436,6 @@
       }
     })();
   </script>
+  <script src="js/feature-access.js?v=free-plan-1"></script>
 </body>
 </html>

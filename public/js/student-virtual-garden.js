@@ -175,6 +175,17 @@
       .then(function (res) {
         if (!res.ok) throw new Error((res.j && res.j.error) || 'Could not load garden');
         applyState(res.j, null);
+        if (res.j && res.j.locked && window.RemoedFeatureAccess) {
+          ['vg-buy-seed', 'vg-water', 'vg-buy-tree'].forEach(function (id) {
+            var btn = document.getElementById(id);
+            if (btn) btn.disabled = true;
+          });
+          var host = document.querySelector('.vg-layout');
+          RemoedFeatureAccess.mountFeatureLock(host, {
+            featureName: 'Virtual Garden',
+            blurb: 'Grow your garden with a learning plan. You can still look at it.',
+          });
+        }
         return res.j;
       });
   }

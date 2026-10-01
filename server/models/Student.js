@@ -111,6 +111,12 @@ const studentSchema = new mongoose.Schema({
    * cleared after that class completes (credit consumed).
    */
   assessmentTrialCreditActive: { type: Boolean, default: false },
+  /** Pre-Level lessons finished on the free plan. Next bookable number is this plus one. */
+  freeLessonCompletedCount: { type: Number, default: 0, min: 0, max: 22 },
+  /** Student-local YYYY-MM of the month that already has a free booking. Cleared on cancel. */
+  freeLessonPeriodKey: { type: String, default: '' },
+  /** Upcoming free-plan booking. Cleared on cancel or when the class is completed. */
+  freeLessonActiveBookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', default: null },
   // Lesson credits (used for flexible scheduling)
   creditBalance: { type: Number, default: 0 }, // pool of purchased credits not yet consumed by finished lessons
   /** Credits held for upcoming bookings (deducted from "available" until class is finished or cancelled). */

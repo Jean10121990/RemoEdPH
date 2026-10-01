@@ -18,7 +18,9 @@ Rules:
 
 - Never trust `teacherId`, `studentId`, `username`, or `email` from the query or body to pick *whose* data to return. Use it only to reject a mismatch.
 - `Booking.studentId` is the student **username**; `Booking.teacherId` is canonical `Teacher.teacherId`.
-- Unpaid students may book **Pre-Level** only (`SUBSCRIPTION_REQUIRED_LEVEL` on `POST /api/student/book-class`). Growth levels require an active subscription. A welcome-trial booking is Pre-Level Lesson 1.
+- Free-plan identity comes from the student JWT, not the request body. A student is paid when a `creditLots` entry is `spark` / `steady` / `scholar` / `summit` with `creditsRemaining > 0`, or `isSubscribed` with `subscriptionStatus === 'active'` and `paymentStatus === 'paid'`. Everyone else is free.
+- Free students may book only the next Pre-Level lesson, once per student-local month (`FREE_PLAN_LESSON_ONLY`, `FREE_PLAN_SEQUENCE`, `FREE_PLAN_MONTHLY_LIMIT`, `FREE_PLAN_SEQUENCE_DONE` on `POST /api/student/book-class`). The booking does not spend credits. Cancel before the class starts clears that month so the same lesson can be booked again.
+- `GET /api/student/portal-videos` lists titles for free students and omits file URLs. A direct `GET` of `/uploads/portal-videos/…` with a free student token returns `FREE_PLAN_LOCKED`. `POST /api/student/garden/action` returns the same code. `GET /api/student/garden` stays readable with `locked: true`.
 - Student JWTs may call only the teacher-route allowlist in `server/authMiddleware.js` (`studentMayCallThisTeacherRoute`). **Extend** it for new student needs; do not remove the `WRONG_PORTAL_TOKEN` gate.
 - Do not apply blanket `verifyAdminApiAuth` to all `/api/admin/*` — first-time 2FA enrollment (`POST /verify-2fa` with an enrollment Bearer) must still work.
 - Scoped admin roles get plain 403 on forbidden APIs; only 401 or `ADMIN_2FA_REQUIRED` / `WRONG_PORTAL_TOKEN` / `ADMIN_SESSION_REVOKED` end the session.
