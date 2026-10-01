@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-app-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-17" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=sos-admin-1" />
   <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -112,7 +112,7 @@
         <button class="active" data-tab="lesson-content">Lesson</button>
         <button data-tab="whiteboard">Board</button>
         <button data-tab="videos" id="lc-videos-tab-btn">Videos</button>
-        <button type="button" id="lc-sos-btn" hidden title="Emergency SOS" style="margin-left:8px; padding:6px 10px; border-radius:8px; border:1px solid #b91c1c; background:#fef2f2; color:#991b1b; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><span data-lucide="siren" style="width:18px;height:18px;display:inline-flex;"></span>Emergency SOS</button>
+        <button type="button" id="lc-sos-btn" class="lc-sos-btn" hidden title="Emergency SOS"><span data-lucide="siren" style="width:18px;height:18px;display:inline-flex;"></span>Emergency SOS</button>
         <div id="lc-class-settings" class="lc-class-settings" hidden>
           <button type="button" id="lc-class-settings-btn" class="lc-class-settings-btn" title="Class settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="lc-class-settings-overlay">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -231,15 +231,27 @@
       Chat<span class="lc-mobile-chat-unread" id="lc-mobile-chat-unread" hidden></span>
     </button>
   </nav>
-  <div id="lc-sos-modal" hidden style="position:fixed; inset:0; z-index:var(--z-modal); background:rgba(15,23,42,0.45); display:flex; align-items:center; justify-content:center; padding:16px;">
-    <div style="background:#fff; border-radius:16px; max-width:420px; width:100%; padding:20px; box-shadow:0 16px 40px rgba(15,23,42,0.2);">
-      <h2 style="margin:0 0 8px; font-size:1.15rem;">Emergency SOS</h2>
-      <p style="margin:0 0 12px; color:#475569;">Choose what is happening. Confirm sends this to RemoEd admins.</p>
-      <div id="lc-sos-categories" style="display:flex; flex-direction:column; gap:8px;"></div>
-      <p id="lc-sos-status" style="min-height:1.2em; color:#991b1b;"></p>
-      <div style="display:flex; gap:8px; justify-content:flex-end;">
+  <div id="lc-sos-modal" class="lc-sos-modal" hidden>
+    <div class="lc-sos-card">
+      <h2>Emergency SOS</h2>
+      <p class="lc-sos-lead">Choose what is happening. Confirm sends this to RemoEd admins.</p>
+      <div id="lc-sos-categories"></div>
+      <p id="lc-sos-status"></p>
+      <div class="lc-sos-actions">
         <button type="button" id="lc-sos-cancel">Cancel</button>
-        <button type="button" id="lc-sos-confirm" style="background:#b91c1c; color:#fff; border:0; border-radius:8px; padding:8px 12px; font-weight:700;">Confirm SOS</button>
+        <button type="button" id="lc-sos-confirm">Confirm SOS</button>
+      </div>
+    </div>
+  </div>
+  <div id="lc-sos-admin-alert" class="lc-sos-modal" hidden>
+    <div class="lc-sos-card">
+      <h2>Classroom SOS</h2>
+      <p id="lc-sos-admin-text" class="lc-sos-lead"></p>
+      <p id="lc-sos-admin-status"></p>
+      <div class="lc-sos-actions">
+        <button type="button" id="lc-sos-admin-close">Close</button>
+        <button type="button" id="lc-sos-admin-pause">Pause class</button>
+        <button type="button" id="lc-sos-admin-end">End class</button>
       </div>
     </div>
   </div>
@@ -1302,6 +1314,124 @@
               confirmBtn.disabled = false;
             }
           });
+        })();
+      }
+
+      (function wireSosDismiss() {
+        var modal = document.getElementById('lc-sos-modal');
+        var cancelBtn = document.getElementById('lc-sos-cancel');
+        var confirmBtn = document.getElementById('lc-sos-confirm');
+        var sosBtn = document.getElementById('lc-sos-btn');
+        function closeTeacherSos() {
+          if (!modal) return;
+          modal.hidden = true;
+          modal.setAttribute('hidden', '');
+        }
+        if (cancelBtn) cancelBtn.addEventListener('click', closeTeacherSos);
+        if (userType !== 'teacher') {
+          if (sosBtn) {
+            sosBtn.hidden = true;
+            sosBtn.setAttribute('hidden', '');
+          }
+          closeTeacherSos();
+          if (confirmBtn) confirmBtn.addEventListener('click', closeTeacherSos);
+        }
+      })();
+
+      if (userType === 'observer') {
+        (function wireObserverSos() {
+          var alertEl = document.getElementById('lc-sos-admin-alert');
+          var textEl = document.getElementById('lc-sos-admin-text');
+          var statusEl = document.getElementById('lc-sos-admin-status');
+          var closeBtn = document.getElementById('lc-sos-admin-close');
+          var pauseBtn = document.getElementById('lc-sos-admin-pause');
+          var endBtn = document.getElementById('lc-sos-admin-end');
+          if (!alertEl) return;
+          var currentId = '';
+          var dismissedId = '';
+          function hideAlert() {
+            dismissedId = currentId;
+            alertEl.hidden = true;
+            alertEl.setAttribute('hidden', '');
+          }
+          function isActive(row) {
+            var st = row && row.status;
+            return st === 'open' || st === 'observing' || st === 'paused';
+          }
+          function showAlert(incident) {
+            if (!incident || !incident.id || incident.id === dismissedId || !isActive(incident)) return;
+            currentId = incident.id;
+            if (textEl) {
+              textEl.textContent =
+                (incident.categoryLabel || incident.category || 'SOS') +
+                '. Student ' + (incident.studentId || '') +
+                '. Status: ' + (incident.status || 'open') + '.';
+            }
+            if (statusEl) statusEl.textContent = '';
+            alertEl.hidden = false;
+            alertEl.removeAttribute('hidden');
+          }
+          if (closeBtn) closeBtn.addEventListener('click', hideAlert);
+          async function act(action, btn) {
+            if (!currentId) {
+              if (statusEl) statusEl.textContent = 'No open SOS for this class yet.';
+              return;
+            }
+            if (btn) btn.disabled = true;
+            try {
+              var token = resolveLiveClassroomAuthToken();
+              var res = await fetch('/api/admin/incidents/' + encodeURIComponent(currentId) + '/action', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: 'Bearer ' + token
+                },
+                body: JSON.stringify({ action: action })
+              });
+              var body = await res.json().catch(function () { return {}; });
+              if (!res.ok) throw new Error(body.error || 'Action failed.');
+              if (statusEl) statusEl.textContent = action === 'pause' ? 'Class paused.' : 'Class ended.';
+            } catch (err) {
+              if (statusEl) statusEl.textContent = err.message || 'Action failed.';
+            } finally {
+              if (btn) btn.disabled = false;
+            }
+          }
+          if (pauseBtn) pauseBtn.addEventListener('click', function () { act('pause', pauseBtn); });
+          if (endBtn) endBtn.addEventListener('click', function () { act('terminate', endBtn); });
+          async function pullOpen() {
+            try {
+              var token = resolveLiveClassroomAuthToken();
+              if (!token) return;
+              var res = await fetch('/api/admin/incidents?status=all', {
+                headers: { Authorization: 'Bearer ' + token }
+              });
+              var body = await res.json().catch(function () { return {}; });
+              if (!res.ok) return;
+              var rows = body.incidents || [];
+              var match = null;
+              for (var i = 0; i < rows.length; i++) {
+                if (rows[i] && rows[i].classroomId === room && isActive(rows[i])) {
+                  match = rows[i];
+                  break;
+                }
+              }
+              if (match) showAlert(match);
+            } catch (_pull) {}
+          }
+          if (socket) {
+            socket.on('classroom-sos', function (payload) {
+              var incident = payload && payload.incident;
+              if (!incident || incident.classroomId !== room) return;
+              if (!isActive(incident)) {
+                if (incident.id === currentId) hideAlert();
+                return;
+              }
+              showAlert(incident);
+            });
+          }
+          pullOpen();
+          setInterval(pullOpen, 5000);
         })();
       }
 
