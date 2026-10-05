@@ -77,7 +77,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
 - [ ] Live classroom has **Finish** only. **Student Absent** is on Class Schedule. An absent class is not pending feedback and does not ask for stars or a comment.
-- [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend.
+- [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend. In the teacher sidebar it sits **directly under Class Configuration** (`MENU_ITEMS` order in `public/js/teacher-sidebar.js`: Dashboard, Leaderboard, Class Schedule, Class Configuration, Emergency guidelines, Device Check, …).
 - [ ] After submit, schedule refresh does not clear the teacher session.
 
 ### Live classroom (teacher Settings + student locks)
