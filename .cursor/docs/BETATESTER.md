@@ -110,7 +110,8 @@ Check here **first** when a symptom looks familiar. Each entry: what the user sa
   1. `/api/rtc-config` returns 401 → route order bug (see “rtc-config 401” below).
   2. `STUN binding request timed out` / `TURN allocate request timed out` → the relay is unreachable (see “Camera black / ICE checking”).
   3. `Wrong signaling state for answer: stable` or repeated offers → more than one tab per role is open, or an observer is interfering. Close extra tabs.
-  4. “No TURN relay configured” → `TURN_URL` / Cloudflare keys are missing in the server `.env`.
+  4. “No TURN relay configured” → the Cloudflare keys are missing in the server `.env` (or the server was not restarted with `--update-env`).
+- Full emergency routine: `STABLE_BASELINE.md` → “Camera relay configuration and emergency guidelines”.
 
 **Admin Observe broke the lesson** (fixed 2026-10-01)
 - Cause: observer sockets took part in WebRTC signaling and a second socket per role replaced the real one.
@@ -131,7 +132,9 @@ Check here **first** when a symptom looks familiar. Each entry: what the user sa
 - Root cause found: **the Hostinger hPanel firewall** (`remoed-firewall`, VPS → Security → Firewall) drops everything that is not an accept rule, and a VPS goes **out of sync** after any rule change until the firewall is re-synced. Rules showed 3478 allowed, yet external probes still timed out and `tcpdump` on the VPS saw 0 packets, so the traffic never arrived.
 - Needed accept rules: TCP 3478, UDP 3478, UDP `49152:65535` (or `49152:49200` with coturn `min-port`/`max-port` matched), plus TCP 22, 80, 443. Rule ranges use `start:end`.
 - Triage without logging in: from any PC, send a STUN request to `187.77.159.63:3478` (UDP) and try TCP 3478. A reply means the relay works. Timeout on 3478 with 443 open means the firewall is not applied. `iptables`/`nft` on the VPS had no rules, so the VPS itself was not the blocker.
-- Backup that avoids the VPS: hosted Cloudflare TURN. Set `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN` in `.env` (`server/services/hostedTurn.js`, merged into `/api/rtc-config`). Port 53 URLs are dropped because Chrome blocks them.
+- **Resolution (2026-10-05): Cloudflare TURN is now the production relay.** `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN` are set in the server `.env` (`server/services/hostedTurn.js`, merged into `/api/rtc-config`; confirmed `turnConfigured: true` with `turn.cloudflare.com` URLs). Port 53 URLs are dropped because Chrome blocks them. Setup: `CLOUDFLARE_TURN_SETUP.md`.
+- The own coturn on the VPS was stopped and disabled (`systemctl stop coturn`, `systemctl disable coturn`) and `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` were removed from `.env`. Reason: the dead relay added connection delay and its password was shown publicly by `/api/rtc-config`. Do not bring it back unless an outside probe of 3478 succeeds.
+- Emergency steps for a black camera in class: `STABLE_BASELINE.md` → “Camera relay configuration and emergency guidelines”.
 - Never put the TURN password or Cloudflare token in chat or in git.
 
 **Chat hidden by huge media buttons**

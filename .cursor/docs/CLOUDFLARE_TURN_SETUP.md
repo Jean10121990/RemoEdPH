@@ -50,7 +50,10 @@ Open hPanel → VPS → **Browser terminal**, then run these in order.
    ```
    `--update-env` is required, otherwise the new keys are not loaded.
 
-Leave the existing `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` lines alone. They can stay. Cloudflare is added on top.
+Remove the old `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` lines if they are still there (the own coturn is switched off, and a dead relay in the list only slows the connection):
+```bash
+sed -i -E '/^#?(TURN_URL|TURN_USERNAME|TURN_CREDENTIAL)=/d' .env
+```
 
 ---
 
@@ -78,4 +81,4 @@ Leave the existing `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` lines alone. T
 Notes:
 - Port 53 URLs from Cloudflare are ignored on purpose (Chrome blocks them). The `turns:443` TCP URL is the one that gets through strict networks.
 - The credentials are cached on the server for about 22 hours. A restart refreshes them.
-- This is a backup relay. If Hostinger later opens port 3478, the own relay works again with no code change.
+- This is now the production relay. The own coturn on the VPS is stopped and disabled. Emergency steps for a black camera are in `STABLE_BASELINE.md` → “Camera relay configuration and emergency guidelines”.

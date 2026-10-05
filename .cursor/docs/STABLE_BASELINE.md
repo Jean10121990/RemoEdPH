@@ -95,7 +95,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] `GET /api/rtc-config` works **without** a Bearer token (it must stay registered before the `/api` routers that run `verifyToken`) and returns STUN plus TURN. The browser console shows “ICE servers loaded from /api/rtc-config” and no “No TURN relay configured” warning.
 - [ ] Teacher and student on **different networks** see each other. If video is black and the console shows `STUN binding request timed out` / `TURN allocate request timed out`, the relay is unreachable: follow BETATESTER.md → “Camera black / ICE checking”.
-- [ ] Production `.env`: `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` (own coturn on the Hostinger VPS) and optionally `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` (`server/services/hostedTurn.js`). Do not remove either path.
+- [ ] Production relay is **hosted Cloudflare TURN**: `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` in the server `.env` (`server/services/hostedTurn.js`). `https://remoedph.com/api/rtc-config` shows `"turnConfigured": true` and `turn.cloudflare.com` URLs. Do not remove this path. The own coturn on the VPS is **stopped and disabled** (2026-10-05) and `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` are removed from `.env`, so no dead `187.77.159.63:3478` entry slows the connection. Re-enable it only after an external probe of 3478 succeeds (see Camera relay configuration below).
 - [ ] Lesson PowerPoints open in Microsoft PowerPoint (Office for the web) through a signed 6-hour file link (`server/utils/officeViewerLink.js`, public `GET /api/office-viewer/presentation/...`). Existing slide images or a cached `preview.pdf` are used first. Do not add a paid third-party converter back (Cloudmersive was removed).
 - [ ] Decks over 10 MB (Microsoft's limit) get their pictures recompressed on upload by `server/utils/pptxCompress.js` (same entry names; never blocked; the upload response carries a `warning` if still over 10 MB). `FRONTEND_URL` must be `https://remoedph.com`; production logs `[office-viewer] ... OK` at startup.
 
@@ -188,6 +188,30 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 - `public/js/virtual-background.js` is **canvas-first**. Presets are real JPEGs: `office.jpg`, `classroom.jpg`, `nature.jpg`. Keep SVG files only as unused leftovers; do not point presets back at `.svg` (canvas load / taint failed).
 - Remap stored `*.svg` preset URLs to `.jpg` in `applyMode`. Do not let `applyTeacherCameraReadyLook()` overwrite an active VBG (`mode !== 'off'`).
 - MediaPipe person cutout is optional; blur and photo presets must work without it.
+
+### Camera relay configuration and emergency guidelines
+
+Class configuration for video between teacher and student. Setup steps: [CLOUDFLARE_TURN_SETUP.md](CLOUDFLARE_TURN_SETUP.md). Bug history: [BETATESTER.md](BETATESTER.md) → “Camera black / ICE checking”.
+
+**Configuration (do not change without a reason)**
+- Relay: Cloudflare TURN through `server/services/hostedTurn.js`, merged into the public `GET /api/rtc-config`. Credentials last 24 hours and are cached about 22 hours; a restart refreshes them.
+- Server `.env` needs only `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN`. After changing them: `pm2 restart <app> --update-env`.
+- Own coturn on the VPS: stopped and disabled. Do not turn it back on or put `TURN_URL` back in `.env` unless a probe from outside the VPS reaches 3478. A dead relay in the list only adds connection delay, and its password would be public on `/api/rtc-config`.
+- Never paste the Cloudflare token or any TURN password in chat, screenshots, or git. `.env` is gitignored.
+
+**Emergency: camera is black in a live class**
+1. Both sides hard refresh (`Ctrl+Shift+R`). Close extra tabs of the class. Do not Observe the class from an admin tab on the same browser during the test.
+2. Open `https://remoedph.com/api/rtc-config`. It must show `"turnConfigured": true` and `turn.cloudflare.com` URLs. If not, the server `.env` is missing the two Cloudflare lines or was not reloaded: fix the lines, then `pm2 restart <app> --update-env`.
+3. If the page is fine, look at `pm2 logs <app> --lines 50` for `[hosted-turn] credential request failed`. That means the Key ID or token is wrong or revoked. In Cloudflare → Realtime → TURN, create a new key, update `.env`, restart.
+4. One person still black: try the other network (mobile data or Wi-Fi), use Chrome, allow camera permission for the site, and close apps that hold the camera (Zoom, Teams, another browser).
+5. Check `chrome://webrtc-internals` during the class. A connection of type `relay` means Cloudflare is carrying the video. No connection at all with Cloudflare listed means the user's network blocks everything; use a different network.
+6. If the class cannot proceed, the teacher tells admin or QA. Tier-1 end restores a credit only if one was already spent; do not delete room settings or bookings by hand.
+7. Afterwards add the cause to BETATESTER.md → “Fixed bugs log”.
+
+**Do not**
+- Re-add Cloudflare port 53 URLs (Chrome blocks them).
+- Rely on the Hostinger firewall for 3478 without an outside probe. The firewall must be re-synced after every rule change.
+- Share the token with anyone who does not run the server. If it leaks, delete the key in Cloudflare and make a new one.
 
 ## Responsive / overlay contract
 
@@ -493,7 +517,7 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Student booking | The per-day class cap is gone (`DAILY_CLASS_LIMIT` helpers deleted from `studentBookSlotService.js`; `MAX_CLASSES_PER_DAY = Infinity` and the “Day full” legend removed in `student-book.html`). Credits, lesson gates, and slot conflicts still apply. |
 | Session handling | `public/js/user-session.js` no longer logs a student out on a business-gate 403 (`CONSENT_REQUIRED` etc.). This fixed “I get logged out when I press Book”. |
 | Classroom camera | Single socket per role per room, signaling only between the current teacher and student, observers never create or answer offers, webcam never goes to the lesson stage, camera released on replace/pagehide. ICE restart waits 15 s (cooldown 20 s). `/api/rtc-config` is public and registered before the `verifyToken` routers. |
-| Camera relay | Own coturn on the Hostinger VPS (187.77.159.63) plus optional hosted Cloudflare TURN. The Hostinger hPanel firewall drops everything not listed and must be re-synced after any rule change. |
+| Camera relay | Hosted Cloudflare TURN is the production relay (confirmed live on `/api/rtc-config`). The own coturn on the Hostinger VPS (187.77.159.63) was blocked by the hPanel firewall, so it was stopped and disabled and its `TURN_*` lines were removed. Emergency steps are in “Camera relay configuration and emergency guidelines”. |
 | Lesson decks | Microsoft PowerPoint viewer with signed link; Cloudmersive removed; 10 MB image recompression; `FRONTEND_URL` normalized to https with a startup log. |
 | Classroom layout | Teacher media-lock buttons are 32 px icon buttons; chat stays visible beside smaller video tiles. |
 | Admin | Classroom SOS is a tab in QA Hub; admin sidebar assets at `?v=app-shell-17`. |
