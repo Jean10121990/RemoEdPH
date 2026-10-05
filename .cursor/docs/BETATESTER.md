@@ -152,6 +152,17 @@ Check here **first** when a symptom looks familiar. Each entry: what the user sa
 - Fix: `reconnectionAttempts: Infinity`, retry delay max 5 s, and an immediate `socket.connect()` on the browser `online` event and when the tab becomes visible again (skipped after `classroom-replaced`). The existing `connect` handler rejoins the room and the call renegotiates.
 - If it still happens, it is the network itself: check upload speed, close other uploads, and note that the teacher’s QA recording (“Share this tab”, chunks uploaded during class) shares the same uplink.
 
+**Both cameras show but the call lags, freezes, or the peer “vanishes” (Cloudflare TURN added)** (fixed 2026-10-05)
+- Cause: `public/live-classroom.html` switched to `iceTransportPolicy: 'relay'` (and dropped STUN) whenever `/api/rtc-config` listed `turns:…:443?transport=tcp`. Cloudflare TURN lists one, so every call was forced through the relay, with a TCP/TLS fallback that stalls video on a weak line.
+- Fix: direct-first (`'all'` policy, TURN gathered in parallel as fallback). Relay-first is now opt-in with `?relay=1` or `localStorage.remoed_force_relay = '1'`. The older fallback “STUN timeout → relay-only + ICE restart” is unchanged. The webcam sender is capped at 500 kbps (`limitCameraSenderBitrate`) so it does not hog a weak uplink while the QA recording also uploads.
+- Not changed on purpose: QA recording captures the full tab and also feeds the student’s cropped slide view; lowering its resolution would blur the student’s slides. If lag continues on a weak PC, test one class without recording to compare.
+- Check: `chrome://webrtc-internals` → selected candidate pair. `host` / `srflx` means direct; `relay` means the TURN fallback was needed.
+
+**Class chat empty after a refresh** (fixed 2026-10-05)
+- Cause: the server keeps the room’s last 50 messages and emits `chat-history` on every `join`, but `public/live-classroom.html` had no `chat-history` listener.
+- Fix: the listener re-renders them. The room is also saved in `classroom_chats` (`server/models/ClassroomChat.js`) so a refresh or a server restart still shows the chat. Finish (`class-finished` and `POST /api/booking/:id/end-session`) deletes that room’s chat, so the next class starts empty. A 24-hour TTL deletes a chat if Finish never happens. Teacher/admin Messages (`PeerMessage`) are not deleted.
+- Typing: the box shows “<name> is typing…” while the other person types (`typing` / `stop-typing`, room taken from the socket’s join).
+
 **Chat hidden by huge media buttons**
 - Fix (`public/css/live-classroom-redesign.css`): teacher media-lock buttons are 32 px round icons; video tiles are capped; chat keeps a minimum height. Use higher-specificity selectors because `live-classroom.css` has older `min-height: 140px` rules.
 

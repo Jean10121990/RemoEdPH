@@ -57,7 +57,7 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=lc-app-1" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-app-2" />
   <link rel="stylesheet" href="css/live-classroom-redesign.css?v=media-icons-3" />
   <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
@@ -220,6 +220,7 @@
         <div id="chat-messages" class="chat-messages">
           <div class="chat-empty" id="chat-empty">No messages yet — say hello to start.</div>
         </div>
+        <div id="chat-typing" class="chat-typing" hidden aria-live="polite"></div>
         <form id="chat-form" class="chat-form">
           <textarea id="chat-input" class="chat-input" rows="1" placeholder="Type here — Enter to send, Shift+Enter for new line" title="Enter sends. Shift+Enter adds a line." aria-label="Chat message"></textarea>
           <button type="submit" class="chat-send" aria-label="Send" data-lucide="send"></button>
@@ -2027,8 +2028,19 @@
                     return lx.startsWith('turns:') && lx.includes(':443') && lx.includes('transport=tcp');
                   });
                 });
-              if (hasTurn && hasTurns443Tcp) {
-                // Safer default when STUN is blocked: start in relay to avoid long STUN timeouts.
+              // Relay-first sends ALL media through the TURN server (extra hop, TCP/TLS fallback), which
+              // made calls lag and freeze once Cloudflare TURN (it offers turns:443/tcp) was added.
+              // Default is now direct-first with TURN as the fallback ('all' policy gathers relay
+              // candidates in parallel). The existing STUN-timeout fallback below still switches to
+              // relay-only on networks that block STUN. Force relay for debugging with ?relay=1.
+              let forceRelayFirst = false;
+              try {
+                forceRelayFirst =
+                  new URL(window.location.href).searchParams.get('relay') === '1' ||
+                  window.localStorage.getItem('remoed_force_relay') === '1';
+              } catch (_relayFlagErr) {}
+              if (hasTurn && hasTurns443Tcp && forceRelayFirst) {
+                // Debug / strict-network override: start in relay to avoid long STUN timeouts.
                 rtcConfig.iceTransportPolicy = 'relay';
                 // Also remove STUN entries to prevent noisy 701 timeouts on restrictive networks.
                 rtcConfig.iceServers = cleaned.filter((s) => {
@@ -2131,6 +2143,27 @@
             console.log('➕ Added local track:', track.kind, track.id, 'enabled:', track.enabled);
           }
         });
+      }
+
+      // Cap the webcam upload (640x480 @ 15 fps looks fine at this rate). On a weak uplink, especially
+      // while the QA recording is also uploading, an uncapped sender hogs the line and the call
+      // freezes. The browser still lowers it further when the network needs.
+      const CAMERA_MAX_BITRATE_BPS = 500000;
+      async function limitCameraSenderBitrate() {
+        try {
+          if (!peerConnection || !localStream) return;
+          const camTrack = localStream.getVideoTracks && localStream.getVideoTracks()[0];
+          if (!camTrack) return;
+          const sender = peerConnection.getSenders().find((s) => s.track === camTrack);
+          if (!sender || typeof sender.getParameters !== 'function') return;
+          const params = sender.getParameters();
+          if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+          if (params.encodings[0].maxBitrate === CAMERA_MAX_BITRATE_BPS) return;
+          params.encodings[0].maxBitrate = CAMERA_MAX_BITRATE_BPS;
+          await sender.setParameters(params);
+        } catch (_e) {
+          /* not supported or not ready: keep browser defaults */
+        }
       }
 
       function renegotiatePeerConnection(reason) {
@@ -2789,6 +2822,7 @@
           } else if (state === 'connected') {
             console.log('✅ Peer connection established successfully');
             reconnectAttempts = 0;
+            limitCameraSenderBitrate();
             if (reconnectTimeout) {
               clearTimeout(reconnectTimeout);
               reconnectTimeout = null;
@@ -7677,8 +7711,9 @@
             timestamp
           });
           
-          // Clear input
+          // Clear input and the typing indicator
           chatInput.value = '';
+          emitStopTyping();
           
           // Remove from sent set after 30 seconds (longer to prevent false duplicates)
           setTimeout(() => {
@@ -7687,6 +7722,50 @@
           }, 30000);
         });
       }
+
+      let typingSent = false;
+      let typingIdleTimer = null;
+      function emitStopTyping() {
+        if (typingIdleTimer) {
+          clearTimeout(typingIdleTimer);
+          typingIdleTimer = null;
+        }
+        if (!typingSent) return;
+        typingSent = false;
+        if (socket && socket.connected) socket.emit('stop-typing');
+      }
+      function emitTyping() {
+        if (!socket || !socket.connected || window.__lcObserver) return;
+        if (!typingSent) {
+          typingSent = true;
+          socket.emit('typing', { label: myChatLabel || '' });
+        }
+        if (typingIdleTimer) clearTimeout(typingIdleTimer);
+        typingIdleTimer = setTimeout(emitStopTyping, 1500);
+      }
+      if (chatInput) {
+        chatInput.addEventListener('input', () => {
+          if (!String(chatInput.value || '').trim()) emitStopTyping();
+          else emitTyping();
+        });
+      }
+
+      const chatTypingEl = document.getElementById('chat-typing');
+      let typingHideTimer = null;
+      socket.on('user-typing', (data) => {
+        if (!chatTypingEl) return;
+        const who = (data && data.label) || 'Someone';
+        chatTypingEl.textContent = who + ' is typing…';
+        chatTypingEl.hidden = false;
+        if (typingHideTimer) clearTimeout(typingHideTimer);
+        typingHideTimer = setTimeout(() => {
+          chatTypingEl.hidden = true;
+        }, 2500);
+      });
+      socket.on('user-stop-typing', () => {
+        if (typingHideTimer) clearTimeout(typingHideTimer);
+        if (chatTypingEl) chatTypingEl.hidden = true;
+      });
 
       if (chatInput && chatForm) {
         chatInput.addEventListener('keydown', (e) => {
@@ -7743,6 +7822,41 @@
         });
       });
       
+      // The server sends the room's last 50 messages as `chat-history` every time someone joins.
+      // Nothing listened for it, so a refresh emptied the chat. Re-render it here. The server can
+      // send it again on every rejoin (reconnects), so skip it when nothing changed.
+      let lastChatHistorySig = '';
+      socket.on('chat-history', (list) => {
+        if (!Array.isArray(list) || !chatMessages) return;
+        const rows = list.filter((m) => {
+          if (!m || typeof m !== 'object') return false;
+          return String(m.message == null ? '' : m.message).trim() && (m.sender || m.username);
+        });
+        const sig = rows
+          .map((m) => (m.messageId || '') + '|' + (m.sender || m.username) + '|' + m.message + '|' + (m.timestamp || ''))
+          .join('~');
+        const hasRows = !!chatMessages.querySelector('.message-row');
+        if (hasRows && sig === lastChatHistorySig) return;
+        lastChatHistorySig = sig;
+        const unreadBefore = chatUnreadCount;
+        chatMessages.querySelectorAll('.message-row').forEach((n) => n.remove());
+        rows.forEach((m) => {
+          const sender = m.sender || m.username;
+          // Messages carry the sender label used when they were sent (myChatLabel), not always the username.
+          const mine =
+            sender === myChatLabel ||
+            sender === username ||
+            (m.senderLabel && m.senderLabel === myChatLabel);
+          addChatMessage(String(m.message), m.senderLabel || sender, mine, m.timestamp, {
+            flagged: m.flagged,
+            display: m.message,
+            originalMessage: m.originalMessage
+          });
+        });
+        // Replayed history is not "new": keep the unread badge as it was.
+        setChatUnread(unreadBefore);
+      });
+
       // Also listen for chat messages with different event names (for compatibility)
       socket.on('message', (data) => {
         console.log('💬 Received message event:', data);

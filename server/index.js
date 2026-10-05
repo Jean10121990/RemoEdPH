@@ -181,9 +181,35 @@ realtime.setIo(io);
 // Do NOT hardcode 5000 or 3000
 const PORT = process.env.PORT || 8080;
 
-// Store chat history for each room
+// Store chat history for each room (memory + classroom_chats until the class ends)
 const chatHistory = new Map();
 const chatLanguage = require('../public/js/chat-language-filter');
+const classroomChatStore = require('./services/classroomChatStore');
+
+async function ensureClassroomChatLoaded(room) {
+  if (!room || chatHistory.has(room)) return;
+  try {
+    const saved = await classroomChatStore.loadRoom(room);
+    if (saved.length) chatHistory.set(room, saved);
+  } catch (err) {
+    console.warn('[classroom-chat] load failed:', err.message || err);
+  }
+}
+
+function rememberClassroomChat(room) {
+  if (!room || !chatHistory.has(room)) return;
+  classroomChatStore.saveRoom(room, chatHistory.get(room)).catch((err) => {
+    console.warn('[classroom-chat] save failed:', err.message || err);
+  });
+}
+
+function forgetClassroomChat(room) {
+  if (!room) return;
+  chatHistory.delete(room);
+  classroomChatStore.deleteRoom(room).catch((err) => {
+    console.warn('[classroom-chat] delete failed:', err.message || err);
+  });
+}
 
 function chatRoleOfSocket(sock) {
   if (!sock) return '';
@@ -1098,6 +1124,7 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
         booking.status = 'absent';
         await booking.save();
       }
+      forgetClassroomChat(booking.classroomId);
       return res.json({
         success: true,
         alreadyAbsent: true,
@@ -1110,6 +1137,7 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
       return res.status(400).json({ success: false, error: 'Invalid booking state for end-session' });
     }
     if (isBookingSessionFinalized(booking)) {
+      forgetClassroomChat(booking.classroomId);
       return res.json({
         success: true,
         message: 'Class already finalized',
@@ -1123,6 +1151,7 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
       });
     }
     if (st === 'pending_feedback') {
+      forgetClassroomChat(booking.classroomId);
       return res.json({
         success: true,
         message: 'Session already ended; submit feedback to finalize.',
@@ -1148,6 +1177,7 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
     booking.sessionEndedAt = new Date();
     booking.status = 'pending_feedback';
     await booking.save();
+    forgetClassroomChat(booking.classroomId);
     await emitBookingsUpdatedForTeacher(teacherId, booking);
 
     try {
@@ -2275,7 +2305,8 @@ io.on('connection', socket => {
         // Update booking attendance when user enters classroom
         await updateBookingAttendance(room, userType, userId, username);
         
-        // Send existing chat history to the new user
+        // Send existing chat history to the new user (memory, or the saved class chat)
+        await ensureClassroomChatLoaded(room);
         if (chatHistory.has(room)) {
             emitChatHistoryToSocket(socket, room);
         } else {
@@ -2402,11 +2433,18 @@ io.on('connection', socket => {
 
     // Handle class-finished event
     socket.on('class-finished', (data) => {
-        const { room, userType, teacherId } = data;
+        const info = userSessions.get(socket.id);
+        const room = (info && info.room) || (data && data.room);
+        const userType = (info && info.userType) || (data && data.userType);
+        const teacherId = data && data.teacherId;
+        if (!room) return;
         console.log('🏁 Class finished signal received from:', userType, 'in room:', room);
+
+        // Class is over: drop this room's chat so the next class starts clean.
+        forgetClassroomChat(room);
         
         // Broadcast to all users in the room that the class is finished
-        socket.to(room).emit('class-finished', { userType, teacherId, room });
+        if (room) socket.to(room).emit('class-finished', { userType, teacherId, room });
         
         // Also store as a signaling message for REST API
         const message = {
@@ -2495,7 +2533,8 @@ io.on('connection', socket => {
         // Update booking attendance when user enters classroom
         await updateBookingAttendance(room, userType, userId, username);
         
-        // Send existing chat history to the new user
+        // Send existing chat history to the new user (memory, or the saved class chat)
+        await ensureClassroomChatLoaded(room);
         if (chatHistory.has(room)) {
             emitChatHistoryToSocket(socket, room);
         } else {
@@ -2647,7 +2686,10 @@ io.on('connection', socket => {
     // Handle chat messages
     socket.on('chat-message', (messageData) => {
         if (!messageData || typeof messageData !== 'object') return;
-        const room = messageData.room;
+        // Room comes from the socket's join, not the message body.
+        const info = userSessions.get(socket.id);
+        const room = info && info.room;
+        if (!room) return;
         const sender = messageData.sender || messageData.username;
         const message =
             messageData.message == null ? '' : String(messageData.message);
@@ -2676,6 +2718,7 @@ io.on('connection', socket => {
             roomHistory.shift();
         }
 
+        rememberClassroomChat(room);
         broadcastChatMessage(io, room, payload);
     });
 
@@ -2756,13 +2799,19 @@ io.on('connection', socket => {
         console.log(`🚫 Student absent notification sent for room ${room}: ${studentId}`);
     });
     
-    // Handle typing indicators
+    // Typing indicator. Room is the socket's joined room, not a room from the client.
     socket.on('typing', (data) => {
-        socket.to(data.room).emit('user-typing', data);
+        const info = userSessions.get(socket.id);
+        if (!info || !info.room || String(info.userType || '') === 'observer') return;
+        const raw = data && typeof data.label === 'string' ? data.label : '';
+        const label = raw.replace(/[\r\n]/g, ' ').trim().slice(0, 40) || info.username || 'Someone';
+        socket.to(info.room).emit('user-typing', { label });
     });
-    
-    socket.on('stop-typing', (data) => {
-        socket.to(data.room).emit('user-stop-typing', data);
+
+    socket.on('stop-typing', () => {
+        const info = userSessions.get(socket.id);
+        if (!info || !info.room) return;
+        socket.to(info.room).emit('user-stop-typing', {});
     });
     
     // Handle disconnection
@@ -2794,6 +2843,7 @@ io.on('connection', socket => {
             if (room && String(userType || '') !== 'observer') {
                 realtime.schedulePeerReady(room);
             }
+            socket.to(room).emit('user-stop-typing', {});
         }
         
         // Clean up user session

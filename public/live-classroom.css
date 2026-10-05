@@ -2059,6 +2059,18 @@ body.page-live-classroom .pdf-controls-top-row button#pdf-next-btn-custom:disabl
   display: none !important;
 }
 
+.chat-typing {
+  flex-shrink: 0;
+  padding: 0 10px 2px;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--lc-muted, #64748b);
+}
+
+.chat-typing[hidden] {
+  display: none !important;
+}
+
 .chat-messages {
   flex: 1 1 auto;
   min-height: 0;
