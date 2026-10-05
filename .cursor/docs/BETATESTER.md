@@ -43,8 +43,17 @@ Do not retest a passing item as a new task. Do not drop or rewrite production da
 
 | ID | Pass when |
 |---|---|
-| TSK-011 | A student can book up to **6 classes (3 hours) on one local day**. The 7th class that day is refused with the daily-limit message. The old “2 classes” rule is not the rule anymore. |
+| TSK-011 | There is **no daily class limit** (the former 6-class cap was removed on 2026-10-05). A student can book more than 6 classes on one local day. The page shows no “Day full” cells. Credits, lesson gates, and slot conflicts still apply. |
+| BUG-001 | A student without the current privacy consent presses **Book Class** and **stays signed in**. The Student Privacy box appears, and after accepting it the same booking succeeds. |
 | TSK-023 | Booking Details opens as a centered modal, not a side panel. A student cannot book a lesson ahead of the next one. They can book an earlier lesson and reschedule. |
+
+### Live class — camera relay
+
+| ID | Pass when |
+|---|---|
+| BUG-002 | Teacher and student on **different networks** see and hear each other. The console shows “ICE servers loaded from /api/rtc-config”, no “No TURN relay configured”, and no `TURN allocate request timed out`. |
+| BUG-003 | An admin in **Observe** does not black out or restart the teacher-student call. Joining or leaving Observe changes nothing for them. |
+| BUG-004 | A second teacher or student tab on the same class is closed and its camera light goes off. Only one tab per role stays connected. |
 
 ### Teaching Fee and payslip
 
@@ -78,3 +87,72 @@ Do not retest a passing item as a new task. Do not drop or rewrite production da
 - All pass: tell the team the first pass is clean and which account you used.
 - Some fail: fix those, re-check, then send only the remaining failures.
 - A failure that needs a product decision (not a broken screen) is listed as a question, not patched on the spot.
+
+## Fixed bugs log (do not repeat these)
+
+Check here **first** when a symptom looks familiar. Each entry: what the user saw, the real cause, the fix, and where it lives. Add a new entry every time a bug is fixed. Do not “simplify” the fixes below.
+
+### Booking and sessions
+
+**Student is logged out when pressing Book Class** (BUG-001, fixed 2026-10-05)
+- Cause: `POST /api/student/book-class` answers `403 CONSENT_REQUIRED` when the student has not accepted the current privacy version. The global fetch wrapper in `public/js/user-session.js` treated **every** 401/403 as an expired login and called `logoutToUnifiedLogin()`, so the consent box on `student-book.html` never appeared.
+- Fix: `BUSINESS_GATE_CODES` + `isBusinessGateResponse()` in `user-session.js`. A 401/403 whose JSON `code` is a business gate keeps the session. Real 401s and plain 403s still log out.
+- Rule: a new gate code that returns 401/403 must be added to `BUSINESS_GATE_CODES`. Never log out on a status code alone.
+- Same trap applies to any page using the patched `fetch` (checkout in `student-credits.html` has its own consent row and is safe).
+
+**Student cannot book: “Day full” / “6 classes per day”** (TSK-011, removed 2026-10-05)
+- The per-day cap was deleted on purpose (`studentBookSlotService.js`, `student-book.html`). Do not reintroduce it. If a student is blocked now, the cause is credits (`INSUFFICIENT_CREDITS`, `CREDITS_EXPIRED`), the free-plan lesson gate, or a taken slot, not a day limit.
+
+### Live classroom camera
+
+**Teacher and student cannot see each other (black video)**
+- Quick triage from the browser console (F12), in this order:
+  1. `/api/rtc-config` returns 401 → route order bug (see “rtc-config 401” below).
+  2. `STUN binding request timed out` / `TURN allocate request timed out` → the relay is unreachable (see “Camera black / ICE checking”).
+  3. `Wrong signaling state for answer: stable` or repeated offers → more than one tab per role is open, or an observer is interfering. Close extra tabs.
+  4. “No TURN relay configured” → `TURN_URL` / Cloudflare keys are missing in the server `.env`.
+
+**Admin Observe broke the lesson** (fixed 2026-10-01)
+- Cause: observer sockets took part in WebRTC signaling and a second socket per role replaced the real one.
+- Fix (`server/realtime.js`, `server/index.js`, `public/live-classroom.html`): observers (`observer=1`, admin JWT) never create, answer, or reset a call. Signaling goes only to the opposite role’s latest socket (`emitToOppositeRole`). A newer tab of the same role disconnects the older one (`classroom-replaced`, `releaseOlderSameRole`) and the old tab releases its camera. Leaving Observe or resolving an SOS does not call `schedulePeerReady` for the pair.
+
+**Webcam showed on the lesson stage**
+- Cause: `isDisplayCaptureTrack` guessed screen shares from labels/contentHint. Fix: it checks only `getSettings().displaySurface`.
+
+**`/api/rtc-config` returned 401** (fixed 2026-10-01)
+- Cause: `fileRoutes` is mounted at `/api` and runs `verifyToken` for every `/api/*` route registered after it. Fix: register public routes (`/api/rtc-config`, `/api/office-viewer/...`) **before** `app.use('/api', applicationRoutes)` in `server/index.js`.
+
+**ICE restarted too fast (“checking” loop)**
+- Fix: watchdog 15 s, cooldown 20 s in `live-classroom.html`.
+
+**Camera black / ICE checking: relay unreachable** (diagnosed 2026-10-02 to 2026-10-05)
+- Symptom: console shows `ICE candidate error 701`, `STUN binding request timed out`, `TURN allocate request timed out` for `187.77.159.63:3478`.
+- Where the relay lives: `coturn` on the Hostinger VPS `srv1948835` (187.77.159.63), config `/etc/turnserver.conf`, values `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` in the app `.env`. coturn was not installed at first; it was installed and listens on 3478 (TCP+UDP).
+- Root cause found: **the Hostinger hPanel firewall** (`remoed-firewall`, VPS → Security → Firewall) drops everything that is not an accept rule, and a VPS goes **out of sync** after any rule change until the firewall is re-synced. Rules showed 3478 allowed, yet external probes still timed out and `tcpdump` on the VPS saw 0 packets, so the traffic never arrived.
+- Needed accept rules: TCP 3478, UDP 3478, UDP `49152:65535` (or `49152:49200` with coturn `min-port`/`max-port` matched), plus TCP 22, 80, 443. Rule ranges use `start:end`.
+- Triage without logging in: from any PC, send a STUN request to `187.77.159.63:3478` (UDP) and try TCP 3478. A reply means the relay works. Timeout on 3478 with 443 open means the firewall is not applied. `iptables`/`nft` on the VPS had no rules, so the VPS itself was not the blocker.
+- Backup that avoids the VPS: hosted Cloudflare TURN. Set `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN` in `.env` (`server/services/hostedTurn.js`, merged into `/api/rtc-config`). Port 53 URLs are dropped because Chrome blocks them.
+- Never put the TURN password or Cloudflare token in chat or in git.
+
+**Chat hidden by huge media buttons**
+- Fix (`public/css/live-classroom-redesign.css`): teacher media-lock buttons are 32 px round icons; video tiles are capped; chat keeps a minimum height. Use higher-specificity selectors because `live-classroom.css` has older `min-height: 140px` rules.
+
+### Lessons and uploads
+
+**Lesson PowerPoint will not open in class**
+- Cloudmersive was removed. Decks open in Microsoft PowerPoint (Office for the web) through a signed 6-hour per-file link (`server/utils/officeViewerLink.js`, public route `GET /api/office-viewer/presentation/:fileId/:token/:name`).
+- Requirements: `FRONTEND_URL=https://remoedph.com` (public https, normalized by `normalizeFrontendOrigin`; production logs `[office-viewer] ... OK` or a WARNING at startup). Localhost cannot use the Microsoft viewer; it falls back to LibreOffice.
+- Decks over 10 MB are shrunk on upload by `server/utils/pptxCompress.js` (images only, same entry names). Still over 10 MB → the upload response includes `warning` and the page shows it; reduce videos/large images and re-upload.
+- Do not add a paid converter back.
+
+### Security / CI
+
+- **GitHub CI failed on `npm audit`** (fixed: dependency updates in commit `6a20a24`). If CI fails again on audit, run `npm audit` and update the named package; do not disable the step.
+- **Production 502 from a duplicated `require('./studentController')` in `server/student.js`.** Declare it once.
+
+## When something breaks again
+
+1. Match the symptom to an entry above and apply that fix first.
+2. Reproduce with the console open. Record the first red error.
+3. Fix, run `node --check` on edited server files and `npm run lint`.
+4. Add or update an entry here, plus a smoke line in `STABLE_BASELINE.md`.

@@ -291,11 +291,38 @@
           }
         } catch (_m) {}
       }
+      // A 403 that carries a business-gate code (consent needed, no credits, ...) means
+      // "you are logged in but cannot do this yet", never "session expired".
+      if (!skipLogout && (await isBusinessGateResponse(res))) {
+        skipLogout = true;
+      }
       if (!skipLogout) {
         logoutToUnifiedLogin();
       }
     }
     return res;
+  }
+
+  var BUSINESS_GATE_CODES = {
+    CONSENT_REQUIRED: 1,
+    SUBSCRIPTION_REQUIRED_LESSON_2: 1,
+    CREDITS_EXPIRED: 1,
+    INSUFFICIENT_CREDITS: 1,
+    TRIAL_LESSON_1_ONLY: 1,
+    LESSON_AHEAD_OF_PROGRESS: 1,
+    ALREADY_BOOKED: 1,
+    SLOT_NOT_AVAILABLE: 1
+  };
+
+  async function isBusinessGateResponse(res) {
+    try {
+      var ct = (res.headers && res.headers.get && res.headers.get('content-type')) || '';
+      if (ct.indexOf('json') === -1) return false;
+      var body = await res.clone().json();
+      return !!(body && body.code && BUSINESS_GATE_CODES[body.code]);
+    } catch (_e) {
+      return false;
+    }
   }
 
   // Optional: inject token automatically for same-origin /api/* and /uploads/* requests.

@@ -544,7 +544,7 @@ app.use('/api/leaderboard', noStoreProtectedResponse, require('./routes/leaderbo
  * STUN for NAT discovery; TURN relays when P2P fails.
  * Optional: TURN_URL (comma-separated allowed), TURN_USERNAME, TURN_CREDENTIAL in .env.
  */
-app.get('/api/rtc-config', (req, res) => {
+app.get('/api/rtc-config', async (req, res) => {
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
@@ -564,8 +564,16 @@ app.get('/api/rtc-config', (req, res) => {
     iceServers.push(server);
   }
 
+  // Hosted relay (Cloudflare Realtime TURN) works through networks that block our own TURN port.
+  let hostedCount = 0;
+  try {
+    const hosted = await require('./services/hostedTurn').getHostedTurnServers();
+    hostedCount = hosted.length;
+    hosted.forEach((s) => iceServers.push(s));
+  } catch (_e) { /* never fail the classroom config */ }
+
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.json({ iceServers, turnConfigured: turnUrls.length > 0 });
+  res.json({ iceServers, turnConfigured: turnUrls.length > 0 || hostedCount > 0 });
 });
 
 // Public: Microsoft PowerPoint viewer pulls the lesson deck with a signed per-file token.
