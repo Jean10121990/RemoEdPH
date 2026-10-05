@@ -9,7 +9,7 @@
         try {
             if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
                 var s = document.createElement('script');
-                s.src = '/js/remoed-notifications.js?v=sock-auth-1';
+                s.src = '/js/remoed-notifications.js?v=mark-all-1';
                 document.head.appendChild(s);
             }
             if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
@@ -165,7 +165,10 @@
             ACTION.bell +
             '<div class="nav-badge" id="notifications-badge" style="display:none;">0</div>' +
             '<div class="nav-dropdown" id="notifications-dropdown">' +
-            '<div class="nav-dropdown-header">Notifications</div>' +
+            '<div class="nav-dropdown-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+            '<span>Notifications</span>' +
+            '<button type="button" data-notif-mark-all="1" style="background:none;border:none;cursor:pointer;color:#47BC3E;font-size:12px;font-weight:600;padding:4px 8px;">Mark all as read</button>' +
+            '</div>' +
             '<div class="nav-dropdown-content" id="notifications-dropdown-content">' +
             '<div class="nav-dropdown-item">Loading…</div></div>' +
             '</div></div>' +

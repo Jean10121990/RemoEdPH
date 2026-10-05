@@ -438,7 +438,7 @@
       as.onload = function () {
         AdminSidebar.render('admin-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/admin-page-header.js?v=sock-auth-1';
+        h.src = 'js/admin-page-header.js?v=mark-all-1';
         h.onload = function () {
           if (window.AdminPageHeader) AdminPageHeader.render('leaderboard');
         };
@@ -454,7 +454,7 @@
       ts.onload = function () {
         TeacherSidebar.render('teacher-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/teacher-page-header.js?v=sock-auth-1';
+        h.src = 'js/teacher-page-header.js?v=mark-all-1';
         h.onload = function () {
           if (window.TeacherPageHeader) TeacherPageHeader.render('leaderboard');
         };
@@ -470,7 +470,7 @@
       ss.onload = function () {
         StudentSidebar.render('student-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/student-page-header.js?v=sock-auth-1';
+        h.src = 'js/student-page-header.js?v=mark-all-1';
         h.onload = function () {
           if (window.StudentPageHeader) StudentPageHeader.render('leaderboard');
         };

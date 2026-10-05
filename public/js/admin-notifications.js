@@ -171,7 +171,7 @@
             try {
                 if (!document.querySelector('script[data-remoed-notif-helper]')) {
                     var s = document.createElement('script');
-                    s.src = 'js/remoed-notifications.js?v=sock-auth-1';
+                    s.src = 'js/remoed-notifications.js?v=mark-all-1';
                     s.async = true;
                     s.setAttribute('data-remoed-notif-helper', '1');
                     document.head.appendChild(s);

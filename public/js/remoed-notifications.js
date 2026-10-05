@@ -168,7 +168,9 @@
       'color:#0f766e!important;background:transparent!important;font-size:12px!important;font-weight:600!important;' +
       'text-decoration:none!important;padding:0!important;border:none!important;}' +
       'body>#notifications-dropdown a.nav-dropdown-item{color:#1e293b!important;text-decoration:none!important;}' +
-      'body>#notifications-dropdown .remoed-notif-filter{width:auto!important;flex:0 0 auto!important;}';
+      'body>#notifications-dropdown .remoed-notif-filter,body>#notifications-dropdown [data-notif-mark-all],' +
+      'body>#admin-notifications-dropdown #admin-notifications-mark-read{' +
+      'width:auto!important;flex:0 0 auto!important;display:inline-flex!important;}';
     document.head.appendChild(style);
   }
 
@@ -200,6 +202,7 @@
       '" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:' +
       (filter === 'actionable' ? '#e2e8f0' : '#fff') +
       ';cursor:pointer;">Action</button>' +
+      '<button type="button" data-notif-mark-all="1" style="margin-left:auto;font-size:11px;padding:4px 8px;border-radius:6px;border:none;background:transparent;color:#47BC3E;font-weight:600;cursor:pointer;">Mark all as read</button>' +
       '</div>';
 
     function footerHtml() {
@@ -496,6 +499,27 @@
         e.preventDefault();
         e.stopPropagation();
         openPrefsModal(role, getToken, onRefresh);
+        return;
+      }
+
+      var markAllBtn = e.target.closest('[data-notif-mark-all]');
+      if (markAllBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var markToken = getToken();
+        if (!markToken || markAllBtn.getAttribute('data-busy') === '1') return;
+        markAllBtn.setAttribute('data-busy', '1');
+        fetch(apiBase + '/notifications/mark-read', {
+          method: 'PATCH',
+          headers: authHeaders(markToken),
+        })
+          .then(function () {
+            onRefresh();
+          })
+          .catch(function () {})
+          .then(function () {
+            markAllBtn.removeAttribute('data-busy');
+          });
         return;
       }
 

@@ -115,7 +115,7 @@
             '<div class="nav-dropdown" id="admin-notifications-dropdown">' +
             '<div class="nav-dropdown-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
             '<span>Notifications</span>' +
-            '<button type="button" id="admin-notifications-mark-read" style="font-size:0.75rem;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;color:#334155;">Mark all read</button>' +
+            '<button type="button" id="admin-notifications-mark-read" style="font-size:0.75rem;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;color:#334155;">Mark all as read</button>' +
             '</div>' +
             '<div class="nav-dropdown-content" id="admin-notifications-dropdown-content"></div>' +
             '</div>' +
