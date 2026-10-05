@@ -2,14 +2,14 @@
 
 /**
  * Base payout tiers → display titles:
- * Free Trial (code 83, flat ₱41.67 per 25-min class) | 180 Newbie Teacher | 230 Junior Teacher |
+ * Free Trial (code 83, flat ₱45 per 25-min class = ₱90/hr) | 180 Newbie Teacher | 230 Junior Teacher |
  * 280 Senior Teacher and Trainer | 330 Head Teacher and Teaching Quality
  *
  * The Free Trial tier sits before Tier 1. `83` is only a stored code (tier base values are integers);
  * its pay is the fixed FREE_TRIAL_RATE_PER_25MIN and credential add-ons do not apply.
  */
 const FREE_TRIAL_TIER_BASE = 83;
-const FREE_TRIAL_RATE_PER_25MIN = 41.67;
+const FREE_TRIAL_RATE_PER_25MIN = 45;
 const TIER_VALUES = [FREE_TRIAL_TIER_BASE, 180, 230, 280, 330];
 
 function isFreeTrialTier(tierBase) {
@@ -18,7 +18,8 @@ function isFreeTrialTier(tierBase) {
 
 /**
  * 25-minute class rate (PHP) from base tier + credential add-ons (+₱10/hr each).
- * Free Trial tier: flat ₱41.67, no add-ons.
+ * Free Trial tier: flat ₱45 (₱90/hr), no add-ons. The stored code stays 83 so teachers
+ * already on this tier keep it; 90 would collide with the hourly-rate reverse lookup.
  */
 function computeRatePer25Min(tierBase, c1, c2, c3) {
   if (isFreeTrialTier(tierBase)) return FREE_TRIAL_RATE_PER_25MIN;
@@ -94,6 +95,22 @@ function effectivePayoutFields(doc) {
   return o;
 }
 
+/** Class rate actually paid. Tier (including Free Trial) wins over a stale hourlyRate. */
+function ratePer25FromTeacher(teacher, fallback) {
+  if (teacher && TIER_VALUES.includes(Number(teacher.payoutTierBase))) {
+    return computeRatePer25Min(
+      teacher.payoutTierBase,
+      teacher.payoutCred1,
+      teacher.payoutCred2,
+      teacher.payoutCred3
+    );
+  }
+  const stored = teacher && Number(teacher.hourlyRate);
+  if (Number.isFinite(stored) && stored >= 0) return stored;
+  const fb = Number(fallback);
+  return Number.isFinite(fb) ? fb : 0;
+}
+
 module.exports = {
   TIER_VALUES,
   FREE_TRIAL_TIER_BASE,
@@ -102,4 +119,5 @@ module.exports = {
   computeRatePer25Min,
   derivePayoutFromHourlyRate25,
   effectivePayoutFields,
+  ratePer25FromTeacher,
 };

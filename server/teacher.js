@@ -47,7 +47,7 @@ const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
 const { tutorCancellationDeductionPeso } = require('./utils/tutorCancellationDeduction');
 const { evaluateTeacherBadges } = require('./services/badgeRulesEngine');
-const { effectivePayoutFields } = require('./utils/teacherPayoutTier');
+const { effectivePayoutFields, ratePer25FromTeacher } = require('./utils/teacherPayoutTier');
 const {
   isProbableHexObjectIdForTeacher,
   escapeRegexForTeacherLookup,
@@ -4519,11 +4519,10 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
   const GlobalSettings = require('./models/GlobalSettings');
   const globalSettings = await GlobalSettings.findOne();
   const globalRate = globalSettings ? globalSettings.globalRate : 100;
-  const teacherRow = await Teacher.findOne({ teacherId }).select('hourlyRate').lean();
-  const ratePerClass =
-    teacherRow && teacherRow.hourlyRate != null && teacherRow.hourlyRate >= 0
-      ? teacherRow.hourlyRate
-      : globalRate;
+  const teacherRow = await Teacher.findOne({ teacherId })
+    .select('hourlyRate payoutTierBase payoutCred1 payoutCred2 payoutCred3')
+    .lean();
+  const ratePerClass = ratePer25FromTeacher(teacherRow, globalRate);
 
   let totalClasses = bookings.length;
   let completedClasses = 0;

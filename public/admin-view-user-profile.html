@@ -299,7 +299,7 @@
                         } else if (type === 'teacher') {
                             var credCount = [u.payoutCred1, u.payoutCred2, u.payoutCred3].filter(Boolean).length;
                             var tierLabel = u.payoutTierBase ? ('₱' + u.payoutTierBase + '/hr base') : '—';
-                            if (Number(u.payoutTierBase) === 83) tierLabel = 'Free Trial · ₱41.67 per 25-min class';
+                            if (Number(u.payoutTierBase) === 83) tierLabel = 'Free Trial · ₱45 per 25-min class (₱90/hr)';
                             if (credCount) tierLabel += ' · ' + credCount + ' credential' + (credCount === 1 ? '' : 's');
                             var certs = Array.isArray(u.certifications) ? u.certifications.length : 0;
                             var trainingDone = Array.isArray(u.trainingProgress)

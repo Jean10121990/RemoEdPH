@@ -54,6 +54,7 @@ const {
   computeRatePer25Min,
   derivePayoutFromHourlyRate25,
   effectivePayoutFields,
+  ratePer25FromTeacher,
   TIER_VALUES: PAYOUT_TIER_VALUES,
 } = require('./utils/teacherPayoutTier');
 const QRCode = require('qrcode');
@@ -2968,7 +2969,7 @@ router.get('/teacher-rate/:teacherId', async (req, res) => {
     
     res.json({
       success: true,
-      rate: teacher.hourlyRate || globalRate
+      rate: ratePer25FromTeacher(teacher, globalRate)
     });
   } catch (error) {
     console.error('Error getting teacher rate:', error);
@@ -3067,8 +3068,9 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
   );
   const totalLateMinutes = lateClasses.reduce((total, booking) => total + (booking.lateMinutes || 0), 0);
   const lateDeductions = totalLateMinutes * 2;
-  const teacherAbsentDeductions = teacherAbsentClasses * (teacher.hourlyRate || globalRate);
-  const baseWeeklyFee = completedClasses * (teacher.hourlyRate || globalRate);
+  const classRate = ratePer25FromTeacher(teacher, globalRate);
+  const teacherAbsentDeductions = teacherAbsentClasses * classRate;
+  const baseWeeklyFee = completedClasses * classRate;
   const studentAbsentPayment = 0;
   const bonus = Math.max(0, Number(bonusIncentive) || 0);
   const netPayableAmount = Math.max(
@@ -3104,7 +3106,7 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
     studentAbsentClasses,
     teacherAbsentClasses,
     lateMinutes: totalLateMinutes,
-    rate: teacher.hourlyRate || globalRate,
+    rate: classRate,
     baseWeeklyFee,
     studentAbsentPayment,
     bonusIncentive: bonus,
@@ -3142,7 +3144,7 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
     const globalRate = settings ? settings.globalRate : 100;
 
     const teachers = await Teacher.find({})
-      .select('teacherId username hourlyRate paymentHistory periodIncentives')
+      .select('teacherId username hourlyRate payoutTierBase payoutCred1 payoutCred2 payoutCred3 paymentHistory periodIncentives')
       .lean();
 
     const bookingsInPeriod = await Booking.find({
@@ -3196,7 +3198,7 @@ router.post('/dispense-salaries', async (req, res) => {
     const settings = await GlobalSettings.findOne({}).select('globalRate').lean();
     const globalRate = settings ? settings.globalRate : 100;
 
-    const teachers = await Teacher.find({}).select('_id teacherId username hourlyRate paymentHistory periodIncentives').lean();
+    const teachers = await Teacher.find({}).select('_id teacherId username hourlyRate payoutTierBase payoutCred1 payoutCred2 payoutCred3 paymentHistory periodIncentives').lean();
     const bookingsInPeriod = await Booking.find({
       date: { $gte: startDate, $lte: endDate },
     })

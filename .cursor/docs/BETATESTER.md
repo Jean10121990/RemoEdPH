@@ -70,8 +70,8 @@ Do not retest a passing item as a new task. Do not drop or rewrite production da
 
 | ID | Pass when |
 |---|---|
-| PAY-001 | Admin Users → Professional tier lists **Free Trial — ₱41.67 per 25-min class** before Tier 1. Picking it shows `Per 25-min class: ₱41.67` and ignores the credential boxes. Save, reopen: it is still Free Trial. |
-| PAY-002 | A Free Trial teacher sees ₱41.67 per completed class on Teaching Fee. Tier 1 to 4 teachers still see their old rate. |
+| PAY-001 | Admin Users → Professional tier lists **Free Trial — ₱45 per 25-min class** before Tier 1. Picking it shows `Per 25-min class: ₱45` and ignores the credential boxes. Save, reopen: it is still Free Trial. |
+| PAY-002 | A Free Trial teacher sees ₱45 per completed class on Teaching Fee. Tier 1 to 4 teachers still see their old rate. |
 | PAY-003 | A referred student buys 1 month / 3 months / 6 months / 1 year. Unique Link Commissions shows ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. The teacher's Referral Rewards page shows the same. |
 | PAY-004 | Refreshing Referral Rewards or a repeated payment webhook does not change a commission that was already awarded. Commissions from before 2026-10-05 stay at ₱1,000. |
 
