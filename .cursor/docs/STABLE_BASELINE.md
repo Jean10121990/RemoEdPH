@@ -76,7 +76,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
-- [ ] Live classroom has **Finish** only. **Student Absent** is on Class Schedule. An absent class is not pending feedback and does not ask for stars or a comment.
+- [ ] Live classroom has **Finish** only (locked until 15 minutes after the scheduled start). **Student Absent** and **Report Issue** are on Class Schedule → Class Information, and they show as soon as the class has started, including those first 15 minutes. Closing the classroom tab does **not** mark the student absent. An absent class is not pending feedback and does not ask for stars or a comment.
 - [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend. In the teacher sidebar it sits **directly under Class Configuration** (`MENU_ITEMS` order in `public/js/teacher-sidebar.js`: Dashboard, Leaderboard, Class Schedule, Class Configuration, Emergency guidelines, Device Check, …).
 - [ ] After submit, schedule refresh does not clear the teacher session.
 
@@ -104,7 +104,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Teacher payout tiers and referral commission
 
-- [ ] Admin → Users → add or edit a teacher: **Free Trial — ₱45 per 25-min class** is the first Professional tier. Picking it shows `Per 25-min class: ₱45` and ignores credential checkboxes; saving and reopening keeps it. Teachers on Tier 1 to 4 still compute `(base + ₱10 × credentials) ÷ 2`.
+- [ ] Admin → Users → add or edit a teacher: **Free Trial — ₱45 per 25-min class (₱90/hr)** is the first Professional tier. Picking it shows `Total hourly: ₱90 · Per 25-min class: ₱45` and ignores credential checkboxes; saving and reopening keeps it. Teachers on Tier 1 to 4 still compute `(base + ₱10 × credentials) ÷ 2`.
 - [ ] A Free Trial teacher's Teaching Fee shows ₱45 per class, and Career Growth lists the Free Trial row before Tier 1.
 - [ ] A referred student paying 1 month / 3 months / 6 months / 1 year creates a `successful` referral of ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. Marketing Hub → Unique Link Commissions and the teacher Referral Rewards page show those amounts. A repeat webhook or **Refresh** does not change an already awarded amount.
 
@@ -145,7 +145,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); Eco-Drop badge in sidebar/header; stats load (not “Student not found”); shop Buy Seeds (5) / Water (5) / Flowers & Trees (22) works; completing a lesson awards +1 once.
 - [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll matches teacher payroll UX (soft rounded `.btn`, period nav, Load + Dispense release, Payment History + **Mark Completed** after MariBank withdraw).
 - [ ] After Accounting **Dispense**, Teaching Fee / Admin Fee show **Withdraw (MariBank)** (Open MariBank link works). Submit → Processing + email to `support@remoedph.com` (ops only — **email does not complete**). Accounting Hub → Payroll Management / Admin Payroll → **Payment History** → **Mark Completed** on Processing rows → Completed. Legacy Success/paid rows have no Withdraw.
-- [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
+- [ ] Teacher, student, and admin notification bells open **directly under the bell**. Each panel has **Mark all as read** (`data-notif-mark-all` in `public/js/remoed-notifications.js`, header button in `teacher-page-header.js` / `student-page-header.js`, `#admin-notifications-mark-read` for admin). It calls `PATCH /api/teacher|student/notifications/mark-read` or `PATCH /api/admin/notifications/mark-all-read` for the signed-in user only, then the badge goes to 0. Do not drop that button when rebuilding the bell.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in **Available to Withdraw**.
@@ -197,6 +197,13 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 - `public/js/virtual-background.js` is **canvas-first**. Presets are real JPEGs: `office.jpg`, `classroom.jpg`, `nature.jpg`. Keep SVG files only as unused leftovers; do not point presets back at `.svg` (canvas load / taint failed).
 - Remap stored `*.svg` preset URLs to `.jpg` in `applyMode`. Do not let `applyTeacherCameraReadyLook()` overwrite an active VBG (`mode !== 'off'`).
 - MediaPipe person cutout is optional; blur and photo presets must work without it.
+
+### Class chat
+
+- Last 50 messages for the open class are saved in `classroom_chats` (`server/models/ClassroomChat.js`, `server/services/classroomChatStore.js`) and sent as `chat-history` on join. `public/live-classroom.html` must keep a `chat-history` listener. A refresh or a server restart still shows them.
+- While the other person types, the box shows “&lt;name&gt; is typing…”. `typing` / `stop-typing` use the socket’s joined room, not a room id from the client. Chat sends use that same room.
+- Finish deletes that room’s chat (`class-finished`, and `POST /api/booking/:id/end-session` including already-finished / absent / pending-feedback). The next class starts empty. A 24-hour TTL on `updatedAt` deletes a chat if Finish never happens.
+- Teacher/admin **Messages** (`PeerMessage`) are a different store. Do not delete those when a class ends, and do not store class chat there.
 
 ### Camera relay configuration and emergency guidelines
 
@@ -438,7 +445,7 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 
 Source: pricing and margin table (trial rate ₱45 per 25-min class + conversion bonus by plan).
 
-- **Free Trial tier** sits **before Tier 1** (Newbie). Stored as `payoutTierBase: 83` (a code, because tier bases are integers). Pay is a flat **₱45 per 25-min class**; the three credential add-ons do **not** apply. Code: `FREE_TRIAL_TIER_BASE`, `FREE_TRIAL_RATE_PER_25MIN`, `isFreeTrialTier`, `computeRatePer25Min` in [server/utils/teacherPayoutTier.js](server/utils/teacherPayoutTier.js), mirrored in [public/js/teacher-payout-settings.js](public/js/teacher-payout-settings.js) (`TIER_VALUES` starts with 83). Admin sets it in **Users → Professional tier** (`admin-users.html`); teachers see it on Career Growth. Keep `TIER_VALUES` in server and client in sync, and do not re-add `parseInt`-breaking fractional tier bases.
+- **Free Trial tier** sits **before Tier 1** (Newbie). Stored as `payoutTierBase: 83` (keep this code; do not switch it to 90 or teachers already on the tier fall off it). Pay is **₱90 per hour, which is ₱45 per 25-minute class**. Credential add-ons do **not** apply. `ratePer25FromTeacher` in [server/utils/teacherPayoutTier.js](server/utils/teacherPayoutTier.js) is what Teaching Fee and payroll use, so a stale `hourlyRate` (the old ₱41.67) does not win. Mirrored in [public/js/teacher-payout-settings.js](public/js/teacher-payout-settings.js) (`TIER_VALUES` starts with 83, `FREE_TRIAL_RATE_PER_25MIN` is 45). Admin sets it in **Users → Professional tier** (`admin-users.html`); Career Growth lists it before Tier 1. Keep server and client tier lists in sync.
 - **Referral / Unique Link commission** is tiered by the plan the referred student buys (`server/utils/referralCommissionTiers.js`, used by `awardReferralCommissionOnPayment`): `spark` (1 month) ₱1,000, `steady` (3 months) ₱1,500, `scholar` (6 months) ₱2,000, `summit` (1 year) ₱2,500. Blank or unknown plan falls back to ₱1,000.
 - A Free Trial teacher whose own link brings a subscriber earns **both**: the trial rate on their trial classes and the plan-tier commission. They are separate payouts (no automatic Bonus / Incentive entry).
 - A commission already marked `successful` keeps its amount. Duplicate webhooks, reconcile, and later renewals must **not** rewrite it. Rows created before 2026-10-05 stay at the old flat ₱1,000 (no backfill).
@@ -524,7 +531,7 @@ Checklist: [FEATURES_SINCE_2026-09-27.md](FEATURES_SINCE_2026-09-27.md).
 | Credits / Play & Learn | Typing quiz. Credit lots still expire and burn FIFO. |
 | Pre-Level free plan | Next Pre-Level lesson, one per student-local month. Growth levels stay paid. Videos, journey, and garden stay locked. |
 | Privacy | Version `2026-10-01`. Required on register, book, and logged-in checkout. Accept checkbox on My Profile. International students, same rules. |
-| Absent | Live classroom is Finish only. Student Absent is on Class Schedule and closes pending feedback. |
+| Absent | Live classroom is Finish only (after 15 minutes). Student Absent and Report Issue are on Class Information once the class has started. Closing the tab does not auto-tag absent. |
 | Classroom SOS | Teacher Emergency SOS, admin Classroom SOS with status legend, emergency guidelines page with sidebar and header. |
 
 ## Baseline updates — 2026-10-02 to 2026-10-05
@@ -537,7 +544,10 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Session handling | `public/js/user-session.js` no longer logs a student out on a business-gate 403 (`CONSENT_REQUIRED` etc.). This fixed “I get logged out when I press Book”. |
 | Classroom camera | Single socket per role per room, signaling only between the current teacher and student, observers never create or answer offers, webcam never goes to the lesson stage, camera released on replace/pagehide. ICE restart waits 15 s (cooldown 20 s). `/api/rtc-config` is public and registered before the `verifyToken` routers. |
 | Camera relay | Hosted Cloudflare TURN is the production relay (confirmed live on `/api/rtc-config`). The own coturn on the Hostinger VPS (187.77.159.63) was blocked by the hPanel firewall, so it was stopped and disabled and its `TURN_*` lines were removed. Emergency steps are in “Camera relay configuration and emergency guidelines”. |
-| Teacher payout / referrals | New **Free Trial** payout tier (₱45 per 25-min class, no add-ons) before Tier 1. Referral commission is tiered by plan: ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. Existing commissions are not rewritten. |
+| Teacher payout / referrals | **Free Trial** tier before Tier 1 pays **₱90/hr (₱45 per 25-min class)**, no add-ons. Stored code stays `83`. Payroll uses `ratePer25FromTeacher`, not a stale `hourlyRate`. Referral commission is tiered by plan: ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. Existing commissions are not rewritten. |
+| Class connection | Direct-first ICE (TURN is fallback; `?relay=1` forces relay). Webcam upload cap 500 kbps. Socket reconnects without a limit and again when the network or the tab returns. Do not put a second `reconnectionAttempts` key back. |
+| Class chat | Saved per room until Finish, then deleted (`classroom_chats`, 24h TTL if Finish never happens). “&lt;name&gt; is typing…” while the other person types. Teacher/admin Messages are not cleared. |
+| Notifications | **Mark all as read** is on the teacher, student, and admin bells (panel header and the filter row). |
 | Lesson decks | Microsoft PowerPoint viewer with signed link; Cloudmersive removed; 10 MB image recompression; `FRONTEND_URL` normalized to https with a startup log. |
 | Classroom layout | Teacher media-lock buttons are 32 px icon buttons; chat stays visible beside smaller video tiles. |
 | Admin | Classroom SOS is a tab in QA Hub; admin sidebar assets at `?v=app-shell-17`. |

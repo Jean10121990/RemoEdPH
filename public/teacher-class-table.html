@@ -1697,35 +1697,41 @@
       updateButton();
       window.__joinBtnCountdownTimer = setInterval(updateButton, 1000);
       
-      // Show class management buttons for classes that have started (15+ minutes) or are completed/absent
-      // Removed 'past' status since we disabled automatic past marking
+      // Student Absent and Report Issue show as soon as the class has started, so a teacher
+      // can mark them in the first 15 minutes (Finish is still locked then). Closing the
+      // classroom tab does not mark anyone absent. Complete Class stays at 15 minutes.
+      const classHasStarted = buttonElapsedMinutes >= 0;
       if (
-        buttonElapsedMinutes >= 15 ||
+        classHasStarted ||
         booking.status === 'completed' ||
         String(booking.status).toLowerCase() === 'pending_feedback' ||
         booking.status === 'absent'
       ) {
-        // Show class management buttons
         classManagementButtons.style.display = 'block';
         
-        // Enable/disable buttons based on time and status
         const studentAbsentBtn = document.getElementById('student-absent-btn');
+        const issueBtn = document.getElementById('class-issue-btn');
         const completeClassBtn = document.getElementById('complete-class-btn');
         
-        // Enable student absent button if class has passed 15 minutes or is completed
-        // Removed 'past' status since we disabled automatic past marking
-        if (buttonElapsedMinutes >= 15 || booking.status === 'completed' || booking.absentMarkedAt) {
-          studentAbsentBtn.disabled = false;
-          studentAbsentBtn.style.opacity = '1';
-        } else {
-          studentAbsentBtn.disabled = true;
-          studentAbsentBtn.style.opacity = '0.5';
+        const canMarkAbsent =
+          classHasStarted ||
+          booking.status === 'completed' ||
+          String(booking.status).toLowerCase() === 'pending_feedback' ||
+          booking.absentMarkedAt;
+        if (studentAbsentBtn) {
+          studentAbsentBtn.disabled = !canMarkAbsent;
+          studentAbsentBtn.style.opacity = canMarkAbsent ? '1' : '0.5';
+        }
+        if (issueBtn) {
+          issueBtn.disabled = !canMarkAbsent;
+          issueBtn.style.opacity = canMarkAbsent ? '1' : '0.5';
         }
         
-        // Enable complete class button for teachers to manually complete classes
-        // Allow completion if class has started (buttonElapsedMinutes >= 0) or is completed
-        // Removed 'past' status since we disabled automatic past marking
-        const canComplete = buttonElapsedMinutes >= 0 || booking.status === 'completed' || booking.absentMarkedAt;
+        const canComplete =
+          buttonElapsedMinutes >= 15 ||
+          booking.status === 'completed' ||
+          String(booking.status).toLowerCase() === 'pending_feedback' ||
+          booking.absentMarkedAt;
         console.log('🔘 Complete button state:', {
           buttonElapsedMinutes,
           bookingStatus: booking.status,
