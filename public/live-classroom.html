@@ -557,19 +557,27 @@
         auth: { token: __lcAuthToken },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 10, // Increase reconnection attempts
+        // Never give up reconnecting during a class. The old duplicate keys below this block
+        // (attempts: 5) won, so a drop longer than ~20 s left the user "gone" until a refresh.
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000, // Initial delay: 1 second
-        reconnectionDelayMax: 10000, // Max delay: 10 seconds
+        reconnectionDelayMax: 5000, // Max delay: 5 seconds (retry quickly on poor networks)
         timeout: 20000, // Connection timeout: 20 seconds
         forceNew: false, // Reuse existing connection when possible
         // Upgrade transport automatically for better performance
-        upgrade: true,
-        // Keep connection alive with pings
-        pingTimeout: 20000,
-        pingInterval: 25000,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        reconnectionAttempts: 5
+        upgrade: true
+        // Ping interval/timeout are set by the server (server/index.js), not by the client.
+      });
+      // When the network comes back (or the tab is shown again), reconnect right away instead of
+      // waiting for the next backoff tick. Skipped when this tab was replaced by a newer one.
+      function lcReconnectNow() {
+        if (window.__lcClassroomReplaced) return;
+        // connect() is a no-op while connected and does not stack a second attempt while one is running.
+        if (socket && !socket.connected) socket.connect();
+      }
+      window.addEventListener('online', lcReconnectNow);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') lcReconnectNow();
       });
 
       // Lesson loading overlay removed for faster start

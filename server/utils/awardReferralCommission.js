@@ -1,6 +1,7 @@
 /**
  * Teacher/admin referral attribution + commission.
- * Pending row on signup; ₱1000 commission when the student pays for a plan.
+ * Pending row on signup; commission when the student pays for a plan, tiered by plan
+ * (₱1,000 / ₱1,500 / ₱2,000 / ₱2,500 — see referralCommissionTiers.js).
  */
 const Teacher = require('../models/Teacher');
 const Admin = require('../models/Admin');
@@ -8,6 +9,7 @@ const Student = require('../models/Student');
 const Referral = require('../models/Referral');
 const PendingRegistration = require('../models/PendingRegistration');
 const { encryptPiiString } = require('../utils/piiCrypto');
+const { referralCommissionForPlan } = require('./referralCommissionTiers');
 
 async function resolveReferralOwner(referralCode) {
   const code = String(referralCode || '').trim();
@@ -130,7 +132,7 @@ async function recordReferralSignup(student) {
 }
 
 /**
- * Mark referral successful and award ₱1000 after paid subscription.
+ * Mark referral successful and award the plan-tier commission after paid subscription.
  */
 async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan = '' } = {}) {
   if (!student || !student._id) return { ok: false, reason: 'no_student' };
@@ -147,6 +149,26 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
   code = owner.referralCode;
 
   const paid = Number(amountPaid || 0) || inferAmountPaid(student, 0);
+
+  // A commission already awarded keeps its amount. Later purchases, duplicate webhooks, and
+  // reconcile runs must not rewrite it (older rows were a flat ₱1000 and stay that way).
+  const alreadyAwarded = await Referral.findOne({
+    ownerType,
+    ownerId: String(ownerId),
+    studentId: String(student._id),
+    status: 'successful',
+    commissionAmount: { $gt: 0 },
+  }).lean();
+  if (alreadyAwarded) {
+    return {
+      ok: true,
+      status: 'successful',
+      commissionAmount: Number(alreadyAwarded.commissionAmount) || 0,
+      alreadyAwarded: true,
+    };
+  }
+
+  const commissionAmount = referralCommissionForPlan(plan || student.subscriptionPlan || '');
   await Referral.updateOne(
     { ownerType, ownerId: String(ownerId), studentId: String(student._id) },
     {
@@ -161,7 +183,7 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
         studentContact: encryptPiiString(student.contact || ''),
         subscriptionPlan: plan || student.subscriptionPlan || '',
         amountPaid: paid,
-        commissionAmount: 1000,
+        commissionAmount,
         status: 'successful',
       },
       $setOnInsert: {
@@ -194,7 +216,7 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
     /* non-fatal */
   }
 
-  return { ok: true, status: 'successful', commissionAmount: 1000 };
+  return { ok: true, status: 'successful', commissionAmount };
 }
 
 /**

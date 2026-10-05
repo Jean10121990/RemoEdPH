@@ -6,7 +6,10 @@
   'use strict';
 
   var STORAGE_KEY = 'remoedTeacherPayoutV1';
-  var TIER_VALUES = [180, 230, 280, 330];
+  // 83 is the stored code for the Free Trial tier (before Tier 1): flat per-25-min rate, no credential add-ons.
+  var FREE_TRIAL_TIER_BASE = 83;
+  var FREE_TRIAL_RATE_PER_25MIN = 41.67;
+  var TIER_VALUES = [FREE_TRIAL_TIER_BASE, 180, 230, 280, 330];
 
   function defaultSettings() {
     return { tierBase: 180, c1: false, c2: false, c3: false };
@@ -17,9 +20,10 @@
     if (!s || typeof s !== 'object') return d;
     var tb = parseInt(s.tierBase, 10);
     d.tierBase = TIER_VALUES.indexOf(tb) >= 0 ? tb : 180;
-    d.c1 = !!s.c1;
-    d.c2 = !!s.c2;
-    d.c3 = !!s.c3;
+    var isTrial = d.tierBase === FREE_TRIAL_TIER_BASE;
+    d.c1 = isTrial ? false : !!s.c1;
+    d.c2 = isTrial ? false : !!s.c2;
+    d.c3 = isTrial ? false : !!s.c3;
     return d;
   }
 
@@ -39,6 +43,13 @@
 
   function compute(settings) {
     var s = normalizeSettings(settings);
+    if (s.tierBase === FREE_TRIAL_TIER_BASE) {
+      return {
+        totalHourly: Math.round(FREE_TRIAL_RATE_PER_25MIN * 2 * 100) / 100,
+        ratePer25: FREE_TRIAL_RATE_PER_25MIN,
+        settings: s
+      };
+    }
     var n = (s.c1 ? 1 : 0) + (s.c2 ? 1 : 0) + (s.c3 ? 1 : 0);
     var totalHourly = s.tierBase + n * 10;
     return { totalHourly: totalHourly, ratePer25: totalHourly / 2, settings: s };
@@ -52,9 +63,13 @@
   function syncSettingsFromRatePer25(ratePer25) {
     var r = parseFloat(ratePer25);
     if (!isFinite(r) || r <= 0) return null;
+    if (Math.abs(r - FREE_TRIAL_RATE_PER_25MIN) < 0.005) {
+      return { tierBase: FREE_TRIAL_TIER_BASE, c1: false, c2: false, c3: false };
+    }
     var impliedHourly = r * 2;
     for (var i = 0; i < TIER_VALUES.length; i++) {
       var base = TIER_VALUES[i];
+      if (base === FREE_TRIAL_TIER_BASE) continue;
       var delta = impliedHourly - base;
       if (delta >= 0 && delta <= 30 && delta % 10 === 0) {
         var creds = Math.round(delta / 10);
@@ -160,6 +175,8 @@
   global.RemoedTeacherPayout = {
     STORAGE_KEY: STORAGE_KEY,
     TIER_VALUES: TIER_VALUES,
+    FREE_TRIAL_TIER_BASE: FREE_TRIAL_TIER_BASE,
+    FREE_TRIAL_RATE_PER_25MIN: FREE_TRIAL_RATE_PER_25MIN,
     defaultSettings: defaultSettings,
     normalize: normalizeSettings,
     load: load,

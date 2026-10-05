@@ -95,9 +95,16 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] `GET /api/rtc-config` works **without** a Bearer token (it must stay registered before the `/api` routers that run `verifyToken`) and returns STUN plus TURN. The browser console shows “ICE servers loaded from /api/rtc-config” and no “No TURN relay configured” warning.
 - [ ] Teacher and student on **different networks** see each other. If video is black and the console shows `STUN binding request timed out` / `TURN allocate request timed out`, the relay is unreachable: follow BETATESTER.md → “Camera black / ICE checking”.
+- [ ] The classroom socket (`io(...)` in `public/live-classroom.html`) uses `reconnectionAttempts: Infinity` with max delay 5 s and reconnects on `online` / tab visible. Do not re-add a second `reconnectionAttempts` key or a finite limit: a 20-second network drop must not leave a teacher or student gone until refresh. Test by turning Wi-Fi off for 30 s and on again; the peer returns without a refresh.
 - [ ] Production relay is **hosted Cloudflare TURN**: `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` in the server `.env` (`server/services/hostedTurn.js`). `https://remoedph.com/api/rtc-config` shows `"turnConfigured": true` and `turn.cloudflare.com` URLs. Do not remove this path. The own coturn on the VPS is **stopped and disabled** (2026-10-05) and `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` are removed from `.env`, so no dead `187.77.159.63:3478` entry slows the connection. Re-enable it only after an external probe of 3478 succeeds (see Camera relay configuration below).
 - [ ] Lesson PowerPoints open in Microsoft PowerPoint (Office for the web) through a signed 6-hour file link (`server/utils/officeViewerLink.js`, public `GET /api/office-viewer/presentation/...`). Existing slide images or a cached `preview.pdf` are used first. Do not add a paid third-party converter back (Cloudmersive was removed).
 - [ ] Decks over 10 MB (Microsoft's limit) get their pictures recompressed on upload by `server/utils/pptxCompress.js` (same entry names; never blocked; the upload response carries a `warning` if still over 10 MB). `FRONTEND_URL` must be `https://remoedph.com`; production logs `[office-viewer] ... OK` at startup.
+
+### Teacher payout tiers and referral commission
+
+- [ ] Admin → Users → add or edit a teacher: **Free Trial — ₱41.67 per 25-min class** is the first Professional tier. Picking it shows `Per 25-min class: ₱41.67` and ignores credential checkboxes; saving and reopening keeps it. Teachers on Tier 1 to 4 still compute `(base + ₱10 × credentials) ÷ 2`.
+- [ ] A Free Trial teacher's Teaching Fee shows ₱41.67 per class, and Career Growth lists the Free Trial row before Tier 1.
+- [ ] A referred student paying 1 month / 3 months / 6 months / 1 year creates a `successful` referral of ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. Marketing Hub → Unique Link Commissions and the teacher Referral Rewards page show those amounts. A repeat webhook or **Refresh** does not change an already awarded amount.
 
 ### Auth isolation
 
@@ -425,6 +432,16 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 - **Withdraw rules:** Minimum ₱100; below that, UI notifies that the amount adds to the next cut-off and Withdraw is hidden. Any unwithdrawn `DISBURSED` balance is carried into the next Accounting dispense. MariBank daily max ₱50,000 (informational note when exceeded).
 - Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
 
+## Free Trial teacher tier and referral commission tiers
+
+Source: pricing and margin table (trial rate ₱41.67 per 25-min class + conversion bonus by plan).
+
+- **Free Trial tier** sits **before Tier 1** (Newbie). Stored as `payoutTierBase: 83` (a code, because tier bases are integers). Pay is a flat **₱41.67 per 25-min class**; the three credential add-ons do **not** apply. Code: `FREE_TRIAL_TIER_BASE`, `FREE_TRIAL_RATE_PER_25MIN`, `isFreeTrialTier`, `computeRatePer25Min` in [server/utils/teacherPayoutTier.js](server/utils/teacherPayoutTier.js), mirrored in [public/js/teacher-payout-settings.js](public/js/teacher-payout-settings.js) (`TIER_VALUES` starts with 83). Admin sets it in **Users → Professional tier** (`admin-users.html`); teachers see it on Career Growth. Keep `TIER_VALUES` in server and client in sync, and do not re-add `parseInt`-breaking fractional tier bases.
+- **Referral / Unique Link commission** is tiered by the plan the referred student buys (`server/utils/referralCommissionTiers.js`, used by `awardReferralCommissionOnPayment`): `spark` (1 month) ₱1,000, `steady` (3 months) ₱1,500, `scholar` (6 months) ₱2,000, `summit` (1 year) ₱2,500. Blank or unknown plan falls back to ₱1,000.
+- A Free Trial teacher whose own link brings a subscriber earns **both**: the trial rate on their trial classes and the plan-tier commission. They are separate payouts (no automatic Bonus / Incentive entry).
+- A commission already marked `successful` keeps its amount. Duplicate webhooks, reconcile, and later renewals must **not** rewrite it. Rows created before 2026-10-05 stay at the old flat ₱1,000 (no backfill).
+- Teacher copy lives in `teacher-referrals.html`, `teacher-dashboard.html`, and `admin-unique-link-commission.html`; update them if the amounts change.
+
 ## Lesson slide generation — laptop Level folders
 
 After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop copy under the matching **Level** folder (not only the repo).
@@ -518,6 +535,7 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Session handling | `public/js/user-session.js` no longer logs a student out on a business-gate 403 (`CONSENT_REQUIRED` etc.). This fixed “I get logged out when I press Book”. |
 | Classroom camera | Single socket per role per room, signaling only between the current teacher and student, observers never create or answer offers, webcam never goes to the lesson stage, camera released on replace/pagehide. ICE restart waits 15 s (cooldown 20 s). `/api/rtc-config` is public and registered before the `verifyToken` routers. |
 | Camera relay | Hosted Cloudflare TURN is the production relay (confirmed live on `/api/rtc-config`). The own coturn on the Hostinger VPS (187.77.159.63) was blocked by the hPanel firewall, so it was stopped and disabled and its `TURN_*` lines were removed. Emergency steps are in “Camera relay configuration and emergency guidelines”. |
+| Teacher payout / referrals | New **Free Trial** payout tier (₱41.67 per 25-min class, no add-ons) before Tier 1. Referral commission is tiered by plan: ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. Existing commissions are not rewritten. |
 | Lesson decks | Microsoft PowerPoint viewer with signed link; Cloudmersive removed; 10 MB image recompression; `FRONTEND_URL` normalized to https with a startup log. |
 | Classroom layout | Teacher media-lock buttons are 32 px icon buttons; chat stays visible beside smaller video tiles. |
 | Admin | Classroom SOS is a tab in QA Hub; admin sidebar assets at `?v=app-shell-17`. |

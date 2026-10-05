@@ -66,6 +66,15 @@ Do not retest a passing item as a new task. Do not drop or rewrite production da
 | TSK-017 | When Available to Withdraw is over ₱50,000, the withdraw screen says MariBank’s daily maximum is ₱50,000. |
 | TSK-018 | A withdrawal under ₱100 is refused and that amount waits for the next cut-off. Unwithdrawn disbursed pay carries forward. A day cannot withdraw more than ₱50,000. |
 
+### Free Trial teacher tier and referral commission
+
+| ID | Pass when |
+|---|---|
+| PAY-001 | Admin Users → Professional tier lists **Free Trial — ₱41.67 per 25-min class** before Tier 1. Picking it shows `Per 25-min class: ₱41.67` and ignores the credential boxes. Save, reopen: it is still Free Trial. |
+| PAY-002 | A Free Trial teacher sees ₱41.67 per completed class on Teaching Fee. Tier 1 to 4 teachers still see their old rate. |
+| PAY-003 | A referred student buys 1 month / 3 months / 6 months / 1 year. Unique Link Commissions shows ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. The teacher's Referral Rewards page shows the same. |
+| PAY-004 | Refreshing Referral Rewards or a repeated payment webhook does not change a commission that was already awarded. Commissions from before 2026-10-05 stay at ₱1,000. |
+
 ### Assessment, register, and credits
 
 | ID | Pass when |
@@ -136,6 +145,12 @@ Check here **first** when a symptom looks familiar. Each entry: what the user sa
 - The own coturn on the VPS was stopped and disabled (`systemctl stop coturn`, `systemctl disable coturn`) and `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` were removed from `.env`. Reason: the dead relay added connection delay and its password was shown publicly by `/api/rtc-config`. Do not bring it back unless an outside probe of 3478 succeeds.
 - Emergency steps for a black camera in class: `STABLE_BASELINE.md` → “Camera relay configuration and emergency guidelines”.
 - Never put the TURN password or Cloudflare token in chat or in git.
+
+**Teacher or student “disappears” mid-class on a weak connection** (fixed 2026-10-05)
+- Symptom: cameras work, then one side shows “Waiting for <name>…” and stays that way until a refresh. The “Poor Connection” chip is on.
+- Cause: the `io(...)` options in `public/live-classroom.html` had duplicate keys; the later `reconnectionAttempts: 5` beat `10`. After about 20 seconds offline the socket stopped retrying for good. The `socket.on('reconnect' / 'reconnect_failed')` handlers never fire in Socket.IO 4 (they live on `socket.io`), so nothing recovered it.
+- Fix: `reconnectionAttempts: Infinity`, retry delay max 5 s, and an immediate `socket.connect()` on the browser `online` event and when the tab becomes visible again (skipped after `classroom-replaced`). The existing `connect` handler rejoins the room and the call renegotiates.
+- If it still happens, it is the network itself: check upload speed, close other uploads, and note that the teacher’s QA recording (“Share this tab”, chunks uploaded during class) shares the same uplink.
 
 **Chat hidden by huge media buttons**
 - Fix (`public/css/live-classroom-redesign.css`): teacher media-lock buttons are 32 px round icons; video tiles are capped; chat keeps a minimum height. Use higher-specificity selectors because `live-classroom.css` has older `min-height: 140px` rules.
