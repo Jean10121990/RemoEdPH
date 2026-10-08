@@ -2049,6 +2049,107 @@ router.get('/referrals/teachers', verifyAdminApiAuth, requireAdmin, async (req, 
   }
 });
 
+router.get('/referral-link/stats', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const username = String(req.user.username || '').trim();
+    if (!username) {
+      return res.status(401).json({ success: false, message: 'Admin identity missing from token' });
+    }
+    const admin = await Admin.findOne({ username });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+    if (!admin.referralCode) {
+      let code = generateReferralCode();
+      for (let i = 0; i < 5; i++) {
+        const existsTeacher = await Teacher.findOne({ referralCode: code }).lean();
+        const existsAdmin = await Admin.findOne({ referralCode: code }).lean();
+        if (!existsTeacher && !existsAdmin) break;
+        code = generateReferralCode();
+      }
+      admin.referralCode = code;
+      await admin.save();
+    }
+    const referralCode = String(admin.referralCode || '');
+    try {
+      const { reconcileReferralsForOwner } = require('./utils/awardReferralCommission');
+      await reconcileReferralsForOwner({
+        ownerType: 'admin',
+        ownerId: username,
+        referralCode,
+      });
+    } catch (reconcileErr) {
+      console.warn('Admin referral reconcile failed:', reconcileErr.message);
+    }
+
+    const { from, to } = req.query;
+    const filter = {
+      ownerType: 'admin',
+      $or: [{ ownerId: username }],
+    };
+    if (referralCode) filter.$or.push({ referralCode });
+    if (from || to) {
+      filter.createdAt = {};
+      if (from != null && String(from).trim() !== '') {
+        if (isNaN(Date.parse(from))) {
+          return res.status(400).json({ error: 'Invalid from date' });
+        }
+        filter.createdAt.$gte = new Date(String(from));
+      }
+      if (to != null && String(to).trim() !== '') {
+        if (isNaN(Date.parse(to))) {
+          return res.status(400).json({ error: 'Invalid to date' });
+        }
+        const end = new Date(String(to));
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    const list = await Referral.find(filter).sort({ createdAt: -1 }).limit(500).lean();
+    const seen = new Set();
+    const unique = [];
+    for (const r of list) {
+      const id = String(r._id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      unique.push(r);
+    }
+    const totals = unique.reduce(
+      (acc, r) => {
+        acc.count += 1;
+        acc.totalAmountPaid += Number(r.amountPaid || 0) || 0;
+        if (String(r.status || '') === 'successful') {
+          acc.totalCommission += Number(r.commissionAmount || 0) || 0;
+          acc.successfulCount += 1;
+        }
+        return acc;
+      },
+      { count: 0, successfulCount: 0, totalAmountPaid: 0, totalCommission: 0 }
+    );
+    const referrals = unique.map((r) => {
+      const id = String(r._id);
+      return {
+        id,
+        referenceNumber: `RM-${id.toUpperCase().slice(-10)}`,
+        referralCode: r.referralCode,
+        studentName: r.studentName || '',
+        studentEmail: r.studentEmail || '',
+        studentContact: decryptPiiString(r.studentContact || ''),
+        subscriptionPlan: r.subscriptionPlan || '',
+        amountPaid: Number(r.amountPaid || 0) || 0,
+        commissionAmount: Number(r.commissionAmount || 0) || 0,
+        status: r.status || 'successful',
+        createdAt: r.createdAt,
+      };
+    });
+    res.json({ success: true, referrals, totals, referralCode });
+  } catch (err) {
+    console.error('Admin referral stats error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load referral stats' });
+  }
+});
+
 router.get('/referral-link', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const username = req.user.username;

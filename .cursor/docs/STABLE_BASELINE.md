@@ -448,6 +448,7 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 
 ## Admin HR Staff Documents + teacher NBI
 
+- HR Hub iframes (`admin-hr-hub.html`) load with `?adminEmbed=1`. Embedded pages must **not** call `AdminSidebar.render` in that mode. Teacher Training and Teacher Schedule follow the same gate as Users and Pipeline. `css/admin-hub-embed.css` hides `#admin-sidebar-root` inside `html.admin-embed`. Bump `embedVer` when those pages change.
 - Page: `public/admin-hr-documents.html` (HR Hub Documents; Super-Admin / HR).
 - Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
 - Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
@@ -483,7 +484,8 @@ Source: pricing and margin table (trial rate ₱45 per 25-min class + conversion
 - **Referral / Unique Link commission** is tiered by the plan the referred student buys (`server/utils/referralCommissionTiers.js`, used by `awardReferralCommissionOnPayment`): `spark` (1 month) ₱1,000, `steady` (3 months) ₱1,500, `scholar` (6 months) ₱2,000, `summit` (1 year) ₱2,500. Blank or unknown plan falls back to ₱1,000.
 - A Free Trial teacher whose own link brings a subscriber earns **both**: the trial rate on their trial classes and the plan-tier commission. They are separate payouts (no automatic Bonus / Incentive entry).
 - A commission already marked `successful` keeps its amount. Duplicate webhooks, reconcile, and later renewals must **not** rewrite it. Rows created before 2026-10-05 stay at the old flat ₱1,000 (no backfill).
-- Teacher copy lives in `teacher-referrals.html`, `teacher-dashboard.html`, and `admin-unique-link-commission.html`; update them if the amounts change.
+- Teacher copy lives in `teacher-referrals.html`, `teacher-dashboard.html`, and `admin-unique-link-commission.html`. The admin’s own card on `admin-dashboard.html` uses the same layout and the same ₱1,000 to ₱2,500 range, with stats on `admin-referrals.html` (`GET /api/admin/referral-link/stats`, identity from the admin JWT). Marketing Hub still lists every teacher. Update these pages if the amounts change.
+- Teacher **Lessons Library** (`teacher-lessons-library.html`) shows each lesson’s **Teacher notes** (read-only). The same notes are the live-class cheat sheet. Students do not receive `teacherNotes`. Admins edit them in Admin → Lessons Library.
 
 ## Lesson slide generation — laptop Level folders
 

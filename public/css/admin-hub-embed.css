@@ -8,6 +8,13 @@ html.admin-embed body.page-admin-incidents .remoed-content {
   margin-top: 0 !important;
   padding-top: 8px !important;
 }
+
+html.admin-embed #admin-sidebar-root,
+html.admin-embed nav.remoed-sidebar,
+html.admin-embed .remoed-sidebar,
+html.admin-embed .mobile-hamburger,
+html.admin-embed .mobile-sidebar-overlay,
+html.admin-embed .portal-sidebar-toggle {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;

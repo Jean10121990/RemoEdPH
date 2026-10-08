@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Referral Link - RemoEdPH Admin</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body.page-admin-referrals { background: #f6fbff; }
+    body.page-admin-referrals .remoed-content { padding: 16px 20px 40px; }
+    body.page-admin-referrals .page-head p { margin: 8px 0 0; color: #64748b; font-size: 0.9rem; max-width: 720px; }
+    body.page-admin-referrals .link-card,
+    body.page-admin-referrals .stat-card,
+    body.page-admin-referrals .table-wrap {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+    body.page-admin-referrals .link-card,
+    body.page-admin-referrals .stat-card { padding: 14px 16px; }
+    body.page-admin-referrals .referral-link-stats-row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      margin: 14px 0;
+    }
+    body.page-admin-referrals .grid-stats { display: grid; gap: 12px; }
+    body.page-admin-referrals .stat-card h3 { margin: 0 0 6px; font-size: 0.85rem; color: #64748b; }
+    body.page-admin-referrals .stat-card .big { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+    body.page-admin-referrals .muted { color: #64748b; font-size: 0.8rem; }
+    body.page-admin-referrals .code-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
+    body.page-admin-referrals .code-pill {
+      font-weight: 800;
+      background: #ecfdf3;
+      color: #166534;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    body.page-admin-referrals .link-url { word-break: break-all; font-size: 0.85rem; color: #166534; font-weight: 700; }
+    body.page-admin-referrals .btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #47BC3E;
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    body.page-admin-referrals .btn.btn-outline { background: #fff; color: #166534; border: 1px solid #47BC3E; }
+    body.page-admin-referrals .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+    body.page-admin-referrals .filters label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px; }
+    body.page-admin-referrals .filters input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; }
+    body.page-admin-referrals table { width: 100%; border-collapse: collapse; min-width: 880px; }
+    body.page-admin-referrals th, body.page-admin-referrals td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 0.88rem; }
+    body.page-admin-referrals .table-wrap { overflow: auto; max-height: 560px; }
+    body.page-admin-referrals .empty { padding: 28px; text-align: center; color: #64748b; }
+    body.page-admin-referrals .ref-tag { font-weight: 800; color: #166534; }
+    @media (max-width: 800px) {
+      body.page-admin-referrals .referral-link-stats-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="page-admin-referrals">
+  <div class="remoed-main">
+    <div id="admin-sidebar-root"></div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js?v=app-shell-17"></script>
+    <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
+
+    <div class="remoed-content">
+      <div class="page-head">
+        <h1 style="margin:0;font-size:1.15rem;color:#0f172a;">Your Unique Referral Link</h1>
+        <p>Track students who subscribed using <strong>your</strong> admin referral link. Each enrollee gets a unique reference number. Totals show your commission. Marketing Hub → Unique Link Commissions still lists every teacher.</p>
+      </div>
+
+      <div class="referral-link-stats-row">
+        <div class="link-card">
+          <h2 style="margin:0 0 8px;font-size:1rem;">Subscription referral link</h2>
+          <p class="muted" style="margin-top:0;">Earn ₱1,000 to ₱2,500 per successful subscription (by plan).</p>
+          <div class="code-row">
+            <span>Code:</span>
+            <span class="code-pill" id="ref-code">—</span>
+            <button type="button" class="btn btn-outline" id="btn-copy-code">Copy code</button>
+            <button type="button" class="btn" id="btn-copy-link">Copy link</button>
+          </div>
+          <div><span class="muted">Full URL:</span><br><a class="link-url" id="ref-url" href="#" target="_blank" rel="noopener">—</a></div>
+        </div>
+        <div class="grid-stats">
+          <div class="stat-card">
+            <h3>Total commission (your link)</h3>
+            <div class="big" id="total-commission">₱0</div>
+            <div class="muted">By plan: 1 month ₱1,000 · 3 months ₱1,500 · 6 months ₱2,000 · 1 year ₱2,500</div>
+          </div>
+          <div class="stat-card">
+            <h3>Successful enrollees</h3>
+            <div class="big" id="total-count">0</div>
+            <div class="muted">Students who paid via your referral</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div>
+          <label for="from-date">From</label>
+          <input type="date" id="from-date" />
+        </div>
+        <div>
+          <label for="to-date">To</label>
+          <input type="date" id="to-date" />
+        </div>
+        <div>
+          <button type="button" class="btn" id="btn-load">Apply dates</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Reference #</th>
+              <th>Date</th>
+              <th>Student</th>
+              <th>Contact</th>
+              <th>Plan</th>
+              <th>Your commission</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none;">No referrals yet. Share your link from the dashboard. Commission is ₱1,000 for 1 month, ₱1,500 for 3 months, ₱2,000 for 6 months, and ₱2,500 for 1 year, after the student pays.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="timezone-utils.js"></script>
+  <script>
+    (function () {
+      const userType = localStorage.getItem('userType');
+      if (userType !== 'admin') {
+        window.location.href = (function () {
+          try {
+            var p = localStorage.getItem('remoedAdminEntryPath');
+            if (p && p.charAt(0) === '/') return p;
+          } catch (e) {}
+          return 'index.html';
+        })();
+        return;
+      }
+
+      function token() {
+        return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+          ? RemoedAdminSession.getAuthToken()
+          : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '')) || '';
+      }
+      function fmtPeso(n) {
+        const v = Number(n || 0) || 0;
+        return '₱' + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+      function escapeHtml(s) {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
+      }
+
+      async function loadLink() {
+        const res = await fetch('/api/admin/referral-link', {
+          headers: { Authorization: 'Bearer ' + token() }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          document.getElementById('ref-code').textContent = '—';
+          return;
+        }
+        const code = data.referralCode || '';
+        const path = data.subscriptionLink || ('/index.html?ref=' + encodeURIComponent(code) + '#plans');
+        const full = window.location.origin + path;
+        document.getElementById('ref-code').textContent = code || '—';
+        const a = document.getElementById('ref-url');
+        a.href = full;
+        a.textContent = full;
+        document.getElementById('btn-copy-code').onclick = function () {
+          navigator.clipboard.writeText(code).catch(function () {});
+        };
+        document.getElementById('btn-copy-link').onclick = function () {
+          navigator.clipboard.writeText(full).catch(function () {});
+        };
+      }
+
+      async function loadReferrals() {
+        const from = document.getElementById('from-date').value;
+        const to = document.getElementById('to-date').value;
+        const params = new URLSearchParams();
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+        const url = '/api/admin/referral-link/stats' + (params.toString() ? '?' + params.toString() : '');
+        const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token() } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || data.error || 'Failed to load referrals');
+        }
+        const rows = data.referrals || [];
+        const t = data.totals || {};
+        document.getElementById('total-commission').textContent = fmtPeso(t.totalCommission);
+        document.getElementById('total-count').textContent = String(t.successfulCount || 0);
+        const tbody = document.getElementById('tbody');
+        const empty = document.getElementById('empty');
+        if (!rows.length) {
+          tbody.innerHTML = '';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        tbody.innerHTML = rows.map(function (r) {
+          const TU = window.TimezoneUtils || {};
+          const when = r.createdAt && TU.formatDateTimePhilippines
+            ? TU.formatDateTimePhilippines(new Date(r.createdAt))
+            : (r.createdAt ? new Date(r.createdAt).toLocaleString() : '—');
+          return (
+            '<tr>' +
+            '<td><span class="ref-tag">' + escapeHtml(r.referenceNumber || r.id || '') + '</span></td>' +
+            '<td>' + escapeHtml(when) + '</td>' +
+            '<td><strong>' + escapeHtml(r.studentName || '—') + '</strong><br><span class="muted">' + escapeHtml(r.studentEmail || '') + '</span></td>' +
+            '<td>' + escapeHtml(r.studentContact || '—') + '</td>' +
+            '<td>' + escapeHtml(r.subscriptionPlan || '—') + '</td>' +
+            '<td>' + fmtPeso(r.commissionAmount) + '</td>' +
+            '<td>' + escapeHtml(r.status || 'successful') + '</td>' +
+            '</tr>'
+          );
+        }).join('');
+      }
+
+      document.getElementById('btn-load').addEventListener('click', function () {
+        loadReferrals().catch(function (e) { alert(e.message || String(e)); });
+      });
+      document.addEventListener('DOMContentLoaded', function () {
+        loadLink().catch(console.error);
+        loadReferrals().catch(function (e) { alert(e.message || String(e)); });
+      });
+    })();
+  </script>
+</body>
+</html>

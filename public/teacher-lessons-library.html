@@ -194,6 +194,10 @@
                     <input type="text" id="lesson-title-input" class="lesson-title-input" hidden maxlength="300" aria-label="Lesson title" />
                     <p id="lesson-description"></p>
                     <p><strong>Duration:</strong> <span id="lesson-duration"></span> minutes</p>
+                    <div id="lesson-teacher-notes-display" style="margin-top:1rem; padding:0.75rem; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px;">
+                        <strong style="color:#92400e; font-size:0.85rem;">Teacher notes</strong>
+                        <p id="lesson-teacher-notes-text" style="margin:0.5rem 0 0 0; white-space:pre-wrap; color:#451a03; font-size:0.88rem;"></p>
+                    </div>
                 </div>
 
                 <div class="upload-section" id="upload-section" style="display: none;">
@@ -986,6 +990,11 @@
             document.getElementById('lesson-title').textContent = lesson.title;
             document.getElementById('lesson-description').textContent = lesson.description || 'No description';
             document.getElementById('lesson-duration').textContent = lesson.estimatedDuration || 30;
+            const notesEl = document.getElementById('lesson-teacher-notes-text');
+            if (notesEl) {
+                const notes = lesson.teacherNotes != null ? String(lesson.teacherNotes).trim() : '';
+                notesEl.textContent = notes || 'No teacher notes for this lesson yet.';
+            }
             document.getElementById('lesson-info').style.display = 'block';
             document.getElementById('upload-section').style.display = 'block';
 
