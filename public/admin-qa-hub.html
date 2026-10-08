@@ -71,7 +71,7 @@
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
-        <script src="js/admin-page-header.js?v=mark-all-1"></script>
+        <script src="js/admin-page-header.js?v=mark-all-2"></script>
         <script src="js/admin-sidebar.js?v=app-shell-17"></script>
         <script src="js/admin-hub-guard.js" data-hub="qa"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'qa-hub');</script>
@@ -251,7 +251,30 @@
                                 <small>Teacher gets 100% of rate</small>
                             </span>
                         </label>
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="other-issue" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>Other issue</strong><br>
+                                <small>Natural disaster, calamity, electricity maintenance, scheduled outage, accident, death, or emergency. Proof is required. Penalty is waived. Allowed for teacher absence or cancellation.</small>
+                            </span>
+                        </label>
                     </div>
+                </div>
+                <div class="form-group" id="other-issue-details" style="display: none;">
+                    <label for="other-issue-reason">Reason</label>
+                    <select id="other-issue-reason">
+                        <option value="">Select a reason...</option>
+                        <option value="natural-disaster">Natural disaster</option>
+                        <option value="calamity">Calamity</option>
+                        <option value="electricity-maintenance">Electricity maintenance</option>
+                        <option value="scheduled-outage">Scheduled electricity outage</option>
+                        <option value="accident">Accident</option>
+                        <option value="death">Death</option>
+                        <option value="emergency">Emergency</option>
+                    </select>
+                    <label for="other-issue-proof" style="margin-top:10px;">Upload proof</label>
+                    <input type="file" id="other-issue-proof" accept="image/*,.pdf">
+                    <small>Required unless the teacher already uploaded proof. Without proof this reason is not valid and the penalty stays.</small>
                 </div>
                 <div class="form-group" id="teacher-fault-reason" style="display: none;">
                     <label>Reason for Teacher Issue</label>
@@ -786,6 +809,19 @@
             return cancellationMatchesDateFilter(req.createdAt, dateYmd);
         }
 
+        function emergencyReasonLabel(id) {
+            var labels = {
+                'natural-disaster': 'Natural disaster',
+                calamity: 'Calamity',
+                'electricity-maintenance': 'Electricity maintenance',
+                'scheduled-outage': 'Scheduled electricity outage',
+                accident: 'Accident',
+                death: 'Death',
+                emergency: 'Emergency'
+            };
+            return labels[id] || id || '';
+        }
+
         function renderCancellationCard(req) {
             var b = req.bookingId && typeof req.bookingId === 'object' && req.bookingId.date ? req.bookingId : null;
             var classLine = b
@@ -834,6 +870,14 @@
                 '<div class="issue-description"><h4>Reason</h4><p>' +
                 esc(req.reason || '') +
                 '</p></div>' +
+                (req.emergencyReason
+                    ? '<div class="issue-description"><h4>Emergency reason</h4><p>' +
+                      esc(emergencyReasonLabel(req.emergencyReason)) +
+                      (req.proofPath && String(req.proofPath).indexOf('/uploads/') === 0
+                        ? ' — <a href="' + esc(req.proofPath) + '" target="_blank" rel="noopener">Open proof</a>'
+                        : ' — proof missing, penalty is not waived') +
+                      '</p></div>'
+                    : '') +
                 (pending
                     ? '<div class="issue-actions">' +
                       '<button type="button" class="btn btn-success" data-crid="' +
@@ -1071,16 +1115,17 @@
             document.getElementById('resolve-modal').style.display = 'none';
             document.getElementById('resolve-form').reset();
             document.getElementById('teacher-fault-reason').style.display = 'none';
+            var otherBox = document.getElementById('other-issue-details');
+            if (otherBox) otherBox.style.display = 'none';
         }
 
         function toggleResolutionDetails() {
             const selectedType = document.querySelector('input[name="resolution-type"]:checked');
             const teacherFaultReason = document.getElementById('teacher-fault-reason');
-            if (selectedType && selectedType.value === 'teacher-fault') {
-                teacherFaultReason.style.display = 'block';
-            } else {
-                teacherFaultReason.style.display = 'none';
-            }
+            const otherBox = document.getElementById('other-issue-details');
+            const value = selectedType ? selectedType.value : '';
+            if (teacherFaultReason) teacherFaultReason.style.display = value === 'teacher-fault' ? 'block' : 'none';
+            if (otherBox) otherBox.style.display = value === 'other-issue' ? 'block' : 'none';
         }
 
         function dismissIssue(issueId) {
@@ -1234,16 +1279,42 @@
                     showNotification('Please specify the reason for teacher fault', 'error');
                     return;
                 }
+                var otherReason = '';
+                var proofFile = null;
+                if (resolutionType.value === 'other-issue') {
+                    var reasonEl = document.getElementById('other-issue-reason');
+                    var proofEl = document.getElementById('other-issue-proof');
+                    otherReason = reasonEl ? reasonEl.value : '';
+                    proofFile = proofEl && proofEl.files ? proofEl.files[0] : null;
+                    if (!otherReason) {
+                        showNotification('Choose the emergency reason', 'error');
+                        return;
+                    }
+                }
                 const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
-                fetch('/api/admin/issues/resolve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                    body: JSON.stringify({
+                var resolveBody;
+                var resolveHeaders = { Authorization: 'Bearer ' + token };
+                if (resolutionType.value === 'other-issue') {
+                    resolveBody = new FormData();
+                    resolveBody.append('issueId', issueId);
+                    resolveBody.append('resolutionType', resolutionType.value);
+                    resolveBody.append('teacherFaultReason', teacherFaultReason);
+                    resolveBody.append('resolveNotes', resolveNotes);
+                    resolveBody.append('otherIssueReason', otherReason);
+                    if (proofFile) resolveBody.append('proof', proofFile);
+                } else {
+                    resolveHeaders['Content-Type'] = 'application/json';
+                    resolveBody = JSON.stringify({
                         issueId: issueId,
                         resolutionType: resolutionType.value,
                         teacherFaultReason: teacherFaultReason,
                         resolveNotes: resolveNotes
-                    })
+                    });
+                }
+                fetch('/api/admin/issues/resolve', {
+                    method: 'POST',
+                    headers: resolveHeaders,
+                    body: resolveBody
                 })
                     .then(function (response) { return response.json(); })
                     .then(function (data) {

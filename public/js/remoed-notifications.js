@@ -202,7 +202,6 @@
       '" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:' +
       (filter === 'actionable' ? '#e2e8f0' : '#fff') +
       ';cursor:pointer;">Action</button>' +
-      '<button type="button" data-notif-mark-all="1" style="margin-left:auto;font-size:11px;padding:4px 8px;border-radius:6px;border:none;background:transparent;color:#47BC3E;font-weight:600;cursor:pointer;">Mark all as read</button>' +
       '</div>';
 
     function footerHtml() {

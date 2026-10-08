@@ -848,7 +848,7 @@
 
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
-        <script src="js/admin-page-header.js?v=mark-all-1"></script>
+        <script src="js/admin-page-header.js?v=mark-all-2"></script>
         <script src="js/admin-notifications.js?v=sock-auth-1"></script>
         <script src="js/admin-sidebar.js?v=app-shell-17"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
@@ -937,6 +937,7 @@
                                 <button type="button" id="time-in-btn" onclick="return window.remoedAdminTimeInClick && window.remoedAdminTimeInClick(event);" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">Time In</button>
                                 <button type="button" id="time-out-btn" onclick="return window.remoedAdminTimeOutClick && window.remoedAdminTimeOutClick(event);" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: none; pointer-events: auto;">Time Out</button>
                                 <button type="button" id="view-log-btn" onclick="return window.remoedAdminViewLogsClick && window.remoedAdminViewLogsClick(event);" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">View Logs</button>
+                                <button type="button" id="teacher-time-edit-requests-btn" onclick="showTimeLogRequests()" style="background: #ffc107; color: #333; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; pointer-events: auto;">Time Log Edit Requests</button>
                             </div>
                         </div>
                         <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; display: none; padding: 8px; border-radius: 4px;"></div>
@@ -2251,6 +2252,28 @@
             document.getElementById('cancellation-modal').style.display = 'none';
         }
 
+        function cancellationExcuseHtml(request) {
+            if (!request || !request.emergencyReason) return '';
+            var labels = {
+                'natural-disaster': 'Natural disaster',
+                calamity: 'Calamity',
+                'electricity-maintenance': 'Electricity maintenance',
+                'scheduled-outage': 'Scheduled electricity outage',
+                accident: 'Accident',
+                death: 'Death',
+                emergency: 'Emergency'
+            };
+            var label = labels[request.emergencyReason] || String(request.emergencyReason);
+            var safe = label.replace(/[&<>"']/g, function (ch) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+            });
+            var proof = String(request.proofPath || '');
+            var proofHtml = proof.indexOf('/uploads/') === 0
+                ? ' <a href="' + proof.replace(/"/g, '') + '" target="_blank" rel="noopener">Open proof</a>'
+                : ' Proof is missing, so the penalty is not waived.';
+            return '<div style="margin-top:8px;color:#0f766e;"><strong>Emergency:</strong> ' + safe + '.' + proofHtml + ' Approving with proof waives the cancellation penalty.</div>';
+        }
+
         async function loadCancellationRequests() {
             try {
                 const response = await fetch('/api/admin/cancellation-requests');
@@ -2303,6 +2326,7 @@
                                 color: #333;
                                 font-style: italic;
                             ">${request.reason}</div>
+                            ${cancellationExcuseHtml(request)}
                         </div>
                         
                         <div style="font-size: 12px; color: #888; margin-bottom: 12px;">
@@ -2468,10 +2492,21 @@
             document.getElementById('time-log-modal').style.display = 'none';
         }
 
+        function escTimeLog(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         async function loadTimeLogRequests() {
             try {
-                const response = await fetch('/api/admin/time-log-requests');
+                const response = await adminApiFetch('/api/admin/time-log-requests');
                 const requests = await response.json();
+                if (!response.ok || !Array.isArray(requests)) {
+                    throw new Error((requests && requests.error) || 'Could not load requests');
+                }
                 
                 const requestsList = document.getElementById('time-log-requests-list');
                 
@@ -2491,7 +2526,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                             <div>
                                 <strong style="color: #1ca7e7;">Teacher</strong>
-                                <span style="color: #666; margin-left: 8px;">${request.teacherId}</span>
+                                <span style="color: #666; margin-left: 8px;">${escTimeLog(request.teacherId)}</span>
                             </div>
                             <span style="
                                 background: ${request.status === 'pending' ? '#ffd700' : request.status === 'approved' ? '#27ae60' : '#e74c3c'};
@@ -2505,14 +2540,15 @@
                         
                         <div style="margin-bottom: 12px;">
                             <strong>Time Log Details:</strong><br>
-                            <span style="color: #666;">Date: ${request.date}</span><br>
+                            <span style="color: #666;">Date: ${escTimeLog(request.date)}</span><br>
+                            <span style="color: #666;">Now: ${escTimeLog(request.clockIn || '—')} – ${escTimeLog(request.clockOut || 'Not clocked out')}</span>
                             <div style="margin-top: 8px;">
                                 <label style="color: #666; font-size: 0.9rem;">Time In:</label>
-                                <input type="time" id="time-in-${request._id}" value="09:00" style="margin-left: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
+                                <input type="time" id="time-in-${escTimeLog(request._id)}" value="${escTimeLog(request.clockInValue || '')}" style="margin-left: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
                             </div>
                             <div style="margin-top: 4px;">
                                 <label style="color: #666; font-size: 0.9rem;">Time Out:</label>
-                                <input type="time" id="time-out-${request._id}" value="17:00" style="margin-left: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
+                                <input type="time" id="time-out-${escTimeLog(request._id)}" value="${escTimeLog(request.clockOutValue || '')}" style="margin-left: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
                             </div>
                         </div>
                         
@@ -2526,7 +2562,7 @@
                                 margin-top: 4px;
                                 color: #333;
                                 font-style: italic;
-                            ">${request.reason}</div>
+                            ">${escTimeLog(request.reason)}</div>
                         </div>
                         
                         <div style="font-size: 12px; color: #888; margin-bottom: 12px;">
@@ -2568,10 +2604,16 @@
         async function reviewTimeLogRequest(requestId, status) {
             try {
                 // Get the time inputs for this request
-                const timeIn = document.getElementById(`time-in-${requestId}`).value;
-                const timeOut = document.getElementById(`time-out-${requestId}`).value;
-                
-                const response = await fetch('/api/admin/review-time-log-request', {
+                const timeInEl = document.getElementById('time-in-' + requestId);
+                const timeOutEl = document.getElementById('time-out-' + requestId);
+                const timeIn = timeInEl ? timeInEl.value : '';
+                const timeOut = timeOutEl ? timeOutEl.value : '';
+                if (status === 'approved' && (!timeIn || !timeOut)) {
+                    alert('Set both Time In and Time Out before approving.');
+                    return;
+                }
+
+                const response = await adminApiFetch('/api/admin/review-time-log-request', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

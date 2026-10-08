@@ -24,6 +24,7 @@ const issueReportSchema = new mongoose.Schema({
             'Student Behavior Issue',
             'Payment Issue',
             'Schedule Conflict',
+            'Emergency (disaster, calamity, power outage, accident, death)',
             'Other'
         ]
     },
@@ -90,7 +91,19 @@ const issueReportSchema = new mongoose.Schema({
     // Resolution details
     resolutionType: {
         type: String,
-        enum: ['system-issue', 'teacher-fault', 'student-issue']
+        enum: ['system-issue', 'teacher-fault', 'student-issue', 'other-issue']
+    },
+    otherIssueReason: {
+        type: String,
+        default: ''
+    },
+    proofPath: {
+        type: String,
+        default: ''
+    },
+    penaltyWaived: {
+        type: Boolean,
+        default: false
     },
     resolveNotes: {
         type: String,

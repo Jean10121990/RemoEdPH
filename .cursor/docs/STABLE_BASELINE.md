@@ -78,6 +78,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
 - [ ] Live classroom has **Finish** only (locked until 15 minutes after the scheduled start). **Student Absent** and **Report Issue** are on Class Schedule → Class Information, and they show as soon as the class has started, including those first 15 minutes. Closing the classroom tab does **not** mark the student absent. An absent class is not pending feedback and does not ask for stars or a comment.
+- [ ] QA **Other issue** (natural disaster, calamity, electricity maintenance, scheduled electricity outage, accident, death, emergency) is valid only with proof. After it is accepted, the teacher penalty is waived (100% of the class rate) and the student can reschedule for one month. The same reasons on a teacher cancellation waive the cancellation penalty only after admin approval and only when proof was uploaded. Do not pay 50% for this type.
 - [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend. In the teacher sidebar it sits **directly under Class Configuration** (`MENU_ITEMS` order in `public/js/teacher-sidebar.js`: Dashboard, Leaderboard, Class Schedule, Class Configuration, Emergency guidelines, Device Check, …).
 - [ ] After submit, schedule refresh does not clear the teacher session.
 
@@ -154,6 +155,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Super-Admin → Admins / Roles can assign **Admin — Marketing** (`admin_marketing`). Creating with blank password shows a one-time setup token; first-time setup page is `admin-first-setup.html`.
 - [ ] `admin_marketing` sidebar matches its RBAC seed (Dashboard, Marketing Hub, shared ops — not HR/QA/Accounting hubs; no Settings / System monitor unless Super-Admin). Forbidden hub URLs redirect; Unique Link APIs work; payroll / user-mgmt style APIs stay gated.
 - [ ] **Admin Fee** has **no** Time In/Out buttons (status/eligibility/attendance/payslip only). Clock from **header** or **Dashboard** card; both Dashboard header mini and middle card Time In/Out/View Logs work; login does **not** auto clock-in. Time Out shows a confirm. Super-Admin **View Logs** lists any admin and can **Reopen shift** (clear accidental Time Out) or **Edit times** (HH:MM PHT); other roles only see their own history.
+- [ ] Admin Dashboard → Time Tracking → **Time Log Edit Requests** lists teacher rows waiting on **Pending Approval**. Set Time In and Time Out, then **Approve** (writes the teacher time log) or **Reject**. That button is not the admin’s own View Logs.
 - [ ] **Messages:** search finds other admins (e.g. `adminmktg@…`); can open thread and send. Desktop: conversation + composer visible without scrolling the page.
 
 ### Admin login / first-time password
@@ -352,6 +354,7 @@ Product spec: [`SKILLS.md`](SKILLS.md) § Gamification. Lesson **credits** stay 
 - Page: `public/admin-fee.html` — bi-monthly 1% of subscription `creditHistory` purchases, eligibility, attendance history, printable payslip. **No Time In/Out UI on Admin Fee** (clock only from top header or Admin Dashboard via `/api/admin/time-tracking/*`). Login must **never** auto clock-in.
 - Admin dashboard Time In (header mini **and** middle card): `public/js/admin-time-tracking.js` (`?v=tt-4+`; also loaded from `admin-page-header.js`). Singleton + document capture + inline `onclick` on card buttons. Status poll is read-only — it does not POST clock-in.
 - **One punch per business day** (7 AM PHT cutoff): after Time Out, status is **Daily Time Log Completed** until the next business day. **Time Out must confirm** before POST (accidental outs lock the day).
+- **Teacher time-log edit requests** (Dashboard → Time Tracking → **Time Log Edit Requests**, any admin): teacher **Request Admin Edit** creates an unread `time_edit` notification. `GET /api/admin/time-log-requests` and `POST /api/admin/review-time-log-request` require an admin JWT. Approve sets that teacher’s Time In / Time Out (Philippine time) and marks the request read. Reject does not change the punch. This is separate from Super-Admin **View Logs**, which only edits **admin** shifts.
 - **Super-Admin time-log correction** (Dashboard → **View Logs** only; gated by `requireSuperAdminDb`):
   - `GET /api/admin/time-tracking/manage?username=&startDate=&endDate=` — all `logOwnerType: 'admin'` logs (filter by admin).
   - `PATCH /api/admin/time-tracking/logs/:id` — `{ action: 'reopen' }` clears `clockOut` / sets `clocked-in` so the admin can continue; `{ action: 'edit', clockIn, clockOut }` sets HH:MM Philippine time (`clockOut: null` = leave open). Always re-sync `AdminAttendance` via `syncAdminAttendanceFromTimeLog`.
@@ -535,6 +538,7 @@ Checklist: [FEATURES_SINCE_2026-09-27.md](FEATURES_SINCE_2026-09-27.md).
 | Pre-Level free plan | Next Pre-Level lesson, one per student-local month. Growth levels stay paid. Videos, journey, and garden stay locked. |
 | Privacy | Version `2026-10-01`. Required on register, book, and logged-in checkout. Accept checkbox on My Profile. International students, same rules. |
 | Absent | Live classroom is Finish only (after 15 minutes). Student Absent and Report Issue are on Class Information once the class has started. Closing the tab does not auto-tag absent. |
+| Emergency excuse | QA Other issue and teacher cancellation: disaster, calamity, power maintenance or outage, accident, death, emergency. Proof required. Penalty waived (teacher still paid 100% on a resolved class). Student reschedule window is one month. |
 | Classroom SOS | Teacher Emergency SOS, admin Classroom SOS with status legend, emergency guidelines page with sidebar and header. |
 
 ## Baseline updates — 2026-10-02 to 2026-10-05

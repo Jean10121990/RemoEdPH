@@ -644,6 +644,34 @@ const adminProfileUpload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
 });
 
+const emergencyProofStorage = createGridFsStorage({
+  prefix: 'issue-screenshots',
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.bin';
+    cb(null, 'proof-' + Date.now() + ext);
+  },
+});
+const emergencyProofUpload = multer({
+  storage: emergencyProofStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'].includes(ext)) return cb(null, true);
+    return cb(new Error('Proof must be an image or PDF.'));
+  },
+});
+
+function optionalEmergencyProof(req, res, next) {
+  const ct = String(req.headers['content-type'] || '');
+  if (!ct.includes('multipart/form-data')) return next();
+  emergencyProofUpload.single('proof')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || 'Could not upload proof' });
+    }
+    return next();
+  });
+}
+
 function adminPublicUploadUrl(stored) {
   if (!stored) return null;
   const s = String(stored).replace(/\\/g, '/');
@@ -4405,6 +4433,11 @@ router.post('/review-cancellation', async (req, res) => {
       const booking = await Booking.findById(cancellationRequest.bookingId);
       if (booking) {
         booking.status = 'cancelled';
+        if (cancellationRequest.emergencyReason && cancellationRequest.proofPath) {
+          booking.penaltyWaived = true;
+          cancellationRequest.penaltyWaived = true;
+          await cancellationRequest.save();
+        }
         await releaseReservedCreditForBooking(booking);
         await booking.save();
         
@@ -5727,27 +5760,72 @@ router.delete('/user/:userId', deleteAdminManagedUser);
 router.post('/user/:userId/delete', deleteAdminManagedUser);
 
 // ===== TIME LOG REQUESTS ENDPOINTS =====
+// Admin JWT. Lists unread teacher time-edit notifications. Identity is not taken from the query.
+
+function timeLogEditParts(message) {
+  const text = String(message || '');
+  const logId = text.split(' ')[0] || '';
+  const date = text.split('for ')[1]?.split(':')[0] || '';
+  const reason = text.split(': ').slice(1).join(': ') || 'No reason provided';
+  return { logId: logId.trim(), date: date.trim(), reason: reason.trim() };
+}
+
+/** "05:53:21 PM" or "17:53" → "17:53" for <input type="time">. */
+function clockDisplayToHtmlTime(raw) {
+  const s = String(raw || '').trim();
+  const twelve = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  if (twelve) {
+    let h = Number(twelve[1]);
+    const ap = twelve[3].toUpperCase();
+    if (ap === 'PM' && h < 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    return String(h).padStart(2, '0') + ':' + twelve[2];
+  }
+  const twentyFour = s.match(/^(\d{1,2}):(\d{2})/);
+  if (!twentyFour) return '';
+  const h = Math.min(23, Math.max(0, Number(twentyFour[1])));
+  return String(h).padStart(2, '0') + ':' + twentyFour[2];
+}
 
 // GET time log requests
-router.get('/time-log-requests', async (req, res) => {
+router.get('/time-log-requests', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    // For now, we'll get time edit requests from notifications
-    // In a real implementation, you might want to create a TimeEditRequest model
-    const notifications = await Notification.find({ 
+    const notifications = await Notification.find({
       type: 'time_edit',
-      read: false 
-    }).populate('teacherId', 'username firstName lastName');
-    
-    const requests = notifications.map(notification => ({
-      _id: notification._id,
-      teacherId: notification.teacherId?.username || notification.teacherId?.firstName || 'Unknown',
-      logId: notification.message.split(' ')[0] || 'N/A',
-      date: notification.message.split('for ')[1]?.split(':')[0] || 'N/A',
-      reason: notification.message.split(': ')[1] || 'No reason provided',
-      status: 'pending',
-      createdAt: notification.createdAt
-    }));
-    
+      read: false
+    }).sort({ createdAt: -1 }).lean();
+
+    const logIds = notifications
+      .map((n) => timeLogEditParts(n.message).logId)
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const logs = logIds.length
+      ? await TimeLog.find({ _id: { $in: logIds } }).select('clockIn clockOut totalHours date teacherId status').lean()
+      : [];
+    const logById = new Map(logs.map((row) => [String(row._id), row]));
+
+    const requests = notifications.map((notification) => {
+      const parts = timeLogEditParts(notification.message);
+      const log = logById.get(parts.logId);
+      const teacherId = notification.teacherId && typeof notification.teacherId === 'object'
+        ? (notification.teacherId.username || notification.teacherId.firstName || 'Unknown')
+        : (notification.teacherId || 'Unknown');
+      return {
+        _id: notification._id,
+        teacherId,
+        logId: parts.logId || 'N/A',
+        date: (log && log.date) || parts.date || 'N/A',
+        reason: parts.reason,
+        status: 'pending',
+        createdAt: notification.createdAt,
+        clockIn: log && log.clockIn ? log.clockIn.time : '',
+        clockOut: log && log.clockOut ? log.clockOut.time : '',
+        clockInValue: clockDisplayToHtmlTime(log && log.clockIn ? log.clockIn.time : ''),
+        clockOutValue: clockDisplayToHtmlTime(log && log.clockOut ? log.clockOut.time : ''),
+        totalHours: log ? log.totalHours || 0 : 0,
+        logStatus: log ? log.status : ''
+      };
+    });
+
     res.json(requests);
   } catch (err) {
     console.error('Error fetching time log requests:', err);
@@ -5756,11 +5834,14 @@ router.get('/time-log-requests', async (req, res) => {
 });
 
 // POST review time log request
-router.post('/review-time-log-request', async (req, res) => {
+router.post('/review-time-log-request', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    const { requestId, status, timeIn, timeOut } = req.body;
+    const requestId = String(req.body.requestId || '').trim();
+    const status = String(req.body.status || '').trim();
+    const timeIn = String(req.body.timeIn || '').trim();
+    const timeOut = String(req.body.timeOut || '').trim();
     
-    if (!requestId || !status) {
+    if (!requestId || !mongoose.Types.ObjectId.isValid(requestId) || !status) {
       return res.status(400).json({ 
         success: false, 
         error: 'Request ID and status are required' 
@@ -5791,56 +5872,47 @@ router.post('/review-time-log-request', async (req, res) => {
       });
     }
     
-    // If approved and time inputs provided, update the actual time log
-    if (status === 'approved' && timeIn && timeOut) {
-      try {
-        // Parse the log ID from the notification message
-        // Handle both old and new message formats
-        let logId, date;
-        
-        if (notification.message.startsWith('Time edit request for')) {
-          // Old format: "Time edit request for 2025-08-06: Teacher requested admin edit for time log"
-          // We need to find the time log by date and teacher
-          date = notification.message.split('for ')[1]?.split(':')[0];
-          if (date) {
-            const TimeLog = require('./models/TimeLog');
-            const timeLog = await TimeLog.findOne({
-              teacherId: notification.teacherId,
-              date: date
-            });
-            logId = timeLog?._id;
-          }
-        } else {
-          // New format: "LOG_ID for 2025-08-06: Teacher requested admin edit for time log"
-          logId = notification.message.split(' ')[0];
-          date = notification.message.split('for ')[1]?.split(':')[0];
-        }
-        
-        if (logId && date) {
-          // Find and update the time log
-          const TimeLog = require('./models/TimeLog');
-          const timeLog = await TimeLog.findById(logId);
-          
-          if (timeLog) {
-            // Update the time log with new times (using correct field structure)
-            timeLog.clockIn.time = timeIn;
-            timeLog.clockOut.time = timeOut;
-            
-            // Recalculate total hours
-            const clockIn = new Date(`2000-01-01T${timeIn}:00`);
-            const clockOut = new Date(`2000-01-01T${timeOut}:00`);
-            const diffMs = clockOut - clockIn;
-            const diffHours = diffMs / (1000 * 60 * 60);
-            timeLog.totalHours = Math.max(0, diffHours);
-            
-            await timeLog.save();
-            console.log(`Updated time log ${logId} with new times: ${timeIn} - ${timeOut}`);
-          }
-        }
-      } catch (updateError) {
-        console.error('Error updating time log:', updateError);
-        // Continue with notification update even if time log update fails
+    if (status === 'approved') {
+      if (!timeIn || !timeOut) {
+        return res.status(400).json({
+          success: false,
+          error: 'Set both Time In and Time Out before approving.'
+        });
       }
+      const parts = timeLogEditParts(notification.message);
+      let logId = parts.logId;
+      let date = parts.date;
+      if (!mongoose.Types.ObjectId.isValid(logId) && date) {
+        const byDate = await TimeLog.findOne({
+          teacherId: notification.teacherId,
+          date: date
+        });
+        logId = byDate ? String(byDate._id) : '';
+      }
+      if (!mongoose.Types.ObjectId.isValid(logId)) {
+        return res.status(404).json({ success: false, error: 'Time log for this request was not found.' });
+      }
+      const timeLog = await TimeLog.findById(logId);
+      if (!timeLog || String(timeLog.teacherId) !== String(notification.teacherId)) {
+        return res.status(404).json({ success: false, error: 'Time log for this request was not found.' });
+      }
+      date = timeLog.date || date;
+      const clockInTs = phDateTimeFromYmdAndHm(date, timeIn);
+      let clockOutTs = phDateTimeFromYmdAndHm(date, timeOut);
+      if (!clockInTs || !clockOutTs) {
+        return res.status(400).json({ success: false, error: 'Use a valid Time In and Time Out.' });
+      }
+      if (clockOutTs.getTime() <= clockInTs.getTime()) {
+        clockOutTs = new Date(clockOutTs.getTime() + 24 * 60 * 60 * 1000);
+      }
+      const diffHours = (clockOutTs.getTime() - clockInTs.getTime()) / (1000 * 60 * 60);
+      timeLog.clockIn = { time: formatPhTime12FromDate(clockInTs), timestamp: clockInTs };
+      timeLog.clockOut = { time: formatPhTime12FromDate(clockOutTs), timestamp: clockOutTs };
+      timeLog.totalHours = Math.max(0, Math.round(diffHours * 100) / 100);
+      timeLog.status = 'clocked-out';
+      const editNote = `Approved by admin ${req.user.username || ''} at ${getPhilippineTimeStringAdmin()}`;
+      timeLog.notes = [timeLog.notes, editNote].filter(Boolean).join('\n').slice(0, 2000);
+      await timeLog.save();
     }
     
     // Mark notification as read
@@ -6489,9 +6561,8 @@ router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res)
     if (canReschedule) {
       issue.canReschedule = true;
       if (!issue.rescheduleDeadline) {
-        const deadline = new Date();
-        deadline.setMinutes(deadline.getMinutes() + 15);
-        issue.rescheduleDeadline = deadline;
+        const { rescheduleDeadlineOneMonth } = require('./utils/emergencyExcuse');
+        issue.rescheduleDeadline = rescheduleDeadlineOneMonth();
       }
     }
     
@@ -6500,7 +6571,7 @@ router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res)
     if (issue.canReschedule) {
       await notifyStudentToRescheduleFromQa(
         issue,
-        `Your class issue has been reviewed by QA. Please reschedule this class. You have a short window to pick a new slot.`
+        `Your class issue has been reviewed by QA. Please reschedule this class within one month.`
       );
     }
     
@@ -6523,9 +6594,9 @@ router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res)
 });
 
 // POST mark issue as resolved
-router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, optionalEmergencyProof, async (req, res) => {
   try {
-    const { issueId, resolutionType, teacherFaultReason, resolveNotes } = req.body;
+    const { issueId, resolutionType, teacherFaultReason, resolveNotes, otherIssueReason } = req.body;
     
     if (!issueId) {
       return res.status(400).json({
@@ -6569,6 +6640,40 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     } else if (resolutionType === 'student-issue') {
       issue.teacherPaymentImpact = 'partial_payment_100';
       issue.studentPaymentImpact = 'normal';
+    } else if (resolutionType === 'other-issue') {
+      const { isEmergencyReason, emergencyReasonLabel, rescheduleDeadlineOneMonth } = require('./utils/emergencyExcuse');
+      const reasonId = String(otherIssueReason || '').trim();
+      if (!isEmergencyReason(reasonId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Choose a reason: natural disaster, calamity, electricity maintenance, scheduled outage, accident, death, or emergency.',
+        });
+      }
+      const uploadedProof = req.file ? '/uploads/issue-screenshots/' + req.file.filename : '';
+      const proof = uploadedProof || issue.proofPath || issue.screenshotPath || '';
+      if (!proof) {
+        return res.status(400).json({
+          success: false,
+          message: 'Upload proof for this reason. It is not valid without proof, and the penalty is not waived.',
+        });
+      }
+      issue.otherIssueReason = reasonId;
+      issue.proofPath = proof;
+      issue.penaltyWaived = true;
+      issue.validityStatus = 'valid';
+      issue.teacherPaymentImpact = 'partial_payment_100';
+      issue.studentPaymentImpact = 'reschedule_available';
+      issue.canReschedule = true;
+      issue.rescheduleDeadline = rescheduleDeadlineOneMonth();
+      issue.teacherFaultReason = emergencyReasonLabel(reasonId);
+      await Booking.updateOne({ _id: issue.bookingId }, { $set: { penaltyWaived: true } });
+    } else {
+      return res.status(400).json({ success: false, message: 'Unknown resolution type' });
+    }
+
+    if (issue.canReschedule && !issue.rescheduleDeadline) {
+      const { rescheduleDeadlineOneMonth } = require('./utils/emergencyExcuse');
+      issue.rescheduleDeadline = rescheduleDeadlineOneMonth();
     }
     
     await issue.save();
@@ -6646,6 +6751,8 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
       notificationMessage += ` You will receive 20% of the class rate due to: ${teacherFaultReason}`;
     } else if (resolutionType === 'student-issue') {
       notificationMessage += ` You will receive 100% of the class rate.`;
+    } else if (resolutionType === 'other-issue') {
+      notificationMessage += ` Emergency reason accepted with proof. The penalty is waived and you receive 100% of the class rate. The student can reschedule within one month.`;
     }
     
     await createNotification(issue.teacherId, 'issue-resolved', notificationMessage);
@@ -6653,7 +6760,7 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     if (issue.canReschedule || issue.studentPaymentImpact === 'reschedule_available') {
       await notifyStudentToRescheduleFromQa(
         issue,
-        `QA resolved an issue on your class. Please reschedule so you do not miss the session. Open Book a Class to choose a new time.`
+        `QA resolved an issue on your class. Please reschedule within one month. Open Book a Class to choose a new time.`
       );
     }
     

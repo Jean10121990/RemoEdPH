@@ -694,16 +694,6 @@
         var maxIdx = getMaxIndex();
         var atEnd = maxIdx != null && state.slideIndex >= maxIdx;
         if (maxIdx == null && state._lockedAtEnd) atEnd = true;
-        // Unknown total + already one speculative step past last confirmed Office slide
-        if (
-          maxIdx == null &&
-          state._confirmedSlideIndex != null &&
-          state.slideIndex > state._confirmedSlideIndex
-        ) {
-          atEnd = true;
-        }
-        // Unknown total with no discovery yet: still allow first advances, but label
-        // should not imply infinite slides — title reflects wait-for-confirm after one step.
         nextSlideBtn.disabled = atEnd;
         nextSlideBtn.title = atEnd
           ? maxIdx == null
@@ -1023,21 +1013,9 @@
           updateSlideLabel();
           return;
         }
-        if (deltaN > 0) {
-          if (state._lockedAtEnd) {
-            updateSlideLabel();
-            return;
-          }
-          var confirmed =
-            state._confirmedSlideIndex != null
-              ? state._confirmedSlideIndex
-              : Math.max(0, state.slideIndex);
-          // Already one step past the last Office-confirmed index — wait for
-          // confirmation or wrap-lock before advancing again.
-          if (state.slideIndex > confirmed) {
-            updateSlideLabel();
-            return;
-          }
+        if (deltaN > 0 && state._lockedAtEnd) {
+          updateSlideLabel();
+          return;
         }
       } else {
         var next = state.slideIndex + deltaN;

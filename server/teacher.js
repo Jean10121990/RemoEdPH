@@ -3530,10 +3530,9 @@ router.get('/completed-classes', verifyToken, requireTeacher, async (req, res) =
       } else {
         // Check attendance for status: 'absent' bookings
         const teacherEntered = booking.attendance?.teacherEntered || false;
-        if (!teacherEntered) {
-          // Teacher was absent - count for deduction
+        if (!teacherEntered && !booking.penaltyWaived) {
           teacherAbsentClasses++;
-        } else {
+        } else if (teacherEntered) {
           // Student was absent but teacher was present - no payment (no-class, no-pay policy)
           studentAbsentClasses++;
         }
@@ -3732,9 +3731,18 @@ router.get('/pending-feedback-bookings', verifyToken, requireTeacher, async (req
 });
 
 // Cancellation request endpoints
-router.post('/request-cancellation', verifyToken, requireTeacher, async (req, res) => {
+function optionalCancellationProof(req, res, next) {
+  const ct = String(req.headers['content-type'] || '');
+  if (!ct.includes('multipart/form-data')) return next();
+  issueScreenshotUpload.single('proof')(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, error: err.message || 'Could not upload proof' });
+    return next();
+  });
+}
+
+router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancellationProof, async (req, res) => {
   try {
-    const { bookingId, reason } = req.body;
+    const { bookingId, reason, emergencyReason } = req.body;
     const teacherId = req.user.teacherId;
     
     if (!bookingId || !reason) {
@@ -3793,12 +3801,26 @@ router.post('/request-cancellation', verifyToken, requireTeacher, async (req, re
       });
     }
     
+    const { isEmergencyReason } = require('./utils/emergencyExcuse');
+    const excuse = String(emergencyReason || '').trim();
+    if (excuse && !isEmergencyReason(excuse)) {
+      return res.status(400).json({ success: false, error: 'Choose a listed emergency reason.' });
+    }
+    if (excuse && !req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Upload proof for this reason. It is not valid without proof, and the penalty is not waived.',
+      });
+    }
+
     // Create cancellation request
     const cancellationRequest = new CancellationRequest({
       bookingId,
       requesterType: 'teacher',
       requesterId: teacherId,
-      reason
+      reason,
+      emergencyReason: excuse,
+      proofPath: req.file ? '/uploads/issue-screenshots/' + req.file.filename : '',
     });
     
     await cancellationRequest.save();
@@ -3854,7 +3876,7 @@ router.get('/cancellation-requests', verifyToken, requireTeacher, async (req, re
 
 /** Lean booking fields for teacher class lists / history (avoid full lesson blobs). */
 const TEACHER_CLASSES_BOOKING_SELECT =
-  '_id studentId teacherId date time status lesson studentLevel lateMinutes attendance finishedAt absentMarkedAt';
+  '_id studentId teacherId date time status lesson studentLevel lateMinutes attendance finishedAt absentMarkedAt penaltyWaived';
 const TEACHER_CLASS_HISTORY_DEFAULT_LIMIT = 40;
 const TEACHER_CLASS_HISTORY_MAX_LIMIT = 100;
 
@@ -3982,6 +4004,7 @@ router.get('/classes/history', verifyToken, requireTeacher, async (req, res) => 
         absentMarkedAt: booking.absentMarkedAt,
         cancellationReason: null,
         cancellationTime: null,
+        penaltyWaived: bookingPenaltyWaived(booking, resolvedIssueMap, cancellationMap),
         hasResolvedIssue: (resolvedIssueMap[booking._id.toString()] || []).length > 0,
       };
       if (booking.status === 'cancelled') {
@@ -4097,6 +4120,7 @@ router.get('/classes', async (req, res) => {
           absentMarkedAt: booking.absentMarkedAt,
           cancellationReason: null,
           cancellationTime: null,
+          penaltyWaived: bookingPenaltyWaived(booking, resolvedIssueMap, cancellationMap),
           hasResolvedIssue: (resolvedIssueMap[booking._id.toString()] || []).length > 0,
         };
 
@@ -4392,10 +4416,9 @@ router.get('/time-edit-requests', verifyToken, requireTeacher, async (req, res) 
         // Try to extract log ID from the response message
         // For approved requests, the message format is: "Your time log edit request has been approved. Time updated to: HH:MM - HH:MM"
         // We need to find the original request to get the log ID
-        const originalRequest = notifications.find(n => 
-          n.type === 'time_edit' && 
-          n.createdAt < notification.createdAt &&
-          !n.read
+        const originalRequest = notifications.find(n =>
+          n.type === 'time_edit' &&
+          n.createdAt < notification.createdAt
         );
         
         if (originalRequest) {
@@ -4503,12 +4526,21 @@ function payCutOffLabelFromStart(startDate) {
     : '2nd cut-off (16th–end of month) · salary date last day of month';
 }
 
+function bookingPenaltyWaived(booking, resolvedIssueMap, cancellationMap) {
+  const id = String(booking._id);
+  if (booking.penaltyWaived) return true;
+  const cancel = cancellationMap && cancellationMap[id];
+  if (cancel && cancel.penaltyWaived) return true;
+  const issues = (resolvedIssueMap && resolvedIssueMap[id]) || [];
+  return issues.some((issue) => issue && issue.penaltyWaived);
+}
+
 async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
   const bookings = await Booking.find({
     teacherId,
     date: { $gte: startDate, $lte: endDate },
   })
-    .select('_id date time status attendance finishedAt lateMinutes')
+    .select('_id date time status attendance finishedAt lateMinutes penaltyWaived')
     .lean();
 
   const bookingIds = bookings.map((b) => b._id);
@@ -4541,7 +4573,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
       const cancellationRequest = cancellationRequests.find(
         (req) => req.bookingId.toString() === booking._id.toString()
       );
-      if (cancellationRequest && cancellationRequest.createdAt) {
+      if (cancellationRequest && cancellationRequest.createdAt && !booking.penaltyWaived && !cancellationRequest.penaltyWaived) {
         const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
         const cancellationTime = new Date(cancellationRequest.createdAt);
         const timeDiffHours =
@@ -4550,9 +4582,9 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
       }
     } else if (booking.status === 'absent') {
       const teacherEntered = booking.attendance?.teacherEntered || false;
-      if (!teacherEntered) {
+      if (!teacherEntered && !booking.penaltyWaived) {
         absentClasses++;
-      } else {
+      } else if (teacherEntered) {
         studentAbsentClasses++;
       }
     } else if (booking.status === 'pending') {
@@ -4561,7 +4593,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
       const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
       const now = new Date();
       const timeDiffMinutes = (now - classDateTime) / (1000 * 60);
-      if (timeDiffMinutes > 15 && !teacherEntered) {
+      if (timeDiffMinutes > 15 && !teacherEntered && !booking.penaltyWaived) {
         absentClasses++;
       } else if (timeDiffMinutes > 15 && teacherEntered && !studentEntered) {
         studentAbsentClasses++;
@@ -5914,6 +5946,14 @@ router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.
     let teacherPaymentImpact = 'normal'; // normal, no_payment
     let studentPaymentImpact = 'normal'; // normal, full_payment
     
+    const { EMERGENCY_ISSUE_TYPE } = require('./utils/emergencyExcuse');
+    if (issueType === EMERGENCY_ISSUE_TYPE && !req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Upload proof for this reason. It is not valid without proof, and the penalty is not waived.',
+      });
+    }
+
     if (issueType.includes('Technical Issue') || issueType.includes('Audio/Video problems')) {
       // Teacher technical issues - teacher doesn't get paid, student still pays
       teacherPaymentImpact = 'no_payment';
@@ -5936,6 +5976,7 @@ router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.
       issueType,
       description,
       screenshotPath,
+      proofPath: screenshotPath || '',
       submittedAt: submittedAt || new Date(),
       status: 'pending',
       teacherPaymentImpact,

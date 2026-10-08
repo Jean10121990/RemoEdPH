@@ -508,7 +508,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
-    <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
+    <script src="js/presentation-overlay.js?v=slide-sync-3"></script>
     <script src="js/virtual-background.js?v=vbg-7"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
@@ -4760,6 +4760,8 @@
                   pageNumPending = null;
                   pageNum = clampPdfPage(pending);
                   showCurrentPage(useFitScale || fitToViewerMode);
+                  emitPageChange(pageNum);
+                  emitPresenterPdfSync();
                 }
               });
             }).catch(function (err) {
@@ -4794,6 +4796,8 @@
               pageNum = next;
               window.pdfViewerState.pageNum = pageNum;
               updateNavButtonStates();
+              emitPageChange(pageNum);
+              emitPresenterPdfSync();
               return;
             }
             pageNum = next;
@@ -5960,16 +5964,17 @@
         console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId, slideIndex });
 
         if (window.currentPptOverlay) {
-          const pptIdx = slideIndex != null ? slideIndex : (page != null ? page - 1 : null);
-          if (pptIdx != null && typeof RemoedPresentationOverlay !== 'undefined') {
-            RemoedPresentationOverlay.handlePresentationSlideChanged({
-              currentSlideIndex: pptIdx,
-              materialId: materialId,
-              slideIndex: pptIdx,
-              page: page
-            });
-            return;
-          }
+          // Scroll estimates send a page number only and were pinning students on slide 2.
+          // The slide toolbar sends slideIndex for every Next click; follow that.
+          if (slideIndex == null || typeof RemoedPresentationOverlay === 'undefined') return;
+          RemoedPresentationOverlay.handlePresentationSlideChanged({
+            currentSlideIndex: slideIndex,
+            materialId: materialId,
+            slideIndex: slideIndex,
+            page: page,
+            totalSlides: totalSlides
+          });
+          return;
         }
 
         const viewerState = window.pdfViewerState || {};

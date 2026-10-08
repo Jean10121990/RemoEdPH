@@ -149,7 +149,7 @@
   <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
-        <script src="js/teacher-page-header.js?v=mark-all-1"></script>
+        <script src="js/teacher-page-header.js?v=mark-all-2"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'teaching-fee');
             TeacherPageHeader.render('teaching-fee');
@@ -1052,7 +1052,9 @@
             console.log(`   Teacher Entered: ${teacherEntered}`);
             console.log(`   Student Entered: ${studentEntered}`);
             
-            if (!teacherEntered) {
+            if (!teacherEntered && classItem.penaltyWaived) {
+              console.log(`Emergency excuse: teacher absence penalty waived for ${classItem.date} ${classItem.time}`);
+            } else if (!teacherEntered) {
               // Teacher was absent - count for deduction
               absentCount++;
               console.log(`❌ TEACHER ABSENT DEDUCTION: Class ${classItem.date} ${classItem.time} - Teacher didn't enter, counting for ₱${ratePer25Minutes} deduction`);
@@ -1081,7 +1083,7 @@
             const now = new Date();
             const timeDiffMinutes = (now - classDateTime) / (1000 * 60);
             
-            if (timeDiffMinutes > 15 && !teacherEntered) {
+            if (timeDiffMinutes > 15 && !teacherEntered && !classItem.penaltyWaived) {
               // Class is more than 15 minutes past scheduled time and teacher didn't enter
               // Mark as teacher absent
               absentCount++;
@@ -1108,7 +1110,7 @@
           }
           
           // Cancelled deduction: % of 25-min rate (same as Total Hourly ÷ 2) by hours before class
-          if (classItem.status === 'cancelled' && classItem.cancellationTime && classItem.date && classItem.time) {
+          if (classItem.status === 'cancelled' && !classItem.penaltyWaived && classItem.cancellationTime && classItem.date && classItem.time) {
             const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
             const cancellationTime = new Date(classItem.cancellationTime);
             const timeDifferenceHours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
@@ -2831,8 +2833,9 @@
           } else if (classItem.status === 'absent') {
             // Only count as absent if the TEACHER was absent, not the student
             const teacherEntered = classItem.attendance?.teacherEntered || false;
-            if (!teacherEntered) {
-              // Teacher was absent - count for deduction
+            if (!teacherEntered && classItem.penaltyWaived) {
+              console.log(`   Emergency excuse: teacher absence penalty waived`);
+            } else if (!teacherEntered) {
               absentClasses++;
               totalAbsentDeduction += ratePer25Minutes;
               console.log(`   ❌ Teacher Absent = ₱${ratePer25Minutes.toFixed(2)} deduction`);
@@ -2842,7 +2845,7 @@
             }
           } else if (classItem.status === 'cancelled') {
             cancelledClasses++;
-            if (classItem.cancellationTime && classItem.date && classItem.time) {
+            if (!classItem.penaltyWaived && classItem.cancellationTime && classItem.date && classItem.time) {
               const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
               const cancellationTime = new Date(classItem.cancellationTime);
               const timeDifferenceHours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
@@ -2851,6 +2854,8 @@
                 : 0;
               totalCancelledDeduction += d;
               console.log(`   🚫 Cancelled — ₱${d.toFixed(2)} deduction (${timeDifferenceHours.toFixed(2)}h before class)`);
+            } else if (classItem.penaltyWaived) {
+              console.log(`   Cancelled — emergency excuse, penalty waived`);
             } else {
               console.log(`   🚫 Cancelled (no cancellation timestamp — deduction not applied in debug)`);
             }

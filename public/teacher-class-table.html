@@ -82,7 +82,7 @@
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
-    <script src="js/teacher-page-header.js?v=mark-all-1"></script>
+    <script src="js/teacher-page-header.js?v=mark-all-2"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
             TeacherPageHeader.render('class-schedule');
@@ -267,6 +267,22 @@
         <div id="cancellation-form" class="cim-inline-form" style="display: none;">
           <h4>Cancellation Request</h4>
           <div class="form-group">
+            <label for="cancellation-excuse" class="cim-field-label" style="display:block;margin-bottom:6px;">If this is an emergency, choose it. Otherwise leave the regular option.</label>
+            <select id="cancellation-excuse" onchange="toggleCancellationProof()" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:8px;">
+              <option value="">Regular cancellation (penalty schedule applies)</option>
+              <option value="natural-disaster">Natural disaster</option>
+              <option value="calamity">Calamity</option>
+              <option value="electricity-maintenance">Electricity maintenance</option>
+              <option value="scheduled-outage">Scheduled electricity outage</option>
+              <option value="accident">Accident</option>
+              <option value="death">Death</option>
+              <option value="emergency">Emergency</option>
+            </select>
+            <div id="cancellation-proof-row" style="display:none;margin-bottom:8px;">
+              <label for="cancellation-proof" class="cim-field-label" style="display:block;margin-bottom:6px;">Upload proof</label>
+              <input type="file" id="cancellation-proof" accept="image/*" style="width:100%;">
+              <small style="color:#64748b;">This reason is allowed for a cancellation only with proof. The penalty is waived after it is accepted.</small>
+            </div>
             <label for="cancellation-reason-inline" class="cim-field-label" style="display:block;margin-bottom:6px;">Reason for cancellation</label>
             <textarea id="cancellation-reason-inline" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="3" maxlength="500"></textarea>
             <div class="char-count" style="margin-top: 4px; font-size: 0.72rem; color: #64748b;">
@@ -353,6 +369,7 @@
               <option value="Student Behavior Issue">Student Behavior Issue</option>
               <option value="Payment Issue">Payment Issue</option>
               <option value="Schedule Conflict">Schedule Conflict</option>
+              <option value="Emergency (disaster, calamity, power outage, accident, death)">Emergency (disaster, calamity, power outage, accident, death)</option>
               <option value="Other">Other</option>
             </select>
           </div>
@@ -368,9 +385,9 @@
           </div>
           
           <div class="form-group">
-            <label for="issue-screenshot">Upload Screenshot (Proof):</label>
+            <label for="issue-screenshot">Upload proof:</label>
             <input type="file" id="issue-screenshot" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            <small style="color: #666;">Please upload a screenshot as proof of the issue</small>
+            <small style="color: #666;">Proof is required. An emergency reason (disaster, calamity, power outage, accident, death) is valid only with proof, and the penalty can then be waived.</small>
           </div>
         </div>
         <div class="remoed-modal-footer">
@@ -1921,10 +1938,22 @@
       });
     }
     
+    function toggleCancellationProof() {
+      const excuse = document.getElementById('cancellation-excuse');
+      const row = document.getElementById('cancellation-proof-row');
+      if (!row || !excuse) return;
+      row.style.display = excuse.value ? 'block' : 'none';
+    }
+
     function hideCancellationForm() {
       document.getElementById('cancellation-form').style.display = 'none';
       document.getElementById('cancellation-reason-inline').value = '';
       document.getElementById('char-count-inline').textContent = '0';
+      const excuse = document.getElementById('cancellation-excuse');
+      const proof = document.getElementById('cancellation-proof');
+      if (excuse) excuse.value = '';
+      if (proof) proof.value = '';
+      toggleCancellationProof();
     }
 
     function updateCharCount() {
@@ -1942,6 +1971,14 @@
         alert('Cancellation reason must be at least 10 characters long.');
         return;
       }
+      const excuseEl = document.getElementById('cancellation-excuse');
+      const proofEl = document.getElementById('cancellation-proof');
+      const emergencyReason = excuseEl ? excuseEl.value : '';
+      const proofFile = proofEl && proofEl.files ? proofEl.files[0] : null;
+      if (emergencyReason && !proofFile) {
+        alert('Upload proof for this reason. It is not valid without proof, and the penalty is not waived.');
+        return;
+      }
 
       if (!currentBooking) return;
 
@@ -1953,16 +1990,17 @@
           return;
         }
 
+        const formData = new FormData();
+        formData.append('bookingId', currentBooking._id);
+        formData.append('reason', reason);
+        if (emergencyReason) formData.append('emergencyReason', emergencyReason);
+        if (proofFile) formData.append('proof', proofFile);
         const response = await fetch('/api/teacher/request-cancellation', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            bookingId: currentBooking._id,
-            reason: reason
-          })
+          body: formData
         });
 
         const data = await response.json();

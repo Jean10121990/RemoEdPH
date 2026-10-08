@@ -21,6 +21,9 @@ const cancellationRequestSchema = new mongoose.Schema({
     minlength: 10,
     maxlength: 500
   },
+  emergencyReason: { type: String, default: '' },
+  proofPath: { type: String, default: '' },
+  penaltyWaived: { type: Boolean, default: false },
   status: { 
     type: String, 
     enum: ['pending', 'approved', 'rejected'], 

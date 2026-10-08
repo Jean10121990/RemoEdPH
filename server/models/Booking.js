@@ -75,6 +75,8 @@ const bookingSchema = new mongoose.Schema({
   creditReservationReleasedAt: { type: Date, default: null },
   /** Kept on the schedule after Classroom SOS. QA uses this remark. */
   scheduleRemark: { type: String, default: '' },
+  /** Emergency excuse with proof. Skips absence and cancellation peso penalties. */
+  penaltyWaived: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
