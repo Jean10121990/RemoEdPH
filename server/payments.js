@@ -360,12 +360,16 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
   }
 });
 
-/** Soft launch only. PayMongo checkout stays. Set SOFT_LAUNCH_QR_OVERRIDE=false to show PayMongo again. */
-function softLaunchQrOverride() {
-  const v = String(process.env.SOFT_LAUNCH_QR_OVERRIDE == null ? 'true' : process.env.SOFT_LAUNCH_QR_OVERRIDE)
-    .trim()
-    .toLowerCase();
-  return v !== 'false' && v !== '0' && v !== 'off';
+/** True when Settings has student checkout on the MariBank QR. PayMongo stays in the app. */
+async function studentPaysWithQr() {
+  try {
+    const GlobalSettings = require('./models/GlobalSettings');
+    const settings = await GlobalSettings.findOne({}).select('studentPaymentMethod').lean();
+    if (settings && settings.studentPaymentMethod === 'paymongo') return false;
+  } catch (err) {
+    console.warn('[payments] payment method lookup failed:', err.message || err);
+  }
+  return true;
 }
 
 function normalizeInstapayReference(raw) {
@@ -374,15 +378,16 @@ function normalizeInstapayReference(raw) {
   return s;
 }
 
-router.get('/plan-quote', (req, res) => {
+router.get('/plan-quote', async (req, res) => {
   const selectedPlanId = normalizePlanId(req.query.planId || req.query.plan);
   const totals = selectedPlanId ? computePlanTotals(selectedPlanId) : null;
   if (!totals) {
     return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
   }
+  const qrOverride = await studentPaysWithQr();
   return res.json({
     success: true,
-    qrOverride: softLaunchQrOverride(),
+    qrOverride,
     pricing: {
       planId: totals.planId,
       usd_total: totals.usdTotal,
@@ -406,6 +411,12 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     const student = await Student.findById(studentId);
     if (!student) {
       return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+    if (!(await studentPaysWithQr())) {
+      return res.status(409).json({
+        success: false,
+        error: 'Plan payments are set to PayMongo. Use Continue to secure payment.',
+      });
     }
     const { hasCurrentConsent, consentRequiredBody } = require('./config/privacyConsent');
     if (!hasCurrentConsent(student)) {

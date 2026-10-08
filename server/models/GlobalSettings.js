@@ -9,6 +9,12 @@ const globalSettingsSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  /** Student plan checkout. maribank_qr is the soft-launch QR. paymongo is the card / GCash / Maya checkout. */
+  studentPaymentMethod: {
+    type: String,
+    enum: ['maribank_qr', 'paymongo'],
+    default: 'maribank_qr'
   }
 }, {
   timestamps: true

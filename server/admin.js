@@ -2751,6 +2751,36 @@ router.post('/settings/email', async (req, res) => {
   }
 });
 
+// Super-Admin Settings toggle. Stored on GlobalSettings, not in code.
+router.get('/settings/payment-method', async (req, res) => {
+  try {
+    const settings = await GlobalSettings.findOne({}).select('studentPaymentMethod').lean();
+    const method = settings && settings.studentPaymentMethod === 'paymongo' ? 'paymongo' : 'maribank_qr';
+    return res.json({ success: true, method });
+  } catch (error) {
+    console.error('Error loading payment method:', error);
+    return res.status(500).json({ success: false, message: 'Could not load the payment method.' });
+  }
+});
+
+router.post('/settings/payment-method', async (req, res) => {
+  try {
+    const method = String((req.body && req.body.method) || '').trim();
+    if (method !== 'maribank_qr' && method !== 'paymongo') {
+      return res.status(400).json({ success: false, message: 'Choose MariBank QR or PayMongo.' });
+    }
+    await GlobalSettings.findOneAndUpdate(
+      {},
+      { $set: { studentPaymentMethod: method, updatedAt: new Date() } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    return res.json({ success: true, method });
+  } catch (error) {
+    console.error('Error saving payment method:', error);
+    return res.status(500).json({ success: false, message: 'Could not save the payment method.' });
+  }
+});
+
 // GET platform settings
 router.get('/settings/platform', async (req, res) => {
   try {

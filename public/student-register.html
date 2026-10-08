@@ -717,6 +717,13 @@
 
       try {
         const origin = window.location.origin || '';
+        const modeRes = await fetch('/api/payments/plan-quote?planId=' + encodeURIComponent(planId));
+        const mode = await modeRes.json().catch(() => ({}));
+        if (modeRes.ok && mode.qrOverride) {
+          alert('Plan payments are on the MariBank QR. Log in, then pay on Credits.');
+          window.location.href = '/login/';
+          return;
+        }
         const payRes = await fetch('/api/payments/create-link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

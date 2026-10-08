@@ -1067,6 +1067,17 @@
           setSignupLoadingState(true);
 
           try {
+            const modeRes = await fetch(
+              "/api/payments/plan-quote?planId=" + encodeURIComponent(selectedPlan)
+            );
+            const mode = await modeRes.json().catch(() => ({}));
+            if (modeRes.ok && mode.qrOverride) {
+              alert(
+                "Plan payments are on the MariBank QR. Create your account, log in, then pay on Credits."
+              );
+              window.location.href = "/student-register.html";
+              return;
+            }
             const payload = {
               username,
               email,

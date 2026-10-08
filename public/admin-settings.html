@@ -47,6 +47,22 @@
                 grid-template-columns: 1fr;
             }
         }
+        .pay-switch-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+        .pay-switch-label { font-weight: 700; color: #94a3b8; min-width: 7.5rem; }
+        .pay-switch-label.is-on { color: #166534; }
+        .pay-switch-label.is-on-pay { color: #0369a1; }
+        .pay-switch {
+            width: 56px; height: 32px; border: none; border-radius: 999px;
+            background: #47BC3E; position: relative; cursor: pointer; padding: 0; flex: 0 0 auto;
+        }
+        .pay-switch[aria-checked="true"] { background: #1ca7e7; }
+        .pay-switch:disabled { opacity: 0.6; cursor: wait; }
+        .pay-switch-knob {
+            position: absolute; top: 3px; left: 3px; width: 26px; height: 26px;
+            border-radius: 50%; background: #fff; transition: transform 0.15s ease;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+        }
+        .pay-switch[aria-checked="true"] .pay-switch-knob { transform: translateX(24px); }
     </style>
 </head>
 <body class="page-admin-settings">
@@ -59,6 +75,19 @@
         <script>AdminSidebar.render('admin-sidebar-root', 'settings');</script>
         <div class="remoed-content">
             <div class="remoed-section">
+
+                <div class="setting-card" id="payment-method-card">
+                    <div class="setting-title">Student payment</div>
+                    <div class="setting-description">Switch how students pay for a plan. MariBank QR collects the transfer and Accounting confirms the credits. PayMongo is the card, GCash, and Maya checkout. The other method stays in the app.</div>
+                    <div class="pay-switch-row">
+                        <span class="pay-switch-label is-on" id="pay-label-qr">MariBank QR</span>
+                        <button type="button" class="pay-switch" id="payment-method-switch" role="switch" aria-checked="false" aria-labelledby="pay-label-qr pay-label-pm">
+                            <span class="pay-switch-knob"></span>
+                        </button>
+                        <span class="pay-switch-label" id="pay-label-pm">PayMongo</span>
+                    </div>
+                    <p id="payment-method-status" class="muted" style="font-size:0.85rem;margin:10px 0 0;">Loading…</p>
+                </div>
 
                 <div class="setting-card">
                     <div class="setting-title">👤 Profile settings</div>
@@ -261,11 +290,71 @@
             }
         });
 
+        function paintPaymentSwitch(method) {
+            var paymongo = method === 'paymongo';
+            var sw = document.getElementById('payment-method-switch');
+            var qrLabel = document.getElementById('pay-label-qr');
+            var pmLabel = document.getElementById('pay-label-pm');
+            var status = document.getElementById('payment-method-status');
+            if (sw) sw.setAttribute('aria-checked', paymongo ? 'true' : 'false');
+            if (qrLabel) qrLabel.className = 'pay-switch-label' + (paymongo ? '' : ' is-on');
+            if (pmLabel) pmLabel.className = 'pay-switch-label' + (paymongo ? ' is-on-pay' : '');
+            if (status) {
+                status.textContent = paymongo
+                    ? 'Students pay with PayMongo (GCash, Maya, or card).'
+                    : 'Students pay with the MariBank QR. Confirm the transaction number to add credits.';
+            }
+        }
+
+        async function loadPaymentMethod() {
+            try {
+                var r = await fetch('/api/admin/settings/payment-method', {
+                    credentials: 'include',
+                    headers: adminAuthHeaders(false)
+                });
+                var j = await r.json().catch(function () { return {}; });
+                paintPaymentSwitch(j && j.method === 'paymongo' ? 'paymongo' : 'maribank_qr');
+            } catch (e) {
+                paintPaymentSwitch('maribank_qr');
+            }
+        }
+
+        async function savePaymentMethod(method) {
+            var sw = document.getElementById('payment-method-switch');
+            var status = document.getElementById('payment-method-status');
+            if (sw) sw.disabled = true;
+            if (status) status.textContent = 'Saving…';
+            try {
+                var r = await fetch('/api/admin/settings/payment-method', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: adminAuthHeaders(true),
+                    body: JSON.stringify({ method: method })
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok || !j.success) throw new Error(j.message || 'Could not save');
+                paintPaymentSwitch(j.method);
+            } catch (e) {
+                if (status) status.textContent = e.message || 'Could not save the payment method.';
+                loadPaymentMethod();
+            } finally {
+                if (sw) sw.disabled = false;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
                 AdminSidebar.applyGreetingFromStorage();
             }
             loadLoginActivity();
+            loadPaymentMethod();
+            var paySwitch = document.getElementById('payment-method-switch');
+            if (paySwitch) {
+                paySwitch.addEventListener('click', function () {
+                    var next = paySwitch.getAttribute('aria-checked') === 'true' ? 'maribank_qr' : 'paymongo';
+                    savePaymentMethod(next);
+                });
+            }
         });
 
         async function openSecuritySettings() {

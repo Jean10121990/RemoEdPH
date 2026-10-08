@@ -95,7 +95,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 - PayMongo webhooks verify the signature on the raw body (`/api/webhooks/paymongo` uses `express.raw`). Keep that mount before `express.json`.
 - Credits and bookings change only on the server (`creditBalance`, credit lots). Never trust a client-sent price, plan, or credit count.
-- Soft-launch InstaPay overrides the Credits pay button while `SOFT_LAUNCH_QR_OVERRIDE` is not `false`. PayMongo `POST /api/payments/create-link` and the webhook stay. `POST /api/payments/qr-claim` is a student JWT. The student id comes from the token. It stores a reference and does not add credits. `POST /api/admin/qr-payments/:id/confirm` (admin JWT, permission `acct:qr_confirm`) is what adds the plan credits. Amount and plan are computed on the server.
+- Student checkout method is `GlobalSettings.studentPaymentMethod`, set only by Super-Admin `POST /api/admin/settings/payment-method` (`system:settings`). `GET /api/payments/plan-quote` is public and reports which method is on. PayMongo `POST /api/payments/create-link` and the webhook stay. `POST /api/payments/qr-claim` is a student JWT and is refused while PayMongo is selected. The student id comes from the token. It stores a transaction number and does not add credits. `POST /api/admin/qr-payments/:id/confirm` (admin JWT, permission `acct:qr_confirm`) is what adds the plan credits. Amount and plan are computed on the server.
 
 ## 10. Before push
 
