@@ -161,7 +161,12 @@ Check here **first** when a symptom looks familiar. Each entry: what the user sa
 **Class chat empty after a refresh** (fixed 2026-10-05)
 - Cause: the server keeps the room’s last 50 messages and emits `chat-history` on every `join`, but `public/live-classroom.html` had no `chat-history` listener.
 - Fix: the listener re-renders them. The room is also saved in `classroom_chats` (`server/models/ClassroomChat.js`) so a refresh or a server restart still shows the chat. Finish (`class-finished` and `POST /api/booking/:id/end-session`) deletes that room’s chat, so the next class starts empty. A 24-hour TTL deletes a chat if Finish never happens. Teacher/admin Messages (`PeerMessage`) are not deleted.
-- Typing: the box shows “<name> is typing…” while the other person types (`typing` / `stop-typing`, room taken from the socket’s join).
+- Typing: the box shows “Pat is typing...” (first name from the class label) while the other person types (`typing` / `stop-typing`, room taken from the socket’s join).
+
+**Camera becomes “Waiting for student/teacher” on a weak signal, and QA recording stops** (fixed 2026-10-08)
+- Symptom: both sides lose the other person’s camera and see “Waiting for…”, so it looks like they left. QA recording then stops.
+- Cause: a connection blip called `markPeerVideoDisconnected` (clears the video and shows Waiting). The server also emitted `user-left` the moment the socket dropped, even when they were about to reconnect.
+- Fix: if that person was already on camera, the tile stays with their name and goes black only when the picture itself drops (`is-signal-hold`). “Waiting for…” is only before they join, or 20 seconds after they really leave (`schedulePeerLeave`). QA still counts the black tile as the student being in class.
 
 **Chat hidden by huge media buttons**
 - Fix (`public/css/live-classroom-redesign.css`): teacher media-lock buttons are 32 px round icons; video tiles are capped; chat keeps a minimum height. Use higher-specificity selectors because `live-classroom.css` has older `min-height: 140px` rules.

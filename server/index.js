@@ -239,6 +239,44 @@ function broadcastChatMessage(ioRef, room, stored) {
 
 // Store user information for attendance tracking
 const userSessions = new Map(); // socketId -> { room, userType, userId, username }
+// A brief socket drop must not look like the person left the class.
+const PEER_LEAVE_GRACE_MS = 20000;
+const pendingPeerLeave = new Map(); // room|userType -> timeout
+
+function roomHasRole(room, userType) {
+  const ids = io.sockets.adapter.rooms.get(room);
+  if (!ids) return false;
+  for (const id of ids) {
+    const info = userSessions.get(id);
+    if (info && info.userType === userType) return true;
+  }
+  return false;
+}
+
+function cancelPeerLeave(room, userType) {
+  if (!room || !userType || userType === 'observer') return;
+  const key = room + '|' + userType;
+  const timer = pendingPeerLeave.get(key);
+  if (!timer) return;
+  clearTimeout(timer);
+  pendingPeerLeave.delete(key);
+}
+
+function schedulePeerLeave(room, userType, username) {
+  if (!room || !userType || userType === 'observer') return;
+  const key = room + '|' + userType;
+  if (pendingPeerLeave.has(key)) clearTimeout(pendingPeerLeave.get(key));
+  const timer = setTimeout(() => {
+    pendingPeerLeave.delete(key);
+    if (roomHasRole(room, userType)) return;
+    io.to(room).emit('user-left', {
+      userType,
+      username,
+      message: `${username} has left the classroom`
+    });
+  }, PEER_LEAVE_GRACE_MS);
+  pendingPeerLeave.set(key, timer);
+}
 const mediaControlStateByRoom = new Map(); // room -> { audio, video }
 const classroomSettingsByRoom = new Map(); // room -> { videosAllowed, penAllowed }
 const pendingClassroomSettingsBySocket = new Map(); // socketId -> { videosAllowed, penAllowed }
@@ -2275,6 +2313,7 @@ io.on('connection', socket => {
         
         // Store user session information
         userSessions.set(socket.id, { room, userType, userId, username });
+        cancelPeerLeave(room, userType);
         
         // Set socket properties for room status detection
         socket.room = room;
@@ -2503,6 +2542,7 @@ io.on('connection', socket => {
         
         // Store user session information
         userSessions.set(socket.id, { room, userType, userId, username });
+        cancelPeerLeave(room, userType);
         
         // Set socket properties for room status detection
         socket.room = room;
@@ -2824,12 +2864,8 @@ io.on('connection', socket => {
             const { room, userType, username } = userInfo;
             console.log(`👋 ${userType} ${username} left room ${room}`);
             
-            // Notify other users in the room that someone left
-            socket.to(room).emit('user-left', {
-                userType: userType,
-                username: username,
-                message: `${username} has left the classroom`
-            });
+            // Wait before saying they left. A weak signal reconnects inside this window.
+            schedulePeerLeave(room, userType, username);
             
             // Get updated participant count after user leaves
             const clients = io.sockets.adapter.rooms.get(room);

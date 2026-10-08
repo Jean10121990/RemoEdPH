@@ -95,6 +95,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 - PayMongo webhooks verify the signature on the raw body (`/api/webhooks/paymongo` uses `express.raw`). Keep that mount before `express.json`.
 - Credits and bookings change only on the server (`creditBalance`, credit lots). Never trust a client-sent price, plan, or credit count.
+- Soft-launch InstaPay: `POST /api/payments/qr-claim` is a student JWT. The student id comes from the token. It stores a reference and does not add credits. `POST /api/admin/qr-payments/:id/confirm` (admin JWT, permission `acct:qr_confirm`) is what adds the plan credits. Amount and plan are computed on the server.
 
 ## 10. Before push
 
@@ -109,3 +110,4 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 |------|--------|
 | 2026-09-30 | Removed teacher debug routes and unauthenticated completed-classes duplicate. `GET /api/teacher/booking/by-classroom/:id` requires the booking's teacher, student, or an admin (student allowlist extended). `GET /api/teacher/dashboard-stats` uses the signed-in teacher. `GET /api/teacher/classes?teacherId&week` requires the matching teacher Bearer (`teacher-open-class.html` sends it). Message / notification socket rooms bound to the JWT. `verifyToken` no longer logs headers or decoded tokens. |
 | 2026-10-01 | Student privacy consent gate on register, book, and logged-in checkout. Teacher SOS and admin incident actions use the JWT. Observer join is admin-only. Permission `incident:manage` (QA and Super-Admin seed; grantable; not Super-Admin-only). |
+| 2026-10-08 | InstaPay QR claim (`POST /api/payments/qr-claim`, student JWT) does not add credits. Confirm (`POST /api/admin/qr-payments/:id/confirm`, `acct:qr_confirm`) does. |

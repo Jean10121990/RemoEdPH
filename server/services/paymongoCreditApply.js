@@ -126,6 +126,7 @@ async function applyExistingStudentPurchase({
   paymongoPaymentId,
   checkoutSessionId,
   paymongoEventId,
+  paymentMethod = 'paymongo',
 }) {
   if (!student || !pending) {
     return { ok: false, error: 'Missing student or pending registration' };
@@ -173,7 +174,7 @@ async function applyExistingStudentPurchase({
     {
       $set: {
         paymentStatus: 'paid',
-        paymentMethod: 'paymongo',
+        paymentMethod: paymentMethod || 'paymongo',
         paymentReference: paymongoPaymentId || idempotencyKey,
         paymentPaidAt: creditTimestamp,
         subscriptionStatus: 'active',

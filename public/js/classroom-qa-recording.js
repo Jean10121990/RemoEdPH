@@ -152,9 +152,12 @@
     return null;
   }
 
-  /** Student is present when remote video has a live track (teacher view). */
+  /** Student is present when remote video has a live track (teacher view).
+   *  A black tile during a weak signal still counts — they did not leave. */
   function isStudentPresent() {
     if (liveUserType() !== 'teacher') return true;
+    var tile = document.getElementById('peer-video-tile');
+    if (tile && tile.classList.contains('is-signal-hold')) return true;
     var remoteV = document.getElementById('remote-video');
     if (!remoteV || !remoteV.srcObject) return false;
     var tracks = remoteV.srcObject.getTracks ? remoteV.srcObject.getTracks() : [];

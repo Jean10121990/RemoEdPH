@@ -46,6 +46,7 @@ const PERMISSION_CATALOG = [
   { key: 'acct:payroll_view', module: 'Accounting Hub', label: 'Payroll — View', sortOrder: 500 },
   { key: 'acct:payroll_dispense', module: 'Accounting Hub', label: 'Payroll — Dispense / Save', sortOrder: 510 },
   { key: 'acct:subscriptions_view', module: 'Accounting Hub', label: 'Student Subscriptions — View', sortOrder: 520 },
+  { key: 'acct:qr_confirm', module: 'Accounting Hub', label: 'InstaPay QR — Confirm and add credits', sortOrder: 525 },
   { key: 'acct:export', module: 'Accounting Hub', label: 'Export Reports', sortOrder: 530 },
   // Fee
   { key: 'fee:view', module: 'Admin Fee', label: 'Admin Fee — View', sortOrder: 550 },
@@ -107,6 +108,7 @@ const ROLE_SEED_PERMISSIONS = {
     'acct:payroll_view',
     'acct:payroll_dispense',
     'acct:subscriptions_view',
+    'acct:qr_confirm',
     'acct:export',
     'mkt:commissions_view',
   ],
@@ -186,6 +188,7 @@ const API_PATH_PERMISSION_RULES = [
   { re: /\/settings\/|\/maintenance|\/cleanup\//, key: 'system:settings' },
   { re: /\/dispense|teachers-weekly-salaries|teacher-period-incentive|admin-fee\/dispense|admin-fee\/payroll/, key: 'acct:payroll_dispense' },
   { re: /student-subscriptions/, key: 'acct:subscriptions_view' },
+  { re: /qr-payments/, key: 'acct:qr_confirm' },
   { re: /\/issues|issue-reports/, key: 'qa:issues_view' },
   { re: /classroom-recordings/, key: 'qa:recordings_view' },
   { re: /teacher-pipeline/, key: 'hr:pipeline' },
@@ -243,6 +246,14 @@ async function seedAdminRbac() {
         );
       } else if (slug === 'admin_qa' && existing.permissions.indexOf('incident:manage') === -1) {
         await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'incident:manage' } });
+      }
+      if (
+        slug === 'admin_accounting' &&
+        existing &&
+        Array.isArray(existing.permissions) &&
+        existing.permissions.indexOf('acct:qr_confirm') === -1
+      ) {
+        await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'acct:qr_confirm' } });
       }
     }
     return true;

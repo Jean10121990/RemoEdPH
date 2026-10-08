@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const Student = require('./models/Student');
 const PendingRegistration = require('./models/PendingRegistration');
+const QrPaymentClaim = require('./models/QrPaymentClaim');
+const { qrClaimLimiter } = require('./middleware/apiRateLimits');
 
 const router = express.Router();
 const { getJwtSecret } = require('./config/jwtSecret');
@@ -355,6 +357,159 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       error?.message ||
       'Failed to create payment link';
     return res.status(500).json({ success: false, error: apiError });
+  }
+});
+
+function normalizeInstapayReference(raw) {
+  const s = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (s.length < 6 || s.length > 40) return '';
+  return s;
+}
+
+router.get('/plan-quote', (req, res) => {
+  const selectedPlanId = normalizePlanId(req.query.planId || req.query.plan);
+  const totals = selectedPlanId ? computePlanTotals(selectedPlanId) : null;
+  if (!totals) {
+    return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
+  }
+  return res.json({
+    success: true,
+    pricing: {
+      planId: totals.planId,
+      usd_total: totals.usdTotal,
+      php_total: totals.phpTotal,
+      exchange_rate_used: EXCHANGE_RATE_PHP,
+      credits: (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].credits) || 0,
+    },
+  });
+});
+
+/**
+ * Soft-launch InstaPay QR. The student JWT identifies the account.
+ * Submitting a reference does not add credits. Accounting confirms the bank payment first.
+ */
+router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) => {
+  try {
+    const studentId = String(req.studentFromToken.studentId || '').trim();
+    if (!mongoose.isValidObjectId(studentId)) {
+      return res.status(401).json({ success: false, error: 'Student login required' });
+    }
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+    const { hasCurrentConsent, consentRequiredBody } = require('./config/privacyConsent');
+    if (!hasCurrentConsent(student)) {
+      return res.status(403).json(consentRequiredBody());
+    }
+
+    const selectedPlanId = normalizePlanId(req.body && (req.body.planId || req.body.plan));
+    const totals = selectedPlanId ? computePlanTotals(selectedPlanId) : null;
+    if (!totals) {
+      return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
+    }
+    const referenceNormalized = normalizeInstapayReference(req.body && req.body.reference);
+    if (!referenceNormalized) {
+      return res.status(400).json({
+        success: false,
+        error: 'Enter the InstaPay reference from your payment (6 to 40 letters or numbers).',
+      });
+    }
+
+    const open = await QrPaymentClaim.findOne({ studentId: student._id, status: 'pending' }).lean();
+    if (open) {
+      return res.status(409).json({
+        success: false,
+        error: 'You already have a payment waiting for confirmation. Credits are added after that one is matched.',
+        claimId: String(open._id),
+      });
+    }
+    const used = await QrPaymentClaim.findOne({
+      referenceNormalized,
+      status: { $in: ['pending', 'confirmed'] },
+    }).lean();
+    if (used) {
+      return res.status(409).json({
+        success: false,
+        error: 'That reference was already submitted. Check the receipt or use a different payment.',
+      });
+    }
+
+    const claim = await QrPaymentClaim.create({
+      studentId: student._id,
+      username: student.username || '',
+      planId: totals.planId,
+      amountPhp: totals.phpTotal,
+      referenceNormalized,
+      referenceDisplay: referenceNormalized,
+      status: 'pending',
+    });
+
+    try {
+      const { notifyAdmin, notifyStudent } = require('./services/notifyService');
+      const planLabel = (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].label) || totals.planId;
+      await notifyAdmin(
+        'qr-payment',
+        `InstaPay payment to confirm: ${student.username} · ${planLabel} · ₱${totals.phpTotal.toFixed(2)} · ref ${referenceNormalized}`,
+        { actionUrl: '/admin-student-subscriptions.html', importance: 'actionable' }
+      );
+      await notifyStudent(
+        student.username,
+        'qr-payment',
+        `Payment reference received for ${planLabel}. Credits are added after we match the InstaPay transfer.`,
+        { actionUrl: '/student-credits.html', importance: 'normal' }
+      );
+    } catch (nErr) {
+      console.warn('[payments/qr-claim] notify failed:', nErr.message || nErr);
+    }
+
+    return res.json({
+      success: true,
+      claimId: String(claim._id),
+      status: 'pending',
+      pricing: {
+        planId: totals.planId,
+        php_total: totals.phpTotal,
+        credits: (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].credits) || 0,
+      },
+    });
+  } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: 'That reference was already submitted. Check the receipt or use a different payment.',
+      });
+    }
+    return res.status(500).json({ success: false, error: 'Could not save the payment reference.' });
+  }
+});
+
+router.get('/qr-claims', requireVerifyStudent, async (req, res) => {
+  try {
+    const studentId = String(req.studentFromToken.studentId || '').trim();
+    if (!mongoose.isValidObjectId(studentId)) {
+      return res.status(401).json({ success: false, error: 'Student login required' });
+    }
+    const claims = await QrPaymentClaim.find({ studentId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('planId amountPhp referenceDisplay status creditsAdded createdAt confirmedAt')
+      .lean();
+    return res.json({
+      success: true,
+      claims: claims.map((c) => ({
+        id: String(c._id),
+        planId: c.planId,
+        amountPhp: c.amountPhp,
+        reference: c.referenceDisplay,
+        status: c.status,
+        creditsAdded: c.creditsAdded || 0,
+        createdAt: c.createdAt,
+        confirmedAt: c.confirmedAt,
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Could not load payment references.' });
   }
 });
 

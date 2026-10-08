@@ -48,6 +48,14 @@ const teacherPeerSearchLimiter = rateLimit({
   message: { error: 'Too many search requests. Please slow down.' },
 });
 
+/** Student InstaPay reference submissions (does not add credits). */
+const qrClaimLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_QR_CLAIM_MAX_PER_15M || 20),
+  ...std,
+  message: { success: false, error: 'Too many payment submissions. Try again later.' },
+});
+
 const authRegisterLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_REGISTER_MAX_PER_HOUR || 25),
@@ -70,5 +78,6 @@ module.exports = {
   fileUploadLimiter,
   teacherPeerSearchLimiter,
   authRegisterLimiter,
+  qrClaimLimiter,
   teacherInviteByApplicationLimiter,
 };

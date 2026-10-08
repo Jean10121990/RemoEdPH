@@ -1958,6 +1958,21 @@ body.page-live-classroom .pdf-controls-top-row button#pdf-next-btn-custom:disabl
   display: block;
 }
 
+/* Weak signal: person is still in class. Keep the tile black with their name. */
+.video.is-signal-hold {
+  background: #000;
+  min-height: 120px;
+}
+
+.video.is-signal-hold video {
+  opacity: 0;
+  background: #000;
+}
+
+.video.is-signal-hold .video-empty-hint {
+  display: none !important;
+}
+
 .video.is-peer,
 .video.is-local,
 .video.teacher,

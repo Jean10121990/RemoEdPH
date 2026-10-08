@@ -51,6 +51,11 @@
                 <div class="remoed-section-title">Student Subscriptions</div>
                 <p class="muted" style="margin-top:0;">Every student subscription and PayMongo purchase across the platform.</p>
 
+                <div id="qr-pay-panel" style="margin-bottom:18px;">
+                    <h3 style="margin:0 0 6px;">InstaPay QR payments</h3>
+                    <p class="muted" style="margin-top:0;">Match the reference in MariBank, then confirm. Confirm adds that plan’s lesson credits. Reject does not.</p>
+                    <div id="qr-pay-list" class="ss-empty">Loading QR payments…</div>
+                </div>
                 <div class="ss-cards" id="ss-cards"></div>
 
                 <div class="ss-toolbar">
@@ -277,6 +282,49 @@
             URL.revokeObjectURL(a.href);
         }
 
+        function loadQrPayments() {
+            var box = document.getElementById('qr-pay-list');
+            if (!box) return;
+            adminApiFetch('/api/admin/qr-payments')
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (out) {
+                    if (!out.ok || !out.data || out.data.success === false) {
+                        box.textContent = (out.data && (out.data.error || out.data.message)) || 'Could not load QR payments.';
+                        return;
+                    }
+                    var claims = out.data.claims || [];
+                    var pending = claims.filter(function (c) { return c.status === 'pending'; });
+                    var recent = claims.filter(function (c) { return c.status !== 'pending'; }).slice(0, 8);
+                    if (!pending.length && !recent.length) {
+                        box.textContent = 'No QR payments yet.';
+                        return;
+                    }
+                    var html = '';
+                    if (pending.length) {
+                        html += '<div class="ss-table-wrap" style="max-height:none;margin-bottom:10px;"><table class="ss-table"><thead><tr><th>When</th><th>Student</th><th>Plan</th><th>Amount</th><th>Reference</th><th></th></tr></thead><tbody>';
+                        pending.forEach(function (c) {
+                            html += '<tr><td>' + escapeHtml(formatDate(c.createdAt)) + '</td><td>' + escapeHtml(c.username) + '</td><td>' + escapeHtml(c.planId) + '</td><td>' + escapeHtml(formatPhp(c.amountPhp)) + '</td><td>' + escapeHtml(c.reference) + '</td><td>' +
+                                '<button type="button" class="btn btn-success" data-qr-action="confirm" data-qr-id="' + escapeHtml(c.id) + '">Confirm and add credits</button> ' +
+                                '<button type="button" class="btn" data-qr-action="reject" data-qr-id="' + escapeHtml(c.id) + '">Reject</button></td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                    } else {
+                        html += '<p class="muted">No payments waiting.</p>';
+                    }
+                    if (recent.length) {
+                        html += '<p class="muted" style="margin-bottom:6px;">Recent</p><div class="ss-table-wrap" style="max-height:180px;"><table class="ss-table"><thead><tr><th>When</th><th>Student</th><th>Plan</th><th>Reference</th><th>Status</th><th>Credits</th></tr></thead><tbody>';
+                        recent.forEach(function (c) {
+                            html += '<tr><td>' + escapeHtml(formatDate(c.createdAt)) + '</td><td>' + escapeHtml(c.username) + '</td><td>' + escapeHtml(c.planId) + '</td><td>' + escapeHtml(c.reference) + '</td><td>' + escapeHtml(c.status) + '</td><td>' + escapeHtml(String(c.creditsAdded || 0)) + '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                    }
+                    box.innerHTML = html;
+                })
+                .catch(function () {
+                    box.textContent = 'Could not load QR payments.';
+                });
+        }
+
         function load() {
             document.getElementById('ss-status-line').textContent = 'Loading…';
             var includeAll = document.getElementById('ss-include-all').checked ? '1' : '0';
@@ -318,7 +366,36 @@
         if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
             AdminSidebar.applyGreetingFromStorage();
         }
+        document.getElementById('qr-pay-list').addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-qr-action]');
+            if (!btn) return;
+            var id = btn.getAttribute('data-qr-id');
+            var action = btn.getAttribute('data-qr-action');
+            if (!id || (action !== 'confirm' && action !== 'reject')) return;
+            if (action === 'confirm' && !window.confirm('Add this plan’s credits to the student?')) return;
+            btn.disabled = true;
+            adminApiFetch('/api/admin/qr-payments/' + encodeURIComponent(id) + '/' + action, { method: 'POST' })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (out) {
+                    if (!out.ok || !out.data || out.data.success === false) {
+                        alert((out.data && (out.data.error || out.data.message)) || 'Could not update this payment.');
+                        btn.disabled = false;
+                        return;
+                    }
+                    if (action === 'confirm') {
+                        alert(out.data.duplicate ? 'This payment was already credited.' : ('Credits added: ' + (out.data.creditsAdded || 0)));
+                    }
+                    loadQrPayments();
+                    load();
+                })
+                .catch(function () {
+                    alert('Could not update this payment.');
+                    btn.disabled = false;
+                });
+        });
+
         load();
+        loadQrPayments();
     })();
     </script>
 </body>

@@ -717,6 +717,22 @@ body.page-live-classroom .video.is-waiting-peer .video-header p {
   color: var(--lc-muted) !important;
 }
 
+body.page-live-classroom .video.is-signal-hold {
+  background: #000 !important;
+  border-style: solid !important;
+  min-height: 96px !important;
+  max-height: 128px;
+}
+
+body.page-live-classroom .video.is-signal-hold video {
+  opacity: 0;
+  background: #000;
+}
+
+body.page-live-classroom .video.is-signal-hold .video-empty-hint {
+  display: none !important;
+}
+
 body.page-live-classroom .video,
 body.page-live-classroom .video.is-peer,
 body.page-live-classroom .video.is-local,

@@ -6513,10 +6513,42 @@ body.page-student-credits{
       font-size:1.05rem;
       color:#0f172a;
     }
+    .page-student-credits .checkout-qr-box{
+      text-align:center;
+      background:#fff;
+      border:1px solid #e2e8f0;
+      border-radius:14px;
+      padding:12px 12px 4px;
+      margin-bottom:12px;
+    }
+    .page-student-credits .checkout-qr-box img{
+      width:220px;
+      max-width:100%;
+      height:auto;
+      display:inline-block;
+    }
+    .page-student-credits .checkout-qr-box p{margin:8px 0 10px;font-size:0.85rem;}
+    .page-student-credits .checkout-ref-label{
+      display:block;
+      font-weight:700;
+      font-size:0.88rem;
+      color:#334155;
+      margin-bottom:6px;
+    }
+    .page-student-credits .checkout-ref-input{
+      width:100%;
+      box-sizing:border-box;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid #cbd5e1;
+      font-size:1rem;
+      margin-bottom:12px;
+    }
     .page-student-credits .checkout-php{
       margin-top:0.35rem;
-      font-size:0.85rem;
-      color:#64748b;
+      font-size:0.95rem;
+      font-weight:800;
+      color:#0f172a;
       text-align:right;
     }
     .page-student-credits .checkout-validity{

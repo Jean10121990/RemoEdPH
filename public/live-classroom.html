@@ -763,6 +763,17 @@
       let classroomStudentLabel = '';
       let classroomTeacherLabel = '';
       let myChatLabel = userType === 'student' ? 'Student' : username;
+
+      /** First name shown while typing, e.g. "Pat is typing..." */
+      function myTypingName() {
+        const raw = userType === 'teacher'
+          ? (classroomTeacherLabel || myChatLabel)
+          : (classroomStudentLabel || myChatLabel);
+        const s = String(raw || '').trim();
+        if (!s) return userType === 'teacher' ? 'Teacher' : 'Student';
+        const first = s.split(/\s+/)[0];
+        return first || s;
+      }
       
       console.log('🔍 User Type Detection:', {
         userType,
@@ -1007,11 +1018,42 @@
         tile.classList.toggle('is-waiting-peer', !!waiting);
       }
 
+      // True after the other person has actually appeared. A weak signal must not
+      // put the tile back to "Waiting for…", or QA treats them as gone and stops.
+      let peerSeenInClass = false;
+
       function markPeerVideoConnected() {
+        peerSeenInClass = true;
+        const tile = document.getElementById('peer-video-tile');
+        if (tile) tile.classList.remove('is-signal-hold');
         setPeerVideoWaiting(false);
       }
 
+      /** Person is still in the class. Keep the tile and their name. Black only if the picture itself dropped. */
+      function holdPeerVideoForWeakSignal() {
+        if (!peerSeenInClass) {
+          markPeerVideoDisconnected();
+          return;
+        }
+        const tile = document.getElementById('peer-video-tile');
+        if (!tile) return;
+        tile.classList.remove('is-waiting-peer');
+        const rv = document.getElementById('remote-video');
+        const tracks = rv && rv.srcObject && rv.srcObject.getVideoTracks ? rv.srcObject.getVideoTracks() : [];
+        const pictureLive = tracks.some(function (t) {
+          return t && t.readyState === 'live' && t.enabled !== false && !t.muted;
+        });
+        if (pictureLive) {
+          tile.classList.remove('is-signal-hold');
+          return;
+        }
+        tile.classList.add('is-signal-hold');
+      }
+
       function markPeerVideoDisconnected() {
+        peerSeenInClass = false;
+        const tile = document.getElementById('peer-video-tile');
+        if (tile) tile.classList.remove('is-signal-hold');
         const rv = document.getElementById('remote-video');
         if (rv) {
           try {
@@ -2817,7 +2859,8 @@
           
           if (state === 'failed' || state === 'disconnected') {
             console.warn('⚠️ Connection failed/disconnected');
-            if (typeof markPeerVideoDisconnected === 'function') markPeerVideoDisconnected();
+            // Keep the camera tile (black) so both sides still see the other person is in class.
+            if (typeof holdPeerVideoForWeakSignal === 'function') holdPeerVideoForWeakSignal();
             attemptReconnect();
           } else if (state === 'connected') {
             console.log('✅ Peer connection established successfully');
@@ -5816,6 +5859,14 @@
       let studentPdfContainer = null;
       
       // When a student joins, teacher re-broadcasts presenter mode + video follow so late joiners catch up
+      socket.on('user-left', (data = {}) => {
+        const left = String(data.userType || '');
+        const opposite = userType === 'teacher' ? 'student' : userType === 'student' ? 'teacher' : '';
+        if (!opposite || left !== opposite) return;
+        console.log('👋 Peer left the class:', left);
+        if (typeof markPeerVideoDisconnected === 'function') markPeerVideoDisconnected();
+      });
+
       socket.on('user-joined', ({ userType: joinedUserType, room: eventRoom } = {}) => {
         if (userType === 'student' && joinedUserType === 'teacher' && (!eventRoom || eventRoom === room)) {
           if (window.RemoedStudentWait) RemoedStudentWait.setTeacherPresent(true);
@@ -7738,7 +7789,7 @@
         if (!socket || !socket.connected || window.__lcObserver) return;
         if (!typingSent) {
           typingSent = true;
-          socket.emit('typing', { label: myChatLabel || '' });
+          socket.emit('typing', { label: myTypingName() });
         }
         if (typingIdleTimer) clearTimeout(typingIdleTimer);
         typingIdleTimer = setTimeout(emitStopTyping, 1500);
@@ -7755,7 +7806,7 @@
       socket.on('user-typing', (data) => {
         if (!chatTypingEl) return;
         const who = (data && data.label) || 'Someone';
-        chatTypingEl.textContent = who + ' is typing…';
+        chatTypingEl.textContent = who + ' is typing...';
         chatTypingEl.hidden = false;
         if (typingHideTimer) clearTimeout(typingHideTimer);
         typingHideTimer = setTimeout(() => {
@@ -8149,7 +8200,10 @@
           classroomStudentLabel = studentLabel;
           if (userType === 'student') myChatLabel = studentLabel;
         }
-        if (teacherName) classroomTeacherLabel = teacherName;
+        if (teacherName) {
+          classroomTeacherLabel = teacherName;
+          if (userType === 'teacher') myChatLabel = teacherName;
+        }
         applyVideoTileLabels();
 
         if (identityEl) {

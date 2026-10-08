@@ -948,46 +948,9 @@
         }
 
         if (authStudent) {
-          setPlanButtonLoadingState(buttonEl, true);
-          try {
-            const payload = {
-              userId: authStudent.studentId,
-              planId: selectedPlan,
-              description: buildPlanDescription(selectedPlan),
-              success_url: `${window.location.origin}/student-credits.html?payment=success`,
-              cancel_url: `${window.location.origin}/student-credits.html?payment=cancelled`,
-              usd_total: planAmounts.usdTotal,
-              exchange_rate_used: EXCHANGE_RATE_USED,
-            };
-
-            const payHeaders = { "Content-Type": "application/json" };
-            if (authStudent.token) {
-              payHeaders["Authorization"] = "Bearer " + authStudent.token;
-            }
-            const response = await fetch("/api/payments/create-link", {
-              method: "POST",
-              headers: payHeaders,
-              body: JSON.stringify(payload),
-            });
-            const result = await response.json();
-            if (result.code === "CONSENT_REQUIRED") {
-              window.location.href = "/student-credits.html?consent=required";
-              return;
-            }
-            if (!response.ok || !result.success || !result.checkout_url) {
-              throw new Error(
-                result.error ||
-                  result.message ||
-                  "Failed to generate payment link",
-              );
-            }
-            window.location.href = result.checkout_url;
-            return;
-          } catch (error) {
-            alert(`❌ ${error.message}`);
-            setPlanButtonLoadingState(buttonEl, false);
-            return;
-          }
+          window.location.href =
+            "/student-credits.html?plan=" + encodeURIComponent(selectedPlan);
+          return;
         }
 
         const assessmentEl = document.getElementById("assessment");

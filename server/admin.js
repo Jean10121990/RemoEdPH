@@ -3742,6 +3742,116 @@ function studentHasSubscriptionRecord(s, purchases) {
   return false;
 }
 
+// Soft-launch InstaPay QR. Confirm is what adds plan credits. Identity is the admin JWT.
+router.get('/qr-payments', async (req, res) => {
+  try {
+    const QrPaymentClaim = require('./models/QrPaymentClaim');
+    const rows = await QrPaymentClaim.find({ status: { $in: ['pending', 'confirmed', 'rejected'] } })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    return res.json({
+      success: true,
+      claims: rows.map((c) => ({
+        id: String(c._id),
+        username: c.username,
+        planId: c.planId,
+        amountPhp: c.amountPhp,
+        reference: c.referenceDisplay,
+        status: c.status,
+        creditsAdded: c.creditsAdded || 0,
+        createdAt: c.createdAt,
+        confirmedAt: c.confirmedAt,
+        confirmedBy: c.confirmedBy || '',
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Could not load QR payments.' });
+  }
+});
+
+router.post('/qr-payments/:id/confirm', async (req, res) => {
+  try {
+    const QrPaymentClaim = require('./models/QrPaymentClaim');
+    const { applyExistingStudentPurchase } = require('./services/paymongoCreditApply');
+    const id = String(req.params.id || '');
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid payment id' });
+    }
+    const claim = await QrPaymentClaim.findById(id);
+    if (!claim) return res.status(404).json({ success: false, error: 'Payment not found' });
+    if (claim.status === 'confirmed') {
+      return res.json({ success: true, alreadyConfirmed: true, creditsAdded: claim.creditsAdded || 0 });
+    }
+    if (claim.status !== 'pending') {
+      return res.status(409).json({ success: false, error: 'This payment is not waiting for confirmation.' });
+    }
+    const student = await Student.findById(claim.studentId);
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    const idempotencyKey = 'qrclaim:' + String(claim._id);
+    const pending = {
+      plan: claim.planId,
+      amount: claim.amountPhp,
+      referralCode: '',
+      registrationId: idempotencyKey,
+      status: 'pending',
+      save: async function savePendingStub() {
+        return this;
+      },
+    };
+    const applied = await applyExistingStudentPurchase({
+      student,
+      pending,
+      planId: claim.planId,
+      idempotencyKey,
+      paymongoPaymentId: claim.referenceNormalized,
+      checkoutSessionId: '',
+      paymongoEventId: '',
+      paymentMethod: 'instapay_qr',
+    });
+    if (!applied.ok) {
+      return res.status(500).json({ success: false, error: applied.error || 'Could not add credits' });
+    }
+    claim.status = 'confirmed';
+    claim.confirmedBy = String((req.user && req.user.username) || '');
+    claim.confirmedAt = new Date();
+    claim.creditsAdded = Number(applied.creditsAdded) || 0;
+    await claim.save();
+    return res.json({
+      success: true,
+      creditsAdded: claim.creditsAdded,
+      duplicate: !!applied.duplicate,
+      availableBalance: applied.availableBalance,
+    });
+  } catch (error) {
+    console.error('[admin/qr-payments/confirm]', error.message || error);
+    return res.status(500).json({ success: false, error: 'Could not confirm this payment.' });
+  }
+});
+
+router.post('/qr-payments/:id/reject', async (req, res) => {
+  try {
+    const QrPaymentClaim = require('./models/QrPaymentClaim');
+    const id = String(req.params.id || '');
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid payment id' });
+    }
+    const claim = await QrPaymentClaim.findById(id);
+    if (!claim) return res.status(404).json({ success: false, error: 'Payment not found' });
+    if (claim.status !== 'pending') {
+      return res.status(409).json({ success: false, error: 'This payment is not waiting for confirmation.' });
+    }
+    claim.status = 'rejected';
+    claim.rejectedBy = String((req.user && req.user.username) || '');
+    claim.rejectedAt = new Date();
+    await claim.save();
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Could not reject this payment.' });
+  }
+});
+
 // Accounting Hub: all student subscriptions (current plan + purchase history).
 router.get('/student-subscriptions', async (req, res) => {
   try {
