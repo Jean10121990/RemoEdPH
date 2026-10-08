@@ -248,6 +248,8 @@ async function assembleUploadedParts(doc) {
     .filter((n) => /\/part-\d+$/.test(n) || /part-\d+$/.test(n))
     .sort();
   if (!partRels.length) {
+    const stored = await findUpload(doc.relativePath);
+    if (stored && Number(stored.length) > 0) return { ok: true };
     const diskAbs = path.join(__dirname, '../uploads', doc.relativePath);
     try {
       const st = await fsp.stat(diskAbs);
@@ -520,6 +522,10 @@ router.post(
       }
       if (doc.recordedByUploaderKey !== uploaderKey(req)) {
         return res.status(403).json({ success: false, message: 'Not your upload session' });
+      }
+
+      if (doc.status === 'complete') {
+        return res.json({ success: true, recordingId: doc._id.toString(), sizeBytes: doc.sizeBytes, alreadyComplete: true });
       }
 
       const { durationSec, mimeType } = req.body || {};

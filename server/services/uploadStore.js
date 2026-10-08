@@ -92,8 +92,10 @@ async function findUpload(relativePath) {
   if (base && base !== rel) candidates.push(base);
   if (base && !rel.startsWith('files/')) candidates.push('files/' + base);
   for (const name of candidates) {
-    const docs = await bucket.find({ filename: name }).sort({ uploadDate: -1 }).limit(1).toArray();
-    if (docs && docs.length) return docs[0];
+    const docs = await bucket.find({ filename: name }).sort({ uploadDate: -1 }).limit(8).toArray();
+    if (!docs || !docs.length) continue;
+    const withBytes = docs.find((doc) => Number(doc.length) > 0);
+    return withBytes || docs[0];
   }
   return null;
 }
