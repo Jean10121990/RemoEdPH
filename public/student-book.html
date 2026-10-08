@@ -3847,8 +3847,8 @@
                     }
                 }
 
-                // Always show the full catalog. Free-plan students can only pick the next Pre-Level lesson.
-                // A paid plan with credits can book any lesson in the selected level.
+                // Full catalog stays visible. Free-plan students can only pick the next Pre-Level lesson.
+                // Paid students can book the next Learning Journey stop or any earlier lesson, not a later one.
 
                 // De-dupe by lessonNumber + title
                 const seen = new Set();
@@ -3865,9 +3865,14 @@
                     if (studentHasPaidPlan && curriculumLevelsMatch(selectedLevel, 'Pre-Level')) {
                         hintEl.textContent =
                             'Pre-Level lessons are free trial lessons. You can book any of them, and they do not use a credit.';
+                    } else if (studentHasPaidPlan && normalizeProgressLevelKey(selectedLevel)) {
+                        hintEl.textContent =
+                            'Follow your Learning Journey in order. You can book Lesson ' +
+                            studentMaxBookableLesson +
+                            ' or any earlier lesson. Each class uses one credit.';
                     } else if (studentHasPaidPlan) {
                         hintEl.textContent =
-                            'Your plan is active. You can book any lesson in this level. Each class uses one credit.';
+                            'Your plan is active. Each class uses one credit.';
                     } else if (studentFreePlanSequenceDone) {
                         hintEl.innerHTML = 'You finished all 22 free Pre-Level lessons. <a href="student-credits.html">Subscribe to Book</a> the next levels.';
                     } else if (studentFreePlanActive && !studentFreePlanCanBook) {
@@ -3898,9 +3903,17 @@
                             studentFreePlanActive &&
                             studentFreePlanCanBook &&
                             num === studentFreePlanNextLesson;
-                        const locked = studentHasPaidPlan ? false : !isNextFreeLesson;
+                        const aheadOfTrail =
+                            studentHasPaidPlan &&
+                            !!normalizeProgressLevelKey(selectedLevel) &&
+                            Number.isFinite(num) &&
+                            num > studentMaxBookableLesson;
+                        const locked = studentHasPaidPlan ? aheadOfTrail : !isNextFreeLesson;
                         option.value = lesson._id.toString(); // Ensure it's a string
-                        if (locked && studentFreePlanActive) {
+                        if (aheadOfTrail) {
+                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Finish earlier lessons first)`;
+                            option.title = 'Finish the lessons before this one on your Learning Journey';
+                        } else if (locked && studentFreePlanActive) {
                             option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
                             option.title = 'Subscribe to book this lesson now, or wait for your next free month';
                         } else if (locked) {
@@ -3925,7 +3938,15 @@
                         );
                         if (firstOpen) lessonSelect.value = firstOpen.value;
                     } else if (studentHasPaidPlan && !lessonSelect.value) {
-                        const firstOpen = Array.from(lessonSelect.options).find((o) => o.value && !o.disabled);
+                        const nextStop = Array.from(lessonSelect.options).find(
+                            (o) =>
+                                o.value &&
+                                !o.disabled &&
+                                o.dataset.lessonNumber === String(studentMaxBookableLesson)
+                        );
+                        const firstOpen =
+                            nextStop ||
+                            Array.from(lessonSelect.options).find((o) => o.value && !o.disabled);
                         if (firstOpen) lessonSelect.value = firstOpen.value;
                     }
 

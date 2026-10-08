@@ -1087,14 +1087,7 @@ function normalizeProgressLevel(raw) {
 }
 
 function isBookingLessonCompleted(b) {
-  const st = String(b.status || '').toLowerCase();
-  if (st === 'cancelled' || st === 'canceled' || st.indexOf('cancelled') === 0 || st === 'absent') {
-    return false;
-  }
-  if (st === 'completed' || st === 'pending_feedback') return true;
-  if (b.attendance && b.attendance.classCompleted) return true;
-  if (b.sessionEndedAt || b.finishedAt) return true;
-  return false;
+  return require('./services/studentLessonUnlock').isBookingLessonCompleted(b);
 }
 
 /**

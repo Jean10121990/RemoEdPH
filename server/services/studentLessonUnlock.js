@@ -21,10 +21,9 @@ function isBookingLessonCompleted(b) {
   if (st === 'cancelled' || st === 'canceled' || st.indexOf('cancelled') === 0 || st === 'absent') {
     return false;
   }
-  if (st === 'completed' || st === 'pending_feedback') return true;
-  if (b.attendance && b.attendance.classCompleted) return true;
-  if (b.sessionEndedAt || b.finishedAt) return true;
-  return false;
+  // Only a finished wrap-up (status completed) moves the Learning Journey.
+  // pending_feedback, a late finishedAt, or a tab left open must not unlock the next lesson.
+  return st === 'completed';
 }
 
 function linearFromBatchLesson(batch, lessonNum) {
@@ -252,6 +251,7 @@ async function assertLessonNotAheadOfProgress({
 module.exports = {
   LESSONS_PER_BATCH,
   LESSONS_PER_LEVEL,
+  isBookingLessonCompleted,
   maxBookableFromCompletedKeys,
   buildCompletedLessonKeys,
   resolveLessonNumber,

@@ -378,7 +378,8 @@
                 const endTime = new Date(booking.finishedAt);
                 const diffMs = endTime - startTime;
                 const diffMins = Math.round(diffMs / 60000);
-                return diffMins > 0 ? `${diffMins} min` : '25 min';
+                const capped = Math.min(diffMins, 40);
+                return capped > 0 ? `${capped} min` : '25 min';
             }
             return '25 min';
         }

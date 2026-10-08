@@ -51,6 +51,7 @@ const {
   getClassroomEntryGate,
   getScheduledStartMs,
   EARLY_ENTRY_MINUTES,
+  cappedClassEndDate,
 } = require('./services/classroomEntryWindow');
 const { primeRedisConnection } = require('./utils/redisClient');
 const { isMongoObjectId, isBsonOrCastIdError } = require('./utils/mongoObjectId');
@@ -976,6 +977,11 @@ const {
   emitBookingsUpdatedForTeacher,
   finalizeBookingAfterTeacherFeedbackWrap,
 } = require('./services/teacherClassFinalize');
+const {
+  lessonYmdFromBooking,
+  feedbackCutoffYmd,
+  isFeedbackOpenForCutoff,
+} = require('./utils/feedbackCutoff');
 
 function resolveLessonDateFromBooking(booking) {
   if (!booking) return new Date();
@@ -1212,7 +1218,10 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
       });
     }
 
-    booking.sessionEndedAt = new Date();
+    const endAt = cappedClassEndDate(booking, new Date());
+    booking.sessionEndedAt = endAt;
+    const finMs = booking.finishedAt ? new Date(booking.finishedAt).getTime() : 0;
+    if (!finMs || finMs > endAt.getTime()) booking.finishedAt = endAt;
     booking.status = 'pending_feedback';
     await booking.save();
     forgetClassroomChat(booking.classroomId);
@@ -1262,6 +1271,15 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
     }
     if (booking.teacherId !== teacherId) {
       return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
+    }
+    const { feedbackBlockForBooking } = require('./utils/feedbackEligibility');
+    const feedbackBlock = await feedbackBlockForBooking(booking);
+    if (feedbackBlock.blocked) {
+      return res.status(400).json({
+        success: false,
+        error: feedbackBlock.error,
+        code: feedbackBlock.code,
+      });
     }
     if (isBookingSessionFinalized(booking)) {
       return res.json({
@@ -1325,6 +1343,16 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       return res.status(403).json({
         success: false,
         error: 'Access denied. This booking does not belong to you.',
+      });
+    }
+
+    const { feedbackBlockForBooking: blockCompleteFeedback } = require('./utils/feedbackEligibility');
+    const completeBlock = await blockCompleteFeedback(booking);
+    if (completeBlock.blocked) {
+      return res.status(400).json({
+        success: false,
+        error: completeBlock.error,
+        code: completeBlock.code,
       });
     }
 
@@ -1394,6 +1422,10 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
 
     const sessionFinalized = isBookingSessionFinalized(booking);
     const pendingSessionEnd = String(booking.status || '').toLowerCase() === 'pending_feedback';
+    const cutoffDate = feedbackCutoffYmd(lessonYmdFromBooking(booking));
+    const { feedbackBlockForBooking } = require('./utils/feedbackEligibility');
+    const feedbackBlock = await feedbackBlockForBooking(booking);
+    const canRevise = !feedbackBlock.blocked && isFeedbackOpenForCutoff(booking);
 
     res.json({
       success: true,
@@ -1401,6 +1433,11 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
       hasTeacherFeedback: !!teacherFeedback,
       sessionFinalized,
       pendingSessionEnd,
+      canRevise,
+      feedbackBlocked: !!feedbackBlock.blocked,
+      feedbackBlockCode: feedbackBlock.code || null,
+      feedbackBlockReason: feedbackBlock.error || null,
+      cutoffDate,
       bookingStatus: booking.status,
       feedback: teacherFeedback
         ? {
@@ -1457,10 +1494,22 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       });
     }
 
-    if (isBookingSessionFinalized(booking)) {
+    const { feedbackBlockForBooking } = require('./utils/feedbackEligibility');
+    const feedbackBlock = await feedbackBlockForBooking(booking);
+    if (feedbackBlock.blocked) {
       return res.status(400).json({
         success: false,
-        error: 'Feedback already submitted and class finalized for this session.',
+        error: feedbackBlock.error,
+        code: feedbackBlock.code,
+      });
+    }
+
+    const cutoffOpen = isFeedbackOpenForCutoff(booking);
+    if (isBookingSessionFinalized(booking) && !cutoffOpen) {
+      return res.status(400).json({
+        success: false,
+        error: 'This cut-off has closed. Feedback can no longer be changed.',
+        cutoffClosed: true,
       });
     }
 
@@ -1528,15 +1577,17 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       console.warn('StarReceived upsert:', srErr.message || srErr);
     }
 
-    try {
-      const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
-      setImmediate(() => {
-        notifyStudentLesson1FeedbackReady(booking).catch((err) =>
-          console.error('[lesson1 feedback email]', err.message || err)
-        );
-      });
-    } catch (e) {
-      console.error('[lesson1 feedback email] setup', e.message || e);
+    if (!existingTeacherFeedback) {
+      try {
+        const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
+        setImmediate(() => {
+          notifyStudentLesson1FeedbackReady(booking).catch((err) =>
+            console.error('[lesson1 feedback email]', err.message || err)
+          );
+        });
+      } catch (e) {
+        console.error('[lesson1 feedback email] setup', e.message || e);
+      }
     }
 
     await finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId);
@@ -1544,7 +1595,9 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
 
     res.json({
       success: true,
-      message: 'Feedback submitted and class finalized',
+      message: existingTeacherFeedback
+        ? 'Feedback updated'
+        : 'Feedback submitted and class finalized',
       feedback: {
         id: feedback._id,
         rating,
@@ -3810,6 +3863,20 @@ const startServer = () => {
           // Start periodic check for absent students (every minute) only if DB connected
           setInterval(checkAndMarkAbsentStudents, 60 * 1000);
           console.log(`⏰ Absent student check scheduled (every minute)`);
+
+          const { autoEndOverlongClasses, capStoredClassDuration } = require('./services/classAutoEnd');
+          setInterval(() => {
+            autoEndOverlongClasses().catch((e) =>
+              console.warn('[class-auto-end]', e.message || e)
+            );
+          }, 60 * 1000);
+          setTimeout(() => {
+            capStoredClassDuration().catch((e) =>
+              console.warn('[class-auto-end] cap', e.message || e)
+            );
+            autoEndOverlongClasses().catch(() => {});
+          }, 12000);
+          console.log(`⏰ Live classes auto-end 40 minutes after the scheduled start`);
           
           // Run initial check for any students who should already be marked as absent
           setTimeout(checkAndMarkAbsentStudents, 5000); // Run after 5 seconds

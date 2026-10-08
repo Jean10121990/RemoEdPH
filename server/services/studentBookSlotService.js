@@ -219,6 +219,23 @@ async function runBookSlot(req, res) {
         });
       }
     }
+
+    // Learning Journey order: next stop on this level, or any earlier lesson. Not a later one.
+    const { assertLessonNotAheadOfProgress } = require('./studentLessonUnlock');
+    const orderGate = await assertLessonNotAheadOfProgress({
+      uniqueIdentifiers: [
+        student.username,
+        student.email,
+        student._id != null ? String(student._id) : '',
+        req.user && req.user.studentId != null ? String(req.user.studentId) : '',
+      ],
+      studentLevel,
+      lessonId,
+      lesson,
+    });
+    if (!orderGate.ok) {
+      return res.status(orderGate.status || 400).json(orderGate.body);
+    }
     // No per-day class cap (removed at the owner's request).
 
     const slotIdTrim = slotIdBody != null ? String(slotIdBody).trim() : '';

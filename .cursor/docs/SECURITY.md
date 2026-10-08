@@ -113,3 +113,6 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 | 2026-10-01 | Student privacy consent gate on register, book, and logged-in checkout. Teacher SOS and admin incident actions use the JWT. Observer join is admin-only. Permission `incident:manage` (QA and Super-Admin seed; grantable; not Super-Admin-only). |
 | 2026-10-08 | InstaPay QR claim (`POST /api/payments/qr-claim`, student JWT) does not add credits. Confirm (`POST /api/admin/qr-payments/:id/confirm`, `acct:qr_confirm`) does. |
 | 2026-10-08 | Teacher time-log edit review (`GET /api/admin/time-log-requests`, `POST /api/admin/review-time-log-request`) requires an admin JWT. |
+| 2026-10-08 | `POST /api/feedback/submit` (teacher JWT, booking owner) can update wrap-up feedback until that class’s salary date. After the cut-off it stays closed. A second save does not consume the credit again. |
+| 2026-10-08 | `POST /api/student/book-class` (and the teacher book-class equivalent) returns 400 `LESSON_AHEAD_OF_PROGRESS` when the lesson is past the student’s next stop on that level. Identity comes from the student JWT. |
+| 2026-10-08 | `POST /api/feedback/submit` (teacher JWT, booking owner) rejects student-absent classes and classes with a pending or resolved report issue. The teaching fee for a report stays with QA’s resolution. |

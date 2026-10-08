@@ -5,6 +5,8 @@
 const { DateTime } = require('luxon');
 
 const EARLY_ENTRY_MINUTES = 10;
+/** Live class hard stop. A closed tab must not leave the session open for hours. */
+const CLASS_MAX_MINUTES = 40;
 
 function getScheduledStartMs(booking) {
   if (!booking) return null;
@@ -84,9 +86,29 @@ function getClassroomEntryGate(booking, nowMs = Date.now()) {
   };
 }
 
+/** Scheduled start plus 40 minutes. Null when the booking has no start time. */
+function classHardEndDate(booking) {
+  const startMs = getScheduledStartMs(booking);
+  if (startMs == null) return null;
+  return new Date(startMs + CLASS_MAX_MINUTES * 60 * 1000);
+}
+
+/**
+ * Clock used when a session ends. Never later than the 40-minute mark,
+ * so a late Finish click cannot store a multi-hour duration.
+ */
+function cappedClassEndDate(booking, now = new Date()) {
+  const hard = classHardEndDate(booking);
+  if (!hard) return now;
+  return now.getTime() > hard.getTime() ? hard : now;
+}
+
 module.exports = {
   EARLY_ENTRY_MINUTES,
+  CLASS_MAX_MINUTES,
   getScheduledStartMs,
   isClassroomSessionEnded,
   getClassroomEntryGate,
+  classHardEndDate,
+  cappedClassEndDate,
 };

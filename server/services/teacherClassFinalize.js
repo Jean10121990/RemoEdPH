@@ -48,7 +48,7 @@ async function saveBookingForFinalize(booking, session) {
  */
 async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
   const st = String(booking.status || '').toLowerCase();
-  if (['absent', 'cancelled', 'canceled'].includes(st)) {
+  if (['absent', 'cancelled', 'canceled'].includes(st) || booking.absentMarkedAt) {
     throw new Error('Booking cannot be finalized in this state');
   }
   const ledgerDone =
@@ -59,8 +59,10 @@ async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
   booking.status = 'completed';
   booking.attendance = booking.attendance || {};
   booking.attendance.classCompleted = true;
-  if (!booking.finishedAt) {
-    booking.finishedAt = new Date();
+  const { cappedClassEndDate } = require('./classroomEntryWindow');
+  const cappedEnd = cappedClassEndDate(booking, new Date());
+  if (!booking.finishedAt || new Date(booking.finishedAt).getTime() > cappedEnd.getTime()) {
+    booking.finishedAt = cappedEnd;
   }
 
   const useTransactions =

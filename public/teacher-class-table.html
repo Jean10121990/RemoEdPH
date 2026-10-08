@@ -604,19 +604,35 @@
         const z = teacherTimezone;
         let start = DateTime.fromISO(`${parts.date}T${parts.time}`, { zone: z });
         if (!start.isValid) return false;
-        return DateTime.now().setZone(z) > start.plus({ minutes: 25 });
+        return DateTime.now().setZone(z) > start.plus({ minutes: 40 });
       } catch (_e) {
         return false;
       }
     }
 
+    function feedbackCutoffStillOpen(booking) {
+      const ymd = String((booking && booking.date) || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return true;
+      const day = Number(ymd.slice(8, 10));
+      const year = Number(ymd.slice(0, 4));
+      const month = Number(ymd.slice(5, 7));
+      const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const cutoffDay = day <= 15 ? 15 : last;
+      const cutoff = ymd.slice(0, 8) + String(cutoffDay).padStart(2, '0');
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
+      return today <= cutoff;
+    }
+
     function bookingNeedsTeacherFeedbackCell(booking) {
       if (!booking) return false;
-      if (booking.feedbackSubmitted === true || booking.hasTeacherFeedback === true) return false;
       if (booking.absentMarkedAt) return false;
+      if (booking.hasPendingIssue || booking.hasResolvedIssue) return false;
       if (booking.scheduleRemark) return false;
       const st = String(booking.status || '').toLowerCase();
-      if (st === 'completed' || st === 'cancelled' || st === 'canceled' || st === 'absent') return false;
+      if (st === 'cancelled' || st === 'canceled' || st === 'absent') return false;
+      const submitted = booking.feedbackSubmitted === true || booking.hasTeacherFeedback === true;
+      if (st === 'completed') return !submitted && feedbackCutoffStillOpen(booking);
+      if (submitted) return false;
       if (booking.feedbackSubmitted === false) return true;
       return st === 'pending_feedback';
     }
@@ -1221,7 +1237,9 @@
                 ' - ' +
                 stuEsc +
                 '</span>' +
-                '<button type="button" class="remoed-give-feedback-btn">Give Feedback</button></div>';
+                '<button type="button" class="remoed-give-feedback-btn">' +
+                (booking.feedbackSubmitted || booking.hasTeacherFeedback ? 'Edit Feedback' : 'Give Feedback') +
+                '</button></div>';
               const btn = slotElement.querySelector('.remoed-give-feedback-btn');
               if (btn) {
                 btn.addEventListener('click', function (ev) {
@@ -1744,18 +1762,36 @@
           issueBtn.style.opacity = canMarkAbsent ? '1' : '0.5';
         }
         
+        const isStudentAbsent =
+          !!booking.absentMarkedAt || String(booking.status || '').toLowerCase() === 'absent';
+        const hasReportIssue = !!(booking.hasPendingIssue || booking.hasResolvedIssue);
         const canComplete =
-          buttonElapsedMinutes >= 15 ||
-          booking.status === 'completed' ||
-          String(booking.status).toLowerCase() === 'pending_feedback' ||
-          booking.absentMarkedAt;
+          !isStudentAbsent &&
+          !hasReportIssue &&
+          (buttonElapsedMinutes >= 15 ||
+            booking.status === 'completed' ||
+            String(booking.status).toLowerCase() === 'pending_feedback');
         console.log('🔘 Complete button state:', {
           buttonElapsedMinutes,
           bookingStatus: booking.status,
           absentMarkedAt: booking.absentMarkedAt,
+          hasReportIssue,
           canComplete
         });
         
+        if (completeClassBtn) {
+          if (isStudentAbsent) {
+            completeClassBtn.title = 'Student absent classes cannot be completed with feedback.';
+          } else if (booking.hasPendingIssue) {
+            completeClassBtn.title = 'QA is still checking this report issue. The teaching fee comes from that review.';
+          } else if (booking.hasResolvedIssue) {
+            completeClassBtn.title = 'The teaching fee for this class follows the report-issue review.';
+          } else if (!canComplete) {
+            completeClassBtn.title = 'Complete Class stays locked until 15 minutes after the start.';
+          } else {
+            completeClassBtn.title = '';
+          }
+        }
         if (canComplete) {
           completeClassBtn.disabled = false;
           completeClassBtn.style.opacity = '1';
@@ -2360,6 +2396,22 @@
         } catch (error) {
             console.log('Could not refresh booking data:', error);
         }
+
+        const absentNow =
+          !!(currentBooking.absentMarkedAt) ||
+          String(currentBooking.status || '').toLowerCase() === 'absent';
+        if (absentNow) {
+          showNotification('This class is marked student absent. It cannot be changed to complete feedback.', 'info');
+          return;
+        }
+        if (currentBooking.hasPendingIssue) {
+          showNotification('This class has a report issue. QA still has to check the proof. The teaching fee is set from that review, not from class feedback.', 'info');
+          return;
+        }
+        if (currentBooking.hasResolvedIssue) {
+          showNotification('This class was reported as an issue. The teaching fee follows QA’s decision. Class feedback is not used for that fee.', 'info');
+          return;
+        }
         
         // Show feedback form instead of directly completing
         showClassFeedback().catch(console.error);
@@ -2371,6 +2423,9 @@
             showNotification('No class selected', 'error');
             return;
         }
+
+        window.__lcFeedbackRevise = false;
+        window.__lcFeedbackPrefill = null;
         
         // Check if feedback already exists for this booking
         try {
@@ -2384,19 +2439,22 @@
                 
                 if (response.ok) {
                     const feedbackState = await response.json();
-                    if (feedbackState.sessionFinalized || feedbackState.exists || feedbackState.hasTeacherFeedback) {
-                        showNotification('Feedback already submitted for this class', 'info');
-                        if (currentBooking) {
-                          currentBooking.feedbackSubmitted = true;
-                          currentBooking.hasTeacherFeedback = true;
-                          if (feedbackState.sessionFinalized || feedbackState.bookingStatus === 'completed') {
-                            currentBooking.status = 'completed';
-                          }
-                        }
+                    if (feedbackState.feedbackBlocked) {
+                        showNotification(feedbackState.feedbackBlockReason || 'Class feedback is not available for this class.', 'info');
                         closeClassInfo();
                         loadScheduleData();
                         return;
                     }
+                    const revising = !!(feedbackState.exists || feedbackState.hasTeacherFeedback || feedbackState.sessionFinalized);
+                    if (revising && feedbackState.canRevise === false) {
+                        const until = feedbackState.cutoffDate ? ' (cut-off ' + feedbackState.cutoffDate + ')' : '';
+                        showNotification('This cut-off has closed. Feedback can no longer be changed' + until + '.', 'info');
+                        closeClassInfo();
+                        loadScheduleData();
+                        return;
+                    }
+                    window.__lcFeedbackRevise = revising && feedbackState.canRevise !== false;
+                    window.__lcFeedbackPrefill = feedbackState.feedback || null;
                 }
             }
         } catch (error) {
@@ -2416,12 +2474,33 @@
         });
         document.getElementById('feedback-rating-text').textContent = '';
         
-        // Clear comment
-        document.getElementById('feedback-comment').value = '';
-        document.getElementById('feedback-char-count').textContent = '0';
+        const prefill = window.__lcFeedbackPrefill;
+        const commentEl = document.getElementById('feedback-comment');
+        const savedComment = prefill && prefill.comment ? String(prefill.comment) : '';
+        commentEl.value = savedComment;
+        document.getElementById('feedback-char-count').textContent = String(savedComment.length);
+        if (prefill && prefill.rating) {
+            selectedRating = Number(prefill.rating) || 0;
+        }
+        const submitBtn = document.getElementById('feedback-submit-btn');
+        if (submitBtn) {
+            submitBtn.textContent = window.__lcFeedbackRevise
+                ? 'Update Feedback'
+                : 'Complete Class & Submit Feedback';
+        }
         
         // Setup star rating functionality
         setupStarRating();
+        if (selectedRating > 0) {
+            document.querySelectorAll('#feedback-star-rating .star').forEach((star) => {
+                const n = parseInt(star.dataset.rating, 10);
+                const on = n <= selectedRating;
+                star.classList.toggle('active', on);
+                star.style.color = on ? '#ffd700' : '#ddd';
+            });
+            const ratingText = document.getElementById('feedback-rating-text');
+            if (ratingText) ratingText.textContent = selectedRating + ' star' + (selectedRating === 1 ? '' : 's');
+        }
         
         // Setup character count
         setupCharacterCount('feedback-comment', 'feedback-char-count');
@@ -2641,8 +2720,16 @@
                 
                 if (response.ok) {
                     const feedbackState = await response.json();
-                    if (feedbackState.sessionFinalized) {
-                        showNotification('Feedback already submitted for this class', 'info');
+                    if (feedbackState.feedbackBlocked) {
+                        showNotification(feedbackState.feedbackBlockReason || 'Class feedback is not available for this class.', 'info');
+                        closeClassFeedbackModal();
+                        closeClassInfo();
+                        loadScheduleData();
+                        return;
+                    }
+                    const revising = !!(feedbackState.exists || feedbackState.hasTeacherFeedback || feedbackState.sessionFinalized);
+                    if (revising && feedbackState.canRevise === false) {
+                        showNotification('This cut-off has closed. Feedback can no longer be changed.', 'info');
                         closeClassFeedbackModal();
                         closeClassInfo();
                         loadScheduleData();

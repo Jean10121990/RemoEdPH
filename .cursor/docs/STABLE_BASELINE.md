@@ -64,7 +64,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Signed-in student with `creditBalance > 0` can open **Book a Class**, see open slots, and complete `POST /api/student/book-class` (Network 2xx).
 - [ ] **Booking Details** opens as a centered body-level modal (not a side column inside `.remoed-content`).
-- [ ] A paid student with credits can book any lesson in the selected level, including Pre-Level. Completing a Pre-Level class does not subtract a credit. Growth levels still use one credit. Free-plan students still book only the next Pre-Level lesson.
+- [ ] A paid student with credits follows Learning Journey order on Little Seeds, Sprouts, Saplings, and Young Stewards: the next stop or any earlier lesson. Pre-Level stays open for a paid student and does not subtract a credit. Growth levels still use one credit. Free-plan students still book only the next Pre-Level lesson.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
 - [ ] A student without the current privacy version gets `CONSENT_REQUIRED` on book and logged-in checkout, then can continue after accepting. Booking confirmation and the student waiting room say classes are recorded for safety, quality assurance, and parent review.
 - [ ] Super-Admin **Settings** has a Student payment switch: MariBank QR or PayMongo. It is stored on `GlobalSettings.studentPaymentMethod` (default MariBank QR). Credits follows that switch. PayMongo `POST /api/payments/create-link` stays. A QR transaction number does not add credits. Accounting Hub → Student Subscriptions → **Confirm and add credits** does. Reject does not.
@@ -78,6 +78,10 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Class Schedule loads without console `resolveTeacherPortalToken is not defined`.
 - [ ] Teacher can open a booked class → **Report Issue** → submit with screenshot → success toast.
 - [ ] Live classroom has **Finish** only (locked until 15 minutes after the scheduled start). **Student Absent** and **Report Issue** are on Class Schedule → Class Information, and they show as soon as the class has started, including those first 15 minutes. Closing the classroom tab does **not** mark the student absent. An absent class is not pending feedback and does not ask for stars or a comment.
+- [ ] Every live class ends **40 minutes** after its scheduled start, including when the teacher only closes the tab. The stored end is that 40-minute mark, so class history cannot show a multi-hour duration. This does not mark the student absent and does not consume a credit. Credits still move only when feedback is submitted.
+- [ ] Teacher **Complete Class & Feedback** can be opened again and saved until the class’s salary date (15th for the 1st–15th, last day for the 16th–end), Philippine time, including classes already marked completed. After that date the cut-off is closed and feedback no longer changes. Updating feedback does not charge the credit again. A completed class that still has no feedback keeps a **Give Feedback** action on the schedule until that cut-off.
+- [ ] A class marked **student absent** cannot be turned into Complete Feedback. A **Report Issue** class also cannot use class feedback. QA sets the teaching fee when the report is resolved: system issue or student issue pays the teacher in full, teacher fault pays 20%, and a valid emergency with proof waives the penalty and pays the teacher in full. A dismissed report can still use normal class feedback.
+- [ ] Students follow lesson order on their level. Booking allows the next Learning Journey stop or any earlier lesson. A later lesson returns `LESSON_AHEAD_OF_PROGRESS`. The trail advances when the class status is **completed** (after feedback) or Lesson Progress is completed. Ending the live room, or a `finishedAt` stamp, does not unlock the next lesson.
 - [ ] QA **Other issue** (natural disaster, calamity, electricity maintenance, scheduled electricity outage, accident, death, emergency) is valid only with proof. After it is accepted, the teacher penalty is waived (100% of the class rate) and the student can reschedule for one month. The same reasons on a teacher cancellation waive the cancellation penalty only after admin approval and only when proof was uploaded. Do not pay 50% for this type.
 - [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend. In the teacher sidebar it sits **directly under Class Configuration** (`MENU_ITEMS` order in `public/js/teacher-sidebar.js`: Dashboard, Leaderboard, Class Schedule, Class Configuration, Emergency guidelines, Device Check, …).
 - [ ] After submit, schedule refresh does not clear the teacher session.
@@ -189,7 +193,7 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 - Students pull state with `classroom-settings-request` after connect. Always send current settings to joiners.
 - **Do not** `classroomSettingsByRoom.delete` when the last socket leaves. A teacher refresh must not unlock Videos/pen.
 - Students only see the **Lesson** tab. Board and Videos buttons are hidden, and student clicks do not change tabs. The teacher still opens Board; that follows the student, and leaving Board sends them back to the lesson.
-- Client: pen lock sets `window.__lcStudentPenAllowed` and gates the lesson slide Draw overlay, PDF annotate, and whiteboard (`body.lc-student-pen-locked`). Teacher can still draw. Draw starts off for both; each person turns their own pen on. `whiteboard-mode-stop` still sends students to Lesson. Board strokes are stored on the server and redrawn after the canvas resizes, so a teacher’s marks stay when the student draws.
+- Client: pen lock sets `window.__lcStudentPenAllowed` and gates the lesson slide Draw overlay, PDF annotate, and whiteboard (`body.lc-student-pen-locked`). Teacher can still draw. Draw starts off for both; each person turns their own pen on. `whiteboard-mode-stop` still sends students to Lesson. Board strokes are stored on the server. A later snapshot is merged into the local board; it must not replace strokes the student just drew. The canvas is sized to its panel once, then redrawn, so a resize does not wipe the student’s own marks.
 - Classroom `<video>` elements set `disablePictureInPicture`. The browser Picture-in-Picture hover control stays off.
 - Join does not mute either microphone or the other person's speaker. Local preview stays muted so the room does not echo.
 
@@ -502,7 +506,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 | `INSUFFICIENT_CREDITS` | `creditBalance` is 0 |
 | `DAILY_CLASS_LIMIT` | Removed: students have no per-day booking cap |
 | `TRIAL_LESSON_1_ONLY` | Free trial may only book Lesson 1 |
-| `LESSON_AHEAD_OF_PROGRESS` | No longer applied to paid bookings. Paid students with credits may book any lesson in the selected level. |
+| `LESSON_AHEAD_OF_PROGRESS` | The lesson is ahead of that level’s Learning Journey. The student can book the next stop or any earlier lesson. |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
 
 ## Curriculum levels — Pre-Level

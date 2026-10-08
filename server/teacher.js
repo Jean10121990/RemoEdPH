@@ -1607,10 +1607,16 @@ router.get('/slots', async (req, res) => {
         }
         
         // Check for resolved issues for this booking
-        const resolvedIssues = await IssueReport.find({
+        const classIssues = await IssueReport.find({
           bookingId: booking._id.toString(),
-          status: 'resolved'
+        }).select('status');
+        const hasPendingIssue = classIssues.some((issue) => {
+          const st = String(issue.status || '').toLowerCase();
+          return st === 'pending' || st === 'reviewed';
         });
+        const resolvedIssues = classIssues.filter(
+          (issue) => String(issue.status || '').toLowerCase() === 'resolved'
+        );
         
         const bookingObj = booking.toObject();
         const { studentClassroomLabel } = require('./utils/studentDisplayName');
@@ -1639,6 +1645,7 @@ router.get('/slots', async (req, res) => {
                 lastName: student.lastName,
               }
             : null,
+          hasPendingIssue,
           hasResolvedIssue: resolvedIssues.length > 0,
           hasTeacherFeedback: wrapFeedbackBookingIds.has(String(booking._id)),
           feedbackSubmitted: wrapFeedbackBookingIds.has(String(booking._id)),
@@ -1982,6 +1989,14 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       .select('_id')
       .lean();
     const hasTeacherFeedback = !!wrapFb;
+    const classIssues = await IssueReport.find({ bookingId: String(booking._id) }).select('status').lean();
+    const hasPendingIssue = classIssues.some((issue) => {
+      const st = String(issue.status || '').toLowerCase();
+      return st === 'pending' || st === 'reviewed';
+    });
+    const hasResolvedIssue = classIssues.some(
+      (issue) => String(issue.status || '').toLowerCase() === 'resolved'
+    );
 
     res.json({ 
       success: true, 
@@ -2002,8 +2017,11 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         studentProfilePicture,
         teacherName: teacherName,
         status: booking.status,
+        absentMarkedAt: booking.absentMarkedAt || null,
         finishedAt: booking.finishedAt,
         attendance: booking.attendance,
+        hasPendingIssue,
+        hasResolvedIssue,
         dateTimeUtc: booking.dateTimeUtc,
         scheduledStartTime: getScheduledStartTime(booking),
         hasTeacherFeedback,
@@ -3163,22 +3181,19 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
       // Continue with marking as finished, but add a note about student technical issues
     }
     
-    // Compute class duration and check if it meets the 15-25 minute requirement
+    // Compute class duration. Finish is allowed from 15 minutes; the stored end never passes 40.
     let durationMinutes = 0;
     let meetsDurationRequirement = false;
     
     try {
-      if (booking.date && booking.time) {
-        const classDate = new Date(booking.date);
-        const [hours, minutes] = booking.time.split(':').map(Number);
-        const classStartTime = new Date(classDate);
-        classStartTime.setHours(hours, minutes, 0, 0);
-        const now = new Date();
-        durationMinutes = (now - classStartTime) / (1000 * 60);
-        meetsDurationRequirement = durationMinutes >= 15 && durationMinutes <= 25;
-        
-        console.log(`Class duration: ${durationMinutes.toFixed(2)} minutes (requires 15-25 minutes)`);
-        console.log(`Meets duration requirement: ${meetsDurationRequirement}`);
+      const { getScheduledStartMs, CLASS_MAX_MINUTES } = require('./services/classroomEntryWindow');
+      const startMs = getScheduledStartMs(booking);
+      if (startMs != null) {
+        durationMinutes = (Date.now() - startMs) / (1000 * 60);
+        meetsDurationRequirement = durationMinutes >= 15;
+        console.log(
+          `Class duration: ${durationMinutes.toFixed(2)} minutes (finish from 15, hard stop ${CLASS_MAX_MINUTES})`
+        );
       }
     } catch (e) {
       console.log('Duration compute error:', e.message);
@@ -3187,7 +3202,11 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
     
     // End live session only; credits and teacher pay finalize after teacher submits wrap-up feedback
     if (meetsDurationRequirement) {
-      booking.sessionEndedAt = new Date();
+      const { cappedClassEndDate } = require('./services/classroomEntryWindow');
+      const endAt = cappedClassEndDate(booking, new Date());
+      booking.sessionEndedAt = endAt;
+      const finMs = booking.finishedAt ? new Date(booking.finishedAt).getTime() : 0;
+      if (!finMs || finMs > endAt.getTime()) booking.finishedAt = endAt;
       booking.status = 'pending_feedback';
 
       // Add note if student had technical issues
@@ -3202,7 +3221,7 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
     } else {
       return res.status(400).json({
         success: false,
-        error: `Class cannot be marked as finished. Duration must be 15-25 minutes. Current duration: ${durationMinutes.toFixed(2)} minutes.`,
+        error: `Class cannot be marked as finished until 15 minutes after the scheduled start. Current duration: ${durationMinutes.toFixed(2)} minutes.`,
       });
     }
 
@@ -4253,6 +4272,18 @@ router.post('/update-class-status', verifyToken, requireTeacher, async (req, res
       });
     }
     
+    if (status === 'completed') {
+      const { feedbackBlockForBooking } = require('./utils/feedbackEligibility');
+      const feedbackBlock = await feedbackBlockForBooking(booking);
+      if (feedbackBlock.blocked) {
+        return res.status(400).json({
+          success: false,
+          error: feedbackBlock.error,
+          code: feedbackBlock.code,
+        });
+      }
+    }
+
     // Prevent changing completed classes - they are locked
     if (booking.status === 'completed') {
       return res.status(400).json({
@@ -4270,7 +4301,8 @@ router.post('/update-class-status', verifyToken, requireTeacher, async (req, res
     // Update the booking status
     booking.status = status;
     if (status === 'completed') {
-      booking.finishedAt = new Date();
+      const { cappedClassEndDate } = require('./services/classroomEntryWindow');
+      booking.finishedAt = cappedClassEndDate(booking, new Date());
       // Set attendance.classCompleted to true for service fee calculation
       if (!booking.attendance) {
         booking.attendance = {};
@@ -5618,6 +5650,16 @@ router.patch('/bookings/:bookingId/complete', verifyToken, requireTeacher, async
     if (booking.teacherId !== teacherId) {
       return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
     }
+    const { feedbackBlockForBooking } = require('./utils/feedbackEligibility');
+    const feedbackBlock = await feedbackBlockForBooking(booking);
+    if (feedbackBlock.blocked) {
+      return res.status(400).json({
+        success: false,
+        error: feedbackBlock.error,
+        code: feedbackBlock.code,
+      });
+    }
+
     if (isBookingSessionFinalized(booking)) {
       return res.json({
         success: true,
@@ -5680,6 +5722,16 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
       return res.status(403).json({
         success: false,
         error: 'Access denied. This booking does not belong to you.',
+      });
+    }
+
+    const { feedbackBlockForBooking: blockFeedbackOnComplete } = require('./utils/feedbackEligibility');
+    const completeBlock = await blockFeedbackOnComplete(booking);
+    if (completeBlock.blocked) {
+      return res.status(400).json({
+        success: false,
+        error: completeBlock.error,
+        code: completeBlock.code,
       });
     }
 
