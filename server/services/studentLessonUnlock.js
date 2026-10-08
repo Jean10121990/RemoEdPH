@@ -7,7 +7,12 @@ const LessonProgress = require('../models/LessonProgress');
 const Booking = require('../models/Booking');
 const Curriculum = require('../models/Curriculum');
 const { cancelledStatusValues } = require('../utils/bookingStatus');
-const { normalizeCurriculumLevel } = require('../config/curriculumLevels');
+const {
+  normalizeCurriculumLevel,
+  normalizeCurriculumDocLevel,
+  resolveStudentCurriculumLevel,
+  PRE_LEVEL,
+} = require('../config/curriculumLevels');
 const {
   parseBookingLessonRef,
   resolveLessonIdFromBooking,
@@ -64,10 +69,35 @@ async function hydrateLessonMap(ids) {
 /**
  * Build completedKeys set matching GET /api/student/lesson-progress.
  */
+async function growthLevelForStudentIds(ids) {
+  const Student = require('../models/Student');
+  const mongoose = require('mongoose');
+  const or = [];
+  for (const id of ids) {
+    if (!id) continue;
+    or.push({ username: id }, { email: id });
+    if (mongoose.Types.ObjectId.isValid(String(id))) or.push({ _id: id });
+  }
+  if (!or.length) return null;
+  const student = await Student.findOne({ $or: or }).select('level leveling education').lean();
+  return resolveStudentCurriculumLevel(student);
+}
+
+function trailLevelForLesson(curriculumLevel, fallbackLevel, growthLevel) {
+  const growth = normalizeCurriculumLevel(curriculumLevel);
+  if (growth) return growth;
+  const fallback = normalizeCurriculumLevel(fallbackLevel);
+  if (fallback) return fallback;
+  if (normalizeCurriculumDocLevel(curriculumLevel) === PRE_LEVEL && growthLevel) return growthLevel;
+  if (normalizeCurriculumDocLevel(fallbackLevel) === PRE_LEVEL && growthLevel) return growthLevel;
+  return null;
+}
+
 async function buildCompletedLessonKeys(uniqueIdentifiers) {
   const ids = [...new Set((uniqueIdentifiers || []).filter(Boolean).map(String))];
   const completedKeys = new Set();
   if (!ids.length) return completedKeys;
+  const growthLevel = await growthLevelForStudentIds(ids);
 
   const bookings = await Booking.find({
     studentId: { $in: ids },
@@ -92,7 +122,11 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
   function addKeyFromLessonId(lessonId, fallbackLevel) {
     if (!lessonId || !lessonMap[String(lessonId)]) return false;
     const l = lessonMap[String(lessonId)];
-    let level = normalizeCurriculumLevel(l.curriculum && l.curriculum.level) || fallbackLevel;
+    let level = trailLevelForLesson(
+      l.curriculum && l.curriculum.level,
+      fallbackLevel,
+      growthLevel
+    );
     const num = Number(l.lessonNumber || l.order || 0);
     if (!level || !(num >= 1 && num <= LESSONS_PER_LEVEL)) return false;
     const batch = Math.ceil(num / LESSONS_PER_BATCH);
@@ -131,7 +165,7 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
       const parsed = parseBookingLessonRef(b.lesson);
       if (parsed && parsed.level) level = normalizeCurriculumLevel(parsed.level);
     }
-    if (!level) level = normalizeCurriculumLevel(b.studentLevel);
+    if (!level) level = trailLevelForLesson(null, b.studentLevel, growthLevel);
     if (!level || batch == null || lessonNum == null) {
       unresolved.push(b);
       continue;
