@@ -360,6 +360,14 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
   }
 });
 
+/** Soft launch only. PayMongo checkout stays. Set SOFT_LAUNCH_QR_OVERRIDE=false to show PayMongo again. */
+function softLaunchQrOverride() {
+  const v = String(process.env.SOFT_LAUNCH_QR_OVERRIDE == null ? 'true' : process.env.SOFT_LAUNCH_QR_OVERRIDE)
+    .trim()
+    .toLowerCase();
+  return v !== 'false' && v !== '0' && v !== 'off';
+}
+
 function normalizeInstapayReference(raw) {
   const s = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (s.length < 6 || s.length > 40) return '';
@@ -374,6 +382,7 @@ router.get('/plan-quote', (req, res) => {
   }
   return res.json({
     success: true,
+    qrOverride: softLaunchQrOverride(),
     pricing: {
       planId: totals.planId,
       usd_total: totals.usdTotal,
@@ -412,7 +421,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     if (!referenceNormalized) {
       return res.status(400).json({
         success: false,
-        error: 'Enter the InstaPay reference from your payment (6 to 40 letters or numbers).',
+        error: 'Enter the transaction number from your payment (6 to 40 letters or numbers).',
       });
     }
 
@@ -431,7 +440,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     if (used) {
       return res.status(409).json({
         success: false,
-        error: 'That reference was already submitted. Check the receipt or use a different payment.',
+        error: 'That transaction number was already submitted. Check the receipt or use a different payment.',
       });
     }
 
@@ -456,7 +465,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
       await notifyStudent(
         student.username,
         'qr-payment',
-        `Payment reference received for ${planLabel}. Credits are added after we match the InstaPay transfer.`,
+        `Transaction number received for ${planLabel}. Credits are added after we match the InstaPay transfer.`,
         { actionUrl: '/student-credits.html', importance: 'normal' }
       );
     } catch (nErr) {
@@ -477,10 +486,10 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     if (error && error.code === 11000) {
       return res.status(409).json({
         success: false,
-        error: 'That reference was already submitted. Check the receipt or use a different payment.',
+        error: 'That transaction number was already submitted. Check the receipt or use a different payment.',
       });
     }
-    return res.status(500).json({ success: false, error: 'Could not save the payment reference.' });
+    return res.status(500).json({ success: false, error: 'Could not save the transaction number.' });
   }
 });
 

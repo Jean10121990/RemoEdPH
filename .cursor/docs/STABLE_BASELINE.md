@@ -67,7 +67,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] A paid student with credits can book any lesson in the selected level, including Pre-Level. Completing a Pre-Level class does not subtract a credit. Growth levels still use one credit. Free-plan students still book only the next Pre-Level lesson.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
 - [ ] A student without the current privacy version gets `CONSENT_REQUIRED` on book and logged-in checkout, then can continue after accepting. Booking confirmation and the student waiting room say classes are recorded for safety, quality assurance, and parent review.
-- [ ] Signed-in **Credits** shows the MariBank InstaPay QR and the exact peso amount. Submitting a reference does not add credits. Accounting Hub → Student Subscriptions → **Confirm and add credits** does, after the transfer is in MariBank. Reject does not.
+- [ ] Signed-in **Credits** shows the MariBank InstaPay QR while `SOFT_LAUNCH_QR_OVERRIDE` is not `false`. PayMongo checkout stays in the page and on `POST /api/payments/create-link`. Set the flag to `false` to show PayMongo again. Submitting a QR reference does not add credits. Accounting Hub → Student Subscriptions → **Confirm and add credits** does, after the transfer is in MariBank. Reject does not.
 - [ ] **My Profile → Personal Information → Student Privacy** shows the accept checkbox for the parent or the student. Checking it saves the current version. If that version is already accepted, the box stays checked.
 - [ ] Booking for a teacher whose slot `teacherId` is a username (not email) still succeeds when the UI sends their email.
 - [ ] A student with no privacy consent who presses Book **stays signed in** and sees the Student Privacy box on the booking panel (server answers `403 CONSENT_REQUIRED`; `user-session.js` must not treat that as an expired login). After accepting, the same booking succeeds.
@@ -552,7 +552,7 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Class chat | Saved per room until Finish, then deleted (`classroom_chats`, 24h TTL if Finish never happens). “Pat is typing...” (first name) while the other person types. Teacher/admin Messages are not cleared. |
 | Weak camera | Do not swap a joined camera to “Waiting for…” on a weak connection. Keep the tile black with their name until `user-left`. QA still counts that as the student in class. |
 | Notifications | **Mark all as read** is on the teacher, student, and admin bells (panel header and the filter row). |
-| Soft-launch QR | Credits page shows the MariBank InstaPay QR. `POST /api/payments/qr-claim` (student JWT) only stores the reference. Credits are added by `POST /api/admin/qr-payments/:id/confirm` (`acct:qr_confirm`). |
+| Soft-launch QR | Overrides the Credits pay button only while `SOFT_LAUNCH_QR_OVERRIDE` is not `false`. PayMongo `create-link` stays. QR reference does not add credits; Accounting confirm does. |
 | Lesson decks | Microsoft PowerPoint viewer with signed link; Cloudmersive removed; 10 MB image recompression; `FRONTEND_URL` normalized to https with a startup log. |
 | Classroom layout | Teacher media-lock buttons are 32 px icon buttons; chat stays visible beside smaller video tiles. |
 | Admin | Classroom SOS is a tab in QA Hub; admin sidebar assets at `?v=app-shell-17`. |

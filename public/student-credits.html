@@ -71,8 +71,8 @@
 
         <div id="student-refill-panel" class="checkout-order-card">
           <div class="checkout-order-header">
-            <h3>Pay with InstaPay QR</h3>
-            <p class="muted checkout-order-sub">Scan the MariBank QR and pay the exact peso amount. Enter the InstaPay reference. Lesson credits are added after we match that payment in the bank.</p>
+            <h3 id="checkout-mode-title">Pay with InstaPay QR</h3>
+            <p class="muted checkout-order-sub" id="checkout-mode-sub">Scan the MariBank QR and pay the exact peso amount. Enter the transaction number. Lesson credits are added after we match that payment in the bank.</p>
           </div>
 
           <div class="checkout-plan-picker">
@@ -104,16 +104,37 @@
               if (consentRow) consentRow.style.display = 'flex';
             }
           </script>
-          <div class="checkout-qr-box">
-            <img src="/images/maribank-instapay-qr.jpg" alt="MariBank InstaPay QR code" width="220" height="220">
-            <p class="muted">Scan with GCash, Maya, or any InstaPay app. Pay the amount above, then paste the reference.</p>
+          <div id="checkout-qr-panel">
+            <div class="checkout-qr-box">
+              <img src="/images/maribank-instapay-qr.jpg" alt="MariBank InstaPay QR code" width="220" height="220">
+              <p class="muted">Scan with GCash, Maya, or any InstaPay app. Pay the amount above, then paste the transaction number.</p>
+            </div>
+            <label class="checkout-ref-label" for="qr-reference">Transaction No.</label>
+            <input type="text" id="qr-reference" class="checkout-ref-input" maxlength="40" autocomplete="off" placeholder="Transaction number from your receipt">
+            <button type="button" class="primary-btn checkout-pay-btn" id="refill-pay-btn" onclick="submitQrPayment()">
+              Submit transaction number
+            </button>
+            <p id="qr-claim-status" class="muted checkout-status" style="display:none;"></p>
           </div>
-          <label class="checkout-ref-label" for="qr-reference">InstaPay reference</label>
-          <input type="text" id="qr-reference" class="checkout-ref-input" maxlength="40" autocomplete="off" placeholder="Reference from your receipt">
-          <button type="button" class="primary-btn checkout-pay-btn" id="refill-pay-btn" onclick="submitQrPayment()">
-            Submit reference
-          </button>
-          <p id="qr-claim-status" class="muted checkout-status" style="display:none;"></p>
+          <div id="checkout-paymongo-panel" hidden>
+            <button type="button" class="primary-btn checkout-pay-btn" id="paymongo-pay-btn" onclick="startRefillCheckout()">
+              <svg class="checkout-lock-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              Continue to secure payment
+            </button>
+            <p class="checkout-trust">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+              Secure SSL Checkout · Powered by PayMongo
+            </p>
+            <div class="checkout-methods" aria-label="Accepted payment methods">
+              <span class="checkout-method-pill" title="Visa">Visa</span>
+              <span class="checkout-method-pill" title="Mastercard">Mastercard</span>
+              <span class="checkout-method-pill" title="GCash">GCash</span>
+              <span class="checkout-method-pill" title="Maya">Maya</span>
+            </div>
+          </div>
           <p id="refill-status" class="muted checkout-status" style="display:none;"></p>
         </div>
 
@@ -216,6 +237,7 @@
     }
 
     var EXCHANGE_RATE_USED = 60.03;
+    var qrOverride = true;
     var PLAN_CHECKOUT = {
       spark: {
         name: 'RemoSpark — Starter Bundle',
@@ -287,9 +309,25 @@
         if (discEl) discEl.textContent = '—';
       }
       if (totalEl) totalEl.textContent = formatUsd(plan.usdTotal) + ' USD';
-      if (phpEl) phpEl.textContent = formatPhpEst(plan.usdTotal);
+      if (phpEl && !qrOverride) phpEl.textContent = formatPhpEst(plan.usdTotal);
       if (validEl) validEl.textContent = 'Valid for ' + plan.validityMonths + ' Months';
       loadPlanQuote(sel.value);
+    }
+
+    function applyCheckoutMode(on) {
+      qrOverride = on !== false;
+      var qrPanel = document.getElementById('checkout-qr-panel');
+      var payPanel = document.getElementById('checkout-paymongo-panel');
+      var title = document.getElementById('checkout-mode-title');
+      var sub = document.getElementById('checkout-mode-sub');
+      if (qrPanel) qrPanel.hidden = !qrOverride;
+      if (payPanel) payPanel.hidden = qrOverride;
+      if (title) title.textContent = qrOverride ? 'Pay with InstaPay QR' : 'Secure checkout';
+      if (sub) {
+        sub.textContent = qrOverride
+          ? 'Scan the MariBank QR and pay the exact peso amount. Enter the transaction number. Lesson credits are added after we match that payment in the bank.'
+          : 'Same plans as our homepage. Pay with GCash, Maya, or card via PayMongo. Credits appear after payment confirms (usually under a minute).';
+      }
     }
 
     function formatPhpExact(php) {
@@ -301,7 +339,8 @@
       try {
         var res = await fetch('/api/payments/plan-quote?planId=' + encodeURIComponent(planId));
         var data = await res.json().catch(function () { return {}; });
-        if (res.ok && data.success && data.pricing && phpEl) {
+        if (res.ok && data.success) applyCheckoutMode(data.qrOverride !== false);
+        if (res.ok && data.success && data.pricing && phpEl && qrOverride) {
           phpEl.textContent = formatPhpExact(data.pricing.php_total);
         }
       } catch (e) {}
@@ -313,9 +352,9 @@
         return 'Payment matched. ' + (claim.creditsAdded ? claim.creditsAdded + ' credits added.' : 'Credits added.');
       }
       if (claim.status === 'rejected') {
-        return 'That reference was not matched. Send the payment again and submit the new reference.';
+        return 'That transaction number was not matched. Send the payment again and submit the new transaction number.';
       }
-      return 'Reference ' + claim.reference + ' is waiting. Credits are added after we match it in MariBank.';
+      return 'Transaction No. ' + claim.reference + ' is waiting. Credits are added after we match it in MariBank.';
     }
 
     async function loadQrClaims() {
@@ -353,7 +392,7 @@
       if (!sel || !refEl) return;
       var reference = String(refEl.value || '').trim();
       if (reference.length < 6) {
-        alert('Enter the InstaPay reference from your receipt.');
+        alert('Enter the transaction number from your receipt.');
         return;
       }
       try {
@@ -381,7 +420,7 @@
       btn.disabled = true;
       if (statusEl) {
         statusEl.style.display = 'block';
-        statusEl.textContent = 'Sending your reference…';
+        statusEl.textContent = 'Sending your transaction number…';
       }
       try {
         var res = await fetch('/api/payments/qr-claim', {
@@ -398,15 +437,15 @@
           return;
         }
         if (!res.ok || !data.success) {
-          throw new Error(data.error || data.message || 'Could not submit the reference.');
+          throw new Error(data.error || data.message || 'Could not submit the transaction number.');
         }
         refEl.value = '';
         if (statusEl) {
-          statusEl.textContent = 'Reference received. Credits are added after we match this payment in MariBank.';
+          statusEl.textContent = 'Transaction number received. Credits are added after we match this payment in MariBank.';
         }
         loadQrClaims();
       } catch (err) {
-        alert(err.message || 'Could not submit the reference');
+        alert(err.message || 'Could not submit the transaction number');
         if (statusEl) statusEl.textContent = '';
       } finally {
         btn.disabled = false;
@@ -447,7 +486,7 @@
       var token = getStudentToken();
       var studentId = getStudentIdForCheckout();
       var sel = document.getElementById('refill-plan-select');
-      var btn = document.getElementById('refill-pay-btn');
+      var btn = document.getElementById('paymongo-pay-btn');
       var statusEl = document.getElementById('refill-status');
       if (!token) {
         alert('Please log in as a student to purchase a plan.');

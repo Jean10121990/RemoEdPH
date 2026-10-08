@@ -53,7 +53,7 @@
 
                 <div id="qr-pay-panel" style="margin-bottom:18px;">
                     <h3 style="margin:0 0 6px;">InstaPay QR payments</h3>
-                    <p class="muted" style="margin-top:0;">Match the reference in MariBank, then confirm. Confirm adds that plan’s lesson credits. Reject does not.</p>
+                    <p class="muted" style="margin-top:0;">Match the transaction number in MariBank, then confirm. Confirm adds that plan’s lesson credits. Reject does not.</p>
                     <div id="qr-pay-list" class="ss-empty">Loading QR payments…</div>
                 </div>
                 <div class="ss-cards" id="ss-cards"></div>
@@ -301,7 +301,7 @@
                     }
                     var html = '';
                     if (pending.length) {
-                        html += '<div class="ss-table-wrap" style="max-height:none;margin-bottom:10px;"><table class="ss-table"><thead><tr><th>When</th><th>Student</th><th>Plan</th><th>Amount</th><th>Reference</th><th></th></tr></thead><tbody>';
+                        html += '<div class="ss-table-wrap" style="max-height:none;margin-bottom:10px;"><table class="ss-table"><thead><tr><th>When</th><th>Student</th><th>Plan</th><th>Amount</th><th>Transaction No.</th><th></th></tr></thead><tbody>';
                         pending.forEach(function (c) {
                             html += '<tr><td>' + escapeHtml(formatDate(c.createdAt)) + '</td><td>' + escapeHtml(c.username) + '</td><td>' + escapeHtml(c.planId) + '</td><td>' + escapeHtml(formatPhp(c.amountPhp)) + '</td><td>' + escapeHtml(c.reference) + '</td><td>' +
                                 '<button type="button" class="btn btn-success" data-qr-action="confirm" data-qr-id="' + escapeHtml(c.id) + '">Confirm and add credits</button> ' +
@@ -312,7 +312,7 @@
                         html += '<p class="muted">No payments waiting.</p>';
                     }
                     if (recent.length) {
-                        html += '<p class="muted" style="margin-bottom:6px;">Recent</p><div class="ss-table-wrap" style="max-height:180px;"><table class="ss-table"><thead><tr><th>When</th><th>Student</th><th>Plan</th><th>Reference</th><th>Status</th><th>Credits</th></tr></thead><tbody>';
+                        html += '<p class="muted" style="margin-bottom:6px;">Recent</p><div class="ss-table-wrap" style="max-height:180px;"><table class="ss-table"><thead><tr><th>When</th><th>Student</th><th>Plan</th><th>Transaction No.</th><th>Status</th><th>Credits</th></tr></thead><tbody>';
                         recent.forEach(function (c) {
                             html += '<tr><td>' + escapeHtml(formatDate(c.createdAt)) + '</td><td>' + escapeHtml(c.username) + '</td><td>' + escapeHtml(c.planId) + '</td><td>' + escapeHtml(c.reference) + '</td><td>' + escapeHtml(c.status) + '</td><td>' + escapeHtml(String(c.creditsAdded || 0)) + '</td></tr>';
                         });
