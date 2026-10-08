@@ -32,7 +32,7 @@
     roomId: '',
     bookingId: '',
     maxMs: 25 * 60 * 1000,
-    chunkMs: 20000,
+    chunkMs: 10000,
     /** Full classroom tab stream used by MediaRecorder (not cropped). */
     screenStream: null,
     /** Cropped clone published to student for slides only. */
@@ -458,28 +458,38 @@
     return '';
   }
 
+  function putChunk(blob, seq, attempt) {
+    var h = authHeaders();
+    if (!h) return Promise.reject(new Error('Not signed in'));
+    return fetch('/api/classroom-recording/session/' + state.recordingId + '/chunk', {
+      method: 'PUT',
+      headers: {
+        Authorization: h.Authorization,
+        'Content-Type': 'application/octet-stream',
+        'X-Chunk-Index': String(seq)
+      },
+      body: blob
+    }).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Chunk upload failed'); });
+      return r.json().catch(function () { return {}; });
+    }).then(function (j) {
+      if (j && j.totalBytes != null) setUploadProgress(j.totalBytes);
+      return j;
+    }).catch(function (err) {
+      if (attempt >= 3) throw err;
+      return new Promise(function (resolve) {
+        setTimeout(resolve, 1500 * (attempt + 1));
+      }).then(function () {
+        return putChunk(blob, seq, attempt + 1);
+      });
+    });
+  }
+
   function queueChunk(blob) {
     if (!state.recordingId || !blob || blob.size === 0) return;
-    var h = authHeaders();
     var seq = state.chunkIndex++;
-    state.bytesUploaded += blob.size;
-    setUploadProgress(state.bytesUploaded);
     state.chunkChain = state.chunkChain.then(function () {
-      return fetch('/api/classroom-recording/session/' + state.recordingId + '/chunk', {
-        method: 'PUT',
-        headers: {
-          Authorization: h.Authorization,
-          'Content-Type': 'application/octet-stream',
-          'X-Chunk-Index': String(seq)
-        },
-        keepalive: true,
-        body: blob
-      }).then(function (r) {
-        if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Chunk upload failed'); });
-        return r.json().catch(function () { return {}; });
-      }).then(function (j) {
-        if (j && j.totalBytes != null) setUploadProgress(j.totalBytes);
-      });
+      return putChunk(blob, seq, 0);
     }).catch(function (err) {
       console.warn('QA chunk upload:', err);
     });
@@ -711,7 +721,7 @@
         if (state.recordingAudioContext && state.recordingAudioContext.state === 'suspended') {
           state.recordingAudioContext.resume().catch(function () {});
         }
-        var opts = { videoBitsPerSecond: 280000, audioBitsPerSecond: 64000 };
+        var opts = { videoBitsPerSecond: 160000, audioBitsPerSecond: 32000 };
         if (mimeType) opts.mimeType = mimeType;
         var mr;
         try {

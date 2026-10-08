@@ -241,6 +241,88 @@ async function transcodeWebmToMp4(filePath) {
   });
 }
 
+async function assembleUploadedParts(doc) {
+  const parts = await listUploadsByPrefix(partsPrefix(doc._id));
+  const partRels = parts
+    .map((p) => p.filename)
+    .filter((n) => /\/part-\d+$/.test(n) || /part-\d+$/.test(n))
+    .sort();
+  if (!partRels.length) {
+    const diskAbs = path.join(__dirname, '../uploads', doc.relativePath);
+    try {
+      const st = await fsp.stat(diskAbs);
+      if (!st.size) throw new Error('empty');
+    } catch (_e) {
+      return {
+        ok: false,
+        message: 'No video was uploaded. The classroom closed before any of the recording reached QA Hub.',
+      };
+    }
+    return { ok: true };
+  }
+  await concatenateUploads(partRels, doc.relativePath, 'video/webm');
+  for (const rel of partRels) {
+    await deleteUpload(rel).catch(() => {});
+  }
+  return { ok: true };
+}
+
+/**
+ * A class recording should not sit on "uploading" for hours.
+ * Empty sessions older than 30 minutes are closed.
+ * Sessions that already received video and then went quiet are assembled.
+ */
+async function sweepStaleClassroomRecordings() {
+  const now = Date.now();
+  const emptyCutoff = new Date(now - 30 * 60 * 1000);
+  const quietCutoff = new Date(now - 3 * 60 * 1000);
+  let closed = 0;
+
+  const empty = await ClassroomRecording.find({
+    status: 'uploading',
+    $or: [{ sizeBytes: { $lte: 0 } }, { sizeBytes: null }],
+    createdAt: { $lt: emptyCutoff },
+  }).limit(30);
+
+  for (const doc of empty) {
+    doc.status = 'failed';
+    doc.errorMessage =
+      'No video was uploaded. The classroom closed before any of the recording reached QA Hub.';
+    await doc.save();
+    closed += 1;
+  }
+
+  const quiet = await ClassroomRecording.find({
+    status: 'uploading',
+    sizeBytes: { $gt: 0 },
+    lastChunkAt: { $ne: null, $lt: quietCutoff },
+  }).limit(10);
+
+  for (const doc of quiet) {
+    try {
+      const assembled = await assembleUploadedParts(doc);
+      if (!assembled.ok) {
+        doc.status = 'failed';
+        doc.errorMessage = assembled.message;
+        await doc.save();
+        closed += 1;
+        continue;
+      }
+      const stored = await findUpload(doc.relativePath);
+      doc.status = 'complete';
+      doc.sizeBytes = stored && stored.length ? stored.length : doc.sizeBytes;
+      await doc.save();
+      scheduleRecordingPostProcess(doc._id.toString(), doc.mimeType || 'video/webm');
+      closed += 1;
+    } catch (err) {
+      console.warn('classroom-recording sweep:', doc._id, err.message || err);
+    }
+  }
+
+  if (closed) console.log(`🎥 Classroom recordings sweep closed ${closed} stuck upload(s)`);
+  return closed;
+}
+
 function uploaderKey(req) {
   if (req.user?.teacherId) return `teacher:${String(req.user.teacherId)}`;
   if (req.user?.studentId) return `student:${String(req.user.studentId)}`;
@@ -441,24 +523,12 @@ router.post(
       }
 
       const { durationSec, mimeType } = req.body || {};
-      const parts = await listUploadsByPrefix(partsPrefix(doc._id));
-      const partRels = parts
-        .map((p) => p.filename)
-        .filter((n) => /\/part-\d+$/.test(n) || /part-\d+$/.test(n))
-        .sort();
-      if (!partRels.length) {
-        const diskAbs = path.join(__dirname, '../uploads', doc.relativePath);
-        try {
-          const st = await fsp.stat(diskAbs);
-          if (!st.size) throw new Error('empty');
-        } catch (e) {
-          return res.status(400).json({ success: false, message: 'Recording file missing' });
-        }
-      } else {
-        await concatenateUploads(partRels, doc.relativePath, 'video/webm');
-        for (const rel of partRels) {
-          await deleteUpload(rel).catch(() => {});
-        }
+      const assembled = await assembleUploadedParts(doc);
+      if (!assembled.ok) {
+        doc.status = 'failed';
+        doc.errorMessage = assembled.message;
+        await doc.save();
+        return res.status(400).json({ success: false, message: assembled.message });
       }
 
       const stored = await findUpload(doc.relativePath);
@@ -763,3 +833,4 @@ async function purgeExpiredClassroomRecordings() {
 
 module.exports = router;
 module.exports.purgeExpiredClassroomRecordings = purgeExpiredClassroomRecordings;
+module.exports.sweepStaleClassroomRecordings = sweepStaleClassroomRecordings;

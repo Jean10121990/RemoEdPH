@@ -3951,6 +3951,14 @@ const startServer = () => {
               );
               const purgeMs = purgeEveryDays * 24 * 60 * 60 * 1000;
               classroomRecordingRouter.purgeExpiredClassroomRecordings();
+              if (typeof classroomRecordingRouter.sweepStaleClassroomRecordings === 'function') {
+                const sweepUploads = () =>
+                  classroomRecordingRouter.sweepStaleClassroomRecordings().catch((e) =>
+                    console.warn('Classroom recording sweep:', e.message)
+                  );
+                sweepUploads();
+                setInterval(sweepUploads, 60 * 1000);
+              }
               setInterval(() => {
                 classroomRecordingRouter.purgeExpiredClassroomRecordings().catch((e) =>
                   console.warn('Classroom recording purge:', e.message)
