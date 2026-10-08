@@ -763,7 +763,7 @@
               return completeSession(dur);
             })
             .then(function () {
-              setStatus('Saved. Admin → Lesson recordings.');
+              setStatus('Recording saved. This page stays open — click Finish class when you are done.');
             })
             .catch(function (e) {
               setStatus('Finalize failed: ' + (e.message || e));
@@ -809,16 +809,10 @@
             'Recording full classroom… ' +
               formatTime(elapsed) +
               ' · uploaded ' +
-              formatBytes(state.bytesUploaded)
+              formatBytes(state.bytesUploaded) +
+              ' · click Stop when the class ends, then Finish'
           );
         }, 1000);
-
-        state.stopTimer = setTimeout(function () {
-          if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
-            setStatus('Max length reached — stopping…');
-            state.mediaRecorder.stop();
-          }
-        }, state.maxMs);
       })
       .catch(function (e) {
         var msg = String((e && e.message) || e || '');
@@ -862,7 +856,7 @@
             return completeSession((Date.now() - state.startedAt) / 1000);
           })
           .then(function () {
-            setStatus('Saved. Admin → Lesson recordings.');
+            setStatus('Recording saved. This page stays open — click Finish class when you are done.');
           })
           .catch(function (e) {
             console.warn('QA finalize:', e);
@@ -892,7 +886,7 @@
             return completeSession(dur);
           })
           .then(function () {
-            setStatus('Saved. Admin → Lesson recordings.');
+            setStatus('Recording saved. This page stays open — click Finish class when you are done.');
           })
           .catch(function (e) {
             console.warn('QA finalize:', e);
@@ -938,6 +932,7 @@
       '</div>' +
       '<div class="qa-recording-dock__actions">' +
       '<button type="button" id="qa-rec-start" class="qa-recording-dock__start">Start</button>' +
+      '<button type="button" id="qa-rec-stop" class="qa-recording-dock__stop" disabled>Stop</button>' +
       '</div>' +
       '<div id="qa-rec-hint" class="qa-recording-dock__hint"></div>' +
       '</div>';
@@ -1023,7 +1018,7 @@
       var hint = state.panel.querySelector('#qa-rec-hint');
       if (hint) {
         hint.textContent =
-          'Starts only after the student joins. Choose “This tab” + “Share tab audio”. QA saves the full classroom; the student still gets the cropped slide view (sync unchanged).';
+          'Start only after the student joins, including if they arrive a few minutes early. Recording continues until you click Stop (about 25 minutes on the hour, or until :55 for a :30 class; a few minutes longer if they came early). Stopping the recording does not close this page. Click Finish class after that.';
       }
       setStatus(
         cfg.enabled
@@ -1039,7 +1034,15 @@
         startRecording({ silent: false }).catch(function () {});
       });
       if (state.btnStop) {
-        state.btnStop.style.display = 'none';
+        state.btnStop.addEventListener('click', function () {
+          if (!state.mediaRecorder || state.mediaRecorder.state !== 'recording') return;
+          setStatus('Stopping recording… the classroom stays open so you can click Finish.');
+          try {
+            state.mediaRecorder.stop();
+          } catch (stopErr) {
+            console.warn('QA stop:', stopErr);
+          }
+        });
       }
 
       window.ClassroomQaRecording = {

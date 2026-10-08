@@ -24,7 +24,7 @@ Low-quality **lesson monitoring** clips (~25 min max) so QA/admin can review tea
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `CLASSROOM_QA_RECORDING_ENABLED` | **on** | Set to **`false`** to hide QA recording in `live-classroom.html` (still can force with `?qaRecord=1`) |
-| `CLASSROOM_QA_RECORDING_MAX_MINUTES` | `25` | Auto-stop recording |
+| `CLASSROOM_QA_RECORDING_MAX_MINUTES` | `25` | Shown as the usual class length. The recorder does **not** stop itself. The teacher clicks **Stop**, the classroom tab stays open, then they click **Finish**. |
 | `CLASSROOM_RECORDING_RETENTION_DAYS` | `7` | `expiresAt` = now + N days (**`3`** = three days, **`7`** = one week) |
 | `CLASSROOM_RECORDING_PURGE_INTERVAL_DAYS` | `7` | How often the server runs the expired-file cleanup (**not** daily; default weekly) |
 | `CLASSROOM_RECORDING_MAX_MB` | `120` | Per-file upload cap |

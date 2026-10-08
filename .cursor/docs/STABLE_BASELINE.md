@@ -19,6 +19,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Class schedule / issue | `public/teacher-class-table.html`, `POST /report-issue` + `GET /check-class-issues` in `server/teacher.js` |
 | Applicant → teacher docs | `server/utils/applicantDocuments.js`, teacher signup in `server/auth.js` |
 | Live classroom (AV / locks) | `public/live-classroom.html`, `public/css/live-classroom-redesign.css`, `public/js/virtual-background.js`, `public/images/virtual-bg/`, socket maps in `server/index.js` |
+| QA lesson recording | `public/js/classroom-qa-recording.js`, `public/live-classroom.css` (`.qa-recording-dock__stop`), `server/classroomRecordingApi.js`, [CLASSROOM_RECORDING.md](CLASSROOM_RECORDING.md) |
 | Student waiting room | Overlay `#lc-student-waiting` + `public/js/student-class-wait.js`; page `public/student-waiting-room.html`; `GET /api/signaling/room-status` |
 | Phone app chrome / scroll | `public/js/portal-layout.js`, `public/css/remoed-layers.css`, `public/css/mobile-first.css`, `public/css/portal-chrome-compact.css`, `public/mobile-utils.js` |
 | Portal header chips | `public/css/portal-header-actions.css` (bell / calendar dropdowns) |
@@ -103,6 +104,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Teacher and student on **different networks** see each other. If video is black and the console shows `STUN binding request timed out` / `TURN allocate request timed out`, the relay is unreachable: follow BETATESTER.md → “Camera black / ICE checking”.
 - [ ] Class chat survives a refresh and shows “Pat is typing...” (first name) while the other person types. After Finish, that room’s chat is gone (`classroom_chats` deleted on end-session / `class-finished`; 24h TTL if Finish never happens). Teacher/admin Messages stay. Do not store class chat on the Messages collection.
 - [ ] A weak connection does not replace the other person’s camera with “Waiting for student/teacher”. The tile stays, black if the picture drops, with their name, until they actually leave. QA recording still treats that black tile as the student being in class.
+- [ ] QA **Start** stays disabled until the student is in the room, including a student who arrives a few minutes early. Recording does **not** stop itself. The teacher clicks **Stop** at the usual class end (about **:25** for a 1:00 / 2:00 / 3:00 class, about **:55** for a 1:30 / 2:30 / 3:30 class). That clip is about 25 minutes on time, up to about 30 minutes if the student came early, or shorter if they were late. **Stop** only saves the recording and leaves the classroom tab open. The teacher then clicks **Finish**. Do not close the tab when recording stops.
 - [ ] ICE policy in `live-classroom.html` is **direct-first** (`'all'`) with TURN as fallback. Do not restore the automatic relay-first switch on `turns:443/tcp`; it forced all media through Cloudflare and caused lag and freezes. `?relay=1` is the manual override. The webcam sender cap (`CAMERA_MAX_BITRATE_BPS`, 500 kbps) stays.
 - [ ] The classroom socket (`io(...)` in `public/live-classroom.html`) uses `reconnectionAttempts: Infinity` with max delay 5 s and reconnects on `online` / tab visible. Do not re-add a second `reconnectionAttempts` key or a finite limit: a 20-second network drop must not leave a teacher or student gone until refresh. Test by turning Wi-Fi off for 30 s and on again; the peer returns without a refresh.
 - [ ] Production relay is **hosted Cloudflare TURN**: `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` in the server `.env` (`server/services/hostedTurn.js`). `https://remoedph.com/api/rtc-config` shows `"turnConfigured": true` and `turn.cloudflare.com` URLs. Do not remove this path. The own coturn on the VPS is **stopped and disabled** (2026-10-05) and `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` are removed from `.env`, so no dead `187.77.159.63:3478` entry slows the connection. Re-enable it only after an external probe of 3478 succeeds (see Camera relay configuration below).
@@ -216,6 +218,25 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 - A weak connection (`disconnected` / `failed`) must not call `markPeerVideoDisconnected` if that person was already on camera. Use `holdPeerVideoForWeakSignal` (black tile, name stays, stream kept when the track is still live). “Waiting for…” is only before they join or after `user-left` for the opposite role. The server waits 20 seconds (`schedulePeerLeave`) before emitting `user-left`, and cancels that if the same role rejoins. QA `isStudentPresent` treats `.is-signal-hold` as still in class so recording does not stop.
 - Finish deletes that room’s chat (`class-finished`, and `POST /api/booking/:id/end-session` including already-finished / absent / pending-feedback). The next class starts empty. A 24-hour TTL on `updatedAt` deletes a chat if Finish never happens.
 - Teacher/admin **Messages** (`PeerMessage`) are a different store. Do not delete those when a class ends, and do not store class chat there.
+
+### QA recording
+
+Details: [CLASSROOM_RECORDING.md](CLASSROOM_RECORDING.md). Client: `public/js/classroom-qa-recording.js`.
+
+- **Start** only after `isStudentPresent()` (student video/audio live, or a black `.is-signal-hold` tile). A student who enters about 5 minutes early can be recorded. The classroom already opens 10 minutes before the slot.
+- The recorder does **not** stop itself. Do not put back a `setTimeout` on `state.maxMs` that calls `mediaRecorder.stop()`. `CLASSROOM_QA_RECORDING_MAX_MINUTES` is the usual class length shown in config, not an auto-stop.
+- Classes on the hour (1:00, 2:00, 3:00) run to about the **25th** minute. Classes on the half hour (1:30, 2:30, 3:30) run to about the **55th** minute. The teacher cannot end the class in the first 15 minutes. A recording is about **25 minutes** if the student is on time, about **30 minutes** if they arrived early, or shorter if they were late.
+- **Stop** (`#qa-rec-stop`) only stops `MediaRecorder` and uploads. It must not call end-session, must not `window.close`, and must not disconnect the socket. The page stays open so the teacher can click **Finish**.
+- **Finish** is a separate click. If recording is still on when they click Finish, `stopAndFinalize()` runs first, then the class ends. A normal 25–30 minute class ends before the 40-minute safety stop, so that safety must not cut a recording the teacher is still using.
+- Chunks are about 10 seconds at ~160 kbps video and ~32 kbps audio (about 30–40 MB for 25 minutes). Chunk `PUT`s must **not** use `keepalive` (Chrome drops bodies over ~64 KB, which left QA Hub on “Uploading · 0 B”). Do not downscale the `getDisplayMedia` stream; the same capture is the student’s cropped slide share.
+- Empty sessions (0 bytes, still “uploading” after 30 minutes) are marked failed. A session that already has bytes and then goes quiet is assembled after a few minutes.
+
+### Class end, feedback, and lesson order
+
+- Every live class hard-stops **40 minutes** after its scheduled start (`CLASS_MAX_MINUTES` in `server/services/classroomEntryWindow.js`, `server/services/classAutoEnd.js`, and the teacher timer in `live-classroom.html`). The stored end is that mark, so history cannot show a multi-hour duration. This does not mark the student absent and does not consume a credit. Closing the tab does not mark absent. **Finish** stays locked for the first 15 minutes.
+- Feedback stays editable through the salary date (15th for the 1st–15th, last calendar day for the 16th–end, Philippine time). A second save must not charge the credit again.
+- Student-absent classes (`absent` or `absentMarkedAt`) cannot be completed through feedback. A pending, reviewed, or resolved **Report Issue** also blocks class feedback; QA sets the fee on resolve (system or student issue 100%, teacher fault 20%, valid emergency with proof waived and 100%). A dismissed-only report can still use normal feedback.
+- Booking follows Learning Journey order (`LESSON_AHEAD_OF_PROGRESS`): next stop or any earlier lesson. The trail moves when status is **completed** or Lesson Progress is completed. A finished **Pre-Level** lesson counts on the student’s growth-level trail at the same lesson number.
 
 ### Camera relay configuration and emergency guidelines
 
@@ -567,3 +588,13 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Lesson decks | Microsoft PowerPoint viewer with signed link; Cloudmersive removed; 10 MB image recompression; `FRONTEND_URL` normalized to https with a startup log. |
 | Classroom layout | Teacher media-lock buttons are 32 px icon buttons; chat stays visible beside smaller video tiles. |
 | Admin | Classroom SOS is a tab in QA Hub; admin sidebar assets at `?v=app-shell-17`. |
+
+## Baseline updates — 2026-10-06 to 2026-10-08
+
+| Area | What shipped |
+|------|----------------|
+| Class end | Live classes hard-stop 40 minutes after the scheduled start, including when the teacher only closes the tab. Stored duration is capped at 40. This does not mark the student absent and does not consume a credit. Finish stays locked for the first 15 minutes. |
+| Class feedback | Teachers can open and save Complete Class & Feedback until the salary date (15th or last day of the month, Philippine time), including classes already marked completed. A second save does not charge the credit again. A completed class with no feedback keeps Give Feedback until that cut-off. |
+| Absent and issues | Student-absent classes cannot be turned into Complete Feedback. A Report Issue class cannot use class feedback while QA is pending or after QA resolves. QA still sets the fee (system or student 100%, teacher fault 20%, valid emergency with proof waived and 100%). A dismissed report can still use normal feedback. |
+| Lesson order | Paid students book the next Learning Journey stop or any earlier lesson (`LESSON_AHEAD_OF_PROGRESS`). The map moves only when the class is completed or Lesson Progress is completed. A finished Pre-Level lesson counts on the student’s growth level at the same lesson number. |
+| QA recording | Start only after the student is in the room, including a few minutes early. The recorder does not stop itself and does not close the tab. The teacher clicks Stop at the usual end (:25 on the hour, :55 for a :30 class), then Finish. A clip is about 25 minutes, or about 30 if the student came early, or shorter if late. Chunk uploads are not keepalive requests. An empty upload is marked failed after 30 minutes. |

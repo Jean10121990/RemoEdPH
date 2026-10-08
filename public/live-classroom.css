@@ -501,6 +501,21 @@ body.page-live-classroom .main-container {
   background: var(--lc-green-deep);
 }
 
+.qa-recording-dock__stop {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.qa-recording-dock__stop:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .qa-recording-dock__hint {
   margin-top: 8px;
   font-size: 0.62rem;
