@@ -3493,10 +3493,25 @@ io.on('connection', socket => {
   // Whiteboard / Annotation forwarding
   socket.on('whiteboard-draw', (data) => {
     try {
-      const { room } = data || {};
-      if (!room) return;
-      // Forward to other clients in the room
-      socket.to(room).emit('whiteboard-draw', data);
+      const room = (data && data.room) || socket.room;
+      if (!room || !data) return;
+      const x0 = Number(data.x0);
+      const y0 = Number(data.y0);
+      const x1 = Number(data.x1);
+      const y1 = Number(data.y1);
+      if (![x0, y0, x1, y1].every(Number.isFinite)) return;
+      const stroke = {
+        x0, y0, x1, y1,
+        color: typeof data.color === 'string' ? data.color.slice(0, 32) : '#ff0000',
+        width: Number.isFinite(Number(data.width)) ? Number(data.width) : 8,
+        tool: data.tool === 'eraser' ? 'eraser' : 'draw',
+      };
+      const st = getWbState(room);
+      st.strokes.push(stroke);
+      if (st.strokes.length > WB_STROKE_CAP) {
+        st.strokes.splice(0, st.strokes.length - WB_STROKE_CAP);
+      }
+      socket.to(room).emit('whiteboard-draw', Object.assign({ room }, stroke));
     } catch (err) {
       console.error('Error forwarding whiteboard-draw:', err);
     }
@@ -3504,9 +3519,11 @@ io.on('connection', socket => {
 
   socket.on('whiteboard-clear', (data) => {
     try {
-      const { room } = data || {};
+      const room = (data && data.room) || socket.room;
       if (!room) return;
-      socket.to(room).emit('whiteboard-clear', data);
+      const st = getWbState(room);
+      st.strokes = [];
+      socket.to(room).emit('whiteboard-clear', { room });
     } catch (err) {
       console.error('Error forwarding whiteboard-clear:', err);
     }

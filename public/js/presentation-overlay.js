@@ -346,19 +346,42 @@
     });
   }
 
+  function studentPenLocked() {
+    return global.__lcStudentPenAllowed === false;
+  }
+
   function setDrawMode(state, drawing) {
-    state.drawing = !!drawing;
+    var locked = !state.isTeacher && studentPenLocked();
+    state.drawing = !locked && !!drawing;
     if (state.canvas) {
-      state.canvas.style.pointerEvents = state.drawing ? 'auto' : 'none';
+      state.canvas.style.setProperty('pointer-events', state.drawing ? 'auto' : 'none', 'important');
     }
+    [state.toggleDraw, state.colorInput, state.clearBtn].forEach(function (el) {
+      if (!el) return;
+      el.disabled = locked;
+      el.hidden = locked;
+    });
     if (state.toggleDraw) {
       state.toggleDraw.classList.toggle('active', state.drawing);
       state.toggleDraw.setAttribute('aria-pressed', state.drawing ? 'true' : 'false');
       state.toggleDraw.style.background = state.drawing ? '#dcfce7' : '#fff';
       state.toggleDraw.style.borderColor = state.drawing ? '#47BC3E' : '#cbd5e1';
       state.toggleDraw.textContent = state.drawing ? 'Draw ✓' : 'Draw';
+      state.toggleDraw.title = locked
+        ? 'Pen is locked by your teacher'
+        : 'Toggle drawing overlay (off = click through to presentation)';
     }
   }
+
+  function applyPptPenLock() {
+    Object.keys(pptOverlayState).forEach(function (id) {
+      var state = pptOverlayState[id];
+      if (!state) return;
+      if (!state.isTeacher && studentPenLocked()) setDrawMode(state, false);
+      else setDrawMode(state, state.drawing);
+    });
+  }
+  global.__lcApplyPptPenLock = applyPptPenLock;
 
   function resolveTotalSlides(material, options) {
     options = options || {};
@@ -466,6 +489,7 @@
 
     var toggleDraw = document.createElement('button');
     toggleDraw.type = 'button';
+    toggleDraw.className = 'remoed-ppt-draw-tool';
     toggleDraw.id = 'ppt-draw-toggle-' + materialId;
     toggleDraw.textContent = 'Draw';
     toggleDraw.title = 'Toggle drawing overlay (off = click through to presentation)';
@@ -474,12 +498,14 @@
 
     var colorInput = document.createElement('input');
     colorInput.type = 'color';
+    colorInput.className = 'remoed-ppt-draw-tool';
     colorInput.value = isTeacher ? '#ff3b30' : '#2563eb';
     colorInput.title = 'Pen color';
     colorInput.style.cssText = 'width:32px;height:32px;border:none;background:transparent;cursor:pointer;';
 
     var clearBtn = document.createElement('button');
     clearBtn.type = 'button';
+    clearBtn.className = 'remoed-ppt-draw-tool';
     clearBtn.textContent = 'Clear';
     clearBtn.style.cssText = btnStyle('border-color:#fecaca;background:#fef2f2;color:#b91c1c;');
 
@@ -587,6 +613,8 @@
       activeStroke: null,
       drawing: false,
       toggleDraw: toggleDraw,
+      colorInput: colorInput,
+      clearBtn: clearBtn,
       color: colorInput.value,
       size: 4,
       slideIndex: startIndex,
@@ -653,8 +681,9 @@
       } catch (_e) {}
     }
 
-    // Students can draw immediately; teacher starts with draw off (opts in via Draw)
-    setDrawMode(state, !isTeacher);
+    // Both sides start with Draw off. The Pen checkbox only locks the student.
+    setDrawMode(state, false);
+    applyPptPenLock();
 
     function emitAnnotation(payload) {
       if (!socket || !socket.connected) return;
@@ -788,7 +817,6 @@
           );
           return;
         }
-        if (!opts.keepDraw) setDrawMode(state, false);
         if (!slideImg || !slideImg.isConnected) {
           iframeWrap.innerHTML = '';
           slideImg = document.createElement('img');
@@ -819,7 +847,6 @@
         );
         return;
       }
-      if (!opts.keepDraw) setDrawMode(state, false);
       // Bust Office cache so wdStartOn is honored when syncing students
       if (opts.forceReload && src.indexOf('view.officeapps.live.com') !== -1) {
         src += (src.indexOf('?') >= 0 ? '&' : '?') + '_remoedSlide=' + (i + 1) + '&_t=' + Date.now();
@@ -919,6 +946,7 @@
     state._onTeacherKeyNav = onTeacherKeyNav;
 
     toggleDraw.addEventListener('click', function () {
+      if (!state.isTeacher && studentPenLocked()) return;
       setDrawMode(state, !state.drawing);
     });
     colorInput.addEventListener('input', function () {
@@ -931,7 +959,7 @@
     });
 
     canvas.addEventListener('pointerdown', function (e) {
-      if (!state.drawing) return;
+      if (!state.drawing || (!state.isTeacher && studentPenLocked())) return;
       e.preventDefault();
       state.activeStroke = {
         tool: 'pen',
@@ -1145,11 +1173,8 @@
     };
   }
 
-  function handlePresentationInteractionMode(data) {
-    if (!data || !data.materialId) return;
-    var state = pptOverlayState[data.materialId];
-    if (!state) return;
-    setDrawMode(state, data.mode === 'draw');
+  function handlePresentationInteractionMode() {
+    // Draw stays local. A remote mode used to turn the teacher's pen off and leave the student's on.
   }
 
   function handlePresentationSlideChanged(data) {

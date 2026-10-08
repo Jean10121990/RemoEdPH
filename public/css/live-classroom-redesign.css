@@ -530,8 +530,14 @@ body.lc-student-pen-locked .whiteboard-controls-bar.lc-pen-locked .wb-size-selec
 }
 
 body.lc-student-pen-locked #whiteboard-canvas,
-body.lc-student-pen-locked .pdf-annotation-layer {
+body.lc-student-pen-locked .pdf-annotation-layer,
+body.lc-student-pen-locked .remoed-ppt-annotation-canvas,
+body.lc-student-pen-locked .remoed-ppt-draw-tool {
   pointer-events: none !important;
+}
+
+body.lc-student-pen-locked .remoed-ppt-draw-tool {
+  display: none !important;
 }
 
 .lc-camera-settings__btn--photo {

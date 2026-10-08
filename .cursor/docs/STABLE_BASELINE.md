@@ -188,7 +188,10 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 - Teacher `join` payload may include `videosAllowed: false` and/or `penAllowed: false` from `sessionStorage` (`remoed_lc_settings_*`). After join, re-emit **only** stored locks — never broadcast default `true` and unlock the room.
 - Students pull state with `classroom-settings-request` after connect. Always send current settings to joiners.
 - **Do not** `classroomSettingsByRoom.delete` when the last socket leaves. A teacher refresh must not unlock Videos/pen.
-- Client: students hide `#lc-videos-tab-btn` + `#videos-panel` when locked (`body.lc-student-videos-locked`). Pen lock sets `window.__lcStudentPenAllowed` and gates PDF annotate + whiteboard (`body.lc-student-pen-locked`). Teacher can still draw. `whiteboard-mode-stop` still sends students to Lesson.
+- Students only see the **Lesson** tab. Board and Videos buttons are hidden, and student clicks do not change tabs. The teacher still opens Board; that follows the student, and leaving Board sends them back to the lesson.
+- Client: pen lock sets `window.__lcStudentPenAllowed` and gates the lesson slide Draw overlay, PDF annotate, and whiteboard (`body.lc-student-pen-locked`). Teacher can still draw. Draw starts off for both; each person turns their own pen on. `whiteboard-mode-stop` still sends students to Lesson. Board strokes are stored on the server and redrawn after the canvas resizes, so a teacher’s marks stay when the student draws.
+- Classroom `<video>` elements set `disablePictureInPicture`. The browser Picture-in-Picture hover control stays off.
+- Join does not mute either microphone or the other person's speaker. Local preview stays muted so the room does not echo.
 
 ### Teacher → student mic / camera
 

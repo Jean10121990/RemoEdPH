@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-app-2" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=media-icons-3" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=pen-lock-1" />
   <link rel="stylesheet" href="css/student-wait.css?v=1" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -184,7 +184,7 @@
           <div class="video-header">
             <p id="peer-video-label">Peer</p>
           </div>
-          <video id="remote-video" autoplay playsinline muted></video>
+          <video id="remote-video" autoplay playsinline disablepictureinpicture disableremoteplayback></video>
           <div class="video-empty-hint" id="peer-video-empty">Waiting for peer…</div>
         </div>
         <div id="lc-teacher-media-controls" class="lc-teacher-media-controls" hidden>
@@ -197,7 +197,7 @@
           <div class="video-header">
             <p id="local-video-label">You</p>
           </div>
-          <video id="local-video" autoplay muted playsinline></video>
+          <video id="local-video" autoplay muted playsinline disablepictureinpicture disableremoteplayback></video>
           <div id="camera-error-message" style="display:none; padding:8px; background:#fee; color:#c33; font-size:0.85rem; text-align:center; margin:4px 0; border-radius:4px;">
             <div style="margin-bottom:4px;">Camera/Mic not available</div>
             <button id="retry-camera-btn" style="padding:4px 12px; background:#47BC3E; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
@@ -205,7 +205,7 @@
           <div class="video-controls" aria-label="Media controls">
             <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera" data-lucide="video"></button>
             <button id="toggle-mic" class="video-control-btn" type="button" title="Toggle microphone" aria-label="Toggle microphone" data-lucide="mic"></button>
-            <button id="toggle-mute" class="video-control-btn is-off" type="button" title="Unmute peer audio" aria-label="Unmute peer audio" data-lucide="volume-x"></button>
+            <button id="toggle-mute" class="video-control-btn" type="button" title="Mute peer audio" aria-label="Mute peer audio" data-lucide="volume-2"></button>
             <button id="toggle-camera-settings" class="video-control-btn" type="button" title="Camera background" aria-label="Camera background" aria-expanded="false" data-lucide="image"></button>
           </div>
           <div id="lc-media-toast" class="lc-media-toast" hidden role="status" aria-live="polite"></div>
@@ -435,12 +435,12 @@
         <button type="button" id="lc-class-settings-close" class="lc-class-settings-close" aria-label="Close settings">&times;</button>
       </div>
       <p class="lc-class-settings-section">Student access</p>
-      <p class="lc-class-settings-hint">Turn a switch off to lock it for students. You can still use Videos, the pen, and your camera.</p>
-      <label class="lc-class-settings-row">
+      <p class="lc-class-settings-hint">Students stay on the lesson. Only you open the board and videos. Turn a switch off to lock the pen, microphone, or camera. You can still use yours.</p>
+      <label class="lc-class-settings-row" hidden>
         <input type="checkbox" id="lc-setting-videos" checked>
         <span>
           <strong>Videos tab</strong>
-          <em>Students can open the Videos tab</em>
+          <em>Students stay on the lesson. This tab is teacher-only.</em>
         </span>
       </label>
       <label class="lc-class-settings-row">
@@ -508,7 +508,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
-    <script src="js/presentation-overlay.js?v=slide-sync-3"></script>
+    <script src="js/presentation-overlay.js?v=pen-lock-1"></script>
     <script src="js/virtual-background.js?v=vbg-7"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
@@ -1109,21 +1109,14 @@
         );
         if (videosTabBtn) {
           if (userType === 'student') {
-            const show = studentVideosAllowed;
-            videosTabBtn.hidden = !show;
-            videosTabBtn.disabled = !show;
-            videosTabBtn.classList.toggle('lc-videos-tab-locked', !show);
-            videosTabBtn.style.display = show ? '' : 'none';
-            videosTabBtn.setAttribute('aria-disabled', show ? 'false' : 'true');
-            if (!show) {
-              if (portalVideosPanel) {
-                portalVideosPanel.style.display = 'none';
-                portalVideosPanel.classList.remove('active');
-              }
-              const onVideos = videosTabBtn.classList.contains('active');
-              if (onVideos && typeof setActiveTab === 'function') {
-                setActiveTab('lesson-content', { silent: true });
-              }
+            videosTabBtn.hidden = true;
+            videosTabBtn.disabled = true;
+            videosTabBtn.classList.add('lc-videos-tab-locked');
+            videosTabBtn.style.display = 'none';
+            videosTabBtn.setAttribute('aria-disabled', 'true');
+            if (portalVideosPanel) {
+              portalVideosPanel.style.display = 'none';
+              portalVideosPanel.classList.remove('active');
             }
           } else {
             videosTabBtn.hidden = false;
@@ -1153,6 +1146,9 @@
         }
         if (typeof window.__lcApplyWhiteboardPenLock === 'function') {
           window.__lcApplyWhiteboardPenLock();
+        }
+        if (typeof window.__lcApplyPptPenLock === 'function') {
+          window.__lcApplyPptPenLock();
         }
         syncClassSettingsControls();
         if (
@@ -1277,6 +1273,15 @@
             setClassSettingsOpen(false);
           }
         });
+        function emitStudentMediaSetting(partial) {
+          if (typeof window.__lcEmitStudentMedia === 'function') {
+            window.__lcEmitStudentMedia(partial);
+            return;
+          }
+          if (socket && socket.connected) {
+            socket.emit('media-control', Object.assign({ room: room, targetRole: 'student' }, partial));
+          }
+        }
         if (settingVideosChk) {
           settingVideosChk.addEventListener('change', function () {
             emitClassroomClassSettings({ videosAllowed: !!settingVideosChk.checked });
@@ -1284,20 +1289,28 @@
         }
         if (settingPenChk) {
           settingPenChk.addEventListener('change', function () {
-            emitClassroomClassSettings({ penAllowed: !!settingPenChk.checked });
+            const allowed = !!settingPenChk.checked;
+            emitClassroomClassSettings({ penAllowed: allowed });
+            if (typeof showMediaToast === 'function') {
+              showMediaToast(allowed ? 'Student pen unlocked' : 'Student pen locked');
+            }
           });
         }
         if (settingStudentMicChk) {
           settingStudentMicChk.addEventListener('change', function () {
-            if (typeof window.__lcEmitStudentMedia === 'function') {
-              window.__lcEmitStudentMedia({ audio: !!settingStudentMicChk.checked });
+            const allowed = !!settingStudentMicChk.checked;
+            emitStudentMediaSetting({ audio: allowed });
+            if (typeof showMediaToast === 'function') {
+              showMediaToast(allowed ? 'Student microphone allowed' : 'Student microphone muted');
             }
           });
         }
         if (settingStudentCamChk) {
           settingStudentCamChk.addEventListener('change', function () {
-            if (typeof window.__lcEmitStudentMedia === 'function') {
-              window.__lcEmitStudentMedia({ video: !!settingStudentCamChk.checked });
+            const allowed = !!settingStudentCamChk.checked;
+            emitStudentMediaSetting({ video: allowed });
+            if (typeof showMediaToast === 'function') {
+              showMediaToast(allowed ? 'Student camera allowed' : 'Student camera turned off');
             }
           });
         }
@@ -1856,10 +1869,10 @@
 
       function setActiveTab(tabName = 'lesson-content', opts = {}) {
         const silent = !!(opts && opts.silent);
-        if (tabName === 'videos' && userType === 'student' && !studentVideosAllowed) {
-          if (typeof showMediaToast === 'function') {
-            showMediaToast('Videos tab is locked by your teacher');
-          }
+        if (userType === 'student' && !silent && tabName !== 'lesson-content') {
+          tabName = 'lesson-content';
+        }
+        if (tabName === 'videos' && userType === 'student') {
           tabName = 'lesson-content';
         }
         tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
@@ -1899,8 +1912,25 @@
         // Lessons tab removed - moved to admin side
       }
 
+      if (userType === 'student') {
+        const boardTabBtn = document.querySelector('.tabs button[data-tab="whiteboard"]');
+        if (boardTabBtn) {
+          boardTabBtn.hidden = true;
+          boardTabBtn.disabled = true;
+          boardTabBtn.style.display = 'none';
+        }
+        if (videosTabBtn) {
+          videosTabBtn.hidden = true;
+          videosTabBtn.disabled = true;
+          videosTabBtn.style.display = 'none';
+        }
+      }
+
       tabs.forEach(btn => {
-        btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+        btn.addEventListener('click', () => {
+          if (userType === 'student') return;
+          setActiveTab(btn.dataset.tab);
+        });
       });
 
       setActiveTab('lesson-content');
@@ -2137,8 +2167,11 @@
             if (opts.muted != null) videoEl.muted = !!opts.muted;
             videoEl.autoplay = true;
             videoEl.playsInline = true;
+            videoEl.disablePictureInPicture = true;
             videoEl.setAttribute('autoplay', '');
             videoEl.setAttribute('playsinline', '');
+            videoEl.setAttribute('disablepictureinpicture', '');
+            videoEl.setAttribute('disableremoteplayback', '');
             if (videoEl.muted) videoEl.setAttribute('muted', '');
 
             videoEl.srcObject = stream;
@@ -2444,6 +2477,8 @@
         if (!video) {
           video = document.createElement('video');
           video.id = 'student-presentation-video';
+          video.disablePictureInPicture = true;
+          video.setAttribute('disablepictureinpicture', '');
           video.setAttribute('autoplay', '');
           video.setAttribute('playsinline', '');
           video.muted = true;
@@ -3908,6 +3943,8 @@
         const video = document.createElement('video');
         video.id = 'lc-stage-video';
         video.className = 'lc-stage-video';
+        video.disablePictureInPicture = true;
+        video.setAttribute('disablepictureinpicture', '');
         video.src = material.data;
         video.playsInline = true;
         video.setAttribute('playsinline', '');
@@ -4430,7 +4467,7 @@
           function allowStudentAnnotations() {
             return window.__lcStudentPenAllowed !== false;
           }
-          let annotationEnabled = isStudent && allowStudentAnnotations();
+          let annotationEnabled = false;
           let annotationMode = 'pen';
           let annotationColor = annotationColorPicker.value || (isTeacher ? '#ff3b30' : '#2563eb');
           let annotationSize = parseInt(annotationSizeSelect.value, 10) || 4;
@@ -4638,13 +4675,11 @@
             if (allowed === false) {
               annotationEnabled = false;
               activeStroke = null;
-            } else {
-              annotationEnabled = true;
             }
             if (isStudent) {
               annotatorIndicator.textContent = allowed === false
                 ? 'Following teacher annotations'
-                : 'Ready to draw';
+                : 'Click Draw to start';
             }
             setAnnotationInteractivity();
           };
@@ -4904,17 +4939,14 @@
           });
           
           annotateToggle.addEventListener('click', () => {
-            if (!isTeacher) return;
+            if (isStudent && !allowStudentAnnotations()) {
+              if (typeof showMediaToast === 'function') showMediaToast('Pen is locked by your teacher');
+              return;
+            }
             annotationEnabled = !annotationEnabled;
             setAnnotationInteractivity();
-            if (socket && socket.connected) {
-              socket.emit(annotationEnabled ? 'annotation-enable' : 'annotation-disable', {
-                room,
-                materialId: window.currentPdfMaterialId || material.id
-              });
-              if (annotationEnabled) {
-                broadcastAnnotationState();
-              }
+            if (isTeacher && annotationEnabled && socket && socket.connected) {
+              broadcastAnnotationState();
             }
           });
           
@@ -5004,23 +5036,10 @@
             socket.off('annotation-enable');
             socket.off('annotation-disable');
             socket.on('annotation-sync', handleRemoteAnnotation);
-            socket.on('annotation-enable', ({ materialId: incomingId } = {}) => {
-              const targetId = window.currentPdfMaterialId || material.id;
-              if (incomingId && targetId && incomingId !== targetId) return;
-              if (isStudent && !allowStudentAnnotations()) {
-                annotationEnabled = false;
-                setAnnotationInteractivity();
-                return;
-              }
-              annotationEnabled = true;
-              setAnnotationInteractivity();
+            socket.on('annotation-enable', () => {
+              // Each side's Draw button is local. A remote enable used to turn the student pen on.
             });
-            socket.on('annotation-disable', ({ materialId: incomingId } = {}) => {
-              const targetId = window.currentPdfMaterialId || material.id;
-              if (incomingId && targetId && incomingId !== targetId) return;
-              annotationEnabled = false;
-              setAnnotationInteractivity();
-            });
+            socket.on('annotation-disable', () => {});
           }
           
           // Load PDF document (base64 data URL, raw base64, or same-origin /http URL)
@@ -5088,9 +5107,7 @@
             fitToViewerBtn.style.background = '#d4edda';
             fitToViewerBtn.style.color = '#155724';
             
-            // Start annotations in sync for students when teacher loads the PDF
             if (isTeacher && socket && socket.connected) {
-              socket.emit('annotation-enable', { room, materialId: material.id });
               broadcastAnnotationState();
             }
           }).catch(function(error) {
@@ -6197,6 +6214,7 @@
       
       // Ensure video elements are properly configured
       if (localVideo) {
+        localVideo.disablePictureInPicture = true;
         localVideo.muted = true; // Always mute local to prevent feedback
         localVideo.autoplay = true;
         localVideo.playsInline = true;
@@ -6206,6 +6224,7 @@
       }
       
       if (remoteVideo) {
+        remoteVideo.disablePictureInPicture = true;
         remoteVideo.autoplay = true;
         remoteVideo.playsInline = true;
         remoteVideo.muted = false; // Allow audio from remote
@@ -6344,7 +6363,7 @@
       const retryCameraBtn = document.getElementById('retry-camera-btn');
       let isCameraOn = true;
       let isMicOn = true;
-      let isMuted = true; // remote video starts muted in markup until user unmutes
+      let isMuted = false;
       let isBgBlurOn = false;
       let vbController = null;
       let blurModelReady = false;
@@ -6445,6 +6464,7 @@
         // Recreate output pipeline every time to ensure fresh tracks.
         stopBlurPipeline();
         blurSourceVideo = document.createElement('video');
+        blurSourceVideo.disablePictureInPicture = true;
         blurSourceVideo.muted = true;
         blurSourceVideo.playsInline = true;
         blurSourceVideo.autoplay = true;
@@ -6911,13 +6931,6 @@
             audioTrack.enabled = isMicOn;
             toggleMicBtn.classList.toggle('is-off', !isMicOn);
             toggleMicBtn.style.opacity = isMicOn ? '1' : '0.55';
-            if (!isMicOn) {
-              isMuted = true;
-              if (toggleMuteBtn) {
-                toggleMuteBtn.classList.add('is-off');
-                toggleMuteBtn.style.opacity = '1';
-              }
-            }
             syncLcMediaIcons();
           }
         });
@@ -6925,7 +6938,14 @@
 
       // Toggle mute (mute/unmute audio output)
       if (toggleMuteBtn) {
-        if (remoteVideo) remoteVideo.muted = true;
+        if (remoteVideo) remoteVideo.muted = false;
+        document.addEventListener('pointerdown', function resumePeerAudioOnce() {
+          if (isMuted || !remoteVideo) return;
+          remoteVideo.muted = false;
+          const playPromise = remoteVideo.play();
+          if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(function () {});
+          document.removeEventListener('pointerdown', resumePeerAudioOnce, true);
+        }, true);
         toggleMuteBtn.addEventListener('click', () => {
           if (!remoteVideo) return;
           isMuted = !isMuted;
@@ -9372,9 +9392,9 @@
           const container = whiteboardCanvas.parentElement;
           if (!container) return;
           const rect = container.getBoundingClientRect();
-          // Make whiteboard fill the available space properly
-          const width = Math.max(800, rect.width - 20);
-          const height = Math.max(600, rect.height - 20);
+          const width = Math.max(800, Math.floor(rect.width - 20));
+          const height = Math.max(600, Math.floor(rect.height - 20));
+          if (whiteboardCanvas.width === width && whiteboardCanvas.height === height) return;
           whiteboardCanvas.width = width;
           whiteboardCanvas.height = height;
           whiteboardCanvas.style.width = width + 'px';
@@ -9386,6 +9406,7 @@
             wbCtx.strokeStyle = wbColor ? wbColor.value : '#ff0000';
             wbCtx.lineWidth = wbSize ? parseInt(wbSize.value, 10) : 8;
           }
+          restoreWhiteboard();
         }
         
         resizeWhiteboard();
@@ -9531,15 +9552,14 @@
       // Apply remote whiteboard strokes
       socket.on('whiteboard-draw', (data = {}) => {
         try {
-          if (!whiteboardCanvas || !wbCtx) return;
           const { x0, y0, x1, y1, color, width, tool } = data;
           if (typeof x0 !== 'number' || typeof y0 !== 'number' ||
               typeof x1 !== 'number' || typeof y1 !== 'number') {
             return;
           }
           
-          // Store in history
           wbHistory.push({ x0, y0, x1, y1, color, width, tool });
+          if (!whiteboardCanvas || !wbCtx) return;
           
           const sx0 = x0 * whiteboardCanvas.width;
           const sy0 = y0 * whiteboardCanvas.height;
