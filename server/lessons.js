@@ -265,7 +265,11 @@ async function handleLessonPdfRaw(req, res) {
     if (!isMongoObjectId(fileId)) {
       return respondInvalidObjectId(res, 'file id');
     }
-    const asDownload = req.query.download === '1' || req.query.download === 'true';
+    if (req.query.download === '1' || req.query.download === 'true') {
+      return res.status(403).json({
+        error: 'Downloading lessons is not allowed. View them inside RemoEd only.',
+      });
+    }
 
     const lesson = await Lesson.findOne(
       { 'files._id': fileId },
@@ -292,8 +296,6 @@ async function handleLessonPdfRaw(req, res) {
       return res.status(500).json({ error: 'Invalid file encoding' });
     }
 
-    const rawName = file.fileName || 'lesson.pdf';
-    const safeName = rawName.replace(/[^\w.\- ]+/g, '_').slice(0, 180);
     const safeId = String(fileId).replace(/[^a-f0-9]/gi, '');
     tmpPath = path.join(
       os.tmpdir(),
@@ -310,18 +312,8 @@ async function handleLessonPdfRaw(req, res) {
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    if (asDownload) {
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(rawName)}`
-      );
-    } else {
-      res.setHeader(
-        'Content-Disposition',
-        `inline; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(rawName)}`
-      );
-    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Disposition', 'inline');
 
     if (req.method === 'HEAD') {
       res.setHeader('Content-Length', String(buf.length));

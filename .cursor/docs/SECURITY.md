@@ -117,3 +117,4 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 | 2026-10-08 | `POST /api/student/book-class` (and the teacher book-class equivalent) returns 400 `LESSON_AHEAD_OF_PROGRESS` when the lesson is past the student’s next stop on that level. Identity comes from the student JWT. |
 | 2026-10-08 | `POST /api/feedback/submit` (teacher JWT, booking owner) rejects student-absent classes and classes with a pending or resolved report issue. The teaching fee for a report stays with QA’s resolution. |
 | 2026-10-08 | `GET /api/admin/referral-link/stats` (admin JWT, `mkt:commissions_view`) lists only the signed-in admin’s referral rows. Owner id comes from the token, not the query. |
+| 2026-10-08 | Lesson files stay inside RemoEd. `GET /api/lessons/lesson-file/:id/raw?download=1` (any signed-in role) returns 403. The Office viewer file link refuses a browser-tab open. |

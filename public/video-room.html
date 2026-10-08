@@ -1255,6 +1255,8 @@
             const video = document.createElement('video');
             video.src = previewUrl;
             video.controls = true;
+            video.setAttribute('controlsList', 'nodownload');
+            video.disablePictureInPicture = true;
             video.style.cssText = `
                 max-width: 100%;
                 max-height: 600px;
@@ -1322,26 +1324,14 @@
                 font-size: 0.9rem;
             `;
             
-            const downloadBtn = document.createElement('a');
-            downloadBtn.href = previewUrl;
-            downloadBtn.target = '_blank';
-            downloadBtn.textContent = '⬇️ Download File';
-            downloadBtn.style.cssText = `
-                background: #1ca7e7;
-                color: white;
-                text-decoration: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-weight: 600;
-                transition: background 0.2s;
-            `;
-            downloadBtn.onmouseenter = () => downloadBtn.style.background = '#1691d1';
-            downloadBtn.onmouseleave = () => downloadBtn.style.background = '#1ca7e7';
+            const stayNote = document.createElement('p');
+            stayNote.textContent = 'This lesson stays inside RemoEd. Downloading is not allowed.';
+            stayNote.style.cssText = 'margin:0;color:#64748b;font-size:0.9rem;';
             
             previewCard.appendChild(fileIcon);
             previewCard.appendChild(fileName);
             previewCard.appendChild(fileSize);
-            previewCard.appendChild(downloadBtn);
+            previewCard.appendChild(stayNote);
             viewer.appendChild(previewCard);
         }
     }

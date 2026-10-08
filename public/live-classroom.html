@@ -3945,6 +3945,7 @@
         video.className = 'lc-stage-video';
         video.disablePictureInPicture = true;
         video.setAttribute('disablepictureinpicture', '');
+        video.setAttribute('controlsList', 'nodownload');
         video.src = material.data;
         video.playsInline = true;
         video.setAttribute('playsinline', '');
@@ -5261,7 +5262,7 @@
           previewCard.innerHTML = `
             <p style="font-size:1.1rem;margin-bottom:8px;">${escapeHtml(material.name || 'File')}</p>
             <p style="font-size:0.9rem;">Preview not available for this file type</p>
-            <a href="${material.data}" download="${escapeHtml(material.name || 'file')}" class="file-download-btn" style="display:inline-block;margin-top:16px;">Download File</a>
+            <p style="font-size:0.9rem;margin-top:16px;">This lesson stays inside RemoEd. Downloading is not allowed.</p>
           `;
           lessonFileViewer.appendChild(previewCard);
         }

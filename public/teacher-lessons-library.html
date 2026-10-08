@@ -360,13 +360,10 @@
             return lastLessonFilesList.find((f) => normalizeLessonFileId(f._id) === id) || null;
         }
 
-        function buildLessonFileRawUrl(fileId, opts) {
+        function buildLessonFileRawUrl(fileId) {
             const id = normalizeLessonFileId(fileId);
             const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
-            const download = opts && opts.download;
-            let u = `/api/lessons/lesson-file/${encodeURIComponent(id)}/raw?token=${encodeURIComponent(currentToken)}`;
-            if (download) u += '&download=1';
-            return u;
+            return `/api/lessons/lesson-file/${encodeURIComponent(id)}/raw?token=${encodeURIComponent(currentToken)}`;
         }
 
         function openPdfStreamPreview(fileId, fileName, opts) {
@@ -389,7 +386,7 @@
                 previewClearTimer = null;
             }
 
-            const pdfUrl = buildLessonFileRawUrl(id, { download: false });
+            const pdfUrl = buildLessonFileRawUrl(id);
             previewContent.innerHTML = `
                 <div class="pdf-stream-root" style="width:100%;position:relative;">
                     <div class="preview-skeleton pdf-stream-loading" data-pdf-loading role="status" aria-live="polite">
@@ -438,7 +435,7 @@
                     }
                     if (iframe) {
                         iframe.style.display = 'none';
-                        iframe.src = url + '&_retry=' + Date.now();
+                        iframe.src = url + '&_retry=' + Date.now() + '#toolbar=0&navpanes=0';
                     }
                     pdfPreviewLoadTimer = setTimeout(showErr, 45000);
                 };
@@ -448,7 +445,7 @@
             pdfPreviewLoadTimer = setTimeout(showErr, 45000);
             iframe.onload = () => showOk();
             iframe.onerror = () => showErr();
-            iframe.src = pdfUrl;
+            iframe.src = pdfUrl + '#toolbar=0&navpanes=0';
         }
 
         function openPreviewLoadingShell(titleText) {
@@ -1466,9 +1463,7 @@
                             <div class="preview-unsupported-icon">⚠️</div>
                             <h3>Image Preview Error</h3>
                             <p>Unable to display image. The file may be corrupted.</p>
-                            <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #47BC3E; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                                Download File
-                            </button>
+                            <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">This lesson stays inside RemoEd. Downloading is not allowed.</p>
                         </div>
                     `;
                 };
@@ -1478,6 +1473,8 @@
                 // Video preview
                 const video = document.createElement('video');
                 video.controls = true;
+                video.setAttribute('controlsList', 'nodownload');
+                video.disablePictureInPicture = true;
                 video.src = fileData;
                 video.preload = 'metadata';
                 video.style.maxWidth = '100%';
@@ -1490,9 +1487,7 @@
                             <div class="preview-unsupported-icon">⚠️</div>
                             <h3>Video Preview Error</h3>
                             <p>Unable to play video. The file may be corrupted or in an unsupported format.</p>
-                            <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #47BC3E; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                                Download File
-                            </button>
+                            <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">This lesson stays inside RemoEd. Downloading is not allowed.</p>
                         </div>
                     `;
                 };
@@ -1504,11 +1499,8 @@
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">📊</div>
                         <h3>PowerPoint Preview</h3>
-                        <p>PowerPoint files cannot be previewed in the browser.</p>
-                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Please download the file to view it.</p>
-                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #47BC3E; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            Download File
-                        </button>
+                        <p>Open this lesson from the file list so it stays inside RemoEd.</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Downloading is not allowed.</p>
                     </div>
                 `;
             } else if (fileType === 'doc' || /\.(doc|docx)$/i.test(fileName)) {
@@ -1517,11 +1509,8 @@
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">📝</div>
                         <h3>Word Document Preview</h3>
-                        <p>Word documents cannot be previewed in the browser.</p>
-                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Please download the file to view it.</p>
-                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #47BC3E; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            Download File
-                        </button>
+                        <p>Word documents open inside RemoEd only.</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Downloading is not allowed.</p>
                     </div>
                 `;
             } else {
@@ -1532,9 +1521,7 @@
                         <h3>Preview Not Available</h3>
                         <p>This file type cannot be previewed in the browser.</p>
                         <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">File: ${fileName}</p>
-                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #47BC3E; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            Download File
-                        </button>
+                        <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #64748b;">This lesson stays inside RemoEd. Downloading is not allowed.</p>
                     </div>
                 `;
             }
@@ -1562,41 +1549,8 @@
             }, 300);
         }
         
-        async function downloadFile(fileId, fileName) {
-            try {
-                const id = normalizeLessonFileId(fileId);
-                const meta = getLessonFileMetaFromLastList(id);
-                if (meta && isPdfFile(meta)) {
-                    const url = buildLessonFileRawUrl(id, { download: true });
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = fileName || meta.fileName || 'lesson.pdf';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    return;
-                }
-
-                const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
-                const response = await fetch(`/api/lessons/lesson-file/${fileId}?token=${encodeURIComponent(currentToken)}`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) throw new Error('Failed to load file');
-                const file = await response.json();
-                
-                // Create download link
-                const link = document.createElement('a');
-                link.href = file.fileData;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } catch (error) {
-                showAlert('error', 'Failed to download file: ' + error.message);
-            }
+        function downloadFile() {
+            showAlert('error', 'Downloading lessons is not allowed. View them inside RemoEd only.');
         }
         
         // Close preview on Escape key
@@ -1960,7 +1914,7 @@
               this.addBotMessage("Great! I'll start the interactive tour for you.");
               setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
             } else if (lower.includes('lesson material') || lower.includes('finding lesson')) {
-              this.addBotMessage("Here's how to find lesson materials:\n\n**Step 1: Access Lessons Library**\n• Click 'Lessons Library' in sidebar\n• Or go to: teacher-lessons-library.html\n\n**Step 2: Browse Materials**\n• Filter by subject, level, or keywords\n• Preview before downloading\n\n**Step 3: Create Your Own**\n• Click 'Create Lesson'\n• Upload files or create content\n\nWould you like me to take you there?", [
+              this.addBotMessage("Here's how to find lesson materials:\n\n**Step 1: Access Lessons Library**\n• Click 'Lessons Library' in sidebar\n• Or go to: teacher-lessons-library.html\n\n**Step 2: Browse Materials**\n• Filter by subject, level, or keywords\n• Preview inside RemoEd. Downloading lessons is not allowed\n\n**Step 3: Create Your Own**\n• Click 'Create Lesson'\n• Upload files or create content\n\nWould you like me to take you there?", [
                 { text: "Open Lessons Library", icon: "📚", action: () => window.location.href = 'teacher-lessons-library.html' },
                 { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
               ]);

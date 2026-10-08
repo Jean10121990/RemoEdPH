@@ -28,9 +28,17 @@ async function officeViewerPresentationHandler(req, res) {
     if (!loc || !loc.sourcePath) {
       return res.status(404).json({ error: 'Presentation file missing' });
     }
+    const fetchDest = String(req.get('sec-fetch-dest') || '').toLowerCase();
+    const fetchMode = String(req.get('sec-fetch-mode') || '').toLowerCase();
+    if (fetchDest === 'document' || fetchMode === 'navigate') {
+      return res.status(403).json({
+        error: 'Downloading lessons is not allowed. View them inside RemoEd only.',
+      });
+    }
     const ext = /\.ppt$/i.test(String(file.fileName)) ? 'ppt' : 'pptx';
     res.setHeader('Content-Type', PPT_TYPES[ext]);
     res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('Content-Disposition', 'inline');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     return res.sendFile(loc.sourcePath);
   } catch (err) {

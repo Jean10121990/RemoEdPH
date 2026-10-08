@@ -486,6 +486,7 @@ Source: pricing and margin table (trial rate ₱45 per 25-min class + conversion
 - A commission already marked `successful` keeps its amount. Duplicate webhooks, reconcile, and later renewals must **not** rewrite it. Rows created before 2026-10-05 stay at the old flat ₱1,000 (no backfill).
 - Teacher copy lives in `teacher-referrals.html`, `teacher-dashboard.html`, and `admin-unique-link-commission.html`. The admin’s own card on `admin-dashboard.html` uses the same layout and the same ₱1,000 to ₱2,500 range, with stats on `admin-referrals.html` (`GET /api/admin/referral-link/stats`, identity from the admin JWT). Marketing Hub still lists every teacher. Update these pages if the amounts change.
 - Teacher **Lessons Library** (`teacher-lessons-library.html`) shows each lesson’s **Teacher notes** (read-only). The same notes are the live-class cheat sheet. Students do not receive `teacherNotes`. Admins edit them in Admin → Lessons Library.
+- Lesson files are view-only inside RemoEd. Do not add a Download button in the teacher or admin Lessons Library, the live classroom, or `video-room.html`. `GET /api/lessons/lesson-file/:id/raw?download=1` returns 403. Opening the Microsoft PowerPoint file link in a browser tab is refused; the in-class viewer still loads it.
 
 ## Lesson slide generation — laptop Level folders
 
