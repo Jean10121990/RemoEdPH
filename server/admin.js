@@ -2910,6 +2910,70 @@ router.post('/settings/payment-method', async (req, res) => {
   }
 });
 
+// Super-Admin Settings. Forces free or paid for username jeanserolf only.
+router.get('/settings/test-student-plan', async (req, res) => {
+  try {
+    const { TEST_PLAN_STUDENT_USERNAME, isPaidSubscriber } = require('./services/freePlanAccess');
+    const student = await Student.findOne({
+      username: { $regex: new RegExp('^' + TEST_PLAN_STUDENT_USERNAME + '$', 'i') },
+    })
+      .select('username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots')
+      .lean();
+    if (!student) {
+      return res.json({
+        success: true,
+        found: false,
+        username: TEST_PLAN_STUDENT_USERNAME,
+        mode: 'free',
+      });
+    }
+    const override = student.planModeOverride === 'paid' || student.planModeOverride === 'free'
+      ? student.planModeOverride
+      : '';
+    return res.json({
+      success: true,
+      found: true,
+      username: student.username,
+      mode: isPaidSubscriber(student) ? 'paid' : 'free',
+      override,
+    });
+  } catch (error) {
+    console.error('Error loading test student plan:', error);
+    return res.status(500).json({ success: false, message: 'Could not load the test student plan.' });
+  }
+});
+
+router.post('/settings/test-student-plan', async (req, res) => {
+  try {
+    const { TEST_PLAN_STUDENT_USERNAME } = require('./services/freePlanAccess');
+    const mode = String((req.body && req.body.mode) || '').trim().toLowerCase();
+    if (mode !== 'free' && mode !== 'paid') {
+      return res.status(400).json({ success: false, message: 'Choose Free plan or Paid plan.' });
+    }
+    const student = await Student.findOne({
+      username: { $regex: new RegExp('^' + TEST_PLAN_STUDENT_USERNAME + '$', 'i') },
+    }).select('_id username');
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Test student jeanserolf was not found.',
+      });
+    }
+    await Student.updateOne({ _id: student._id }, { $set: { planModeOverride: mode } });
+    const { invalidateStudentProfileCache } = require('./studentController');
+    await invalidateStudentProfileCache(student._id);
+    return res.json({
+      success: true,
+      found: true,
+      username: student.username,
+      mode,
+    });
+  } catch (error) {
+    console.error('Error saving test student plan:', error);
+    return res.status(500).json({ success: false, message: 'Could not save the test student plan.' });
+  }
+});
+
 // GET platform settings
 router.get('/settings/platform', async (req, res) => {
   try {

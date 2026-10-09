@@ -89,6 +89,19 @@
                     <p id="payment-method-status" class="muted" style="font-size:0.85rem;margin:10px 0 0;">Loading…</p>
                 </div>
 
+                <div class="setting-card" id="test-plan-card">
+                    <div class="setting-title">Test student plan</div>
+                    <div class="setting-description">Free plan or Paid plan for the test student <strong>jeanserolf</strong> only. Other students keep their real plan. Paid still uses that student’s credits to book. Free uses Pre-Level, one lesson a month.</div>
+                    <div class="pay-switch-row">
+                        <span class="pay-switch-label is-on" id="plan-label-free">Free plan</span>
+                        <button type="button" class="pay-switch" id="test-plan-switch" role="switch" aria-checked="false" aria-labelledby="plan-label-free plan-label-paid">
+                            <span class="pay-switch-knob"></span>
+                        </button>
+                        <span class="pay-switch-label" id="plan-label-paid">Paid plan</span>
+                    </div>
+                    <p id="test-plan-status" class="muted" style="font-size:0.85rem;margin:10px 0 0;">Loading…</p>
+                </div>
+
                 <div class="setting-card">
                     <div class="setting-title">👤 Profile settings</div>
                     <div class="setting-description">Profile photo, password, personal and professional details, ID upload, and NBI clearance status.</div>
@@ -348,6 +361,7 @@
             }
             loadLoginActivity();
             loadPaymentMethod();
+            loadTestStudentPlan();
             var paySwitch = document.getElementById('payment-method-switch');
             if (paySwitch) {
                 paySwitch.addEventListener('click', function () {
@@ -355,7 +369,72 @@
                     savePaymentMethod(next);
                 });
             }
+            var planSwitch = document.getElementById('test-plan-switch');
+            if (planSwitch) {
+                planSwitch.addEventListener('click', function () {
+                    var next = planSwitch.getAttribute('aria-checked') === 'true' ? 'free' : 'paid';
+                    saveTestStudentPlan(next);
+                });
+            }
         });
+
+        function paintTestPlanSwitch(mode, note) {
+            var paid = mode === 'paid';
+            var sw = document.getElementById('test-plan-switch');
+            var freeLabel = document.getElementById('plan-label-free');
+            var paidLabel = document.getElementById('plan-label-paid');
+            var status = document.getElementById('test-plan-status');
+            if (sw) sw.setAttribute('aria-checked', paid ? 'true' : 'false');
+            if (freeLabel) freeLabel.className = 'pay-switch-label' + (paid ? '' : ' is-on');
+            if (paidLabel) paidLabel.className = 'pay-switch-label' + (paid ? ' is-on-pay' : '');
+            if (status) status.textContent = note;
+        }
+
+        async function loadTestStudentPlan() {
+            try {
+                var r = await fetch('/api/admin/settings/test-student-plan', {
+                    credentials: 'include',
+                    headers: adminAuthHeaders(false)
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!j.found) {
+                    paintTestPlanSwitch('free', 'Test student jeanserolf was not found.');
+                    return;
+                }
+                paintTestPlanSwitch(
+                    j.mode === 'paid' ? 'paid' : 'free',
+                    (j.mode === 'paid' ? 'Paid plan' : 'Free plan') + ' is on for ' + (j.username || 'jeanserolf') + ' only.'
+                );
+            } catch (e) {
+                paintTestPlanSwitch('free', 'Could not load the test student plan.');
+            }
+        }
+
+        async function saveTestStudentPlan(mode) {
+            var sw = document.getElementById('test-plan-switch');
+            var status = document.getElementById('test-plan-status');
+            if (sw) sw.disabled = true;
+            if (status) status.textContent = 'Saving…';
+            try {
+                var r = await fetch('/api/admin/settings/test-student-plan', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: adminAuthHeaders(true),
+                    body: JSON.stringify({ mode: mode })
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok || !j.success) throw new Error(j.message || 'Could not save');
+                paintTestPlanSwitch(
+                    j.mode === 'paid' ? 'paid' : 'free',
+                    (j.mode === 'paid' ? 'Paid plan' : 'Free plan') + ' is on for ' + (j.username || 'jeanserolf') + ' only. Ask that student to refresh.'
+                );
+            } catch (e) {
+                if (status) status.textContent = e.message || 'Could not save the test student plan.';
+                loadTestStudentPlan();
+            } finally {
+                if (sw) sw.disabled = false;
+            }
+        }
 
         async function openSecuritySettings() {
             try {

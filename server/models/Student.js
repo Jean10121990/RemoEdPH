@@ -117,6 +117,11 @@ const studentSchema = new mongoose.Schema({
   freeLessonPeriodKey: { type: String, default: '' },
   /** Upcoming free-plan booking. Cleared on cancel or when the class is completed. */
   freeLessonActiveBookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', default: null },
+  /**
+   * Super-Admin test switch. Only jeanserolf is read. free or paid replaces the real plan check.
+   * Unset means the real subscription and credit lots decide.
+   */
+  planModeOverride: { type: String, enum: ['free', 'paid'], default: undefined },
   /** Latest accepted Student Privacy and Recording Policy version. */
   privacyConsentVersion: { type: String, default: '' },
   privacyConsentAcceptedAt: { type: Date, default: null },

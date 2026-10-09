@@ -40,7 +40,11 @@
     /** Web Audio context used to mix tab audio + teacher mic into one track */
     recordingAudioContext: null,
     /** Extra getUserMedia({audio}) stream we own — stop on teardown */
-    micStreamForRecording: null
+    micStreamForRecording: null,
+    /** 480p canvas used only for the QA file. The student slide share stays full size. */
+    qaScaleVideo: null,
+    qaScaleTimer: null,
+    qaScaleStream: null
   };
 
   function getParam(name) {
@@ -565,7 +569,90 @@
     }
   }
 
+  function evenDim(n) {
+    n = Math.max(2, Math.round(n || 2));
+    return n % 2 === 0 ? n : n - 1;
+  }
+
+  function stopQaScale() {
+    if (state.qaScaleTimer) {
+      clearInterval(state.qaScaleTimer);
+      state.qaScaleTimer = null;
+    }
+    if (state.qaScaleVideo) {
+      try {
+        state.qaScaleVideo.pause();
+        state.qaScaleVideo.srcObject = null;
+      } catch (e) {}
+      state.qaScaleVideo = null;
+    }
+    if (state.qaScaleStream) {
+      try {
+        state.qaScaleStream.getVideoTracks().forEach(function (t) {
+          t.stop();
+        });
+      } catch (e) {}
+      state.qaScaleStream = null;
+    }
+  }
+
+  /**
+   * QA file only. Draws the tab into a 480p-tall canvas (8 fps) so a 25-minute
+   * clip stays small enough for QA Hub to download. Does not touch the display
+   * stream published to the student.
+   */
+  function downscaleQaVideo(stream) {
+    var videoTrack = stream.getVideoTracks && stream.getVideoTracks()[0];
+    if (!videoTrack || typeof document === 'undefined') return Promise.resolve(stream);
+    var video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.srcObject = new MediaStream([videoTrack]);
+    return video.play().then(function () {
+      var vw = video.videoWidth || 854;
+      var vh = video.videoHeight || 480;
+      var height = vh > 480 ? 480 : vh;
+      var width = evenDim((vw * height) / vh);
+      height = evenDim(height);
+      var canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      var ctx2 = canvas.getContext('2d', { alpha: false });
+      if (!ctx2 || typeof canvas.captureStream !== 'function') {
+        video.pause();
+        video.srcObject = null;
+        return stream;
+      }
+      try {
+        ctx2.drawImage(video, 0, 0, width, height);
+      } catch (drawErr) {}
+      state.qaScaleVideo = video;
+      state.qaScaleTimer = setInterval(function () {
+        try {
+          ctx2.drawImage(video, 0, 0, width, height);
+        } catch (e) {}
+      }, 125);
+      var out = canvas.captureStream(8);
+      var audioTracks = stream.getAudioTracks ? stream.getAudioTracks() : [];
+      audioTracks.forEach(function (t) {
+        try {
+          out.addTrack(t);
+        } catch (addErr) {}
+      });
+      state.qaScaleStream = out;
+      return out;
+    }).catch(function () {
+      try {
+        video.pause();
+        video.srcObject = null;
+      } catch (e) {}
+      return stream;
+    });
+  }
+
   function teardownRecordingExtras() {
+    stopQaScale();
     if (state.recordingAudioContext) {
       try {
         state.recordingAudioContext.close();
@@ -712,8 +799,15 @@
         });
       })
       .then(function (finalGot) {
-        return startSession().then(function (id) {
-          return { got: finalGot, id: id };
+        var prepare =
+          finalGot.mode === 'screen_tab'
+            ? downscaleQaVideo(finalGot.stream)
+            : Promise.resolve(finalGot.stream);
+        return prepare.then(function (recordStream) {
+          finalGot.stream = recordStream;
+          return startSession().then(function (id) {
+            return { got: finalGot, id: id };
+          });
         });
       })
       .then(function (ctx) {
@@ -721,7 +815,7 @@
         if (state.recordingAudioContext && state.recordingAudioContext.state === 'suspended') {
           state.recordingAudioContext.resume().catch(function () {});
         }
-        var opts = { videoBitsPerSecond: 160000, audioBitsPerSecond: 32000 };
+        var opts = { videoBitsPerSecond: 350000, audioBitsPerSecond: 32000 };
         if (mimeType) opts.mimeType = mimeType;
         var mr;
         try {
@@ -786,7 +880,7 @@
           state.btnStop.disabled = false;
           state.btnStop.style.opacity = '1';
         }
-        setStatus('Recording full classroom… ' + formatTime(0));
+        setStatus('Recording classroom at 480p… ' + formatTime(0));
 
         // Student slide share: cropped clone of the same tab (sync path unchanged).
         // QA archive keeps the uncropped full-tab stream above.
@@ -806,7 +900,7 @@
           if (!state.startedAt) return;
           var elapsed = (Date.now() - state.startedAt) / 1000;
           setStatus(
-            'Recording full classroom… ' +
+            'Recording classroom at 480p… ' +
               formatTime(elapsed) +
               ' · uploaded ' +
               formatBytes(state.bytesUploaded) +

@@ -12,6 +12,12 @@ const { PRE_LEVEL, normalizeCurriculumDocLevel } = require('../config/curriculum
 
 const FREE_PLAN_LESSON_COUNT = 22;
 const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
+/** Admin Settings may force this username only. Other students ignore planModeOverride. */
+const TEST_PLAN_STUDENT_USERNAME = 'jeanserolf';
+
+function isTestPlanStudent(student) {
+  return String((student && student.username) || '').trim().toLowerCase() === TEST_PLAN_STUDENT_USERNAME;
+}
 
 function zoneOrManila(zone) {
   return zone && DateTime.now().setZone(String(zone)).isValid ? String(zone) : 'Asia/Manila';
@@ -23,6 +29,11 @@ function currentPeriodKey(zone) {
 
 function isPaidSubscriber(student) {
   if (!student) return false;
+  if (isTestPlanStudent(student)) {
+    const mode = String(student.planModeOverride || '').toLowerCase();
+    if (mode === 'paid') return true;
+    if (mode === 'free') return false;
+  }
   const lots = Array.isArray(student.creditLots) ? student.creditLots : [];
   const paidLot = lots.some((lot) => {
     const id = String((lot && lot.planId) || '').toLowerCase();
@@ -188,6 +199,8 @@ async function freePlanProfile(student, zone) {
 module.exports = {
   FREE_PLAN_LESSON_COUNT,
   PRE_LEVEL,
+  TEST_PLAN_STUDENT_USERNAME,
+  isTestPlanStudent,
   isPaidSubscriber,
   currentPeriodKey,
   assertFreePlanLesson,

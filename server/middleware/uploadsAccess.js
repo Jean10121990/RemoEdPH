@@ -234,7 +234,7 @@ async function serveAuthenticatedUpload(req, res) {
         const Student = require('../models/Student');
         const { isPaidSubscriber } = require('../services/freePlanAccess');
         const student = await Student.findById(user.studentId).select(
-          'isSubscribed subscriptionStatus paymentStatus creditLots'
+          'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
         );
         if (!isPaidSubscriber(student)) {
           return res.status(403).json({

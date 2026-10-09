@@ -190,12 +190,15 @@ async function transcodeWebmToMp4(filePath) {
       '-i', filePath,
       '-map', '0:v:0',
       '-map', '0:a:0?',
+      '-vf', "fps=8,scale=-2:'min(480,ih)':flags=fast_bilinear",
       '-c:v', 'libx264',
       '-preset', 'veryfast',
-      '-crf', '30',
+      '-crf', '32',
+      '-maxrate', '450k',
+      '-bufsize', '900k',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
-      '-b:a', '64k',
+      '-b:a', '48k',
       '-movflags', '+faststart',
       outPath
     ];
@@ -208,7 +211,7 @@ async function transcodeWebmToMp4(filePath) {
         // ignore
       }
       done(null);
-    }, 180000);
+    }, 12 * 60 * 1000);
 
     proc.on('error', () => {
       clearTimeout(killTimer);

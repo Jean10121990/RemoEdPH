@@ -2646,7 +2646,7 @@ router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
   try {
     const { isPaidSubscriber } = require('./services/freePlanAccess');
     const student = await Student.findById(req.user.studentId).select(
-      'isSubscribed subscriptionStatus paymentStatus creditLots'
+      'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
     );
     const paid = isPaidSubscriber(student);
     const list = await PortalVideo.find({ active: true }).sort({ createdAt: -1 }).lean();
@@ -2703,7 +2703,7 @@ router.get('/garden', verifyToken, requireStudent, async (req, res) => {
     const { isPaidSubscriber } = require('./services/freePlanAccess');
     const studentDoc = req.user && req.user.studentId
       ? await Student.findById(req.user.studentId).select(
-          'isSubscribed subscriptionStatus paymentStatus creditLots'
+          'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
         )
       : null;
     state.locked = !isPaidSubscriber(studentDoc);
@@ -2722,7 +2722,7 @@ router.post('/garden/action', verifyToken, requireStudent, async (req, res) => {
   try {
     const { isPaidSubscriber } = require('./services/freePlanAccess');
     const studentDoc = await Student.findById(req.user.studentId).select(
-      'isSubscribed subscriptionStatus paymentStatus creditLots'
+      'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
     );
     if (!isPaidSubscriber(studentDoc)) {
       return res.status(403).json({

@@ -7,16 +7,16 @@ Low-quality **lesson monitoring** clips (~25 min max) so QA/admin can review tea
 ## How it works
 
 1. **Teacher Start** is gated until the **student remote video/audio is live**.
-2. **Client-side `MediaRecorder`** encodes a **full classroom tab** capture (`getDisplayMedia`) as **WebM (VP8 + Opus)** at a **low bitrate** — not server-side SFU recording.
-3. A **cloned, region-cropped** track is still published to the student for the **slide/presentation share** (prev/next sync unchanged). The QA file keeps the **uncropped** full tab.
-4. The browser uploads **compressed chunks** (~10s, about 160 kbps video) via `PUT` while the class is still going, so the file is usually ready within a minute after recording stops. Chunks are a normal upload, not a keepalive request (those are capped around 64 KB and were dropping every piece, which left QA Hub on “Uploading · 0 B”). If the tab closes after video has arrived, the server assembles it after a few quiet minutes. A session that never received video is marked failed after 30 minutes instead of staying on Uploading.
+2. **Client-side `MediaRecorder`** encodes a **480p canvas copy** of the classroom tab (`getDisplayMedia`, then scaled to max height 480 at 8 fps) as **WebM (VP8 + Opus)**. The original capture is not scaled: a cropped clone of that full tab is still what the student sees.
+3. A **cloned, region-cropped** track is still published to the student for the **slide/presentation share** (prev/next sync unchanged). The QA file is the 480p canvas, not that full-size tab.
+4. The browser uploads **480p chunks** (~10s, about 350 kbps video) via `PUT` while the class is still going, so the file is usually ready within a minute after recording stops. Chunks are a normal upload, not a keepalive request (those are capped around 64 KB and were dropping every piece, which left QA Hub on “Uploading · 0 B”). If the tab closes after video has arrived, the server assembles it after a few quiet minutes. A session that never received video is marked failed after 30 minutes instead of staying on Uploading.
 5. The server appends chunks to one file under `uploads/classroom-recordings/`.
 6. Each row has **`expiresAt`** based on **`CLASSROOM_RECORDING_RETENTION_DAYS`** (default **7** = one week; set **`3`** for three days). An **automated purge** (default **every 7 days**, not daily) deletes rows/files whose `expiresAt` has passed. Admins can still **Purge expired** anytime from the admin UI.
 
 ## Performance impact on live class
 
 - **WebRTC (audio/video)** stays on its existing peer connection; we **do not** add a second encode of the camera for sending.
-- **Cost**: one **encode** for monitoring (CPU) + **periodic uploads** (network). Keeping bitrate low (~160 kbps video + ~32 kbps audio) limits impact and keeps a 25-minute class small enough to finish uploading soon after it stops.
+- **Cost**: one **encode** for monitoring (CPU) + **periodic uploads** (network). The QA file is 480p at about 350 kbps video and 32 kbps audio, so a 25-minute class stays small enough to upload and for QA Hub to download. After upload, ffmpeg stores an MP4 capped at 480p and 450 kbps.
 - **Recommendation**: enable only when needed (`CLASSROOM_QA_RECORDING_ENABLED=true`), or use query flag `?qaRecord=1` for spot checks.
 
 ## Environment variables
