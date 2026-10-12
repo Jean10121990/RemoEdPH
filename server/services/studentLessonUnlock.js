@@ -9,6 +9,9 @@ const Curriculum = require('../models/Curriculum');
 const { cancelledStatusValues } = require('../utils/bookingStatus');
 const {
   normalizeCurriculumLevel,
+  normalizeCurriculumDocLevel,
+  resolveStudentCurriculumLevel,
+  PRE_LEVEL,
 } = require('../config/curriculumLevels');
 const {
   parseBookingLessonRef,
@@ -78,6 +81,57 @@ async function hydrateLessonMap(ids) {
 /**
  * Build completedKeys set matching GET /api/student/lesson-progress.
  */
+function isOrientationTrailLesson(title) {
+  const t = String(title || '').toLowerCase();
+  return t.includes('orientation') || t.includes('about remoed') || t.includes('welcome lesson');
+}
+
+function trailKey(level, linear) {
+  const batch = Math.ceil(linear / LESSONS_PER_BATCH);
+  const lessonNum = ((linear - 1) % LESSONS_PER_BATCH) + 1;
+  return level + ':' + batch + ':' + lessonNum;
+}
+
+function firstOpenLinear(keys, level) {
+  for (let n = 1; n <= LESSONS_PER_LEVEL; n++) {
+    if (!keys.has(trailKey(level, n))) return n;
+  }
+  return null;
+}
+
+/**
+ * Orientation lessons stay off the growth map.
+ * A growth-level class marks its own lesson number.
+ * Any other finished class marks the next open stop, so one finished class
+ * leaves lesson 1 done and Remo on lesson 2.
+ */
+function applyFinishedClassToTrail(keys, level, opts) {
+  const options = opts || {};
+  if (!level || isOrientationTrailLesson(options.title)) return keys;
+  const exact = Number(options.exactLinear);
+  if (exact >= 1 && exact <= LESSONS_PER_LEVEL) {
+    keys.add(trailKey(level, exact));
+    return keys;
+  }
+  const open = firstOpenLinear(keys, level);
+  if (open) keys.add(trailKey(level, open));
+  return keys;
+}
+
+async function growthLevelForStudentIds(ids) {
+  const Student = require('../models/Student');
+  const mongoose = require('mongoose');
+  const or = [];
+  for (const id of ids) {
+    if (!id) continue;
+    or.push({ username: id }, { email: id });
+    if (mongoose.Types.ObjectId.isValid(String(id))) or.push({ _id: id });
+  }
+  if (!or.length) return null;
+  const student = await Student.findOne({ $or: or }).select('level leveling education').lean();
+  return resolveStudentCurriculumLevel(student);
+}
+
 function trailLevelForLesson(curriculumLevel, fallbackLevel) {
   const growth = normalizeCurriculumLevel(curriculumLevel);
   if (growth) return growth;
@@ -95,10 +149,18 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
     studentId: { $in: ids },
     status: { $nin: cancelledStatusValues() },
   })
-    .select('lesson studentLevel status attendance lessonId classroomId finishedAt sessionEndedAt absentType absentMarkedAt')
+    .select('lesson studentLevel status attendance lessonId classroomId finishedAt sessionEndedAt absentType absentMarkedAt date time dateTimeUtc')
     .lean();
 
   const completed = bookings.filter(isBookingLessonCompleted);
+  completed.sort((a, b) => {
+    const ta = a.dateTimeUtc ? new Date(a.dateTimeUtc).getTime() : 0;
+    const tb = b.dateTimeUtc ? new Date(b.dateTimeUtc).getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    return String(a.date || '').localeCompare(String(b.date || ''))
+      || String(a.time || '').localeCompare(String(b.time || ''));
+  });
+  const growthLevel = await growthLevelForStudentIds(ids);
   const lessonProgressDocs = await LessonProgress.find({
     studentId: { $in: ids },
     status: 'completed',
@@ -154,6 +216,10 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
       if (parsed && parsed.level) level = normalizeCurriculumLevel(parsed.level);
     }
     if (!level) level = trailLevelForLesson(null, b.studentLevel);
+    if (!level && normalizeCurriculumDocLevel(b.studentLevel) === PRE_LEVEL) {
+      if (growthLevel) applyFinishedClassToTrail(completedKeys, growthLevel, { title: b.lesson });
+      continue;
+    }
     if (!level || batch == null || lessonNum == null) {
       unresolved.push(b);
       continue;
@@ -280,6 +346,7 @@ module.exports = {
   LESSONS_PER_LEVEL,
   isBookingAbsence,
   isBookingLessonCompleted,
+  applyFinishedClassToTrail,
   maxBookableFromCompletedKeys,
   buildCompletedLessonKeys,
   resolveLessonNumber,

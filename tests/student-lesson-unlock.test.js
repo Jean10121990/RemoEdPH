@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   isBookingLessonCompleted,
+  applyFinishedClassToTrail,
   maxBookableFromCompletedKeys,
 } = require('../server/services/studentLessonUnlock');
 
@@ -39,6 +40,20 @@ test('only a completed class with no absence finishes the lesson', () => {
   );
   assert.equal(isBookingLessonCompleted({ status: 'absent', absentType: 'student' }), false);
   assert.equal(isBookingLessonCompleted({ status: 'Booked' }), false);
+});
+
+test('one finished class marks lesson 1 and leaves the next stop at lesson 2', () => {
+  const keys = new Set();
+  applyFinishedClassToTrail(keys, 'Little Seeds', {
+    title: 'Lesson 2: Letter A is for Apple',
+  });
+  assert.equal(keys.has('Little Seeds:1:1'), true);
+  assert.equal(keys.has('Little Seeds:1:2'), false);
+  assert.equal(maxBookableFromCompletedKeys(keys, 'Little Seeds'), 2);
+  applyFinishedClassToTrail(keys, 'Little Seeds', {
+    title: 'Orientation Part 1: How to Navigate the Student Portal',
+  });
+  assert.equal(keys.size, 1);
 });
 
 test('the next stop is the first lesson that is not actually finished', () => {
