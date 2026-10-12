@@ -75,6 +75,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Booking for a teacher whose slot `teacherId` is a username (not email) still succeeds when the UI sends their email.
 - [ ] A student with no privacy consent who presses Book **stays signed in** and sees the Student Privacy box on the booking panel (server answers `403 CONSENT_REQUIRED`; `user-session.js` must not treat that as an expired login). After accepting, the same booking succeeds.
 - [ ] There is **no per-day class cap**: a student can book a 7th class on the same local day. The page shows no “Day full” cells and no “6 classes per day” text.
+- [ ] Book a Class has **Schedule** and **Syllabus** tabs. Syllabus is an accordion of level, month, and lesson titles from `public/data/syllabus.json` (Little Seeds, Sprouts, Saplings, Young Steward). Topic and Target stay off the page. Schedule remains the week grid.
+- [ ] Booking Details lists lessons by month. A later lesson stays visible and locked until the earlier lesson is finished (`Finish Lesson N first`). A paid growth lesson stays locked when `creditBalance` is under 1 (`Not enough credits`), and Book stays disabled. Pre-Level and the next free lesson do not need a credit. Several teachers on one slot are chosen from photo and nickname cards. The booking request still sends the teacher email. Server gates are unchanged.
 
 ### Teacher schedule / issue
 

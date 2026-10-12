@@ -444,8 +444,124 @@
             border-radius: 6px;
             font-size: 0.9rem;
         }
-        #lesson option:disabled {
+        #lesson.lesson-picker-source {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .lesson-picker {
+            max-height: 240px;
+            overflow: auto;
+            border: 1px solid #e0e6ed;
+            border-radius: 10px;
+            background: #fff;
+        }
+        .lesson-picker.error {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+        .lesson-picker__month {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            padding: 8px 12px;
+            background: #f7f8fa;
+            color: #1a202c;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border-bottom: 1px solid #e6e8ec;
+        }
+        .lesson-picker__row {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            text-align: left;
+            border: none;
+            border-bottom: 1px solid #eef0f3;
+            background: #fff;
+            color: #1a202c;
+            font: inherit;
+            font-size: 0.88rem;
+            padding: 10px 12px;
+            cursor: pointer;
+        }
+        .lesson-picker__row.is-selected {
+            background: #e8f7fd;
+            color: #008fc4;
+            font-weight: 650;
+        }
+        .lesson-picker__row.is-locked,
+        .lesson-picker__row:disabled {
             color: #94a3b8;
+            cursor: not-allowed;
+            background: #fafbfc;
+        }
+        .lesson-picker__lock {
+            flex: 0 0 auto;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .lesson-picker__empty {
+            padding: 14px 12px;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+        .teacher-card-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .teacher-card {
+            width: 108px;
+            max-width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #fff;
+            padding: 10px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            color: #1a202c;
+        }
+        .teacher-card.is-selected {
+            border-color: #00aeef;
+            box-shadow: 0 0 0 2px rgba(0, 174, 239, 0.25);
+        }
+        .teacher-card img,
+        .teacher-card__fallback {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #f1f5f9;
+        }
+        .teacher-card__fallback {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #008fc4;
+        }
+        .teacher-card__name {
+            font-size: 0.78rem;
+            font-weight: 650;
+            line-height: 1.2;
+            text-align: center;
+            word-break: break-word;
         }
         .form-group input:focus, .form-group select:focus {
             outline: none;
@@ -1069,6 +1185,103 @@
         .teacher-glass-select-btn:hover {
             filter: brightness(1.05);
         }
+        .book-view-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .book-view-tab {
+            border: 1px solid #d0d7de;
+            background: #fff;
+            color: #334155;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        .book-view-tab.is-active {
+            background: linear-gradient(135deg, #00aeef, #008fc4);
+            color: #fff;
+            border-color: transparent;
+        }
+        #book-schedule-panel {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+        }
+        #book-schedule-panel[hidden],
+        #book-syllabus-panel[hidden] {
+            display: none !important;
+        }
+        #book-syllabus-panel {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e6e8ec;
+            box-shadow: 0 8px 32px rgba(28, 167, 231, 0.08);
+        }
+        .syllabus-section__bar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+            border: none;
+            border-bottom: 1px solid #e6e8ec;
+            background: #f7f8fa;
+            color: #1a202c;
+            font-weight: 700;
+            font-size: 0.95rem;
+            font-family: inherit;
+            padding: 14px 16px;
+            cursor: pointer;
+        }
+        .syllabus-section.is-nested > .syllabus-section__bar {
+            font-weight: 600;
+            background: #fbfbfc;
+            padding-left: 28px;
+        }
+        .syllabus-section__chevron {
+            display: inline-flex;
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            color: #64748b;
+        }
+        .syllabus-section__chevron svg {
+            width: 18px;
+            height: 18px;
+        }
+        .syllabus-section.is-open > .syllabus-section__bar .syllabus-section__chevron {
+            transform: rotate(180deg);
+        }
+        .syllabus-lesson {
+            padding: 12px 16px 12px 56px;
+            border-bottom: 1px solid #eef0f3;
+            color: #334155;
+            font-size: 0.92rem;
+            background: #fff;
+        }
+        .syllabus-empty {
+            padding: 24px 16px;
+            color: #64748b;
+        }
+        @media (max-width: 768px) {
+            #book-syllabus-panel {
+                overflow: visible;
+                max-height: none;
+            }
+            .book-view-tab {
+                min-height: 44px;
+            }
+        }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
@@ -1086,6 +1299,11 @@
             StudentPageHeader.render('book');
         </script>
         <div class="remoed-content">
+            <div class="book-view-tabs" role="tablist" aria-label="Book a Class">
+                <button type="button" class="book-view-tab is-active" id="book-tab-schedule" role="tab" aria-selected="true" aria-controls="book-schedule-panel">Schedule</button>
+                <button type="button" class="book-view-tab" id="book-tab-syllabus" role="tab" aria-selected="false" aria-controls="book-syllabus-panel">Syllabus</button>
+            </div>
+            <div id="book-schedule-panel">
             <div style="flex-shrink: 0;">
                 <div class="header-info">
                 <div class="info-item">
@@ -1148,6 +1366,10 @@
                     </tbody>
                 </table>
             </div>
+            </div>
+            <div id="book-syllabus-panel" hidden>
+                <div id="syllabus-root"></div>
+            </div>
                 
                 <!-- Booking Modal -->
                 <div class="booking-modal" id="booking-modal">
@@ -1197,10 +1419,11 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="lesson">Lesson <span style="color: #dc3545;">*</span></label>
-                                    <select id="lesson" required disabled onchange="clearFieldError('lesson');">
+                                    <label id="lesson-label" for="lesson">Lesson <span style="color: #dc3545;">*</span></label>
+                                    <select id="lesson" class="lesson-picker-source" aria-hidden="true" tabindex="-1">
                                         <option value="">Select level first</option>
                                     </select>
+                                    <div id="lesson-picker" class="lesson-picker" role="listbox" aria-labelledby="lesson-label"></div>
                                     <div class="error-message" id="lesson-error"></div>
                                     <small id="lesson-catalog-hint" style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Select your level above to see available lessons</small>
                                 </div>
@@ -1210,6 +1433,7 @@
                                         <label id="teacher-preference-label" for="booked-teacher-select">Choose teacher</label>
                                         <button type="button" class="teacher-pref-info-btn" id="teacher-pref-info-btn" disabled aria-disabled="true" aria-label="Teacher profile and introduction" title="View this teacher’s profile">ⓘ</button>
                                     </div>
+                                    <div id="teacher-card-row" class="teacher-card-row" hidden></div>
                                     <div id="multi-teacher-select-row" class="multi-teacher-select-row" style="display: none; align-items: center; gap: 12px; margin-bottom: 8px; width: 100%; max-width: 100%;">
                                         <span class="custom-teacher-select__avatar-wrap" id="booked-teacher-select-avatar" style="flex-shrink: 0; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0;" aria-hidden="true"><span class="cts-trigger-placeholder">⚡</span></span>
                                         <select id="booked-teacher-select" name="bookedTeacherSelect" aria-labelledby="teacher-preference-label" style="display: none; flex: 1; min-width: 0; width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ced4da; font-size: 0.95rem; margin-bottom: 0;">
@@ -2502,6 +2726,11 @@
             }
             paintAvatar(av, 28, false);
             paintAvatar(selAv, 40, true);
+            document.querySelectorAll('#teacher-card-row .teacher-card').forEach((card) => {
+                const on = (card.dataset.teacherId || '') === tid;
+                card.classList.toggle('is-selected', on);
+                card.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
             updateAssignmentModeFromTeacherInput();
             updateTeacherPrefInfoButtonState();
         }
@@ -2540,6 +2769,11 @@
             if (multiRow) multiRow.style.display = 'none';
             const customRoot = document.getElementById('custom-teacher-select');
             if (customRoot) customRoot.style.display = '';
+            const cardRow = document.getElementById('teacher-card-row');
+            if (cardRow) {
+                cardRow.hidden = true;
+                cardRow.innerHTML = '';
+            }
             customTeacherListTeachers = [];
         }
 
@@ -2683,8 +2917,62 @@
             }
         }
 
+        function hideTeacherCards() {
+            const row = document.getElementById('teacher-card-row');
+            if (!row) return;
+            row.hidden = true;
+            row.innerHTML = '';
+        }
+
+        function renderTeacherCards(teachers) {
+            const row = document.getElementById('teacher-card-row');
+            if (!row) return;
+            row.hidden = false;
+            row.innerHTML = '';
+            const items = [{ displayName: 'First available', photo: null, bookingKey: '' }].concat(
+                (teachers || []).map((t) => ({
+                    displayName: t.displayName || t.name || normalizeId(t.teacherEmail || t.teacherId),
+                    photo: t.photo || null,
+                    bookingKey: normalizeId(t.teacherEmail || t.teacherId)
+                }))
+            );
+            items.forEach((item) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'teacher-card';
+                btn.dataset.teacherId = item.bookingKey;
+                btn.setAttribute('aria-pressed', 'false');
+                const photoUrl = item.bookingKey && item.photo ? teacherPhotoUrl(item.photo) : '';
+                const visual = document.createElement(photoUrl ? 'img' : 'span');
+                if (photoUrl) {
+                    visual.src = photoUrl;
+                    visual.alt = '';
+                } else {
+                    visual.className = 'teacher-card__fallback';
+                    visual.setAttribute('aria-hidden', 'true');
+                    visual.textContent = item.bookingKey
+                        ? String(item.displayName || 'T').trim().charAt(0).toUpperCase()
+                        : 'Any';
+                }
+                const name = document.createElement('span');
+                name.className = 'teacher-card__name';
+                name.textContent = item.displayName || 'Teacher';
+                btn.appendChild(visual);
+                btn.appendChild(name);
+                btn.addEventListener('click', () => {
+                    setTeacherTriggerFromSelection(item.bookingKey, item.displayName, item.photo);
+                    const sel = document.getElementById('booked-teacher-select');
+                    if (sel) {
+                        const idx = [...sel.options].findIndex((o) => normalizeId(o.value) === item.bookingKey);
+                        if (idx >= 0) sel.selectedIndex = idx;
+                    }
+                });
+                row.appendChild(btn);
+            });
+        }
+
         /**
-         * Multi-teacher cells: <select> with option value = normalized teacher email (booking key), label = display name.
+         * Multi-teacher cells: photo and nickname cards. The value sent is still the teacher email.
          * Single teacher: hidden field set to that email. Empty = first available (assignmentMode on server).
          */
         async function syncTeacherPreferenceControls() {
@@ -2747,9 +3035,9 @@
                 prefGroup.style.display = 'block';
                 if (customRoot) customRoot.style.display = 'none';
                 const multiRow = document.getElementById('multi-teacher-select-row');
-                if (multiRow) multiRow.style.display = 'flex';
+                if (multiRow) multiRow.style.display = 'none';
                 if (sel) {
-                    sel.style.display = 'block';
+                    sel.style.display = 'none';
                     sel.innerHTML = '';
                     const o0 = document.createElement('option');
                     o0.value = '';
@@ -2765,11 +3053,13 @@
                     });
                     sel.selectedIndex = 0;
                 }
+                renderTeacherCards(teachers);
                 setTeacherTriggerFromSelection('', 'First available (default)', null);
                 updateAssignmentModeFromTeacherInput();
             } else if (ids.length === 1) {
                 prefGroup.style.display = 'none';
                 modeGroup.style.display = 'none';
+                hideTeacherCards();
                 const multiRowOne = document.getElementById('multi-teacher-select-row');
                 if (multiRowOne) multiRowOne.style.display = 'none';
                 if (sel) {
@@ -2785,6 +3075,7 @@
             } else {
                 prefGroup.style.display = 'none';
                 modeGroup.style.display = 'none';
+                hideTeacherCards();
                 const multiRowZero = document.getElementById('multi-teacher-select-row');
                 if (multiRowZero) multiRowZero.style.display = 'none';
                 if (sel) {
@@ -2969,6 +3260,10 @@
             if (field) {
                 field.classList.remove('error');
             }
+            if (fieldId === 'lesson') {
+                const picker = document.getElementById('lesson-picker');
+                if (picker) picker.classList.remove('error');
+            }
             if (errorMsg) {
                 errorMsg.classList.remove('show');
                 errorMsg.textContent = '';
@@ -2982,8 +3277,14 @@
             
             if (field) {
                 field.classList.add('error');
-                // Scroll to field if needed
                 field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (fieldId === 'lesson') {
+                const picker = document.getElementById('lesson-picker');
+                if (picker) {
+                    picker.classList.add('error');
+                    picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
             
             if (errorMsg) {
@@ -3061,7 +3362,7 @@
             } else if (lessonSelectEl && lessonSelectEl.selectedIndex >= 0) {
                 const picked = lessonSelectEl.options[lessonSelectEl.selectedIndex];
                 if (picked && picked.disabled) {
-                    highlightFieldError('lesson', 'This lesson unlocks after you enroll in a learning plan');
+                    highlightFieldError('lesson', picked.dataset.lockReason || 'This lesson is not open yet');
                     hasErrors = true;
                 }
             }
@@ -3597,6 +3898,7 @@
         let studentFreePlanNextLesson = 1;
         let studentFreePlanSequenceDone = false;
         let studentHasPaidPlan = false;
+        let studentCreditBalance = null;
         /** Max linear lesson number the student may book for the selected level (next stop). */
         let studentMaxBookableLesson = 1;
         let studentLessonProgressKeys = null;
@@ -3670,6 +3972,9 @@
                 if (!res.ok) return;
                 const data = await res.json();
                 const p = data.profile || data;
+                if (p.creditBalance != null) {
+                    studentCreditBalance = Math.max(0, Number(p.creditBalance) || 0);
+                }
                 if (p.freePlan && typeof p.freePlan.isFree === 'boolean') {
                     studentFreePlanActive = p.freePlan.isFree === true;
                     studentFreePlanCanBook = p.freePlan.canBookThisMonth === true;
@@ -3781,6 +4086,127 @@
             }
         }
 
+        let syllabusTitleCache = null;
+
+        function paidLessonNeedsCredit(selectedLevel) {
+            return studentHasPaidPlan && !!selectedLevel && !curriculumLevelsMatch(selectedLevel, 'Pre-Level');
+        }
+
+        function paidCreditsAreShort(selectedLevel) {
+            return paidLessonNeedsCredit(selectedLevel) && studentCreditBalance != null && studentCreditBalance < 1;
+        }
+
+        function syncPaidCreditBookLock() {
+            const btn = document.getElementById('book-btn');
+            const text = document.getElementById('book-btn-text');
+            const levelEl = document.getElementById('student-level');
+            const blocked = paidCreditsAreShort(levelEl ? levelEl.value : '');
+            if (!btn) return;
+            const wasLocked = btn.dataset.creditLocked === '1';
+            btn.dataset.creditLocked = blocked ? '1' : '0';
+            if (blocked) {
+                btn.disabled = true;
+                if (text && text.textContent !== 'Booking...') text.textContent = 'Not enough credits';
+            } else if (wasLocked) {
+                btn.disabled = false;
+                if (text) text.textContent = 'Book Class';
+            }
+        }
+
+        async function ensureSyllabusTitles() {
+            if (syllabusTitleCache) return syllabusTitleCache;
+            try {
+                const res = await fetch('data/syllabus.json');
+                if (!res.ok) throw new Error('syllabus');
+                syllabusTitleCache = await res.json();
+            } catch (e) {
+                syllabusTitleCache = [];
+            }
+            return syllabusTitleCache;
+        }
+
+        function monthTitleForLessonNumber(selectedLevel, lessonNumber) {
+            const levels = syllabusTitleCache || [];
+            const level = levels.find((entry) => curriculumLevelsMatch(entry.level, selectedLevel));
+            if (!level || !Array.isArray(level.months)) return '';
+            const num = Number(lessonNumber);
+            if (!Number.isFinite(num)) return '';
+            for (const month of level.months) {
+                const titles = month.lessons || [];
+                for (let i = 0; i < titles.length; i++) {
+                    const match = /^Lesson\s+(\d+)\s*:/i.exec(String(titles[i] || ''));
+                    if (match && Number(match[1]) === num) return month.title || '';
+                }
+            }
+            return '';
+        }
+
+        function renderLessonPicker(lessonSelect, selectedLevel) {
+            const picker = document.getElementById('lesson-picker');
+            if (!picker || !lessonSelect) return;
+            const options = Array.from(lessonSelect.options).filter((opt) => opt.value);
+            picker.innerHTML = '';
+            if (!options.length) {
+                const empty = document.createElement('div');
+                empty.className = 'lesson-picker__empty';
+                empty.textContent = lessonSelect.options[0] ? lessonSelect.options[0].textContent : 'No lessons available';
+                picker.appendChild(empty);
+                return;
+            }
+            const groups = [];
+            const byMonth = new Map();
+            options.forEach((opt) => {
+                const month = monthTitleForLessonNumber(selectedLevel, opt.dataset.lessonNumber) || '';
+                if (!byMonth.has(month)) {
+                    const group = { title: month, options: [] };
+                    byMonth.set(month, group);
+                    groups.push(group);
+                }
+                byMonth.get(month).options.push(opt);
+            });
+            groups.forEach((group) => {
+                if (group.title) {
+                    const head = document.createElement('div');
+                    head.className = 'lesson-picker__month';
+                    head.textContent = group.title;
+                    picker.appendChild(head);
+                }
+                group.options.forEach((opt) => {
+                    const row = document.createElement('button');
+                    row.type = 'button';
+                    row.className = 'lesson-picker__row';
+                    row.setAttribute('role', 'option');
+                    row.dataset.value = opt.value;
+                    const title = document.createElement('span');
+                    title.textContent = opt.textContent;
+                    row.appendChild(title);
+                    if (opt.disabled) {
+                        row.disabled = true;
+                        row.classList.add('is-locked');
+                        row.setAttribute('aria-disabled', 'true');
+                        const lock = document.createElement('span');
+                        lock.className = 'lesson-picker__lock';
+                        lock.textContent = opt.dataset.lockReason || 'Locked';
+                        row.appendChild(lock);
+                    } else if (opt.value === lessonSelect.value) {
+                        row.classList.add('is-selected');
+                        row.setAttribute('aria-selected', 'true');
+                    }
+                    row.addEventListener('click', () => {
+                        if (row.disabled) return;
+                        lessonSelect.value = opt.value;
+                        clearFieldError('lesson');
+                        renderLessonPicker(lessonSelect, selectedLevel);
+                        const chosen = picker.querySelector('.lesson-picker__row.is-selected');
+                        if (chosen) chosen.scrollIntoView({ block: 'nearest' });
+                    });
+                    picker.appendChild(row);
+                });
+            });
+            const chosen = picker.querySelector('.lesson-picker__row.is-selected');
+            if (chosen) chosen.scrollIntoView({ block: 'nearest' });
+        }
+
         async function loadLessonsForLevel() {
             const levelSelect = document.getElementById('student-level');
             const lessonSelect = document.getElementById('lesson');
@@ -3792,6 +4218,8 @@
             
             if (!selectedLevel) {
                 lessonSelect.innerHTML = '<option value="">Select level first</option>';
+                renderLessonPicker(lessonSelect, '');
+                syncPaidCreditBookLock();
                 return;
             }
             
@@ -3803,6 +4231,7 @@
 
                 await refreshTrialBookingFlag();
                 await refreshLessonProgressUnlock(selectedLevel);
+                await ensureSyllabusTitles();
                 
                 // Get curricula for the selected level
                 const curriculaRes = await fetch(`/api/lessons/curricula?token=${encodeURIComponent(token)}`, {
@@ -3825,6 +4254,8 @@
                 
                 if (relevantCurricula.length === 0) {
                     lessonSelect.innerHTML = '<option value="">No lessons available for this level</option>';
+                    renderLessonPicker(lessonSelect, selectedLevel);
+                    syncPaidCreditBookLock();
                     return;
                 }
                 
@@ -3866,10 +4297,11 @@
                         hintEl.textContent =
                             'These 3 lessons are the free-plan set: How to Navigate the Student Portal, About RemoEd PH, and Welcome. Booking one does not use a credit.';
                     } else if (studentHasPaidPlan && normalizeProgressLevelKey(selectedLevel)) {
-                        hintEl.textContent =
-                            'Follow your Learning Journey in order. You can book Lesson ' +
-                            studentMaxBookableLesson +
-                            ' or any earlier lesson. Each class uses one credit.';
+                        hintEl.textContent = paidCreditsAreShort(selectedLevel)
+                            ? 'Not enough credits. Add a plan before booking the next lesson.'
+                            : 'Follow your Learning Journey in order. You can book Lesson ' +
+                              studentMaxBookableLesson +
+                              ' or any earlier lesson. Each class uses one credit.';
                     } else if (studentHasPaidPlan) {
                         hintEl.textContent =
                             'Your plan is active. Each class uses one credit.';
@@ -3887,6 +4319,7 @@
                 // Populate lesson dropdown
                 if (allLessons.length === 0) {
                     lessonSelect.innerHTML = '<option value="">No lessons available for this level</option>';
+                    renderLessonPicker(lessonSelect, selectedLevel);
                 } else {
                     lessonSelect.innerHTML = '<option value="">Select a lesson</option>';
                     allLessons.forEach(lesson => {
@@ -3908,19 +4341,23 @@
                             !!normalizeProgressLevelKey(selectedLevel) &&
                             Number.isFinite(num) &&
                             num > studentMaxBookableLesson;
-                        const locked = studentHasPaidPlan ? aheadOfTrail : !isNextFreeLesson;
-                        option.value = lesson._id.toString(); // Ensure it's a string
-                        if (aheadOfTrail) {
-                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Finish earlier lessons first)`;
+                        const shortCredits = paidCreditsAreShort(selectedLevel);
+                        const locked = shortCredits || (studentHasPaidPlan ? aheadOfTrail : !isNextFreeLesson);
+                        option.value = lesson._id.toString();
+                        option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
+                        if (shortCredits) {
+                            option.dataset.lockReason = 'Not enough credits';
+                            option.title = 'Add a credit before booking this class';
+                        } else if (aheadOfTrail) {
+                            option.dataset.lockReason = 'Finish Lesson ' + studentMaxBookableLesson + ' first';
                             option.title = 'Finish the lessons before this one on your Learning Journey';
                         } else if (locked && studentFreePlanActive) {
-                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
+                            option.dataset.lockReason = 'Subscribe to Book';
                             option.title = 'Finish the free lesson before this one, or subscribe to book it now';
                         } else if (locked) {
-                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
+                            option.dataset.lockReason = 'Subscribe to Book';
                             option.title = 'Subscribe to book this lesson';
                         } else {
-                            option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
                             option.title = lesson.description || lesson.title || '';
                         }
                         option.disabled = locked;
@@ -3955,10 +4392,14 @@
                     if (prefilled && prefilled.disabled) {
                         lessonSelect.selectedIndex = 0;
                     }
+                    renderLessonPicker(lessonSelect, selectedLevel);
                 }
+                syncPaidCreditBookLock();
             } catch (error) {
                 console.error('Error loading lessons:', error);
                 lessonSelect.innerHTML = '<option value="">Error loading lessons</option>';
+                renderLessonPicker(lessonSelect, selectedLevel);
+                syncPaidCreditBookLock();
                 showMessage('Error loading lessons. Please try again.', 'error');
             }
         }
@@ -3978,5 +4419,7 @@
     </div>
 
     <script src="avatar-helper.js"></script>
+    <script src="js/lucide-icons.js?v=chevron-1"></script>
+    <script src="js/student-syllabus.js?v=1"></script>
 </body>
 </html>
