@@ -140,7 +140,7 @@ async function runBookSlot(req, res) {
     }
     const studentId = student.username;
     const availableCredits = getAvailableBookingCredits(student);
-    const { isPaidSubscriber, assertFreePlanLesson, currentPeriodKey } = require('./freePlanAccess');
+    const { isPaidSubscriber, assertFreePlanLesson } = require('./freePlanAccess');
     const paidBooking = isPaidSubscriber(student);
     const freePlanBooking = !paidBooking;
     if (paidBooking && availableCredits <= 0) {
@@ -435,7 +435,7 @@ async function runBookSlot(req, res) {
           { _id: student._id },
           {
             $set: {
-              freeLessonPeriodKey: currentPeriodKey(studentZone),
+              freeLessonPeriodKey: '',
               freeLessonActiveBookingId: b._id,
             },
           }

@@ -3864,7 +3864,7 @@
                 if (hintEl) {
                     if (studentHasPaidPlan && curriculumLevelsMatch(selectedLevel, 'Pre-Level')) {
                         hintEl.textContent =
-                            'Pre-Level lessons are free trial lessons. You can book any of them, and they do not use a credit.';
+                            'These 3 lessons are the free-plan set: Orientation, About RemoEd PH, and Welcome. Booking one does not use a credit.';
                     } else if (studentHasPaidPlan && normalizeProgressLevelKey(selectedLevel)) {
                         hintEl.textContent =
                             'Follow your Learning Journey in order. You can book Lesson ' +
@@ -3874,11 +3874,11 @@
                         hintEl.textContent =
                             'Your plan is active. Each class uses one credit.';
                     } else if (studentFreePlanSequenceDone) {
-                        hintEl.innerHTML = 'You finished all 22 free Pre-Level lessons. <a href="student-credits.html">Subscribe to Book</a> the next levels.';
+                        hintEl.innerHTML = 'You finished all 3 free lessons. <a href="student-credits.html">Subscribe to Book</a> the next levels.';
                     } else if (studentFreePlanActive && !studentFreePlanCanBook) {
-                        hintEl.innerHTML = 'This month\'s free lesson is already booked. Next month you can book Pre-Level Lesson ' + studentFreePlanNextLesson + '. <a href="student-credits.html">Subscribe to Book</a> any lesson now.';
+                        hintEl.innerHTML = 'Your free lesson is already booked. After that class is finished, you can book Lesson ' + studentFreePlanNextLesson + '. <a href="student-credits.html">Subscribe to Book</a> any lesson now.';
                     } else if (studentFreePlanActive) {
-                        hintEl.innerHTML = 'Free plan: Pre-Level Lesson ' + studentFreePlanNextLesson + ' is open this month. The other 21 titles stay listed. <a href="student-credits.html">Subscribe to Book</a> them now.';
+                        hintEl.innerHTML = 'Free plan: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. Book it, then the next one after that class is finished. <a href="student-credits.html">Subscribe to Book</a> the other levels now.';
                     } else {
                         hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
                     }
@@ -3915,7 +3915,7 @@
                             option.title = 'Finish the lessons before this one on your Learning Journey';
                         } else if (locked && studentFreePlanActive) {
                             option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
-                            option.title = 'Subscribe to book this lesson now, or wait for your next free month';
+                            option.title = 'Finish the free lesson before this one, or subscribe to book it now';
                         } else if (locked) {
                             option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (Subscribe to Book)`;
                             option.title = 'Subscribe to book this lesson';

@@ -9,9 +9,6 @@ const Curriculum = require('../models/Curriculum');
 const { cancelledStatusValues } = require('../utils/bookingStatus');
 const {
   normalizeCurriculumLevel,
-  normalizeCurriculumDocLevel,
-  resolveStudentCurriculumLevel,
-  PRE_LEVEL,
 } = require('../config/curriculumLevels');
 const {
   parseBookingLessonRef,
@@ -21,11 +18,23 @@ const {
 const LESSONS_PER_BATCH = 22;
 const LESSONS_PER_LEVEL = 220;
 
+function isBookingAbsence(b) {
+  if (!b) return false;
+  const st = String(b.status || '').toLowerCase();
+  if (st === 'absent') return true;
+  const absent = String(b.absentType || '').toLowerCase();
+  if (absent === 'student' || absent === 'teacher') return true;
+  return !!b.absentMarkedAt;
+}
+
 function isBookingLessonCompleted(b) {
   const st = String(b.status || '').toLowerCase();
   if (st === 'cancelled' || st === 'canceled' || st.indexOf('cancelled') === 0 || st === 'absent') {
     return false;
   }
+  // My Classes shows Student Absent / Teacher Absent ahead of Finished.
+  // A completed status left on an absence must not move the Learning Journey.
+  if (isBookingAbsence(b)) return false;
   // Only a finished wrap-up (status completed) moves the Learning Journey.
   // pending_feedback, a late finishedAt, or a tab left open must not unlock the next lesson.
   return st === 'completed';
@@ -69,27 +78,11 @@ async function hydrateLessonMap(ids) {
 /**
  * Build completedKeys set matching GET /api/student/lesson-progress.
  */
-async function growthLevelForStudentIds(ids) {
-  const Student = require('../models/Student');
-  const mongoose = require('mongoose');
-  const or = [];
-  for (const id of ids) {
-    if (!id) continue;
-    or.push({ username: id }, { email: id });
-    if (mongoose.Types.ObjectId.isValid(String(id))) or.push({ _id: id });
-  }
-  if (!or.length) return null;
-  const student = await Student.findOne({ $or: or }).select('level leveling education').lean();
-  return resolveStudentCurriculumLevel(student);
-}
-
-function trailLevelForLesson(curriculumLevel, fallbackLevel, growthLevel) {
+function trailLevelForLesson(curriculumLevel, fallbackLevel) {
   const growth = normalizeCurriculumLevel(curriculumLevel);
   if (growth) return growth;
   const fallback = normalizeCurriculumLevel(fallbackLevel);
   if (fallback) return fallback;
-  if (normalizeCurriculumDocLevel(curriculumLevel) === PRE_LEVEL && growthLevel) return growthLevel;
-  if (normalizeCurriculumDocLevel(fallbackLevel) === PRE_LEVEL && growthLevel) return growthLevel;
   return null;
 }
 
@@ -97,13 +90,12 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
   const ids = [...new Set((uniqueIdentifiers || []).filter(Boolean).map(String))];
   const completedKeys = new Set();
   if (!ids.length) return completedKeys;
-  const growthLevel = await growthLevelForStudentIds(ids);
 
   const bookings = await Booking.find({
     studentId: { $in: ids },
     status: { $nin: cancelledStatusValues() },
   })
-    .select('lesson studentLevel status attendance lessonId classroomId finishedAt sessionEndedAt')
+    .select('lesson studentLevel status attendance lessonId classroomId finishedAt sessionEndedAt absentType absentMarkedAt')
     .lean();
 
   const completed = bookings.filter(isBookingLessonCompleted);
@@ -111,7 +103,7 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
     studentId: { $in: ids },
     status: 'completed',
   })
-    .select('lessonId curriculumId completedAt status')
+    .select('lessonId curriculumId completedAt status bookingId')
     .lean();
 
   let lessonMap = await hydrateLessonMap([
@@ -122,11 +114,7 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
   function addKeyFromLessonId(lessonId, fallbackLevel) {
     if (!lessonId || !lessonMap[String(lessonId)]) return false;
     const l = lessonMap[String(lessonId)];
-    let level = trailLevelForLesson(
-      l.curriculum && l.curriculum.level,
-      fallbackLevel,
-      growthLevel
-    );
+    let level = trailLevelForLesson(l.curriculum && l.curriculum.level, fallbackLevel);
     const num = Number(l.lessonNumber || l.order || 0);
     if (!level || !(num >= 1 && num <= LESSONS_PER_LEVEL)) return false;
     const batch = Math.ceil(num / LESSONS_PER_BATCH);
@@ -165,7 +153,7 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
       const parsed = parseBookingLessonRef(b.lesson);
       if (parsed && parsed.level) level = normalizeCurriculumLevel(parsed.level);
     }
-    if (!level) level = trailLevelForLesson(null, b.studentLevel, growthLevel);
+    if (!level) level = trailLevelForLesson(null, b.studentLevel);
     if (!level || batch == null || lessonNum == null) {
       unresolved.push(b);
       continue;
@@ -200,7 +188,12 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
     }
   }
 
+  const bookingById = new Map(bookings.map((b) => [String(b._id), b]));
   for (const p of lessonProgressDocs) {
+    if (p.bookingId) {
+      const linked = bookingById.get(String(p.bookingId));
+      if (linked && isBookingAbsence(linked)) continue;
+    }
     addKeyFromLessonId(p.lessonId, null);
   }
 
@@ -285,6 +278,7 @@ async function assertLessonNotAheadOfProgress({
 module.exports = {
   LESSONS_PER_BATCH,
   LESSONS_PER_LEVEL,
+  isBookingAbsence,
   isBookingLessonCompleted,
   maxBookableFromCompletedKeys,
   buildCompletedLessonKeys,

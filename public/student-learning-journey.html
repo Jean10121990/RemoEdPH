@@ -956,9 +956,9 @@
                     var nextNum = Number(plan.nextLessonNumber) || 1;
                     RemoedFeatureAccess.mountFeatureLock(host, {
                         featureName: 'Learning Journey',
-                        blurb: 'The paid trail stays closed on the free plan. Your open class is Pre-Level Lesson ' + nextNum + '.',
+                        blurb: 'The paid trail stays closed on the free plan. Your free lessons are Orientation, About RemoEd PH, and Welcome. Next is Lesson ' + nextNum + '.',
                         altHref: 'student-book.html',
-                        altLabel: plan.canBookThisMonth ? ('Book Pre-Level Lesson ' + nextNum) : 'See booking',
+                        altLabel: plan.canBookThisMonth ? ('Book free Lesson ' + nextNum) : 'See booking',
                     });
                 })
                 .catch(function () {});

@@ -430,7 +430,7 @@
             var raw = localStorage.getItem('studentFreePlan');
             if (raw) {
                 var plan = JSON.parse(raw);
-                if (plan && plan.isFree === true && (plan.canBookThisMonth === false || plan.sequenceDone === true)) {
+                if (plan && plan.isFree === true && plan.sequenceDone === true) {
                     return { label: 'Subscribe to Book', href: 'student-credits.html' };
                 }
             }

@@ -2,7 +2,7 @@
  * Free plan on the existing Student record.
  * Paid: a spark/steady/scholar/summit lot with credits left, or an active paid subscription.
  * Free: everyone else, including a leftover welcome credit.
- * Free students book the next Pre-Level lesson once per student-local calendar month.
+ * Free students book the next of 3 Pre-Level lessons. There is no monthly lesson.
  */
 const mongoose = require('mongoose');
 const { DateTime } = require('luxon');
@@ -10,7 +10,7 @@ const Booking = require('../models/Booking');
 const Student = require('../models/Student');
 const { PRE_LEVEL, normalizeCurriculumDocLevel } = require('../config/curriculumLevels');
 
-const FREE_PLAN_LESSON_COUNT = 22;
+const FREE_PLAN_LESSON_COUNT = 3;
 const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
 /** Admin Settings may force this username only. Other students ignore planModeOverride. */
 const TEST_PLAN_STUDENT_USERNAME = 'jeanserolf';
@@ -84,6 +84,22 @@ async function describeBookedLesson(lessonId, lessonTitle, studentLevel) {
   return { number, level };
 }
 
+async function bookingAdvancesFreePlan(booking) {
+  if (!booking || !booking.lessonId || !mongoose.Types.ObjectId.isValid(String(booking.lessonId))) {
+    return false;
+  }
+  const Lesson = require('../models/Lesson');
+  const Curriculum = require('../models/Curriculum');
+  const lesson = await Lesson.findById(booking.lessonId).select('lessonNumber curriculumId isActive').lean();
+  if (!lesson || lesson.isActive === false) return false;
+  const n = Number(lesson.lessonNumber);
+  if (!(n >= 1 && n <= FREE_PLAN_LESSON_COUNT)) return false;
+  if (!lesson.curriculumId) return false;
+  const cur = await Curriculum.findById(lesson.curriculumId).select('level isActive').lean();
+  if (!cur || cur.isActive === false) return false;
+  return normalizeCurriculumDocLevel(cur.level) === PRE_LEVEL;
+}
+
 async function upcomingFreeBooking(student, session) {
   const id = student && student.freeLessonActiveBookingId;
   if (!id) return null;
@@ -119,7 +135,7 @@ async function assertFreePlanLesson({ student, studentId, studentLevel, lessonId
       error: httpError(
         403,
         'FREE_PLAN_SEQUENCE_DONE',
-        'You finished all 22 free Pre-Level lessons. Subscribe to keep learning.'
+        'You finished all 3 free lessons. Subscribe to keep learning.'
       ),
     };
   }
@@ -143,21 +159,7 @@ async function assertFreePlanLesson({ student, studentId, studentLevel, lessonId
       error: httpError(
         403,
         'FREE_PLAN_SEQUENCE',
-        'Your free lesson this month is Pre-Level Lesson ' + nextLessonNumber + '.'
-      ),
-    };
-  }
-
-  const periodKey = currentPeriodKey(zone);
-  if (String((current && current.freeLessonPeriodKey) || '') === periodKey) {
-    return {
-      ok: false,
-      error: httpError(
-        403,
-        'FREE_PLAN_MONTHLY_LIMIT',
-        'You already booked this month’s free lesson. Next month you can book Pre-Level Lesson ' +
-          nextLessonNumber +
-          '.'
+        'Your next free lesson is Lesson ' + nextLessonNumber + '.'
       ),
     };
   }
@@ -168,31 +170,30 @@ async function assertFreePlanLesson({ student, studentId, studentLevel, lessonId
       ok: false,
       error: httpError(
         403,
-        'FREE_PLAN_MONTHLY_LIMIT',
-        'You already have a free Pre-Level class booked. Cancel it before the start time to book again this month.'
+        'FREE_PLAN_ALREADY_BOOKED',
+        'You already have a free lesson booked. Finish it, or cancel it before it starts, to book the next one.'
       ),
     };
   }
 
-  return { ok: true, nextLessonNumber, periodKey };
+  return { ok: true, nextLessonNumber, periodKey: '' };
 }
 
 async function freePlanProfile(student, zone) {
   const paid = isPaidSubscriber(student);
   const completed = completedCountOf(student);
-  const periodKey = currentPeriodKey(zone);
   const sequenceDone = completed >= FREE_PLAN_LESSON_COUNT;
-  const usedMonth = String((student && student.freeLessonPeriodKey) || '') === periodKey;
   const upcoming = paid ? null : await upcomingFreeBooking(student, null);
   const isFree = !paid;
   const nextLessonNumber = sequenceDone ? FREE_PLAN_LESSON_COUNT : completed + 1;
   return {
     isFree,
     nextLessonNumber,
-    canBookThisMonth: isFree && !sequenceDone && !usedMonth && !upcoming,
+    canBookThisMonth: isFree && !sequenceDone && !upcoming,
     completedCount: completed,
-    periodKey,
+    periodKey: currentPeriodKey(zone),
     sequenceDone,
+    lessonCount: FREE_PLAN_LESSON_COUNT,
   };
 }
 
@@ -205,4 +206,5 @@ module.exports = {
   currentPeriodKey,
   assertFreePlanLesson,
   freePlanProfile,
+  bookingAdvancesFreePlan,
 };

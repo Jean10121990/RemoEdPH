@@ -1232,7 +1232,7 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       console.warn('Referral signup tracking failed:', refSignupErr.message);
     }
 
-    // Free plan is Pre-Level, one lesson a month. Do not grant a welcome credit or trial flags.
+    // Free plan is 3 Pre-Level lessons, in order. Do not grant a welcome credit or trial flags.
     const now = new Date();
     const { PRIVACY_CONSENT_VERSION, consentRecord } = require('./config/privacyConsent');
     const marketingOn = req.body.marketingConsent === true;

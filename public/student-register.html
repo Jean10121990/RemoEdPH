@@ -310,9 +310,9 @@
       </div>
 
       <h1 class="login-title">Create your student account</h1>
-      <p class="subtitle">Register once, claim your free trial Lesson 1, then continue with a learning plan when you’re ready.</p>
+      <p class="subtitle">Register once, then book your 3 free lessons: Orientation, About RemoEd PH, and Welcome.</p>
       <div class="trial-hint" id="assessment-trial-hint">
-        You’re claiming your free trial class from the level assessment. Use the same email you used on the assessment, then log in and book Lesson 1.
+        Use the same email you used on the assessment, then log in and book Lesson 1 of your 3 free lessons.
       </div>
       <div class="referral-chip" id="referral-chip"></div>
 
@@ -668,10 +668,10 @@
         if (data.success) {
           if (data.assessmentTrialActivated) {
             errorDiv.textContent =
-              'Account created! You have 1 free trial class — log in and book Lesson 1 from your student dashboard. After your trial, you can pick a plan to continue.';
+              'Account created! You have 3 free lessons — Orientation, About RemoEd PH, and Welcome. Log in and book Lesson 1.';
           } else {
             errorDiv.textContent =
-              "Account created! Log in to open your dashboard — start with free trial Lesson 1 when you're ready, then pick a plan after your first lesson.";
+              'Account created! Log in and book your 3 free lessons: Orientation, About RemoEd PH, and Welcome.';
           }
           errorDiv.className = 'register-error register-success';
           errorDiv.style.display = 'block';
