@@ -107,13 +107,12 @@
             var BATCH_COUNT = 10;
             var LEVEL_TOTAL = BATCH_COUNT * LESSONS_PER_BATCH;
             var CHAR_SRC = 'images/remo-green.png';
-            var MAP_COLS = 6;
             var MAP_STEP = 120;
-            var MAP_PAD_X = 80;
-            var MAP_PAD_Y = 110;
-            var MAP_VB_W = MAP_PAD_X * 2 + (MAP_COLS - 1) * MAP_STEP;
-            var MAP_ROWS = Math.ceil((BATCH_COUNT * LESSONS_PER_BATCH) / MAP_COLS);
-            var MAP_VB_H = MAP_PAD_Y * 2 + (MAP_ROWS - 1) * MAP_STEP;
+            var MAP_PAD_X = 120;
+            var MAP_PAD_Y = 160;
+            var MAP_VB_W = 760;
+            var MAP_VB_H = 7900;
+            var worldSpots = null;
             var LANDMARK_IN_BATCH = { 6: 'tree', 12: 'pond', 18: 'flag', 22: 'finish' };
 
             var LEVEL_META = {
@@ -322,15 +321,48 @@
                 if (labelEl) labelEl.textContent = (LEVEL_META[levelKey] || levelKey) + ' progress';
             }
 
+            function ensureWorldSpots() {
+                if (worldSpots) return worldSpots;
+                var wave = 250;
+                var drop = 55;
+                var center = MAP_VB_W / 2;
+                function spotAt(t) {
+                    return {
+                        x: center + wave * Math.sin(t),
+                        y: MAP_PAD_Y + drop * t,
+                    };
+                }
+                var spots = [spotAt(0)];
+                var t = 0;
+                var k;
+                while (spots.length < LEVEL_TOTAL) {
+                    var prev = spots[spots.length - 1];
+                    var lo = t;
+                    var hi = t + 0.2;
+                    var p;
+                    while (hi - t < 8) {
+                        p = spotAt(hi);
+                        if (Math.hypot(p.x - prev.x, p.y - prev.y) >= MAP_STEP) break;
+                        hi += 0.35;
+                    }
+                    for (k = 0; k < 18; k++) {
+                        var mid = (lo + hi) / 2;
+                        p = spotAt(mid);
+                        if (Math.hypot(p.x - prev.x, p.y - prev.y) < MAP_STEP) lo = mid;
+                        else hi = mid;
+                    }
+                    t = (lo + hi) / 2;
+                    spots.push(spotAt(t));
+                }
+                MAP_VB_H = Math.ceil(spots[spots.length - 1].y + MAP_PAD_Y);
+                worldSpots = spots;
+                return spots;
+            }
+
             function pointForLinear(linear) {
-                var i = Math.max(0, Number(linear) - 1);
-                var row = Math.floor(i / MAP_COLS);
-                var col = i % MAP_COLS;
-                if (row % 2 === 1) col = MAP_COLS - 1 - col;
-                return {
-                    x: MAP_PAD_X + col * MAP_STEP,
-                    y: MAP_PAD_Y + row * MAP_STEP,
-                };
+                var spots = ensureWorldSpots();
+                var i = Math.max(0, Math.min(spots.length - 1, Number(linear) - 1));
+                return spots[i];
             }
 
             function buildWorldPoints() {
