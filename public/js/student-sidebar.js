@@ -222,7 +222,7 @@
         wrap.id = 'parent-pin-modal';
         wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
         var card = document.createElement('form');
-        card.style.cssText = 'background:#fff;border-radius:16px;max-width:420px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);';
+        card.style.cssText = 'background:#fff;border-radius:16px;max-width:420px;width:100%;box-sizing:border-box;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden;';
         var title = document.createElement('h2');
         title.style.cssText = 'margin:0 0 8px;font-size:1.35rem;';
         title.textContent = kind === 'setup' ? 'Set a parent PIN' : 'Parents mode';
@@ -245,7 +245,7 @@
             input.maxLength = 4;
             input.autocomplete = 'off';
             input.required = true;
-            input.style.cssText = 'width:100%;font-size:1.4rem;letter-spacing:.3em;padding:10px;border:1px solid #cbd5e1;border-radius:10px;';
+            input.style.cssText = 'box-sizing:border-box;display:block;width:100%;max-width:100%;font-size:1.4rem;letter-spacing:.2em;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;';
             card.appendChild(lab);
             card.appendChild(input);
         }
@@ -254,15 +254,15 @@
         var msg = document.createElement('p');
         msg.style.cssText = 'min-height:1.2em;color:#991b1b;';
         var row = document.createElement('div');
-        row.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-width:100%;';
         var save = document.createElement('button');
         save.type = 'submit';
         save.textContent = kind === 'setup' ? 'Save PIN' : 'Open Parents mode';
-        save.style.cssText = 'background:#1ca7e7;color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer;';
+        save.style.cssText = 'box-sizing:border-box;flex:1 1 auto;min-width:0;max-width:100%;background:#1ca7e7;color:#fff;border:none;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer;';
         var cancel = document.createElement('button');
         cancel.type = 'button';
         cancel.textContent = 'Stay in Kids mode';
-        cancel.style.cssText = 'background:#e2e8f0;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;';
+        cancel.style.cssText = 'box-sizing:border-box;flex:1 1 auto;min-width:0;max-width:100%;background:#e2e8f0;border:none;border-radius:10px;padding:10px 12px;cursor:pointer;';
         cancel.addEventListener('click', function () {
             if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
         });
