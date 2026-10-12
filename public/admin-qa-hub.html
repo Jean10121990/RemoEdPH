@@ -213,6 +213,8 @@
                 </div>
                 <div class="issue-actions">
                     <button type="submit" class="btn btn-primary">Submit Review</button>
+                    <button type="button" class="btn btn-success" onclick="markResolvedFromReview()">Mark Resolved</button>
+                    <button type="button" class="btn btn-danger" onclick="dismissFromReview()">Dismiss</button>
                     <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
                 </div>
             </form>
@@ -1106,6 +1108,24 @@
             document.getElementById('review-form').reset();
         }
 
+        function reviewIssueId() {
+            var input = document.getElementById('issue-id');
+            return input ? String(input.value || '').trim() : '';
+        }
+
+        function markResolvedFromReview() {
+            var issueId = reviewIssueId();
+            if (!issueId) return;
+            closeReviewModal();
+            markResolved(issueId);
+        }
+
+        function dismissFromReview() {
+            var issueId = reviewIssueId();
+            if (!issueId) return;
+            dismissIssue(issueId);
+        }
+
         function markResolved(issueId) {
             document.getElementById('resolve-issue-id').value = issueId;
             document.getElementById('resolve-modal').style.display = 'block';
@@ -1139,6 +1159,7 @@
                 .then(function (response) { return response.json(); })
                 .then(function (data) {
                     if (data.success) {
+                        closeReviewModal();
                         showNotification('Issue dismissed', 'success');
                         loadIssues();
                     } else {

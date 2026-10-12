@@ -43,8 +43,6 @@
         videos: 1,
         journey: 1,
         garden: 1,
-        profile: 1,
-        level: 1
     };
     var KIDS_PAGES = {
         'student-dashboard.html': 1,
@@ -53,9 +51,7 @@
         'student-games-activities.html': 1,
         'student-videos.html': 1,
         'student-learning-journey.html': 1,
-        'student-virtual-garden.html': 1,
-        'student-profile.html': 1,
-        'student-assessment.html': 1
+        'student-virtual-garden.html': 1
     };
     var MODE_KEY = 'remoed_student_view';
     var KIDS_USED_KEY = 'remoed_kids_mode_used';
@@ -121,22 +117,30 @@
             'body.student-kids-mode [data-nav="videos"]{box-shadow:inset 7px 0 0 #38bdf8;}' +
             'body.student-kids-mode [data-nav="journey"]{box-shadow:inset 7px 0 0 #fb923c;}' +
             'body.student-kids-mode [data-nav="garden"]{box-shadow:inset 7px 0 0 #34d399;}' +
-            'body.student-kids-mode [data-nav="profile"]{box-shadow:inset 7px 0 0 #f472b6;}' +
-            'body.student-kids-mode [data-nav="level"]{box-shadow:inset 7px 0 0 #facc15;}' +
             'body.student-kids-mode .dash-next-class{border:3px solid #fbbf24!important;border-radius:28px!important;background:linear-gradient(135deg,#fff7c2,#e0f2fe 55%,#dcfce7)!important;}' +
-            'body.student-kids-mode .dash-stat{border-radius:22px!important;border-width:3px!important;}' +
-            'body.student-kids-mode .dash-stat:nth-child(1){background:#e0f2fe;border-color:#38bdf8;}' +
-            'body.student-kids-mode .dash-stat:nth-child(2){background:#dcfce7;border-color:#34d399;}' +
-            'body.student-kids-mode .dash-stat:nth-child(3){background:#ffedd5;border-color:#fb923c;}' +
-            'body.student-kids-mode .dash-stat__value{font-size:2rem;}' +
+            'body.student-kids-mode .dash-next-class__actions .dash-btn--secondary,' +
+            'body.student-kids-mode .dash-next-class__actions .dash-btn--green ~ .dash-btn--primary{display:none!important;}' +
+            'body.student-kids-mode .dash-stats,' +
+            'body.student-kids-mode .dash-home-grid,' +
+            'body.student-kids-mode #dash-journey-bar-wrap,' +
+            'body.student-kids-mode #welcome-trial-toast,' +
+            'body.student-kids-mode #subscription-paywall-overlay,' +
+            'body.student-kids-mode #free-lesson-cta,' +
+            'body.student-kids-mode #free-plan-upgrade,' +
+            'body.student-kids-mode #trial-completed-banner,' +
+            'body.student-kids-mode #credits-expiry-banner,' +
+            'body.student-kids-mode #post-assessment-enroll-banner,' +
+            'body.student-kids-mode #reschedule-section,' +
+            'body.student-kids-mode .nav-right > .nav-icon,' +
+            'body.student-kids-mode #student-eco-chip-count,' +
+            'body.student-kids-mode #menu-eco-badge{display:none!important;}' +
             'body.student-kids-mode .dash-journey-progress{border:3px solid #34d399!important;border-radius:24px!important;background:linear-gradient(135deg,#ecfccb,#fce7f3)!important;}' +
-            'body.student-kids-mode .dash-panel{border:3px solid #c4b5fd!important;border-radius:24px!important;background:#fff!important;}' +
-            'body.student-kids-mode .dash-quick-link{border-radius:18px;border-width:2px;}' +
-            'body.student-kids-mode .dash-quick-link:nth-child(1){background:#fef3c7;border-color:#fbbf24;}' +
-            'body.student-kids-mode .dash-quick-link:nth-child(2){background:#fce7f3;border-color:#f472b6;}' +
-            'body.student-kids-mode .dash-quick-link:nth-child(3){background:#dcfce7;border-color:#34d399;}' +
-            'body.student-kids-mode a[href="student-credits.html"]{display:none!important;}' +
-            'body.student-kids-mode .dash-free-trial-cta,body.student-kids-mode .dash-free-trial-toast{border-radius:20px;border:3px solid #7dd3fc;background:#e0f2fe;}' +
+            'body.student-kids-mode .kids-play-row{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 1.25rem;}' +
+            'body.student-kids-mode .kids-play-row a{display:flex;align-items:center;justify-content:center;min-height:88px;padding:16px;border-radius:24px;color:#1e293b;font-weight:800;text-decoration:none;text-align:center;border:3px solid transparent;}' +
+            'body.student-kids-mode .kids-play-row a:nth-child(1){background:#f3e8ff;border-color:#c084fc;}' +
+            'body.student-kids-mode .kids-play-row a:nth-child(2){background:#e0f2fe;border-color:#38bdf8;}' +
+            'body.student-kids-mode .kids-play-row a:nth-child(3){background:#dcfce7;border-color:#34d399;}' +
+            '@media(max-width:768px){body.student-kids-mode .kids-play-row{grid-template-columns:1fr;}}' +
             'body.student-kids-mode .remoed-bottom-nav{background:linear-gradient(90deg,#22d3ee,#8b5cf6);}' +
             'body.student-kids-mode .remoed-bottom-nav__link{color:#fff;font-weight:800;}' +
             '.portal-mode-switch{display:inline-flex;align-items:center;gap:8px;margin-right:6px;}' +
@@ -156,6 +160,12 @@
         document.body.classList.toggle('student-kids-mode', isKidsMode());
         var sub = document.querySelector('.sidebar-subtitle');
         if (sub) sub.textContent = isKidsMode() ? 'Kids mode' : 'Student Portal';
+        var journeySummary = document.getElementById('dash-journey-summary');
+        if (journeySummary && journeySummary.getAttribute('data-kids-place')) {
+            journeySummary.textContent = isKidsMode()
+                ? 'You are in ' + journeySummary.getAttribute('data-kids-place')
+                : journeySummary.getAttribute('data-parent-summary') || journeySummary.textContent;
+        }
         if (!isKidsMode()) return;
         var file = pageFile();
         if (file && !KIDS_PAGES[file] && (file.indexOf('student-') === 0 || file === 'leaderboard.html')) {
@@ -615,7 +625,9 @@
             '  </div>' +
             '  <div class="sidebar-user">' +
             '    <div class="sidebar-user-inner">' +
-            '      <div id="remoed-avatar" onclick="window.location.href=\'student-profile.html\'" style="cursor:pointer;">' +
+            '      <div id="remoed-avatar"' +
+            (kids ? '' : ' onclick="window.location.href=\'student-profile.html\'" style="cursor:pointer;"') +
+            '>' +
             '        <img id="profile-image" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">' +
             '        <span id="avatar-text">S</span>' +
             '      </div>' +

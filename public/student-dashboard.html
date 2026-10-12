@@ -776,7 +776,7 @@
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
         <script src="js/student-eco-drops.js?v=garden-1"></script>
-        <script src="js/student-sidebar.js?v=kids-color-2"></script>
+        <script src="js/student-sidebar.js?v=kids-home-1"></script>
         <script src="js/student-page-header.js?v=kids-mode-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
@@ -896,6 +896,12 @@
                     </div>
                 </div>
             </section>
+
+            <div class="kids-play-row" hidden>
+                <a href="student-games-activities.html">Play &amp; Learn</a>
+                <a href="student-videos.html">Videos</a>
+                <a href="student-virtual-garden.html">Virtual Garden</a>
+            </div>
 
             <!-- Compact stats (values filled by existing loadChartData / upcoming) -->
             <div class="dash-stats" aria-label="Learning summary">
@@ -1390,7 +1396,11 @@
           if (inProg > 0) {
             parts.push(inProg + ' in progress');
           }
-          summaryEl.textContent = parts.join(' · ');
+          summaryEl.setAttribute('data-kids-place', lvl);
+          summaryEl.setAttribute('data-parent-summary', parts.join(' · '));
+          summaryEl.textContent = document.body.classList.contains('student-kids-mode')
+            ? 'You are in ' + lvl
+            : parts.join(' · ');
           if (barWrap && bar) {
             barWrap.hidden = false;
             var pct = Math.max(0, Math.min(100, Math.round((lvlDone / total) * 100)));
@@ -1403,8 +1413,9 @@
           }
         })
         .catch(function (e) {
-          summaryEl.textContent =
-            (e && e.message) || 'Could not load lesson progress. Try Learning journey.';
+          summaryEl.textContent = document.body.classList.contains('student-kids-mode')
+            ? 'Open your journey to see where you are.'
+            : (e && e.message) || 'Could not load lesson progress. Try Learning journey.';
           if (barWrap) barWrap.hidden = true;
         });
     }
