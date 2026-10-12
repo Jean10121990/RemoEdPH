@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-learning-journey.css?v=map-space-2">
+    <link rel="stylesheet" href="css/student-learning-journey.css?v=map-alive-1">
     <link rel="stylesheet" href="css/feature-lock.css?v=free-plan-1">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
@@ -457,6 +457,16 @@
                     '" cy="' +
                     (y0 + 18).toFixed(1) +
                     '" rx="16" ry="8" fill="rgba(255,255,255,0.45)"/>' +
+                    '<g class="lj-flora" transform="translate(' +
+                    (batchNum % 2 === 0 ? MAP_VB_W - 28 : 28) +
+                    ' ' +
+                    (mid + 8).toFixed(1) +
+                    ')">' +
+                    '<circle cx="0" cy="0" r="4" fill="#fb7185"/>' +
+                    '<circle cx="7" cy="6" r="3.5" fill="#fbbf24"/>' +
+                    '<circle cx="-6" cy="7" r="3" fill="#c084fc"/>' +
+                    '<rect x="-1" y="4" width="2" height="10" rx="1" fill="#22c55e"/>' +
+                    '</g>' +
                     '<text class="lj-zone-label" x="22" y="' +
                     Math.max(18, y0 - 28).toFixed(1) +
                     '">Trail ' +
@@ -523,6 +533,8 @@
 
                     var ok = completedSet.has(levelKey + ':' + p.batch + ':' + p.lesson);
                     var locked = isBatchLocked(batches, p.batch);
+                    var gateLesson = firstWall ? Number(firstWall.lessonNumber) : 0;
+                    var needsAssessment = gateLesson > 0 && p.linear > gateLesson;
                     var isHere = standOn && p.batch === standOn.batch && p.lesson === standOn.lesson;
                     var tip =
                         'RemoEd ' +
@@ -534,7 +546,7 @@
                         (ok ? ' (done)' : locked ? ' (locked)' : isHere ? ' (you are here)' : '');
                     var cls = 'lj-node';
                     if (ok) cls += ' lj-node--done';
-                    if (locked) cls += ' lj-node--locked';
+                    if (locked || needsAssessment) cls += ' lj-node--locked';
                     if (isHere) cls += ' lj-node--here';
                     var leftPct = (p.x / MAP_VB_W) * 100;
                     var topPct = (p.y / MAP_VB_H) * 100;
@@ -549,6 +561,10 @@
                         p.linear +
                         '" data-locked="' +
                         (locked ? '1' : '0') +
+                        '" data-assess="' +
+                        (needsAssessment ? '1' : '0') +
+                        '" data-gate="' +
+                        gateLesson +
                         '" data-done="' +
                         (ok ? '1' : '0') +
                         '" aria-label="' +
@@ -574,7 +590,7 @@
                             '" alt="" width="48" height="48" decoding="async">' +
                             '</div>';
                     }
-                    if (locked && !ok) {
+                    if ((locked && !ok) || (needsAssessment && p.linear === gateLesson + 1)) {
                         nodes += '<span class="lj-node__lock" aria-hidden="true">🔒</span>';
                     }
                     nodes += '</button>';
@@ -645,10 +661,16 @@
                     '" fill="none" stroke="rgba(148,163,184,0.45)" stroke-dasharray="7 9" stroke-width="1.5" rx="16"/>' +
                     '</svg>' +
                     '<div class="lj-map__clouds" aria-hidden="true">' +
-                    '<span class="lj-cloud" style="top:4%;left:6%"></span>' +
-                    '<span class="lj-cloud lj-cloud--small" style="top:22%;left:58%"></span>' +
-                    '<span class="lj-cloud" style="top:47%;left:12%"></span>' +
-                    '<span class="lj-cloud lj-cloud--small" style="top:71%;left:48%"></span>' +
+                    '<span class="lj-sun"></span>' +
+                    '<span class="lj-cloud lj-cloud--huge" style="top:1%;left:-6%"></span>' +
+                    '<span class="lj-cloud" style="top:16%;left:42%"></span>' +
+                    '<span class="lj-cloud lj-cloud--huge" style="top:34%;left:4%"></span>' +
+                    '<span class="lj-cloud" style="top:52%;left:36%"></span>' +
+                    '<span class="lj-cloud lj-cloud--huge" style="top:70%;left:-8%"></span>' +
+                    '<span class="lj-cloud" style="top:86%;left:28%"></span>' +
+                    '<span class="lj-bird" style="top:9%;left:18%"></span>' +
+                    '<span class="lj-bird lj-bird--late" style="top:41%;left:55%"></span>' +
+                    '<span class="lj-bird" style="top:74%;left:22%"></span>' +
                     '</div>' +
                     '<div class="lj-map__zones">' +
                     zones +
@@ -753,6 +775,12 @@
                         opts.description ||
                         'This stop is on a locked trail. Buy more lessons to open it on your map.';
                     setModalActions(false, true, 'Buy to unlock');
+                } else if (opts.needsAssessment) {
+                    statusEl.textContent = 'Pass the Lesson ' + opts.gateLesson + ' assessment first.';
+                    statusEl.className = 'lj-modal__status is-locked';
+                    descEl.textContent =
+                        'This lesson stays locked until you pass that assessment. Click the wall on the path when you are ready.';
+                    setModalActions(false, false);
                 } else if (noCredits) {
                     statusEl.textContent = 'No credits left to book right now.';
                     statusEl.className = 'lj-modal__status is-locked';
@@ -982,9 +1010,10 @@
                         var linear = parseInt(btn.getAttribute('data-linear'), 10);
                         var locked = btn.getAttribute('data-locked') === '1';
                         var done = btn.getAttribute('data-done') === '1';
-                        var isHere =
-                            here && here.batch === batch && here.lesson === lesson;
-                        openLessonModal({
+                        var needsAssessment = btn.getAttribute('data-assess') === '1';
+                        var gateLesson = parseInt(btn.getAttribute('data-gate') || '0', 10);
+                        var isHere = btn.classList.contains('lj-node--here') && !needsAssessment;
+                        var modalOpts = {
                             levelKey: levelKey,
                             batch: batch,
                             lesson: lesson,
@@ -992,21 +1021,22 @@
                             locked: locked,
                             done: done,
                             isHere: isHere,
-                            title: 'Lesson ' + linear,
-                            description: 'Loading lesson details…',
-                        });
+                            needsAssessment: needsAssessment,
+                            gateLesson: gateLesson,
+                        };
+                        openLessonModal(
+                            Object.assign({}, modalOpts, {
+                                title: 'Lesson ' + linear,
+                                description: 'Loading lesson details…',
+                            })
+                        );
                         fetchJourneyLesson(levelKey, linear).then(function (meta) {
-                            openLessonModal({
-                                levelKey: levelKey,
-                                batch: batch,
-                                lesson: lesson,
-                                linear: linear,
-                                locked: locked,
-                                done: done,
-                                isHere: isHere,
-                                title: meta.title || 'Lesson ' + linear,
-                                description: meta.description || '',
-                            });
+                            openLessonModal(
+                                Object.assign({}, modalOpts, {
+                                    title: meta.title || 'Lesson ' + linear,
+                                    description: meta.description || '',
+                                })
+                            );
                         });
                     });
                 });

@@ -492,31 +492,91 @@
 
 .page-student-learning-journey .lj-cloud {
   position: absolute;
-  width: 108px;
-  height: 38px;
-  border-radius: 40px;
-  background: rgba(255, 255, 255, 0.92);
+  width: 260px;
+  height: 92px;
+  border-radius: 80px;
+  background: rgba(255, 255, 255, 0.95);
   box-shadow:
-    34px -14px 0 -6px rgba(255, 255, 255, 0.9),
-    62px 4px 0 -10px rgba(255, 255, 255, 0.82);
-  opacity: 0.42;
-  animation: lj-cloud-drift 22s ease-in-out infinite alternate;
+    86px -34px 0 -10px rgba(255, 255, 255, 0.92),
+    160px 10px 0 -22px rgba(255, 255, 255, 0.88);
+  opacity: 0.62;
+  animation: lj-cloud-drift 28s ease-in-out infinite alternate;
 }
 
-.page-student-learning-journey .lj-cloud--small {
-  width: 72px;
-  height: 26px;
-  opacity: 0.32;
-  animation-duration: 28s;
-  animation-delay: -8s;
+.page-student-learning-journey .lj-cloud--huge {
+  width: 420px;
+  height: 150px;
+  opacity: 0.5;
+  box-shadow:
+    130px -48px 0 -16px rgba(255, 255, 255, 0.9),
+    240px 16px 0 -36px rgba(255, 255, 255, 0.82);
+  animation-duration: 36s;
+}
+
+.page-student-learning-journey .lj-sun {
+  position: absolute;
+  top: 22px;
+  right: 36px;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7c2 0 28%, #fbbf24 46%, rgba(251, 191, 36, 0) 70%);
+  opacity: 0.9;
+  animation: lj-sun-glow 7s ease-in-out infinite alternate;
+}
+
+.page-student-learning-journey .lj-bird {
+  position: absolute;
+  width: 22px;
+  height: 12px;
+  opacity: 0.55;
+  animation: lj-bird-fly 20s linear infinite;
+}
+
+.page-student-learning-journey .lj-bird::before,
+.page-student-learning-journey .lj-bird::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  width: 10px;
+  height: 6px;
+  border-top: 2px solid #475569;
+  border-radius: 50% 50% 0 0;
+}
+
+.page-student-learning-journey .lj-bird::after {
+  left: 10px;
+}
+
+.page-student-learning-journey .lj-bird--late {
+  animation-duration: 26s;
+  animation-delay: -9s;
 }
 
 @keyframes lj-cloud-drift {
   from {
+    transform: translateX(-30px);
+  }
+  to {
+    transform: translateX(180px);
+  }
+}
+
+@keyframes lj-sun-glow {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes lj-bird-fly {
+  from {
     transform: translateX(0);
   }
   to {
-    transform: translateX(72px);
+    transform: translateX(220px);
   }
 }
 
@@ -1032,7 +1092,9 @@
   .page-student-learning-journey .lj-drop__fill,
   .page-student-learning-journey .lj-map__trail,
   .page-student-learning-journey .lj-wall.is-breaking,
-  .page-student-learning-journey .lj-cloud {
+  .page-student-learning-journey .lj-cloud,
+  .page-student-learning-journey .lj-sun,
+  .page-student-learning-journey .lj-bird {
     animation: none !important;
     transition: none !important;
   }
