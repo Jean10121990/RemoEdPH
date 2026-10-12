@@ -3893,6 +3893,13 @@ const startServer = () => {
           }, 8000);
           console.log(`⏰ Class reminder + teacher-late jobs scheduled (every minute)`);
 
+          const { closeOpenSessions } = require('./services/attendanceExceptionService');
+          const runAttendanceClose = () =>
+            closeOpenSessions().catch((e) => console.warn('[attendance-close]', e.message || e));
+          setInterval(runAttendanceClose, 15 * 60 * 1000);
+          setTimeout(runAttendanceClose, 20000);
+          console.log('⏰ Open attendance sessions close at the configured cutoff (default 07:00 Asia/Manila)');
+
           // Daily notification digest (opt-in) — run shortly after Manila midnight-ish via 6h tick check
           let lastDigestDay = '';
           setInterval(async () => {

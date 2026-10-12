@@ -46,8 +46,9 @@ const adminSosRouter = express.Router();
 /** Admin JWT plus incident:manage. Super-Admin always passes. */
 adminSosRouter.get('/incidents', verifyAdminApiAuth, requirePermission('incident:manage'), async (req, res) => {
   try {
-    const incidents = await sos.listIncidents(String(req.query.status || 'open'));
-    res.json({ success: true, incidents });
+    const incidents = await sos.listIncidents(String(req.query.status || 'open'), req.query.tier);
+    const counts = await sos.incidentCounts();
+    res.json({ success: true, incidents, counts });
   } catch (e) {
     res.status(500).json({ success: false, error: 'Could not list incidents' });
   }
@@ -58,11 +59,12 @@ adminSosRouter.post('/incidents/:id/action', verifyAdminApiAuth, requirePermissi
     const result = await sos.actOnIncident(
       req.params.id,
       req.body && req.body.action,
-      req.user.adminId || req.user.username
+      req.user.adminId || req.user.username,
+      req.body || {}
     );
     res.json({
       success: true,
-      incident: sos.publicIncident(result.incident),
+      incident: sos.publicIncident(result.incident, { staff: true }),
       observeUrl: result.observeUrl || '',
       creditRestored: !!result.creditRestored,
     });

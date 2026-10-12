@@ -33,6 +33,7 @@
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-pipeline" aria-selected="false" aria-controls="hr-panel-pipeline">Teacher Pipeline</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-training" aria-selected="false" aria-controls="hr-panel-training">Teacher Training</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-schedule" aria-selected="false" aria-controls="hr-panel-schedule">Teacher Schedule</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-attendance" aria-selected="false" aria-controls="hr-panel-attendance">Attendance exceptions</button>
                 </div>
 
                 <div id="hr-panel-users" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-users">
@@ -53,6 +54,9 @@
                 <div id="hr-panel-schedule" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-schedule" hidden>
                     <iframe id="iframe-hr-schedule" class="hub-iframe" title="Teacher Schedule"></iframe>
                 </div>
+                <div id="hr-panel-attendance" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-attendance" hidden>
+                    <iframe id="iframe-hr-attendance" class="hub-iframe" title="Attendance exceptions"></iframe>
+                </div>
             </div>
         </div>
     </div>
@@ -64,7 +68,8 @@
                 assessments: { id: 'iframe-hr-assessments', src: '/admin/admin-teacher-assessments.html?adminEmbed=1&embedVer=7' },
                 pipeline: { id: 'iframe-hr-pipeline', src: '/admin/admin-teacher-pipeline.html?adminEmbed=1&embedVer=5' },
                 training: { id: 'iframe-hr-training', src: '/admin/admin-teacher-training.html?adminEmbed=1&embedVer=8' },
-                schedule: { id: 'iframe-hr-schedule', src: '/admin/admin-teacher-schedule.html?adminEmbed=1&embedVer=11' }
+                schedule: { id: 'iframe-hr-schedule', src: '/admin/admin-teacher-schedule.html?adminEmbed=1&embedVer=11' },
+                attendance: { id: 'iframe-hr-attendance', src: '/admin/admin-attendance-exceptions.html?adminEmbed=1&embedVer=1' }
             };
 
             function checkAuth() {
@@ -100,6 +105,7 @@
                         : tab === 'pipeline' ? '#pipeline'
                         : tab === 'training' ? '#training'
                         : tab === 'schedule' ? '#schedule'
+                        : tab === 'attendance' ? '#attendance'
                         : tab === 'documents' ? '#documents'
                         : '#users';
                     if (window.location.hash !== h) {
@@ -115,7 +121,8 @@
                     { key: 'assessments', t: 'hr-tab-assessments', p: 'hr-panel-assessments' },
                     { key: 'pipeline', t: 'hr-tab-pipeline', p: 'hr-panel-pipeline' },
                     { key: 'training', t: 'hr-tab-training', p: 'hr-panel-training' },
-                    { key: 'schedule', t: 'hr-tab-schedule', p: 'hr-panel-schedule' }
+                    { key: 'schedule', t: 'hr-tab-schedule', p: 'hr-panel-schedule' },
+                    { key: 'attendance', t: 'hr-tab-attendance', p: 'hr-panel-attendance' }
                 ];
                 map.forEach(function (row) {
                     var on = row.key === tab;
@@ -143,12 +150,14 @@
                 bindTab('hr-tab-pipeline', 'pipeline');
                 bindTab('hr-tab-training', 'training');
                 bindTab('hr-tab-schedule', 'schedule');
+                bindTab('hr-tab-attendance', 'attendance');
                 function applyHash() {
                     var h = window.location.hash;
                     if (h === '#assessments') showTab('assessments');
                     else if (h === '#pipeline') showTab('pipeline');
                     else if (h === '#training') showTab('training');
                     else if (h === '#schedule') showTab('schedule');
+                    else if (h === '#attendance') showTab('attendance');
                     else if (h === '#documents') showTab('documents');
                     else showTab('users');
                 }

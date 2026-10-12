@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance exceptions</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/admin-hub-embed.css">
+    <style>
+        body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+        .wrap { padding: 16px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+        .card b { display: block; font-size: 1.4rem; }
+        table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.88rem; }
+        th, td { border-bottom: 1px solid #e2e8f0; text-align: left; padding: 8px; vertical-align: top; }
+        .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        input, select, textarea, button { font: inherit; }
+        input, select, textarea { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        button { border: none; border-radius: 8px; padding: 6px 10px; cursor: pointer; background: #e2e8f0; }
+        button.primary { background: #47BC3E; color: #fff; font-weight: 700; }
+        button.warn { background: #b91c1c; color: #fff; }
+        #detail { margin-top: 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+        .muted { color: #64748b; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div id="admin-sidebar-root"></div>
+    <div class="wrap">
+        <h1 style="font-size:1.25rem;margin:0 0 8px;">Attendance exceptions</h1>
+        <p class="muted">System time-outs are not verified working time and do not deduct salary. Confirming negligence is a separate decision from approving the corrected time.</p>
+        <div class="cards" id="cards"></div>
+        <div class="filters">
+            <select id="f-status">
+                <option value="">All statuses</option>
+                <option>PENDING_REVIEW</option>
+                <option>NEEDS_CLARIFICATION</option>
+                <option>APPROVED</option>
+                <option>REJECTED</option>
+                <option>CANCELLED</option>
+            </select>
+            <select id="f-class">
+                <option value="">All classifications</option>
+                <option>ATTENDANCE_EXCEPTION</option>
+                <option>CONFIRMED_NEGLIGENCE</option>
+                <option>EXCUSED</option>
+                <option>DISMISSED</option>
+            </select>
+            <input id="f-employee" placeholder="Employee or reference" />
+            <input id="f-from" type="date" />
+            <input id="f-to" type="date" />
+            <button class="primary" id="f-go" type="button">Load</button>
+        </div>
+        <div id="status" class="muted">Loading…</div>
+        <div style="overflow:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reference</th><th>Employee</th><th>Date</th><th>Time in</th><th>System out</th><th>Reported out</th><th>Status</th><th>Classification</th><th></th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+        <div id="detail" hidden></div>
+    </div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js?v=app-shell-17"></script>
+    <script>
+        if (!window.__ADMIN_EMBED__ && window.AdminSidebar) {
+            AdminSidebar.render('admin-sidebar-root', 'hr-hub');
+        }
+        function esc(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+            });
+        }
+        function token() {
+            return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken && RemoedAdminSession.getAuthToken()) || localStorage.getItem('remoed_admin_token') || '';
+        }
+        function api(path, options) {
+            options = options || {};
+            options.headers = Object.assign({ Authorization: 'Bearer ' + token() }, options.headers || {});
+            options.credentials = 'include';
+            return fetch(path, options).then(function (r) {
+                return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+            });
+        }
+        function loadSummary() {
+            return api('/api/admin/attendance-exceptions/summary').then(function (res) {
+                var c = (res.j && res.j.counts) || {};
+                var cards = [
+                    ['Pending', c.pending || 0],
+                    ['Clarification', c.needsClarification || 0],
+                    ['Approved', c.approved || 0],
+                    ['Rejected', c.rejected || 0],
+                    ['Confirmed negligence', c.confirmedNegligence || 0],
+                    ['Excused', c.excused || 0],
+                    ['Dismissed', c.dismissed || 0],
+                    ['Overdue review', c.overdue || 0]
+                ];
+                document.getElementById('cards').innerHTML = cards.map(function (pair) {
+                    return '<div class="card"><span>' + esc(pair[0]) + '</span><b>' + esc(pair[1]) + '</b></div>';
+                }).join('');
+            });
+        }
+        function loadRows() {
+            var q = new URLSearchParams();
+            var status = document.getElementById('f-status').value;
+            var klass = document.getElementById('f-class').value;
+            var employee = document.getElementById('f-employee').value.trim();
+            var from = document.getElementById('f-from').value;
+            var to = document.getElementById('f-to').value;
+            if (status) q.set('status', status);
+            if (klass) q.set('classification', klass);
+            if (employee) q.set('employee', employee);
+            if (from) q.set('from', from);
+            if (to) q.set('to', to);
+            document.getElementById('status').textContent = 'Loading…';
+            return api('/api/admin/attendance-exceptions?' + q.toString()).then(function (res) {
+                if (!res.ok) {
+                    document.getElementById('status').textContent = (res.j && res.j.message) || 'Could not load.';
+                    return;
+                }
+                var rows = res.j.rows || [];
+                document.getElementById('status').textContent = rows.length + ' shown of ' + (res.j.total || 0) + '.';
+                document.getElementById('rows').innerHTML = rows.map(function (row) {
+                    return '<tr><td>' + esc(row.reference) + '</td><td>' + esc(row.displayName || row.workerId) + '</td><td>' + esc(row.attendanceDate) + '</td><td>' + esc((row.originalTimeIn && row.originalTimeIn.time) || '—') + '</td><td>' + esc((row.systemClockOut && row.systemClockOut.time) || '—') + '</td><td>' + esc((row.reportedClockOut && row.reportedClockOut.time) || '—') + '</td><td>' + esc(row.status) + '</td><td>' + esc(row.classification) + '</td><td><button type="button" data-id="' + esc(row.id) + '">Open</button></td></tr>';
+                }).join('') || '<tr><td colspan="9">No requests.</td></tr>';
+                document.querySelectorAll('#rows button').forEach(function (btn) {
+                    btn.addEventListener('click', function () { openDetail(btn.getAttribute('data-id')); });
+                });
+            });
+        }
+        function openDetail(id) {
+            api('/api/admin/attendance-exceptions/' + id).then(function (res) {
+                var box = document.getElementById('detail');
+                box.hidden = false;
+                if (!res.ok) { box.textContent = (res.j && res.j.message) || 'Could not open.'; return; }
+                var ex = res.j.exception;
+                box.innerHTML = '';
+                var title = document.createElement('h2');
+                title.textContent = ex.reference + ' · ' + ex.displayName;
+                title.style.fontSize = '1.05rem';
+                box.appendChild(title);
+                var p = document.createElement('p');
+                p.textContent = 'Date ' + ex.attendanceDate + '. Time in ' + ((ex.originalTimeIn && ex.originalTimeIn.time) || '—') + '. System out ' + ((ex.systemClockOut && ex.systemClockOut.time) || '—') + '. Reported ' + ((ex.reportedClockOut && ex.reportedClockOut.time) || '—') + '. Status ' + ex.status + '. Classification ' + ex.classification + '. Confirmed repeats for this person: ' + (res.j.confirmedRepeatCount || 0) + '.';
+                box.appendChild(p);
+                var why = document.createElement('p');
+                why.textContent = ex.explanation || 'No explanation yet.';
+                box.appendChild(why);
+                var comments = document.createElement('textarea');
+                comments.placeholder = 'Review comments';
+                comments.style.width = '100%';
+                var reason = document.createElement('textarea');
+                reason.placeholder = 'Rejection reason (required to reject)';
+                reason.style.width = '100%';
+                reason.style.marginTop = '8px';
+                var clarify = document.createElement('textarea');
+                clarify.placeholder = 'What should the employee clarify?';
+                clarify.style.width = '100%';
+                clarify.style.marginTop = '8px';
+                box.appendChild(comments);
+                box.appendChild(reason);
+                box.appendChild(clarify);
+                function post(path, body) {
+                    return api('/api/admin/attendance-exceptions/' + id + path, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    }).then(function (out) {
+                        if (!out.ok || !out.j.success) throw new Error((out.j && out.j.message) || 'Could not save');
+                        return loadSummary().then(loadRows).then(function () { openDetail(id); });
+                    }).catch(function (err) { alert(err.message); });
+                }
+                var bar = document.createElement('div');
+                bar.style.marginTop = '8px';
+                var approve = document.createElement('button');
+                approve.className = 'primary';
+                approve.textContent = 'Approve time';
+                approve.addEventListener('click', function () {
+                    if (!window.confirm('Approve this corrected time-out? The system time-out stays on record.')) return;
+                    post('/approve', { comments: comments.value });
+                });
+                var reject = document.createElement('button');
+                reject.className = 'warn';
+                reject.textContent = 'Reject';
+                reject.addEventListener('click', function () { post('/reject', { reason: reason.value, comments: comments.value }); });
+                var ask = document.createElement('button');
+                ask.textContent = 'Ask clarification';
+                ask.addEventListener('click', function () { post('/clarify', { note: clarify.value }); });
+                bar.appendChild(approve);
+                bar.appendChild(reject);
+                bar.appendChild(ask);
+                ['EXCUSED', 'DISMISSED', 'CONFIRMED_NEGLIGENCE', 'ATTENDANCE_EXCEPTION'].forEach(function (name) {
+                    var b = document.createElement('button');
+                    b.textContent = name === 'CONFIRMED_NEGLIGENCE' ? 'Mark negligence' : name.charAt(0) + name.slice(1).toLowerCase();
+                    b.addEventListener('click', function () {
+                        if (name === 'CONFIRMED_NEGLIGENCE' && !window.confirm('Record confirmed negligence? This does not deduct salary.')) return;
+                        post('/classify', { classification: name, comment: comments.value });
+                    });
+                    bar.appendChild(b);
+                });
+                box.appendChild(bar);
+                var auditTitle = document.createElement('h3');
+                auditTitle.textContent = 'Audit';
+                auditTitle.style.fontSize = '0.95rem';
+                box.appendChild(auditTitle);
+                (res.j.audits || []).forEach(function (a) {
+                    var line = document.createElement('div');
+                    line.className = 'muted';
+                    line.textContent = (a.at || '') + ' · ' + a.action + ' · ' + (a.actorId || '') + (a.reason ? ' · ' + a.reason : '');
+                    box.appendChild(line);
+                });
+            });
+        }
+        document.getElementById('f-go').addEventListener('click', function () { loadRows(); });
+        loadSummary().then(loadRows);
+    </script>
+</body>
+</html>

@@ -466,11 +466,11 @@
       body.classList.remove('teacher-portal', 'admin-portal');
       root.id = 'student-sidebar-root';
       var ss = document.createElement('script');
-      ss.src = 'js/student-sidebar.js?v=book-label-1';
+      ss.src = 'js/student-sidebar.js?v=kids-mode-1';
       ss.onload = function () {
         StudentSidebar.render('student-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/student-page-header.js?v=mark-all-2';
+        h.src = 'js/student-page-header.js?v=kids-mode-1';
         h.onload = function () {
           if (window.StudentPageHeader) StudentPageHeader.render('leaderboard');
         };

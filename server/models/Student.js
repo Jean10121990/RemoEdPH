@@ -25,6 +25,8 @@ const studentSchema = new mongoose.Schema({
   language: { type: String },
   hobbies: { type: String },
   parentName: { type: String },
+  /** Bcrypt hash of the 4-digit parent PIN. Never returned to the browser. */
+  parentPinHash: { type: String, default: '' },
   parentContact: piiContactString(''),
   /** Parent/guardian email (may differ from account email). */
   parentEmail: { type: String, default: '' },

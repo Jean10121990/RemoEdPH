@@ -148,10 +148,12 @@
     }
 
     function ensureTimeTracking() {
-        ensureScript('js/admin-time-tracking.js?v=tt-4', function () {
+        ensureScript('js/attendance-exception-ui.js?v=ae-1', function () {
+        ensureScript('js/admin-time-tracking.js?v=tt-5', function () {
             if (typeof global.initAdminTimeTracking === 'function') {
                 global.initAdminTimeTracking();
             }
+        });
         });
     }
 

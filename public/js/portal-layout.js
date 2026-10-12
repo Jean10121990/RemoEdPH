@@ -687,6 +687,13 @@
 
   global.RemoedPortalLayout = {
     mount: mount,
+    refreshChrome: function () {
+      ['remoed-bottom-nav', 'remoed-mobile-shell', 'remoed-more-sheet'].forEach(function (id) {
+        var node = document.getElementById(id);
+        if (node && node.parentNode) node.parentNode.removeChild(node);
+      });
+      mount();
+    },
     closeDrawer: closeDrawer,
     openDrawer: openDrawer,
     toggleDrawer: toggleDrawer,

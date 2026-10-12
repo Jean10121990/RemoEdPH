@@ -19,6 +19,7 @@
 <script src="js/user-session.js"></script>
 <script src="js/teacher-session-gate.js?v=2"></script>
 <script src="js/remoed-auth-token.js?v=1"></script>
+<script src="js/attendance-exception-ui.js?v=ae-1"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
     <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
@@ -2009,6 +2010,14 @@
           else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
           window.location.replace('/login/');
         }, 2000);
+      } else if (data && data.code === 'ATTENDANCE_EXCEPTION_REQUIRED' && window.RemoedAttendanceException) {
+        window.RemoedAttendanceException.open({
+          token: teacherAuthToken,
+          mineUrl: '/api/teacher/attendance-exceptions/mine',
+          submitUrl: function (id) { return '/api/teacher/attendance-exceptions/' + id + '/submit'; },
+          clarifyUrl: function (id) { return '/api/teacher/attendance-exceptions/' + id + '/clarify'; },
+          exception: data.exception || null
+        });
       } else {
         showTimeMessage(data.error || 'Failed to clock in', 'error');
       }

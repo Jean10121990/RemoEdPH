@@ -171,6 +171,79 @@ router.post('/create-test-notifications', verifyToken, requireStudent, async (re
   }
 });
 
+const parentPinAttempts = new Map();
+
+function parentPinClientKey(req) {
+  return String((req.user && (req.user.studentId || req.user.username)) || req.ip || 'unknown');
+}
+
+router.get('/portal-mode', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const student = await Student.findById(req.user.studentId).select('parentPinHash').lean();
+    res.json({ success: true, pinSet: !!(student && student.parentPinHash) });
+  } catch (err) {
+    console.error('GET portal-mode:', err);
+    res.status(500).json({ success: false, message: 'Could not load parent PIN status.' });
+  }
+});
+
+router.post('/portal-mode/pin', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const pin = String((req.body && req.body.pin) || '').trim();
+    const confirm = String((req.body && req.body.confirm) || '').trim();
+    if (!/^\d{4}$/.test(pin) || pin !== confirm) {
+      return res.status(400).json({ success: false, message: 'Use the same 4-digit PIN in both boxes.' });
+    }
+    const student = await Student.findById(req.user.studentId).select('parentPinHash');
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+    if (student.parentPinHash) {
+      return res.status(409).json({ success: false, message: 'A parent PIN is already set.' });
+    }
+    const bcrypt = require('bcrypt');
+    const hash = await bcrypt.hash(pin, 10);
+    await Student.updateOne({ _id: student._id }, { $set: { parentPinHash: hash } });
+    res.json({ success: true, pinSet: true });
+  } catch (err) {
+    console.error('POST portal-mode/pin:', err);
+    res.status(500).json({ success: false, message: 'Could not save the parent PIN.' });
+  }
+});
+
+router.post('/portal-mode/verify', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const key = parentPinClientKey(req);
+    const now = Date.now();
+    const row = parentPinAttempts.get(key);
+    if (row && row.lockedUntil > now) {
+      return res.status(429).json({ success: false, message: 'Too many tries. Wait a few minutes and try the PIN again.' });
+    }
+    const pin = String((req.body && req.body.pin) || '').trim();
+    if (!/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ success: false, message: 'Enter the 4-digit parent PIN.' });
+    }
+    const student = await Student.findById(req.user.studentId).select('parentPinHash').lean();
+    if (!student || !student.parentPinHash) {
+      return res.status(409).json({ success: false, message: 'Set a parent PIN first.' });
+    }
+    const bcrypt = require('bcrypt');
+    const ok = await bcrypt.compare(pin, student.parentPinHash);
+    if (!ok) {
+      const fails = (row && row.lockedUntil <= now ? 0 : row && row.fails) || 0;
+      const next = fails + 1;
+      parentPinAttempts.set(key, {
+        fails: next,
+        lockedUntil: next >= 5 ? now + 10 * 60 * 1000 : 0,
+      });
+      return res.status(403).json({ success: false, message: 'That PIN is not correct.' });
+    }
+    parentPinAttempts.delete(key);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST portal-mode/verify:', err);
+    res.status(500).json({ success: false, message: 'Could not check the parent PIN.' });
+  }
+});
+
 // Get student profile
 router.get('/profile', verifyToken, requireStudent, async (req, res) => {
   try {

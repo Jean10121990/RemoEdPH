@@ -308,7 +308,7 @@
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js?v=app-shell-11';
+        s.src = 'js/portal-layout.js?v=kids-mode-1';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {

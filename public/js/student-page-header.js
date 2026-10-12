@@ -151,6 +151,7 @@
                 bindNotificationBell(existing);
             }
             bindEcoDropChip(existing);
+            if (global.RemoedStudentPortalMode) global.RemoedStudentPortalMode.mount(existing);
             return existing;
         }
 
@@ -197,6 +198,7 @@
         document.body.classList.add('has-student-page-header');
         bindNotificationBell(header);
         bindEcoDropChip(header);
+        if (global.RemoedStudentPortalMode) global.RemoedStudentPortalMode.mount(header);
         return header;
     }
 
@@ -219,6 +221,7 @@
             bindNotificationBell(header);
         }
         bindEcoDropChip(header);
+        if (global.RemoedStudentPortalMode) global.RemoedStudentPortalMode.mount(header);
         return header;
     }
 

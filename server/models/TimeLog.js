@@ -45,7 +45,21 @@ const timeLogSchema = new mongoose.Schema({
   },
   notes: {
     type: String
-  }
+  },
+  /** EMPLOYEE | SYSTEM_AUTOMATIC | HR_APPROVED. Empty on older rows. */
+  clockOutSource: { type: String, default: '' },
+  /** Cutoff close. Kept after HR approves a different actual time-out. */
+  systemClockOut: {
+    time: { type: String, default: '' },
+    timestamp: { type: Date, default: null },
+    reason: { type: String, default: '' },
+  },
+  /** HR-approved actual time-out. Does not erase systemClockOut. */
+  approvedClockOut: {
+    time: { type: String, default: '' },
+    timestamp: { type: Date, default: null },
+    reviewerUsername: { type: String, default: '' },
+  },
 }, {
   timestamps: true
 });

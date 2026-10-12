@@ -31,7 +31,10 @@
             padding-bottom: 8px;
             border-bottom: 1px solid #e2e8f0;
         }
-        .sos-filters { display: flex; align-items: flex-end; gap: 12px; margin: 14px 0; }
+        .sos-counts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .sos-counts span { background: #e0f2fe; color: #0f172a; border-radius: 999px; padding: 4px 10px; font-size: 0.85rem; font-weight: 600; }
+        .sos-counts .is-urgent { background: #fee2e2; }
+        .sos-filters { display: flex; align-items: flex-end; gap: 12px; margin: 14px 0; flex-wrap: wrap; }
         .sos-filters label { font-size: 0.8rem; font-weight: 600; color: #374151; display: flex; flex-direction: column; gap: 4px; }
         .sos-filters select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; min-width: 180px; }
         .sos-empty { color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 16px; }
@@ -67,7 +70,16 @@
                     <div><strong>Resolved</strong><span>The alert is closed after it was handled.</span></div>
                     <div><strong>All</strong><span>Shows every status together.</span></div>
                 </div>
+                <div id="sos-counts" class="sos-counts" aria-live="polite"></div>
                 <div class="sos-filters">
+                <label>Tier
+                  <select id="incident-tier">
+                    <option value="">All tiers</option>
+                    <option value="1">Tier 1 — technical</option>
+                    <option value="2">Tier 2 — supervision</option>
+                    <option value="3">Tier 3 — urgent safety</option>
+                  </select>
+                </label>
                 <label>Status
                   <select id="incident-status">
                     <option value="open">Open</option>
@@ -104,9 +116,12 @@
       }
       var list = document.getElementById('incident-list');
       var statusSel = document.getElementById('incident-status');
+      var tierSel = document.getElementById('incident-tier');
+      var countsEl = document.getElementById('sos-counts');
       async function load() {
         var status = statusSel ? statusSel.value : 'open';
-        var res = await fetch('/api/admin/incidents?status=' + encodeURIComponent(status), {
+        var tier = tierSel ? tierSel.value : '';
+        var res = await fetch('/api/admin/incidents?status=' + encodeURIComponent(status) + '&tier=' + encodeURIComponent(tier), {
           headers: { Authorization: 'Bearer ' + token() }
         });
         var body = await res.json().catch(function () { return {}; });
@@ -119,23 +134,48 @@
           return;
         }
         var rows = body.incidents || [];
+        var counts = body.counts || {};
+        if (countsEl) {
+          countsEl.innerHTML =
+            '<span>Active ' + esc(counts.active || 0) + '</span>' +
+            '<span>Tier 1 ' + esc(counts.tier1 || 0) + '</span>' +
+            '<span>Tier 2 ' + esc(counts.tier2 || 0) + '</span>' +
+            '<span class="is-urgent">Tier 3 urgent ' + esc(counts.tier3 || 0) + '</span>' +
+            '<span>Not acknowledged ' + esc(counts.unacked || 0) + '</span>' +
+            '<span>Review pending ' + esc(counts.reviewPending || 0) + '</span>';
+        }
         if (!rows.length) {
           list.innerHTML = '<div class="sos-empty">No incidents for this status.</div>';
           return;
         }
         list.innerHTML = rows.map(function (row) {
           var when = row.createdAt ? new Date(row.createdAt).toLocaleString() : '';
+          var tier = Number(row.tier) || 1;
+          var intervene = tier >= 2
+            ? '<button type="button" class="remoed-btn remoed-btn-primary" data-act="observe" data-id="' + esc(row.id) + '">Observe</button>' +
+              '<button type="button" class="remoed-btn remoed-btn-warning" data-act="pause" data-id="' + esc(row.id) + '" data-tier="' + tier + '">Pause</button>' +
+              '<button type="button" class="remoed-btn remoed-btn-danger" data-act="terminate" data-id="' + esc(row.id) + '">End class</button>'
+            : '<span class="sos-meta">Tier 1: help the teacher. Do not join or end the class unless you escalate.</span>';
+          var escalate = tier < 3
+            ? '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="escalate" data-id="' + esc(row.id) + '" data-tier="' + tier + '">Escalate</button>'
+            : '';
+          var review = tier === 3 && row.reviewStatus === 'pending'
+            ? '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="review" data-id="' + esc(row.id) + '">Record review</button>'
+            : '';
           return '<article class="sos-card">' +
-            '<h3>' + esc(row.categoryLabel || row.category) + '</h3>' +
-            '<div class="sos-meta">Tier ' + esc(row.tier) + ' · ' + esc(row.status) + '</div>' +
+            '<h3>' + esc(row.caseRef || 'SOS') + ' · ' + esc(row.categoryLabel || row.category) + '</h3>' +
+            '<div class="sos-meta">Tier ' + esc(row.tier) + ' · ' + esc(row.status) +
+            (row.reviewStatus && row.reviewStatus !== 'not_required' ? ' · Review ' + esc(row.reviewStatus) : '') + '</div>' +
             '<div class="sos-meta">Class ' + esc(row.classroomId) + ' · Student ' + esc(row.studentId) + ' · Teacher ' + esc(row.teacherId) + '</div>' +
             '<div class="sos-meta">' + esc(when) + (row.creditRestored ? ' · Credit restored' : '') + '</div>' +
             (row.description ? '<p class="sos-meta">' + esc(row.description) + '</p>' : '') +
             '<div class="sos-actions">' +
-            '<button type="button" class="remoed-btn remoed-btn-primary" data-act="observe" data-id="' + esc(row.id) + '">Observe</button>' +
-            '<button type="button" class="remoed-btn remoed-btn-warning" data-act="pause" data-id="' + esc(row.id) + '">Pause</button>' +
-            '<button type="button" class="remoed-btn remoed-btn-danger" data-act="terminate" data-id="' + esc(row.id) + '">End class</button>' +
-            '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="resolve" data-id="' + esc(row.id) + '">Resolve</button>' +
+            '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="acknowledge" data-id="' + esc(row.id) + '">Acknowledge</button>' +
+            '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="note" data-id="' + esc(row.id) + '">Add note</button>' +
+            (tier >= 2 ? '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="parent_contact" data-id="' + esc(row.id) + '">Parent contact</button>' : '') +
+            intervene + escalate +
+            '<button type="button" class="remoed-btn remoed-btn-secondary" data-act="resolve" data-id="' + esc(row.id) + '" data-tier="' + tier + '">Resolve</button>' +
+            review +
             '</div></article>';
         }).join('');
       }
@@ -143,13 +183,27 @@
         var btn = event.target.closest('button[data-act]');
         if (!btn) return;
         btn.disabled = true;
+        var act = btn.getAttribute('data-act');
+        var reason = '';
+        var nextTier = 0;
+        if (act === 'note' || act === 'parent_contact' || act === 'pause' || act === 'terminate' || act === 'review' || (act === 'resolve' && btn.getAttribute('data-tier') === '3')) {
+          reason = window.prompt(act === 'parent_contact' ? 'Who did you contact, and what was said?' : 'Reason or note') || '';
+        }
+        if (act === 'escalate') {
+          nextTier = Number(btn.getAttribute('data-tier')) === 1 ? 2 : 3;
+          var picked = window.prompt('Escalate to tier ' + nextTier + ' or type 3. Why?', String(nextTier));
+          if (!picked) { btn.disabled = false; return; }
+          var parts = String(picked).split('|');
+          if (/^[23]$/.test(parts[0].trim())) nextTier = Number(parts[0].trim());
+          reason = parts.length > 1 ? parts.slice(1).join('|') : window.prompt('Why is this a higher tier?') || '';
+        }
         var res = await fetch('/api/admin/incidents/' + encodeURIComponent(btn.getAttribute('data-id')) + '/action', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: 'Bearer ' + token()
           },
-          body: JSON.stringify({ action: btn.getAttribute('data-act') })
+          body: JSON.stringify({ action: act, reason: reason, tier: nextTier || undefined })
         });
         var body = await res.json().catch(function () { return {}; });
         if (!res.ok) {
@@ -160,6 +214,7 @@
         load();
       });
       if (statusSel) statusSel.addEventListener('change', load);
+      if (tierSel) tierSel.addEventListener('change', load);
       load();
       setInterval(load, 8000);
       function listen() {

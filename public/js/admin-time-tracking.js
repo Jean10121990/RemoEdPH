@@ -219,6 +219,14 @@
                 document.dispatchEvent(new CustomEvent('admin-refresh-notifications'));
             } else if (res.status === 404) {
                 showAdminTimeMessage((data && data.error) || 'Time tracking API not found. Restart the Node server and hard-refresh.', 'error');
+            } else if (data && data.code === 'ATTENDANCE_EXCEPTION_REQUIRED' && window.RemoedAttendanceException) {
+                window.RemoedAttendanceException.open({
+                    token: getToken,
+                    mineUrl: '/api/admin/my-attendance-exceptions',
+                    submitUrl: function (id) { return '/api/admin/my-attendance-exceptions/' + id + '/submit'; },
+                    clarifyUrl: function (id) { return '/api/admin/my-attendance-exceptions/' + id + '/clarify'; },
+                    exception: data.exception || null
+                });
             } else {
                 showAdminTimeMessage((data && (data.error || data.message)) || 'Failed to clock in', 'error');
             }

@@ -42,6 +42,7 @@ const PERMISSION_CATALOG = [
   { key: 'hr:schedule', module: 'HR Hub', label: 'Teacher Schedule', sortOrder: 450 },
   { key: 'hr:assessments', module: 'HR Hub', label: 'Teacher Assessments', sortOrder: 460 },
   { key: 'hr:time_override', module: 'HR Hub', label: 'Clock In/Out Override', sortOrder: 470 },
+  { key: 'hr:attendance_review', module: 'HR Hub', label: 'Attendance exceptions — Review', sortOrder: 475 },
   // Accounting
   { key: 'acct:payroll_view', module: 'Accounting Hub', label: 'Payroll — View', sortOrder: 500 },
   { key: 'acct:payroll_dispense', module: 'Accounting Hub', label: 'Payroll — Dispense / Save', sortOrder: 510 },
@@ -88,6 +89,7 @@ const ROLE_SEED_PERMISSIONS = {
     'hr:schedule',
     'hr:assessments',
     'hr:time_override',
+    'hr:attendance_review',
   ],
   admin_qa: [
     ...SHARED_GENERAL,
@@ -168,7 +170,7 @@ const NAV_ID_TO_PERM = {
 /** Path fragment → required permission (first match wins) */
 const PATH_PERMISSION_RULES = [
   { re: /admin-settings|\/settings\/|super-monitor/, key: 'nav:settings' },
-  { re: /admin-hr-hub|admin-users|admin-hr-documents|admin-teacher-pipeline|admin-teacher-training|admin-teacher-schedule|admin-teacher-assessments|admin-assessment-answer-key/, key: 'nav:hr_hub' },
+  { re: /admin-hr-hub|admin-users|admin-hr-documents|admin-teacher-pipeline|admin-teacher-training|admin-teacher-schedule|admin-teacher-assessments|admin-assessment-answer-key|admin-attendance-exceptions/, key: 'nav:hr_hub' },
   { re: /admin-incidents/, key: 'incident:manage' },
   { re: /admin-qa-hub|admin-lessons-library|admin-classroom-recordings|admin-issue-management/, key: 'nav:qa_hub' },
   { re: /admin-accounting-hub|admin-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
@@ -246,6 +248,8 @@ async function seedAdminRbac() {
         );
       } else if (slug === 'admin_qa' && existing.permissions.indexOf('incident:manage') === -1) {
         await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'incident:manage' } });
+      } else if (slug === 'admin_hr' && existing.permissions.indexOf('hr:attendance_review') === -1) {
+        await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'hr:attendance_review' } });
       }
       if (
         slug === 'admin_accounting' &&

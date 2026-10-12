@@ -1216,6 +1216,16 @@ router.post('/time-tracking/clock-in', verifyAdminApiAuth, requireAdmin, async (
     const phDate = getPhilippineBusinessDateAdmin(7);
     const currentTime = getPhilippineTimeStringAdmin();
 
+    const attendanceBlock = await require('./services/attendanceExceptionService').findBlocking(workerId);
+    if (attendanceBlock) {
+      return res.status(403).json({
+        success: false,
+        code: 'ATTENDANCE_EXCEPTION_REQUIRED',
+        error: 'A missed time-out must be reviewed before you can time in. Your account stays active.',
+        exception: require('./services/attendanceExceptionService').publicException(attendanceBlock, { includeReviewNotes: false }),
+      });
+    }
+
     const existingLog = await TimeLog.findOne({
       teacherId: workerId,
       date: phDate,
@@ -1272,6 +1282,7 @@ router.post('/time-tracking/clock-out', verifyAdminApiAuth, requireAdmin, async 
     const totalHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
 
     timeLog.clockOut = { time: currentTime, timestamp: clockOutTime };
+    timeLog.clockOutSource = 'EMPLOYEE';
     timeLog.totalHours = Math.round(totalHours * 100) / 100;
     timeLog.status = 'clocked-out';
     await timeLog.save();
@@ -1324,6 +1335,9 @@ router.get('/time-tracking/status', verifyAdminApiAuth, requireAdmin, async (req
       canTimeIn = true;
     }
 
+    const attendanceBlock = await require('./services/attendanceExceptionService').findBlocking(workerId);
+    if (attendanceBlock) canTimeIn = false;
+
     res.json({
       success: true,
       isClockedIn,
@@ -1331,7 +1345,10 @@ router.get('/time-tracking/status', verifyAdminApiAuth, requireAdmin, async (req
       canTimeIn,
       canTimeOut,
       dailyCompleted,
-      phDate
+      phDate,
+      attendanceBlock: attendanceBlock
+        ? require('./services/attendanceExceptionService').publicException(attendanceBlock, { includeReviewNotes: false })
+        : null,
     });
   } catch (err) {
     console.error('Admin time status error:', err);
@@ -7406,5 +7423,7 @@ router.post('/assess-teacher/:teacherId', verifyAdminApiAuth, requireAdmin, asyn
     });
   }
 });
+
+router.use(require('./attendanceExceptionRoutes').adminRouter);
 
 module.exports = router; 

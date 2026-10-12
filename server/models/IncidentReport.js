@@ -13,6 +13,33 @@ const incidentReportSchema = new mongoose.Schema({
   },
   tier: { type: Number, enum: [1, 2, 3], required: true },
   description: { type: String, default: '', maxlength: 500 },
+  caseRef: { type: String, default: '', index: true },
+  originalTier: { type: Number, enum: [1, 2, 3], default: null },
+  escalatedFrom: { type: Number, default: null },
+  acknowledgedAt: { type: Date, default: null },
+  acknowledgedBy: { type: String, default: '' },
+  assignedTo: { type: String, default: '' },
+  reviewStatus: {
+    type: String,
+    enum: ['not_required', 'pending', 'reviewed'],
+    default: 'not_required',
+  },
+  troubleshooting: { type: String, default: '' },
+  parentContactNote: { type: String, default: '' },
+  actions: {
+    type: [
+      {
+        at: { type: Date, default: Date.now },
+        actor: { type: String, default: '' },
+        action: { type: String, default: '' },
+        reason: { type: String, default: '' },
+        fromTier: { type: Number, default: null },
+        toTier: { type: Number, default: null },
+        outcome: { type: String, default: '' },
+      },
+    ],
+    default: [],
+  },
   status: {
     type: String,
     enum: ['open', 'withdrawn', 'observing', 'paused', 'terminated', 'resolved'],

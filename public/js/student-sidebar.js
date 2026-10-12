@@ -35,6 +35,261 @@
         { id: 'logout', label: 'Log out', href: null, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>', isLogout: true }
     ];
 
+    var KIDS_NAV = {
+        dashboard: 1,
+        schedule: 1,
+        book: 1,
+        games: 1,
+        videos: 1,
+        journey: 1,
+        garden: 1,
+        profile: 1,
+        level: 1
+    };
+    var KIDS_PAGES = {
+        'student-dashboard.html': 1,
+        'student-class-table.html': 1,
+        'student-book.html': 1,
+        'student-games-activities.html': 1,
+        'student-videos.html': 1,
+        'student-learning-journey.html': 1,
+        'student-virtual-garden.html': 1,
+        'student-profile.html': 1,
+        'student-assessment.html': 1
+    };
+    var MODE_KEY = 'remoed_student_view';
+    var KIDS_USED_KEY = 'remoed_kids_mode_used';
+    var UNLOCK_KEY = 'remoed_parent_unlocked';
+
+    function readMode() {
+        try {
+            return localStorage.getItem(MODE_KEY) === 'kids' ? 'kids' : 'parents';
+        } catch (e) {
+            return 'parents';
+        }
+    }
+
+    function isKidsMode() {
+        return readMode() === 'kids';
+    }
+
+    function pageFile() {
+        var raw = (window.location.pathname || '').replace(/\\/g, '/');
+        var file = raw.split('/').pop() || '';
+        if (file.indexOf('?') !== -1) file = file.split('?')[0];
+        return file;
+    }
+
+    function ensureKidsCss() {
+        if (document.getElementById('student-kids-mode-css')) return;
+        var style = document.createElement('style');
+        style.id = 'student-kids-mode-css';
+        style.textContent =
+            'body.student-kids-mode{font-size:18px;}' +
+            'body.student-kids-mode .menu-label{font-size:1.15rem;font-weight:800;}' +
+            'body.student-kids-mode .remoed-menu li{min-height:52px;}' +
+            'body.student-kids-mode .nav-title-text{font-size:22px!important;}' +
+            'body.student-kids-mode .remoed-content,body.student-kids-mode .remoed-section{font-size:1.08rem;}' +
+            'body.student-kids-mode button,body.student-kids-mode .btn,body.student-kids-mode a.btn{font-size:1.05rem;min-height:44px;}' +
+            'body.student-kids-mode .sidebar-subtitle{font-weight:700;}' +
+            '.portal-mode-switch{display:inline-flex;align-items:center;gap:8px;margin-right:6px;}' +
+            '.portal-mode-switch span{font-weight:800;font-size:13px;color:#94a3b8;}' +
+            '.portal-mode-switch span.is-on{color:#166534;}' +
+            '.portal-mode-switch span.is-parent{color:#0369a1;}' +
+            '.portal-mode-switch button{width:52px;height:30px;border:none;border-radius:999px;background:#47BC3E;position:relative;cursor:pointer;padding:0;}' +
+            '.portal-mode-switch button[aria-checked="true"]{background:#1ca7e7;}' +
+            '.portal-mode-switch button i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;display:block;transition:transform .15s ease;}' +
+            '.portal-mode-switch button[aria-checked="true"] i{transform:translateX(22px);}' +
+            'body.student-kids-mode .portal-mode-switch span{font-size:15px;}';
+        document.head.appendChild(style);
+    }
+
+    function applyKidsChrome() {
+        ensureKidsCss();
+        document.body.classList.toggle('student-kids-mode', isKidsMode());
+        var sub = document.querySelector('.sidebar-subtitle');
+        if (sub) sub.textContent = isKidsMode() ? 'Kids mode' : 'Student Portal';
+        if (!isKidsMode()) return;
+        var file = pageFile();
+        if (file && !KIDS_PAGES[file] && (file.indexOf('student-') === 0 || file === 'leaderboard.html')) {
+            window.location.replace('student-dashboard.html');
+        }
+    }
+
+    function studentToken() {
+        try {
+            return (
+                localStorage.getItem('remoed_student_token') ||
+                sessionStorage.getItem('remoed_student_token') ||
+                localStorage.getItem('token') ||
+                ''
+            );
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function rerenderPortal() {
+        applyKidsChrome();
+        if (global.StudentSidebar && document.getElementById('student-sidebar-root')) {
+            var active = getActiveFromPath();
+            global.StudentSidebar.render('student-sidebar-root', active);
+        }
+        if (global.RemoedPortalLayout && typeof global.RemoedPortalLayout.refreshChrome === 'function') {
+            global.RemoedPortalLayout.refreshChrome();
+        }
+        document.querySelectorAll('.portal-mode-switch button').forEach(function (btn) {
+            btn.setAttribute('aria-checked', isKidsMode() ? 'false' : 'true');
+        });
+        document.querySelectorAll('.portal-mode-kids').forEach(function (el) {
+            el.className = 'portal-mode-kids' + (isKidsMode() ? ' is-on' : '');
+        });
+        document.querySelectorAll('.portal-mode-parents').forEach(function (el) {
+            el.className = 'portal-mode-parents' + (isKidsMode() ? '' : ' is-parent');
+        });
+    }
+
+    function openPinModal(kind) {
+        var old = document.getElementById('parent-pin-modal');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        var wrap = document.createElement('div');
+        wrap.id = 'parent-pin-modal';
+        wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+        var card = document.createElement('form');
+        card.style.cssText = 'background:#fff;border-radius:16px;max-width:420px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);';
+        var title = document.createElement('h2');
+        title.style.cssText = 'margin:0 0 8px;font-size:1.35rem;';
+        title.textContent = kind === 'setup' ? 'Set a parent PIN' : 'Parents mode';
+        var copy = document.createElement('p');
+        copy.style.cssText = 'margin:0 0 12px;line-height:1.4;';
+        copy.textContent = kind === 'setup'
+            ? 'Choose a 4-digit PIN. Your child needs this PIN before Parents mode can open. Kids mode does not need a PIN.'
+            : 'Enter the parent PIN to open Parents mode.';
+        card.appendChild(title);
+        card.appendChild(copy);
+        function field(name, label) {
+            var lab = document.createElement('label');
+            lab.textContent = label;
+            lab.style.cssText = 'display:block;font-weight:700;margin:8px 0 4px;';
+            var input = document.createElement('input');
+            input.name = name;
+            input.type = 'password';
+            input.inputMode = 'numeric';
+            input.pattern = '[0-9]*';
+            input.maxLength = 4;
+            input.autocomplete = 'off';
+            input.required = true;
+            input.style.cssText = 'width:100%;font-size:1.4rem;letter-spacing:.3em;padding:10px;border:1px solid #cbd5e1;border-radius:10px;';
+            card.appendChild(lab);
+            card.appendChild(input);
+        }
+        field('pin', '4-digit PIN');
+        if (kind === 'setup') field('confirm', 'Type the PIN again');
+        var msg = document.createElement('p');
+        msg.style.cssText = 'min-height:1.2em;color:#991b1b;';
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        var save = document.createElement('button');
+        save.type = 'submit';
+        save.textContent = kind === 'setup' ? 'Save PIN' : 'Open Parents mode';
+        save.style.cssText = 'background:#1ca7e7;color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer;';
+        var cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.textContent = 'Stay in Kids mode';
+        cancel.style.cssText = 'background:#e2e8f0;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;';
+        cancel.addEventListener('click', function () {
+            if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        });
+        row.appendChild(save);
+        row.appendChild(cancel);
+        card.appendChild(row);
+        card.appendChild(msg);
+        card.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var pin = card.pin.value.trim();
+            var token = studentToken();
+            if (!/^\d{4}$/.test(pin)) {
+                msg.textContent = 'Use 4 numbers.';
+                return;
+            }
+            save.disabled = true;
+            var url = kind === 'setup' ? '/api/student/portal-mode/pin' : '/api/student/portal-mode/verify';
+            var body = kind === 'setup' ? { pin: pin, confirm: card.confirm.value.trim() } : { pin: pin };
+            fetch(url, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(function (r) {
+                return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+            }).then(function (res) {
+                if (!res.ok || !res.j.success) throw new Error((res.j && res.j.message) || 'Could not check the PIN');
+                try {
+                    sessionStorage.setItem(UNLOCK_KEY, '1');
+                    localStorage.setItem(MODE_KEY, 'parents');
+                } catch (e) {}
+                if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+                rerenderPortal();
+            }).catch(function (err) {
+                save.disabled = false;
+                msg.textContent = err.message || 'Could not check the PIN';
+            });
+        });
+        wrap.appendChild(card);
+        document.body.appendChild(wrap);
+        var first = card.querySelector('input');
+        if (first) first.focus();
+    }
+
+    function requestParentsMode() {
+        var token = studentToken();
+        fetch('/api/student/portal-mode', {
+            credentials: 'include',
+            headers: { Authorization: 'Bearer ' + token }
+        }).then(function (r) { return r.json(); }).then(function (j) {
+            openPinModal(j && j.pinSet ? 'verify' : 'setup');
+        }).catch(function () {
+            openPinModal('verify');
+        });
+    }
+
+    function setKidsMode() {
+        try {
+            localStorage.setItem(MODE_KEY, 'kids');
+            localStorage.setItem(KIDS_USED_KEY, '1');
+            sessionStorage.removeItem(UNLOCK_KEY);
+        } catch (e) {}
+        rerenderPortal();
+    }
+
+    global.RemoedStudentPortalMode = {
+        isKids: isKidsMode,
+        mount: function (header) {
+            if (!header) return;
+            var right = header.querySelector('.nav-right');
+            if (!right || right.querySelector('.portal-mode-switch')) return;
+            ensureKidsCss();
+            var box = document.createElement('div');
+            box.className = 'portal-mode-switch';
+            box.innerHTML = '<span class="portal-mode-kids">Kids</span><button type="button" role="switch" aria-label="Parents mode or Kids mode"><i></i></button><span class="portal-mode-parents">Parents</span>';
+            var btn = box.querySelector('button');
+            function paint() {
+                var parents = !isKidsMode();
+                btn.setAttribute('aria-checked', parents ? 'true' : 'false');
+                box.querySelector('.portal-mode-kids').className = 'portal-mode-kids' + (parents ? '' : ' is-on');
+                box.querySelector('.portal-mode-parents').className = 'portal-mode-parents' + (parents ? ' is-parent' : '');
+            }
+            paint();
+            btn.addEventListener('click', function () {
+                if (isKidsMode()) requestParentsMode();
+                else setKidsMode();
+            });
+            right.insertBefore(box, right.firstChild);
+            applyKidsChrome();
+        },
+        apply: applyKidsChrome
+    };
+
     function getActiveFromPath() {
         var raw = (window.location.pathname || '').replace(/\\/g, '/');
         var file = raw.split('/').pop() || '';
@@ -111,6 +366,9 @@
                 }
             }
         } catch (e) {}
+        if (global.RemoedStudentPortalMode && global.RemoedStudentPortalMode.isKids()) {
+            return { label: 'Book a Class', href: 'student-book.html' };
+        }
         return { label: 'Book Class', href: 'student-book.html' };
     }
 
@@ -251,8 +509,10 @@
 
         var active = activePageId || getActiveFromPath();
         var showJourney = shouldShowLearningJourneyNav();
+        var kids = global.RemoedStudentPortalMode && global.RemoedStudentPortalMode.isKids();
         var navItemsHtml = MENU_ITEMS.filter(function (item) {
             if (item.isLogout) return false;
+            if (kids && !KIDS_NAV[item.id]) return false;
             if (item.studentOnly && !showJourney) return false;
             return true;
         }).map(function (item) {
@@ -299,7 +559,7 @@
             '      <img class="sidebar-logo-img" src="images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.src=\'images/remoed-logo.png\'">' +
             '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
-            '        <div class="sidebar-subtitle">Student Portal</div>' +
+            '        <div class="sidebar-subtitle">' + (kids ? 'Kids mode' : 'Student Portal') + '</div>' +
             '      </div>' +
             '      <button type="button" class="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar">' +
             svgBars() +
@@ -320,6 +580,7 @@
             '</nav>';
 
         injectStudentNoMotionStyles();
+        if (global.RemoedStudentPortalMode) global.RemoedStudentPortalMode.apply();
 
         var nav = container.querySelector('nav.remoed-sidebar');
         applyCollapsedState(nav, readCollapsedPref());
@@ -421,7 +682,7 @@
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js?v=app-shell-11';
+        s.src = 'js/portal-layout.js?v=kids-mode-1';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {

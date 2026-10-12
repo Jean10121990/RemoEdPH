@@ -2952,6 +2952,16 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
       return res.status(404).json({ success: false, error: 'Teacher not found' });
     }
 
+    const attendanceBlock = await require('./services/attendanceExceptionService').findBlocking(teacherId);
+    if (attendanceBlock) {
+      return res.status(403).json({
+        success: false,
+        code: 'ATTENDANCE_EXCEPTION_REQUIRED',
+        error: 'A missed time-out must be reviewed before you can time in. Your account stays active.',
+        exception: require('./services/attendanceExceptionService').publicException(attendanceBlock, { includeReviewNotes: false }),
+      });
+    }
+
     const phHour = getPhilippineHour();
     if (phHour >= 19) {
       return res.status(400).json({
@@ -3034,6 +3044,7 @@ router.post('/time-tracking/clock-out', verifyToken, requireTeacher, async (req,
       time: currentTime,
       timestamp: clockOutTime
     };
+    timeLog.clockOutSource = 'EMPLOYEE';
     timeLog.totalHours = Math.round(totalHours * 100) / 100; // Round to 2 decimal places
     timeLog.status = 'clocked-out';
     
@@ -3091,6 +3102,8 @@ router.get('/time-tracking/status', verifyToken, requireTeacher, async (req, res
       canTimeIn = true;
     }
     
+    const attendanceBlock = await require('./services/attendanceExceptionService').findBlocking(teacherId);
+    if (attendanceBlock) canTimeIn = false;
     res.json({
       success: true,
       isClockedIn,
@@ -3098,7 +3111,10 @@ router.get('/time-tracking/status', verifyToken, requireTeacher, async (req, res
       canTimeIn,
       canTimeOut,
       dailyCompleted,
-      phDate
+      phDate,
+      attendanceBlock: attendanceBlock
+        ? require('./services/attendanceExceptionService').publicException(attendanceBlock, { includeReviewNotes: false })
+        : null,
     });
   } catch (err) {
     console.error('Error fetching time tracking status:', err);
@@ -7664,5 +7680,7 @@ router.get('/portal-videos', verifyToken, requireTeacher, async (req, res) => {
 router.handleTeacherOpenSlots = handleTeacherOpenSlots;
 router.handleTeacherCloseSlots = handleTeacherCloseSlots;
 router.publicLandingHandler = handlePublicLanding;
+
+router.use(require('./attendanceExceptionRoutes').teacherRouter);
 
 module.exports = router;

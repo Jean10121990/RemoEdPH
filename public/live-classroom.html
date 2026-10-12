@@ -242,6 +242,9 @@
       <h2>Emergency SOS</h2>
       <p class="lc-sos-lead">Choose what is happening. Confirm sends this to RemoEd admins.</p>
       <div id="lc-sos-categories"></div>
+      <p id="lc-sos-hint" class="lc-sos-lead"></p>
+      <label for="lc-sos-note" style="display:block; margin-top:8px; font-weight:600;">What is happening</label>
+      <textarea id="lc-sos-note" rows="3" maxlength="500" style="width:100%; margin-top:4px;" placeholder="Optional for an urgent safety alert. Add details if you can."></textarea>
       <p id="lc-sos-status"></p>
       <div class="lc-sos-actions">
         <button type="button" id="lc-sos-cancel">Cancel</button>
@@ -1323,12 +1326,14 @@
           var cancelBtn = document.getElementById('lc-sos-cancel');
           if (!btn || !modal || !list || !confirmBtn) return;
           var cats = [
-            ['technical_failure', 'Technical failure (power or internet)'],
-            ['unaccompanied_child', 'Unaccompanied child under 6 without a parent'],
-            ['unauthorized_adult', 'Behavioral issue or an unauthorized adult'],
-            ['safety_distress', 'Safety, distress, or inappropriate content']
+            ['technical_failure', 'Tier 1 — Technical failure (power or internet)', 'QA will help with the technical problem. They will not join the class for this.'],
+            ['unaccompanied_child', 'Tier 2 — Unaccompanied child under 6', 'QA will follow up. Add what you see. A screenshot is optional.'],
+            ['unauthorized_adult', 'Tier 3 — Unauthorized adult or behavioral issue', 'Urgent. Send this now. You can add details after.'],
+            ['safety_distress', 'Tier 3 — Safety, distress, or inappropriate content', 'Urgent. Send this now. Do not wait to fill a long form.']
           ];
           var picked = '';
+          var hint = document.getElementById('lc-sos-hint');
+          var note = document.getElementById('lc-sos-note');
           list.innerHTML = '';
           cats.forEach(function (pair) {
             var label = document.createElement('label');
@@ -1337,7 +1342,10 @@
             input.type = 'radio';
             input.name = 'lc-sos-cat';
             input.value = pair[0];
-            input.addEventListener('change', function () { picked = pair[0]; });
+            input.addEventListener('change', function () {
+              picked = pair[0];
+              if (hint) hint.textContent = pair[2];
+            });
             var span = document.createElement('span');
             span.textContent = pair[1];
             label.appendChild(input);
@@ -1352,6 +1360,8 @@
           }
           function openSos() {
             picked = '';
+            if (note) note.value = '';
+            if (hint) hint.textContent = '';
             if (status) status.textContent = '';
             modal.hidden = false;
             modal.removeAttribute('hidden');
@@ -1394,7 +1404,8 @@
                 body: JSON.stringify({
                   bookingId: getQueryParam('bookingId') || getQueryParam('bookingid') || '',
                   classroomId: room,
-                  category: picked
+                  category: picked,
+                  description: note ? note.value : ''
                 })
               });
               var body = await res.json().catch(function () { return {}; });
@@ -1404,7 +1415,7 @@
               var incident = body.incident;
               if (status) {
                 status.textContent = body.created
-                  ? 'SOS sent. You can withdraw for 15 seconds.'
+                  ? 'SOS ' + (incident.caseRef || '') + ' sent. You can withdraw for 15 seconds.'
                   : 'An open SOS is already on file for this class.';
               }
               var createdAt = new Date(incident.createdAt).getTime();
@@ -1533,13 +1544,21 @@
             if (btn) btn.disabled = true;
             try {
               var token = resolveLiveClassroomAuthToken();
+              var reason = '';
+              if (action === 'pause' || action === 'terminate' || action === 'resolve') {
+                reason = window.prompt('Why are you taking this action?') || '';
+                if (reason.trim().length < 8) {
+                  if (statusEl) statusEl.textContent = 'Add a short reason (at least 8 characters).';
+                  return false;
+                }
+              }
               var res = await fetch('/api/admin/incidents/' + encodeURIComponent(currentId) + '/action', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   Authorization: 'Bearer ' + token
                 },
-                body: JSON.stringify({ action: action })
+                body: JSON.stringify({ action: action, reason: reason })
               });
               var body = await res.json().catch(function () { return {}; });
               if (!res.ok) throw new Error(body.error || 'Action failed.');

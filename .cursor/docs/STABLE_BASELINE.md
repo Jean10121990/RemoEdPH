@@ -596,7 +596,19 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Classroom layout | Teacher media-lock buttons are 32 px icon buttons; chat stays visible beside smaller video tiles. |
 | Admin | Classroom SOS is a tab in QA Hub; admin sidebar assets at `?v=app-shell-17`. |
 
-## Baseline updates — 2026-10-06 to 2026-10-09
+## Student portal Kids mode and Parents mode
+
+The full student menu is **Parents mode**. **Kids mode** keeps only Dashboard, My Schedule, Book a Class, Play & Learn, Videos, My Learning Journey, Virtual Garden, My Profile, and My Level, with larger type (`body.student-kids-mode`). The header switch is in `student-page-header.js`. Opening Parents mode after Kids mode has been used requires the parent’s 4-digit PIN (`Student.parentPinHash`, set on first switch). Kids mode does not ask for a PIN. Do not store the PIN in the browser.
+
+## Classroom SOS tiers
+
+The existing Emergency SOS button, 15-second withdraw, one open incident per class, observer link, pause, and end stay in place. Categories still map to tiers: technical failure is Tier 1, unaccompanied child under 6 is Tier 2, unauthorized adult and safety or distress are Tier 3. QA does not join or end a Tier 1 class unless they escalate it. Escalation records the previous tier and cannot move down. Tier 3 resolve or end asks for a reason and leaves `reviewStatus` pending until someone records the review. Parent contact is a written note by QA, not an automatic message. The classroom actions are the existing observer page and socket pause or end. They are recorded as `command_sent`, not as a third-party meeting API result.
+
+## Attendance exceptions
+
+Teachers and admins time in through the existing `TimeLog` routes. An open session is closed by the server at the next cutoff (default **07:00 Asia/Manila** the morning after the business date, `ATTENDANCE_CLOSE_HOUR` / `ATTENDANCE_TIMEZONE`). That system time-out is stored as `systemClockOut` and `clockOutSource: SYSTEM_AUTOMATIC`. It is not verified working time and does not deduct salary. The employee submits a correction; HR with `hr:attendance_review` approves or rejects it from HR Hub → Attendance exceptions. Time In stays blocked until every mandatory exception is approved. The account is not locked. Confirmed negligence is a separate classification and is never set by the automatic close. Audit rows in `attendance_audits` are append-only.
+
+## Baseline updates — 2026-10-06 to 2026-10-12
 
 | Area | What shipped |
 |------|----------------|
@@ -606,3 +618,5 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 | Lesson order | Paid students book the next Learning Journey stop or any earlier lesson (`LESSON_AHEAD_OF_PROGRESS`). The map moves only when the class is completed or Lesson Progress is completed. A finished Pre-Level lesson counts on the student’s growth level at the same lesson number. |
 | QA recording | Start only after the student is in the room, including a few minutes early. The recorder does not stop itself and does not close the tab. The teacher clicks Stop at the usual end (:25 on the hour, :55 for a :30 class), then Finish. A clip is about 25 minutes, or about 30 if the student came early, or shorter if late. The QA file is 480p (canvas clone, 8 fps); the student slide share stays full size. Server transcode also caps at 480p so a 25-minute clip stays small enough to download. Chunk uploads are not keepalive requests. An empty upload is marked failed after 30 minutes. Download uses the newest GridFS copy that has bytes. A second Finish on an already complete recording does not rebuild it. |
 | Test student plan | Settings has a Free plan / Paid plan switch for username jeanserolf only. Other students keep their real plan. |
+| Attendance exceptions | A missed time-out is closed by the server and blocks the next Time In until HR approves a correction. The original system close is kept. Negligence is a separate HR decision and does not change pay by itself. |
+| Classroom SOS tiers | Same incident record. Tier 1 is technical and does not observe or end the class. Tier 2 and Tier 3 can. Escalation only goes up and keeps the first tier. Tier 3 stays pending review after resolve or end. There is no emergency phone number in the app. |
