@@ -51,7 +51,7 @@ test('one finished class marks lesson 1 and leaves the next stop at lesson 2', (
   assert.equal(keys.has('Little Seeds:1:2'), false);
   assert.equal(maxBookableFromCompletedKeys(keys, 'Little Seeds'), 2);
   applyFinishedClassToTrail(keys, 'Little Seeds', {
-    title: 'Orientation Part 1: How to Navigate the Student Portal',
+    title: 'How to Navigate the Student Portal',
   });
   assert.equal(keys.size, 1);
 });

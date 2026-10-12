@@ -15,7 +15,7 @@ const Student = require('../server/models/Student');
 const NEW_LESSONS = [
   {
     lessonNumber: 1,
-    title: 'Orientation Part 1: How to Navigate the Student Portal',
+    title: 'How to Navigate the Student Portal',
     description: 'How to move around the student portal.',
   },
   {

@@ -68,7 +68,7 @@ function safeStoredFileName(name) {
 
 async function main() {
   throw new Error(
-    'Retired. Free Trial Lessons are the 3 free-plan lessons: Orientation Part 1, About RemoEd PH, and Welcome Lesson. Do not re-import the old decks.'
+    'Retired. Free Trial Lessons are the 3 free-plan lessons: How to Navigate the Student Portal, About RemoEd PH, and Welcome Lesson. Do not re-import the old decks.'
   );
   const uri = String(process.env.MONGODB_URI || process.env.MONGO_URI || '').trim();
   if (!uri) throw new Error('MONGODB_URI is not set.');

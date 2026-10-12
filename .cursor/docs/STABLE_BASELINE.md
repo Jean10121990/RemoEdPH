@@ -67,7 +67,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Signed-in student with `creditBalance > 0` can open **Book a Class**, see open slots, and complete `POST /api/student/book-class` (Network 2xx).
 - [ ] **Booking Details** opens as a centered body-level modal (not a side column inside `.remoed-content`).
-- [ ] A paid student with credits follows Learning Journey order on Little Seeds, Sprouts, Saplings, and Young Stewards: the next stop or any earlier lesson. Pre-Level stays open for a paid student and does not subtract a credit. Growth levels still use one credit. Free-plan students book the next of 3 Pre-Level lessons (Orientation, About RemoEd PH, Welcome), with no monthly lesson.
+- [ ] A paid student with credits follows Learning Journey order on Little Seeds, Sprouts, Saplings, and Young Stewards: the next stop or any earlier lesson. Pre-Level stays open for a paid student and does not subtract a credit. Growth levels still use one credit. Free-plan students book the next of 3 Pre-Level lessons (How to Navigate the Student Portal, About RemoEd PH, Welcome), with no monthly lesson.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
 - [ ] A student without the current privacy version gets `CONSENT_REQUIRED` on book and logged-in checkout, then can continue after accepting. Booking confirmation and the student waiting room say classes are recorded for safety, quality assurance, and parent review.
 - [ ] Super-Admin **Settings** has a Student payment switch: MariBank QR or PayMongo. It is stored on `GlobalSettings.studentPaymentMethod` (default MariBank QR). Credits follows that switch. PayMongo `POST /api/payments/create-link` stays. A QR transaction number does not add credits. Accounting Hub → Student Subscriptions → **Confirm and add credits** does. Reject does not.
@@ -550,7 +550,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 
 | # | Library title | File on the lesson |
 |---|---------------|--------------------|
-| 1 | Orientation Part 1: How to Navigate the Student Portal | `RemoEd Orientation Part 1 - Student Portal.pptx` |
+| 1 | How to Navigate the Student Portal | `RemoEd Orientation Part 1 - Student Portal.pptx` |
 | 2 | About RemoEd PH | `RemoEd Orientation Part 2 - About RemoEd.pptx` |
 | 3 | Welcome Lesson | `RemoEd Welcome Lesson - Hello Friends.pptx` |
 
@@ -589,7 +589,7 @@ Checklist: [FEATURES_SINCE_2026-09-27.md](FEATURES_SINCE_2026-09-27.md).
 | Announcements | Topic list and post-history filter. |
 | Phones / layout | Country calling codes. Sidebar icons stay on one vertical line. Notification dropdown sits under the bell. |
 | Credits / Play & Learn | Typing quiz. Credit lots still expire and burn FIFO. |
-| Pre-Level free plan | Next of 3 lessons (Orientation, About RemoEd PH, Welcome). No monthly lesson. Growth levels stay paid. Videos, journey, and garden stay locked. |
+| Pre-Level free plan | Next of 3 lessons (How to Navigate the Student Portal, About RemoEd PH, Welcome). No monthly lesson. Growth levels stay paid. Videos, journey, and garden stay locked. |
 | Privacy | Version `2026-10-01`. Required on register, book, and logged-in checkout. Accept checkbox on My Profile. International students, same rules. |
 | Absent | Live classroom is Finish only (after 15 minutes). Student Absent and Report Issue are on Class Information once the class has started. Closing the tab does not auto-tag absent. |
 | Emergency excuse | QA Other issue and teacher cancellation: disaster, calamity, power maintenance or outage, accident, death, emergency. Proof required. Penalty waived (teacher still paid 100% on a resolved class). Student reschedule window is one month. |
@@ -635,7 +635,7 @@ Teachers and admins time in through the existing `TimeLog` routes. An open sessi
 | Class feedback | Teachers can open and save Complete Class & Feedback until the salary date (15th or last day of the month, Philippine time), including classes already marked completed. A second save does not charge the credit again. A completed class with no feedback keeps Give Feedback until that cut-off. |
 | Absent and issues | Student-absent classes cannot be turned into Complete Feedback. A Report Issue class cannot use class feedback while QA is pending or after QA resolves. QA still sets the fee (system or student 100%, teacher fault 20%, valid emergency with proof waived and 100%). A dismissed report can still use normal feedback. |
 | Lesson order | Paid students book the next Learning Journey stop or any earlier lesson (`LESSON_AHEAD_OF_PROGRESS`). The map moves when the class is completed or Lesson Progress is completed. An absence does not count. One other finished class marks lesson 1 done and leaves Remo on lesson 2. The 3 orientation lessons do not move that map. |
-| Free plan lessons | The old 22 monthly free-trial decks are gone. Free Trial Lessons is 3 lessons: Orientation Part 1, About RemoEd PH, and Welcome, each with its PowerPoint in QA Hub → Lesson Library. A free student books the next one after the current class is finished. There is no monthly lesson. |
+| Free plan lessons | The old 22 monthly free-trial decks are gone. Free Trial Lessons is 3 lessons: How to Navigate the Student Portal, About RemoEd PH, and Welcome, each with its PowerPoint in QA Hub → Lesson Library. A free student books the next one after the current class is finished. There is no monthly lesson. |
 | Kids and Parents | Kids home shows the next class, play links, level name, teacher stars, eco-drops, garden, and current lesson. Parent stats, profile, and My Level stay on Parents mode. The parent PIN field stays inside the card. |
 | QA issue review | On Issue Management, the card opens Review Issue or Update Review. Mark Resolved and Dismiss are on that review modal. Mark Resolved then opens the existing resolve modal. |
 | QA recording | Start only after the student is in the room, including a few minutes early. The recorder does not stop itself and does not close the tab. The teacher clicks Stop at the usual end (:25 on the hour, :55 for a :30 class), then Finish. A clip is about 25 minutes, or about 30 if the student came early, or shorter if late. The QA file is 480p (canvas clone, 8 fps); the student slide share stays full size. Server transcode also caps at 480p so a 25-minute clip stays small enough to download. Chunk uploads are not keepalive requests. An empty upload is marked failed after 30 minutes. Download uses the newest GridFS copy that has bytes. A second Finish on an already complete recording does not rebuild it. |

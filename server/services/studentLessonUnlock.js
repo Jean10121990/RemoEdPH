@@ -83,7 +83,12 @@ async function hydrateLessonMap(ids) {
  */
 function isOrientationTrailLesson(title) {
   const t = String(title || '').toLowerCase();
-  return t.includes('orientation') || t.includes('about remoed') || t.includes('welcome lesson');
+  return (
+    t.includes('orientation') ||
+    t.includes('how to navigate the student portal') ||
+    t.includes('about remoed') ||
+    t.includes('welcome lesson')
+  );
 }
 
 function trailKey(level, linear) {
