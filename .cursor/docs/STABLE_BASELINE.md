@@ -598,7 +598,7 @@ Bug history and recovery steps live in [BETATESTER.md](BETATESTER.md) → “Fix
 
 ## Student portal Kids mode and Parents mode
 
-The full student menu is **Parents mode**. **Kids mode** keeps only Dashboard, My Schedule, Book a Class, Play & Learn, Videos, My Learning Journey, Virtual Garden, My Profile, and My Level, with larger type (`body.student-kids-mode`). The header switch is in `student-page-header.js`. Opening Parents mode after Kids mode has been used requires the parent’s 4-digit PIN (`Student.parentPinHash`, set on first switch). Kids mode does not ask for a PIN. Do not store the PIN in the browser.
+The full student menu is **Parents mode**. **Kids mode** keeps only Dashboard, My Schedule, Book a Class, Play & Learn, Videos, My Learning Journey, Virtual Garden, My Profile, and My Level, with larger type (`body.student-kids-mode`). Kids mode also uses the round Nunito face, a sky-to-purple sidebar, and pastel cards. Parents mode keeps the regular portal colors. The book item stays “Book a Class” in Kids mode. The header switch is in `student-page-header.js`. Opening Parents mode after Kids mode has been used requires the parent’s 4-digit PIN (`Student.parentPinHash`, set on first switch). Kids mode does not ask for a PIN. Do not store the PIN in the browser.
 
 ## Classroom SOS tiers
 

@@ -81,17 +81,62 @@
     }
 
     function ensureKidsCss() {
+        if (isKidsMode() && !document.getElementById('student-kids-font')) {
+            var font = document.createElement('link');
+            font.id = 'student-kids-font';
+            font.rel = 'stylesheet';
+            font.href = 'https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap';
+            document.head.appendChild(font);
+        }
         if (document.getElementById('student-kids-mode-css')) return;
         var style = document.createElement('style');
         style.id = 'student-kids-mode-css';
         style.textContent =
-            'body.student-kids-mode{font-size:18px;}' +
+            'body.student-kids-mode{font-size:18px;font-family:"Nunito",Trebuchet MS,"Segoe UI",sans-serif;background:#fff7ed;}' +
+            'body.student-kids-mode .remoed-main,body.student-kids-mode .remoed-content{' +
+            'background:radial-gradient(circle at 8% 10%,rgba(251,191,36,.45),transparent 26%),' +
+            'radial-gradient(circle at 92% 6%,rgba(244,114,182,.32),transparent 24%),' +
+            'radial-gradient(circle at 88% 92%,rgba(52,211,153,.3),transparent 28%),' +
+            'radial-gradient(circle at 6% 88%,rgba(56,189,248,.34),transparent 26%),' +
+            'linear-gradient(180deg,#fff7ed 0%,#ecfeff 100%);}' +
             'body.student-kids-mode .menu-label{font-size:1.15rem;font-weight:800;}' +
             'body.student-kids-mode .remoed-menu li{min-height:52px;}' +
-            'body.student-kids-mode .nav-title-text{font-size:22px!important;}' +
+            'body.student-kids-mode .nav-title-text{font-size:22px!important;font-weight:800;}' +
+            'body.student-kids-mode .nav-header{background:linear-gradient(90deg,#fff7ed,#e0f2fe 55%,#fce7f3);border-bottom:3px solid #fbbf24;}' +
             'body.student-kids-mode .remoed-content,body.student-kids-mode .remoed-section{font-size:1.08rem;}' +
-            'body.student-kids-mode button,body.student-kids-mode .btn,body.student-kids-mode a.btn{font-size:1.05rem;min-height:44px;}' +
-            'body.student-kids-mode .sidebar-subtitle{font-weight:700;}' +
+            'body.student-kids-mode button,body.student-kids-mode .btn,body.student-kids-mode a.btn,body.student-kids-mode .dash-btn{font-size:1.05rem;min-height:48px;border-radius:999px;font-weight:800;}' +
+            'body.student-kids-mode .sidebar-subtitle{font-weight:800;color:#fde68a!important;}' +
+            'body.student-kids-mode nav.remoed-sidebar.remoed-sidebar{background:linear-gradient(180deg,#22d3ee 0%,#3b82f6 48%,#8b5cf6 100%)!important;box-shadow:6px 0 24px rgba(59,130,246,.28)!important;}' +
+            'body.student-kids-mode .remoed-sidebar .sidebar-title,body.student-kids-mode .remoed-sidebar .remoed-username,body.student-kids-mode nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active){color:#fff!important;}' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li:not(#logout-nav) svg{stroke:#fff;}' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li{margin:5px 12px;border-radius:18px!important;border-left:0!important;background:rgba(255,255,255,.16);}' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active{background:#fff!important;color:#1e3a8a!important;}' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active svg{stroke:#1e3a8a!important;}' +
+            'body.student-kids-mode [data-nav="dashboard"]{box-shadow:inset 7px 0 0 #fde047;}' +
+            'body.student-kids-mode [data-nav="schedule"]{box-shadow:inset 7px 0 0 #fb7185;}' +
+            'body.student-kids-mode [data-nav="book"]{box-shadow:inset 7px 0 0 #4ade80;}' +
+            'body.student-kids-mode [data-nav="games"]{box-shadow:inset 7px 0 0 #c084fc;}' +
+            'body.student-kids-mode [data-nav="videos"]{box-shadow:inset 7px 0 0 #38bdf8;}' +
+            'body.student-kids-mode [data-nav="journey"]{box-shadow:inset 7px 0 0 #fb923c;}' +
+            'body.student-kids-mode [data-nav="garden"]{box-shadow:inset 7px 0 0 #34d399;}' +
+            'body.student-kids-mode [data-nav="profile"]{box-shadow:inset 7px 0 0 #f472b6;}' +
+            'body.student-kids-mode [data-nav="level"]{box-shadow:inset 7px 0 0 #facc15;}' +
+            'body.student-kids-mode .dash-next-class{border:3px solid #fbbf24!important;border-radius:28px!important;background:linear-gradient(135deg,#fff7c2,#e0f2fe 55%,#dcfce7)!important;}' +
+            'body.student-kids-mode .dash-stat{border-radius:22px!important;border-width:3px!important;}' +
+            'body.student-kids-mode .dash-stat:nth-child(1){background:#e0f2fe;border-color:#38bdf8;}' +
+            'body.student-kids-mode .dash-stat:nth-child(2){background:#dcfce7;border-color:#34d399;}' +
+            'body.student-kids-mode .dash-stat:nth-child(3){background:#ffedd5;border-color:#fb923c;}' +
+            'body.student-kids-mode .dash-stat__value{font-size:2rem;}' +
+            'body.student-kids-mode .dash-journey-progress{border:3px solid #34d399!important;border-radius:24px!important;background:linear-gradient(135deg,#ecfccb,#fce7f3)!important;}' +
+            'body.student-kids-mode .dash-panel{border:3px solid #c4b5fd!important;border-radius:24px!important;background:#fff!important;}' +
+            'body.student-kids-mode .dash-quick-link{border-radius:18px;border-width:2px;}' +
+            'body.student-kids-mode .dash-quick-link:nth-child(1){background:#fef3c7;border-color:#fbbf24;}' +
+            'body.student-kids-mode .dash-quick-link:nth-child(2){background:#fce7f3;border-color:#f472b6;}' +
+            'body.student-kids-mode .dash-quick-link:nth-child(3){background:#dcfce7;border-color:#34d399;}' +
+            'body.student-kids-mode a[href="student-credits.html"]{display:none!important;}' +
+            'body.student-kids-mode .dash-free-trial-cta,body.student-kids-mode .dash-free-trial-toast{border-radius:20px;border:3px solid #7dd3fc;background:#e0f2fe;}' +
+            'body.student-kids-mode .remoed-bottom-nav{background:linear-gradient(90deg,#22d3ee,#8b5cf6);}' +
+            'body.student-kids-mode .remoed-bottom-nav__link{color:#fff;font-weight:800;}' +
             '.portal-mode-switch{display:inline-flex;align-items:center;gap:8px;margin-right:6px;}' +
             '.portal-mode-switch span{font-weight:800;font-size:13px;color:#94a3b8;}' +
             '.portal-mode-switch span.is-on{color:#166534;}' +
@@ -357,6 +402,9 @@
     }
 
     function getBookNavSpec() {
+        if (global.RemoedStudentPortalMode && global.RemoedStudentPortalMode.isKids()) {
+            return { label: 'Book a Class', href: 'student-book.html' };
+        }
         try {
             var raw = localStorage.getItem('studentFreePlan');
             if (raw) {
@@ -366,9 +414,6 @@
                 }
             }
         } catch (e) {}
-        if (global.RemoedStudentPortalMode && global.RemoedStudentPortalMode.isKids()) {
-            return { label: 'Book a Class', href: 'student-book.html' };
-        }
         return { label: 'Book Class', href: 'student-book.html' };
     }
 
