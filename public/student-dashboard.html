@@ -776,7 +776,7 @@
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
         <script src="js/student-eco-drops.js?v=garden-1"></script>
-        <script src="js/student-sidebar.js?v=kids-home-1"></script>
+        <script src="js/student-sidebar.js?v=kids-facts-1"></script>
         <script src="js/student-page-header.js?v=kids-mode-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
@@ -895,6 +895,29 @@
                         <a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>
                     </div>
                 </div>
+            </section>
+
+            <section class="kids-progress" hidden aria-label="Your progress">
+                <article class="kids-progress__card">
+                    <p class="kids-progress__label">Stars earned</p>
+                    <p class="kids-progress__value" id="kids-stars">…</p>
+                    <p class="kids-progress__note">From your teacher</p>
+                </article>
+                <article class="kids-progress__card">
+                    <p class="kids-progress__label">Eco-drops</p>
+                    <p class="kids-progress__value" id="kids-drops">…</p>
+                    <p class="kids-progress__note">Ready for your garden</p>
+                </article>
+                <a class="kids-progress__card" href="student-virtual-garden.html">
+                    <p class="kids-progress__label">Garden</p>
+                    <p class="kids-progress__value" id="kids-garden">…</p>
+                    <p class="kids-progress__note" id="kids-garden-note">Loading plants…</p>
+                </a>
+                <a class="kids-progress__card" href="student-learning-journey.html">
+                    <p class="kids-progress__label">Your lesson</p>
+                    <p class="kids-progress__value" id="kids-lesson">…</p>
+                    <p class="kids-progress__note" id="kids-lesson-note">Loading…</p>
+                </a>
             </section>
 
             <div class="kids-play-row" hidden>
@@ -1231,6 +1254,7 @@
             // Always load profile (level + avatar) when authenticated — studentId optional
             loadProfilePicture(studentId);
             loadChartData();
+            if (typeof loadKidsProgress === 'function') loadKidsProgress();
             if (typeof loadJourneyProgressWidget === 'function') loadJourneyProgressWidget();
             if (typeof loadUpcomingClasses === 'function') loadUpcomingClasses();
             if (typeof loadUpcomingClassesDropdown === 'function') loadUpcomingClassesDropdown();
@@ -1322,6 +1346,99 @@
     }
     
     // Load chart data
+    function setKidsText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function kidsGardenStory(data) {
+      var counts = { seed: 0, sprout: 0, tree: 0, bloom: 0 };
+      (data.plots || []).forEach(function (plot) {
+        if (!plot || !plot.occupied || !plot.item) return;
+        var stage = Number(plot.item.growthStage) || 0;
+        if (plot.item.itemType === 'flower' || stage >= 3) counts.bloom += 1;
+        else if (stage === 2) counts.tree += 1;
+        else if (stage === 1) counts.sprout += 1;
+        else counts.seed += 1;
+      });
+      var parts = [];
+      if (counts.seed) parts.push(counts.seed + (counts.seed === 1 ? ' seed' : ' seeds'));
+      if (counts.sprout) parts.push(counts.sprout + (counts.sprout === 1 ? ' sprout' : ' sprouts'));
+      if (counts.tree) parts.push(counts.tree + (counts.tree === 1 ? ' young tree' : ' young trees'));
+      if (counts.bloom) parts.push(counts.bloom + (counts.bloom === 1 ? ' bloom' : ' blooms'));
+      var planted = counts.seed + counts.sprout + counts.tree + counts.bloom;
+      return {
+        value: String(planted),
+        note: parts.length ? parts.join(' · ') : 'No plants yet. Plant a seed!'
+      };
+    }
+
+    function kidsOpenLesson(data) {
+      var level = (data && data.profileLevel) || 'Little Seeds';
+      var done = new Set((data && data.completedKeys) || []);
+      for (var n = 1; n <= 220; n++) {
+        var batch = Math.floor((n - 1) / 22) + 1;
+        var lesson = ((n - 1) % 22) + 1;
+        if (!done.has(level + ':' + batch + ':' + lesson)) {
+          return { level: level, number: n, finished: false };
+        }
+      }
+      return { level: level, number: 220, finished: true };
+    }
+
+    function loadKidsProgress() {
+      var token = getStudentAuthToken();
+      if (!token) return;
+      var headers = { Authorization: 'Bearer ' + token };
+      fetch('/api/student/dashboard-stats', { headers: headers })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          setKidsText('kids-stars', data && data.starsEarned != null ? String(data.starsEarned) : '0');
+        })
+        .catch(function () { setKidsText('kids-stars', '0'); });
+      fetch('/api/student/garden', { headers: headers })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) {
+            setKidsText('kids-drops', '0');
+            setKidsText('kids-garden', '0');
+            setKidsText('kids-garden-note', 'Open the garden to grow plants.');
+            return;
+          }
+          setKidsText('kids-drops', String(data.ecoDropsBalance != null ? data.ecoDropsBalance : 0));
+          var garden = kidsGardenStory(data);
+          setKidsText('kids-garden', garden.value);
+          setKidsText('kids-garden-note', garden.note);
+        })
+        .catch(function () {
+          setKidsText('kids-drops', '—');
+          setKidsText('kids-garden', '—');
+          setKidsText('kids-garden-note', 'Garden could not load.');
+        });
+      var progress = window.RemoEdLessonProgress && RemoEdLessonProgress.loadProgressPayload
+        ? RemoEdLessonProgress.loadProgressPayload()
+        : Promise.reject(new Error('missing'));
+      progress
+        .then(function (data) {
+          var spot = kidsOpenLesson(data || {});
+          setKidsText('kids-lesson-note', spot.level + (spot.finished ? ' · all lessons finished' : ''));
+          if (spot.finished) {
+            setKidsText('kids-lesson', 'Lesson ' + spot.number);
+            return null;
+          }
+          return fetch(
+            '/api/student/journey-lesson?level=' + encodeURIComponent(spot.level) + '&lessonNumber=' + spot.number,
+            { headers: headers }
+          ).then(function (r) { return r.ok ? r.json() : null; }).then(function (meta) {
+            setKidsText('kids-lesson', (meta && meta.title) || ('Lesson ' + spot.number));
+          });
+        })
+        .catch(function () {
+          setKidsText('kids-lesson', 'Your lesson');
+          setKidsText('kids-lesson-note', 'Open your journey to see it.');
+        });
+    }
+
     async function loadChartData() {
       try {
         const token = getStudentAuthToken();

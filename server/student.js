@@ -2273,6 +2273,11 @@ router.get('/dashboard-stats', verifyToken, requireStudent, async (req, res) => 
     const completedClasses = allBookings.filter(isCompletedBooking).length;
     const totalCancellations = allBookings.filter(isCancelledBooking).length;
     
+    const earnedFeedback = await Feedback.find({
+      feedbackRole: 'teacher_to_student',
+      studentId: { $in: studentIdCandidates },
+    }).select('rating');
+    const starsEarned = earnedFeedback.reduce((sum, feedback) => sum + (Number(feedback.rating) || 0), 0);
     const totalStars = givenFeedback.reduce((sum, feedback) => sum + (Number(feedback.rating) || 0), 0);
     const averageRating =
       givenFeedback.length > 0
@@ -2342,6 +2347,7 @@ router.get('/dashboard-stats', verifyToken, requireStudent, async (req, res) => 
       completedClasses,
       totalCancellations,
       totalStars,
+      starsEarned,
       averageRating,
       upcomingClasses,
       classesChange,

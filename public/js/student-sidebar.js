@@ -135,6 +135,15 @@
             'body.student-kids-mode #student-eco-chip-count,' +
             'body.student-kids-mode #menu-eco-badge{display:none!important;}' +
             'body.student-kids-mode .dash-journey-progress{border:3px solid #34d399!important;border-radius:24px!important;background:linear-gradient(135deg,#ecfccb,#fce7f3)!important;}' +
+            'body.student-kids-mode .kids-progress{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 1rem;}' +
+            'body.student-kids-mode .kids-progress__card{display:flex;flex-direction:column;gap:4px;min-height:110px;padding:14px 16px;border-radius:22px;background:#fff;border:3px solid #fbbf24;color:#1e293b;text-decoration:none;}' +
+            'body.student-kids-mode .kids-progress__card:nth-child(2){border-color:#38bdf8;}' +
+            'body.student-kids-mode .kids-progress__card:nth-child(3){border-color:#34d399;}' +
+            'body.student-kids-mode .kids-progress__card:nth-child(4){border-color:#c084fc;}' +
+            'body.student-kids-mode .kids-progress__label{margin:0;font-size:0.85rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748b;}' +
+            'body.student-kids-mode .kids-progress__value{margin:0;font-size:1.7rem;font-weight:800;line-height:1.15;color:#0f172a;}' +
+            'body.student-kids-mode .kids-progress__note{margin:0;font-size:0.95rem;font-weight:700;color:#334155;}' +
+            '@media(max-width:900px){body.student-kids-mode .kids-progress{grid-template-columns:1fr 1fr;}}' +
             'body.student-kids-mode .kids-play-row{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 1.25rem;}' +
             'body.student-kids-mode .kids-play-row a{display:flex;align-items:center;justify-content:center;min-height:88px;padding:16px;border-radius:24px;color:#1e293b;font-weight:800;text-decoration:none;text-align:center;border:3px solid transparent;}' +
             'body.student-kids-mode .kids-play-row a:nth-child(1){background:#f3e8ff;border-color:#c084fc;}' +
