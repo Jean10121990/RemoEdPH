@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-learning-journey.css?v=world-map-3">
+    <link rel="stylesheet" href="css/student-learning-journey.css?v=map-space-2">
     <link rel="stylesheet" href="css/feature-lock.css?v=free-plan-1">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
@@ -78,6 +78,22 @@
         </div>
     </div>
 
+    <div id="lj-wall-modal" class="lj-modal" hidden aria-hidden="true">
+        <div class="lj-modal__backdrop" data-wall-close></div>
+        <div class="lj-modal__panel" role="dialog" aria-modal="true" aria-labelledby="lj-wall-title">
+            <button type="button" class="lj-modal__close" data-wall-close aria-label="Close">&times;</button>
+            <p class="lj-modal__kicker">Assessment</p>
+            <h3 class="lj-modal__title" id="lj-wall-title">Take the assessment first</h3>
+            <p class="lj-modal__desc" id="lj-wall-lead">Take the assessment before the next lesson. You can do it whenever you are ready.</p>
+            <div class="lj-modal__actions" id="lj-wall-choices">
+                <button type="button" class="lj-modal__book" id="lj-wall-start">Take assessment</button>
+                <button type="button" class="lj-modal__dismiss" data-wall-close>Not now</button>
+            </div>
+            <form id="lj-wall-form" class="lj-quiz" hidden></form>
+            <p class="lj-modal__status" id="lj-wall-result" hidden></p>
+        </div>
+    </div>
+
     <script>
         (function () {
             var userType = localStorage.getItem('userType');
@@ -91,10 +107,13 @@
             var BATCH_COUNT = 10;
             var LEVEL_TOTAL = BATCH_COUNT * LESSONS_PER_BATCH;
             var CHAR_SRC = 'images/remo-green.png';
-            var MAP_VB_W = 360;
-            var SEG_H = 280;
-            var MAP_PAD = 36;
-            var MAP_VB_H = MAP_PAD + BATCH_COUNT * SEG_H + MAP_PAD;
+            var MAP_COLS = 6;
+            var MAP_STEP = 120;
+            var MAP_PAD_X = 80;
+            var MAP_PAD_Y = 110;
+            var MAP_VB_W = MAP_PAD_X * 2 + (MAP_COLS - 1) * MAP_STEP;
+            var MAP_ROWS = Math.ceil((BATCH_COUNT * LESSONS_PER_BATCH) / MAP_COLS);
+            var MAP_VB_H = MAP_PAD_Y * 2 + (MAP_ROWS - 1) * MAP_STEP;
             var LANDMARK_IN_BATCH = { 6: 'tree', 12: 'pond', 18: 'flag', 22: 'finish' };
 
             var LEVEL_META = {
@@ -105,6 +124,7 @@
             };
 
             var completedSet = null;
+            var checkpointWalls = [];
             var unlockCache = {};
             var activeBatchByLevel = {};
             var currentLevelKey = 'Little Seeds';
@@ -302,26 +322,29 @@
                 if (labelEl) labelEl.textContent = (LEVEL_META[levelKey] || levelKey) + ' progress';
             }
 
+            function pointForLinear(linear) {
+                var i = Math.max(0, Number(linear) - 1);
+                var row = Math.floor(i / MAP_COLS);
+                var col = i % MAP_COLS;
+                if (row % 2 === 1) col = MAP_COLS - 1 - col;
+                return {
+                    x: MAP_PAD_X + col * MAP_STEP,
+                    y: MAP_PAD_Y + row * MAP_STEP,
+                };
+            }
+
             function buildWorldPoints() {
                 var points = [];
                 for (var b = 1; b <= BATCH_COUNT; b++) {
                     for (var le = 1; le <= LESSONS_PER_BATCH; le++) {
-                        var t = LESSONS_PER_BATCH === 1 ? 0 : (le - 1) / (LESSONS_PER_BATCH - 1);
-                        var y0 = MAP_PAD + (b - 1) * SEG_H;
-                        var y = y0 + 28 + t * (SEG_H - 56);
-                        var phase = (b - 1) * 0.55;
-                        var amp = 100;
-                        var x =
-                            MAP_VB_W / 2 +
-                            Math.sin(t * Math.PI * 3.5 + phase) * amp +
-                            Math.cos(t * Math.PI * 1.6 + phase * 0.5) * 10;
-                        x = Math.max(48, Math.min(MAP_VB_W - 48, x));
+                        var linear = linearLessonNumber(b, le);
+                        var spot = pointForLinear(linear);
                         points.push({
-                            x: x,
-                            y: y,
+                            x: spot.x,
+                            y: spot.y,
                             batch: b,
                             lesson: le,
-                            linear: linearLessonNumber(b, le),
+                            linear: linear,
                         });
                     }
                 }
@@ -406,10 +429,12 @@
             }
 
             function zoneScenerySvg(batchNum) {
-                var y0 = MAP_PAD + (batchNum - 1) * SEG_H;
-                var mid = y0 + SEG_H / 2;
-                var side = batchNum % 2 === 0 ? 42 : MAP_VB_W - 42;
-                var cloudX = batchNum % 2 === 0 ? MAP_VB_W - 70 : 70;
+                var start = pointForLinear((batchNum - 1) * LESSONS_PER_BATCH + 1);
+                var end = pointForLinear(batchNum * LESSONS_PER_BATCH);
+                var y0 = start.y;
+                var mid = (start.y + end.y) / 2;
+                var side = batchNum % 2 === 0 ? 36 : MAP_VB_W - 36;
+                var cloudX = batchNum % 2 === 0 ? MAP_VB_W - 120 : 120;
                 return (
                     '<g class="lj-zone-art" aria-hidden="true">' +
                     '<ellipse cx="' +
@@ -432,8 +457,8 @@
                     '" cy="' +
                     (y0 + 18).toFixed(1) +
                     '" rx="16" ry="8" fill="rgba(255,255,255,0.45)"/>' +
-                    '<text class="lj-zone-label" x="18" y="' +
-                    (y0 + 18).toFixed(1) +
+                    '<text class="lj-zone-label" x="22" y="' +
+                    Math.max(18, y0 - 28).toFixed(1) +
                     '">Trail ' +
                     batchNum +
                     '</text>' +
@@ -441,9 +466,32 @@
                 );
             }
 
+            function wallsForLevel(levelKey) {
+                return (checkpointWalls || [])
+                    .filter(function (wall) {
+                        return wall && wall.level === levelKey && Number(wall.lessonNumber) >= 1;
+                    })
+                    .sort(function (a, b) {
+                        return Number(a.lessonNumber) - Number(b.lessonNumber);
+                    });
+            }
+
             function buildWorldMap(levelKey, batches, here) {
                 var label = LEVEL_META[levelKey] || levelKey;
                 var points = buildWorldPoints();
+                var levelWalls = wallsForLevel(levelKey);
+                var firstWall = levelWalls.length ? levelWalls[0] : null;
+                var standOn = here;
+                if (firstWall && here) {
+                    var hereLinear = linearLessonNumber(here.batch, here.lesson);
+                    var blocked = Number(firstWall.lessonNumber);
+                    if (hereLinear === blocked + 1 && blocked >= 1) {
+                        standOn = {
+                            batch: Math.ceil(blocked / LESSONS_PER_BATCH),
+                            lesson: ((blocked - 1) % LESSONS_PER_BATCH) + 1,
+                        };
+                    }
+                }
                 var d = trailPathD(points);
                 var scenery = '';
                 var landmarks = '';
@@ -452,16 +500,19 @@
 
                 for (var b = 1; b <= BATCH_COUNT; b++) {
                     scenery += zoneScenerySvg(b);
-                    var zy = MAP_PAD + (b - 1) * SEG_H;
+                    var zoneStart = pointForLinear((b - 1) * LESSONS_PER_BATCH + 1);
+                    var zoneEnd = pointForLinear(b * LESSONS_PER_BATCH);
+                    var zoneTop = Math.max(0, zoneStart.y - MAP_STEP / 2);
+                    var zoneHeight = zoneEnd.y - zoneStart.y + MAP_STEP;
                     zones +=
                         '<div class="lj-zone-anchor" id="lj-zone-' +
                         b +
                         '" data-zone="' +
                         b +
                         '" style="top:' +
-                        ((zy / MAP_VB_H) * 100).toFixed(2) +
+                        ((zoneTop / MAP_VB_H) * 100).toFixed(2) +
                         '%;height:' +
-                        ((SEG_H / MAP_VB_H) * 100).toFixed(2) +
+                        ((zoneHeight / MAP_VB_H) * 100).toFixed(2) +
                         '%"></div>';
                 }
 
@@ -472,7 +523,7 @@
 
                     var ok = completedSet.has(levelKey + ':' + p.batch + ':' + p.lesson);
                     var locked = isBatchLocked(batches, p.batch);
-                    var isHere = here && p.batch === here.batch && p.lesson === here.lesson;
+                    var isHere = standOn && p.batch === standOn.batch && p.lesson === standOn.lesson;
                     var tip =
                         'RemoEd ' +
                         label +
@@ -529,8 +580,31 @@
                     nodes += '</button>';
                 }
 
+                levelWalls.forEach(function (wall) {
+                    var idx = Number(wall.lessonNumber) - 1;
+                    var prev = points[idx];
+                    var next = points[idx + 1];
+                    if (!prev || !next) return;
+                    var leftPct = (((prev.x + next.x) / 2) / MAP_VB_W) * 100;
+                    var topPct = (((prev.y + next.y) / 2) / MAP_VB_H) * 100;
+                    nodes +=
+                        '<button type="button" class="lj-wall" data-linear="' +
+                        Number(wall.lessonNumber) +
+                        '" style="left:' +
+                        leftPct.toFixed(2) +
+                        '%;top:' +
+                        topPct.toFixed(2) +
+                        '%" aria-label="Wall. Take the assessment before the next lesson.">' +
+                        '<span class="lj-wall__bricks" aria-hidden="true"></span>' +
+                        '</button>';
+                });
+
                 return (
-                    '<div class="lj-map lj-map--world" data-here-batch="' +
+                    '<div class="lj-map lj-map--world" style="aspect-ratio:' +
+                    MAP_VB_W +
+                    ' / ' +
+                    MAP_VB_H +
+                    '" data-here-batch="' +
                     (here ? here.batch : 1) +
                     '" data-here-lesson="' +
                     (here ? here.lesson : 1) +
@@ -564,7 +638,18 @@
                     d +
                     '" fill="none" pathLength="1"/>' +
                     landmarks +
+                    '<rect x="14" y="14" width="' +
+                    (MAP_VB_W - 28) +
+                    '" height="' +
+                    (MAP_VB_H - 28) +
+                    '" fill="none" stroke="rgba(148,163,184,0.45)" stroke-dasharray="7 9" stroke-width="1.5" rx="16"/>' +
                     '</svg>' +
+                    '<div class="lj-map__clouds" aria-hidden="true">' +
+                    '<span class="lj-cloud" style="top:4%;left:6%"></span>' +
+                    '<span class="lj-cloud lj-cloud--small" style="top:22%;left:58%"></span>' +
+                    '<span class="lj-cloud" style="top:47%;left:12%"></span>' +
+                    '<span class="lj-cloud lj-cloud--small" style="top:71%;left:48%"></span>' +
+                    '</div>' +
                     '<div class="lj-map__zones">' +
                     zones +
                     '</div>' +
@@ -712,6 +797,181 @@
                 modal.hidden = false;
                 modal.removeAttribute('hidden');
                 modal.setAttribute('aria-hidden', 'false');
+            }
+
+            function bindWallClicks(root) {
+                if (!root) return;
+                root.querySelectorAll('.lj-wall').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        openWallPanel(btn.getAttribute('data-linear'));
+                    });
+                });
+            }
+
+            var wallLesson = 0;
+
+            function closeWallPanel() {
+                var modal = document.getElementById('lj-wall-modal');
+                if (!modal) return;
+                modal.hidden = true;
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            function openWallPanel(lessonNumber) {
+                wallLesson = Number(lessonNumber) || 0;
+                var modal = document.getElementById('lj-wall-modal');
+                var lead = document.getElementById('lj-wall-lead');
+                var form = document.getElementById('lj-wall-form');
+                var result = document.getElementById('lj-wall-result');
+                var choices = document.getElementById('lj-wall-choices');
+                if (!modal || !lead || !form || !result || !choices) return;
+                lead.textContent =
+                    'Take the Lesson ' +
+                    wallLesson +
+                    ' assessment before the next lesson. You can do it whenever you are ready.';
+                choices.hidden = false;
+                form.hidden = true;
+                form.textContent = '';
+                result.hidden = true;
+                result.textContent = '';
+                modal.hidden = false;
+                modal.setAttribute('aria-hidden', 'false');
+            }
+
+            function showWallResult(text) {
+                var result = document.getElementById('lj-wall-result');
+                if (!result) return;
+                result.textContent = text;
+                result.hidden = false;
+            }
+
+            function renderCheckpointForm(checkpoint) {
+                var form = document.getElementById('lj-wall-form');
+                var choices = document.getElementById('lj-wall-choices');
+                if (!form) return;
+                form.textContent = '';
+                (checkpoint.questions || []).forEach(function (q, qi) {
+                    var field = document.createElement('fieldset');
+                    field.className = 'lj-quiz__q';
+                    var legend = document.createElement('legend');
+                    legend.textContent = qi + 1 + '. ' + (q.prompt || '');
+                    field.appendChild(legend);
+                    (q.choices || []).forEach(function (choice, ci) {
+                        var label = document.createElement('label');
+                        var input = document.createElement('input');
+                        input.type = 'radio';
+                        input.name = q.id;
+                        input.value = String(ci);
+                        label.appendChild(input);
+                        label.appendChild(document.createTextNode(' ' + choice));
+                        field.appendChild(label);
+                    });
+                    form.appendChild(field);
+                });
+                var submit = document.createElement('button');
+                submit.type = 'submit';
+                submit.className = 'lj-modal__book';
+                submit.textContent = 'Check my answers';
+                form.appendChild(submit);
+                if (choices) choices.hidden = true;
+                form.hidden = false;
+            }
+
+            function startCheckpoint() {
+                var token = getPortalToken();
+                fetch(
+                    '/api/student/lesson-checkpoint?level=' +
+                        encodeURIComponent(currentLevelKey) +
+                        '&lessonNumber=' +
+                        encodeURIComponent(String(wallLesson)),
+                    { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } }
+                )
+                    .then(function (res) {
+                        return res.json().then(function (body) {
+                            return { ok: res.ok, body: body };
+                        });
+                    })
+                    .then(function (pack) {
+                        if (!pack.ok || !pack.body || !pack.body.checkpoint) {
+                            showWallResult((pack.body && pack.body.error) || 'The assessment is not open yet.');
+                            return;
+                        }
+                        renderCheckpointForm(pack.body.checkpoint);
+                    })
+                    .catch(function () {
+                        showWallResult('Could not open the assessment. Try again in a moment.');
+                    });
+            }
+
+            function applyJourneyPayload(data) {
+                var keys = (data && data.completedKeys) || [];
+                completedSet = new Set(keys);
+                checkpointWalls = (data && data.checkpointWalls) || [];
+                activateTabUi(currentLevelKey);
+                loadAndRender(currentLevelKey);
+            }
+
+            function submitCheckpoint(event) {
+                event.preventDefault();
+                var form = event.currentTarget;
+                var answers = [];
+                var missing = false;
+                form.querySelectorAll('fieldset').forEach(function (field) {
+                    var picked = field.querySelector('input:checked');
+                    var any = field.querySelector('input');
+                    if (!picked) missing = true;
+                    if (any) answers.push({ id: any.name, choice: picked ? Number(picked.value) : null });
+                });
+                if (missing) {
+                    showWallResult('Answer every question, then check your answers.');
+                    return;
+                }
+                var token = getPortalToken();
+                fetch('/api/student/lesson-checkpoint', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        level: currentLevelKey,
+                        lessonNumber: wallLesson,
+                        answers: answers
+                    })
+                })
+                    .then(function (res) {
+                        return res.json().then(function (body) {
+                            return { ok: res.ok, body: body };
+                        });
+                    })
+                    .then(function (pack) {
+                        var body = pack.body || {};
+                        if (!pack.ok) {
+                            showWallResult(body.error || 'Could not score this try.');
+                            return;
+                        }
+                        form.hidden = true;
+                        if (body.passed) {
+                            showWallResult('You passed. The wall is coming down.');
+                            var wall = document.querySelector('.lj-wall[data-linear="' + wallLesson + '"]');
+                            if (wall) wall.classList.add('is-breaking');
+                            setTimeout(function () {
+                                closeWallPanel();
+                                RemoEdLessonProgress.loadProgressPayload().then(applyJourneyPayload);
+                            }, 700);
+                            return;
+                        }
+                        showWallResult(
+                            'Not yet. You scored ' +
+                                body.scorePercent +
+                                '%. You can try again whenever you want.'
+                        );
+                        var choices = document.getElementById('lj-wall-choices');
+                        if (choices) choices.hidden = false;
+                    })
+                    .catch(function () {
+                        showWallResult('Could not score this try. You can try again whenever you want.');
+                    });
             }
 
             function bindNodeClicks(root, levelKey, here) {
@@ -872,6 +1132,7 @@
                 });
 
                 bindNodeClicks(root, levelKey, here);
+                bindWallClicks(root);
 
                 var activeChap = root.querySelector('.lj-chapter.is-active');
                 if (activeChap && activeChap.scrollIntoView) {
@@ -912,16 +1173,26 @@
                     });
                 }
 
+                var wallModal = document.getElementById('lj-wall-modal');
+                if (wallModal) {
+                    wallModal.querySelectorAll('[data-wall-close]').forEach(function (el) {
+                        el.addEventListener('click', closeWallPanel);
+                    });
+                    document.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape' && wallModal && !wallModal.hidden) closeWallPanel();
+                    });
+                }
+                var wallStart = document.getElementById('lj-wall-start');
+                if (wallStart) wallStart.addEventListener('click', startCheckpoint);
+                var wallForm = document.getElementById('lj-wall-form');
+                if (wallForm) wallForm.addEventListener('submit', submitCheckpoint);
+
                 if (!window.RemoEdLessonProgress) {
                     if (root) root.textContent = 'Progress script failed to load.';
                     return;
                 }
-                RemoEdLessonProgress.loadCompletedKeys()
-                    .then(function (set) {
-                        completedSet = set;
-                        activateTabUi(currentLevelKey);
-                        loadAndRender(currentLevelKey);
-                    })
+                RemoEdLessonProgress.loadProgressPayload()
+                    .then(applyJourneyPayload)
                     .catch(function (e) {
                         if (root) {
                             root.textContent = e && e.message ? e.message : 'Could not load your journey.';

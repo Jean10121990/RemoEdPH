@@ -1,0 +1,133 @@
+{
+  "passPercent": 80,
+  "levels": {
+    "Little Seeds": {
+      "1": {
+        "title": "Hello, Red!",
+        "questions": [
+          {
+            "id": "ls1-q1",
+            "prompt": "What color do we say hello to in Lesson 1?",
+            "choices": ["Red", "Blue", "Yellow"]
+          },
+          {
+            "id": "ls1-q2",
+            "prompt": "Which fruit is red in this lesson?",
+            "choices": ["Apple", "Banana", "Grape"]
+          },
+          {
+            "id": "ls1-q3",
+            "prompt": "Finish the sentence: It is ___.",
+            "choices": ["red", "down", "blue"]
+          },
+          {
+            "id": "ls1-q4",
+            "prompt": "A flower in this lesson is which color?",
+            "choices": ["Red", "Black", "Green"]
+          },
+          {
+            "id": "ls1-q5",
+            "prompt": "Lesson 1 starts by saying hello to which color?",
+            "choices": ["Red", "Purple", "Orange"]
+          }
+        ]
+      }
+    },
+    "Sprouts": {
+      "1": {
+        "title": "I am (Name)",
+        "questions": [
+          {
+            "id": "sp1-q1",
+            "prompt": "Which sentence tells your name?",
+            "choices": ["I am Ana.", "It is red.", "Goodbye."]
+          },
+          {
+            "id": "sp1-q2",
+            "prompt": "When you point to yourself, you start with ___.",
+            "choices": ["I am", "It is", "Put it"]
+          },
+          {
+            "id": "sp1-q3",
+            "prompt": "The words \"I am\" are about ___.",
+            "choices": ["you", "a tree", "a bin"]
+          },
+          {
+            "id": "sp1-q4",
+            "prompt": "How do you tell the teacher your name?",
+            "choices": ["I am, then your name", "It is blue", "Down, down"]
+          },
+          {
+            "id": "sp1-q5",
+            "prompt": "Lesson 1 is about ___.",
+            "choices": ["who you are", "the color yellow", "sorting trash"]
+          }
+        ]
+      }
+    },
+    "Saplings": {
+      "1": {
+        "title": "Writing My First Name",
+        "questions": [
+          {
+            "id": "sa1-q1",
+            "prompt": "Lesson 1 asks you to write ___.",
+            "choices": ["your first name", "a long story", "a map"]
+          },
+          {
+            "id": "sa1-q2",
+            "prompt": "\"My name is ___\" is how you ___.",
+            "choices": ["tell your name", "say goodbye", "count to ten"]
+          },
+          {
+            "id": "sa1-q3",
+            "prompt": "You practice your name by ___.",
+            "choices": ["tracing and writing it", "only listening", "closing the book"]
+          },
+          {
+            "id": "sa1-q4",
+            "prompt": "A first name is ___.",
+            "choices": ["what people call you", "a color", "a day of the week"]
+          },
+          {
+            "id": "sa1-q5",
+            "prompt": "After this lesson you can ___.",
+            "choices": ["write your first name", "read a long book", "draw a world map"]
+          }
+        ]
+      }
+    },
+    "Young Stewards": {
+      "1": {
+        "title": "Reading Short A CVC Words",
+        "questions": [
+          {
+            "id": "ys1-q1",
+            "prompt": "Which word is a Short A word in this lesson?",
+            "choices": ["cat", "tree", "blue"]
+          },
+          {
+            "id": "ys1-q2",
+            "prompt": "Finish the sentence: A cat sat on a ___.",
+            "choices": ["mat", "sun", "moon"]
+          },
+          {
+            "id": "ys1-q3",
+            "prompt": "A Short A word has which letter in the middle?",
+            "choices": ["a", "e", "i"]
+          },
+          {
+            "id": "ys1-q4",
+            "prompt": "Which word matches Short A?",
+            "choices": ["mat", "meet", "moon"]
+          },
+          {
+            "id": "ys1-q5",
+            "prompt": "Lesson 1 reading is about ___.",
+            "choices": ["Short A words", "question words", "the past tense"]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -427,15 +427,13 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 960px;
   margin: 48px auto 0;
-  aspect-ratio: 360 / 920;
 }
 
 .page-student-learning-journey .lj-map--world {
-  max-width: 440px;
+  max-width: 960px;
   margin-top: 28px;
-  aspect-ratio: 360 / 2872;
 }
 
 .page-student-learning-journey .lj-map__svg {
@@ -481,6 +479,45 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
+}
+
+.page-student-learning-journey .lj-map__clouds {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.page-student-learning-journey .lj-cloud {
+  position: absolute;
+  width: 108px;
+  height: 38px;
+  border-radius: 40px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    34px -14px 0 -6px rgba(255, 255, 255, 0.9),
+    62px 4px 0 -10px rgba(255, 255, 255, 0.82);
+  opacity: 0.42;
+  animation: lj-cloud-drift 22s ease-in-out infinite alternate;
+}
+
+.page-student-learning-journey .lj-cloud--small {
+  width: 72px;
+  height: 26px;
+  opacity: 0.32;
+  animation-duration: 28s;
+  animation-delay: -8s;
+}
+
+@keyframes lj-cloud-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(72px);
+  }
 }
 
 .page-student-learning-journey .lj-zone-anchor {
@@ -916,12 +953,86 @@
   }
 }
 
+.page-student-learning-journey .lj-wall {
+  position: absolute;
+  z-index: 3;
+  width: 34px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.page-student-learning-journey .lj-wall__bricks {
+  display: block;
+  width: 32px;
+  height: 20px;
+  margin: 4px auto 0;
+  border-radius: 3px;
+  background:
+    linear-gradient(#9a3412, #9a3412) 0 0 / 10px 6px,
+    linear-gradient(#c2410c, #c2410c) 5px 7px / 10px 6px,
+    linear-gradient(#9a3412, #9a3412) 0 14px / 10px 6px,
+    #7c2d12;
+  box-shadow: 0 2px 0 #7c2d12, 0 4px 8px rgba(124, 45, 18, 0.28);
+}
+
+.page-student-learning-journey .lj-wall .lj-char {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+}
+
+.page-student-learning-journey .lj-wall.is-breaking {
+  animation: lj-wall-break 0.7s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes lj-wall-break {
+  to {
+    transform: translate(-50%, -70%) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.page-student-learning-journey .lj-quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  text-align: left;
+}
+
+.page-student-learning-journey .lj-quiz__q {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+}
+
+.page-student-learning-journey .lj-quiz__q legend {
+  font-weight: 700;
+  padding: 0 0.2rem;
+}
+
+.page-student-learning-journey .lj-quiz__q label {
+  display: block;
+  margin-top: 0.35rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-student-learning-journey .lj-char,
   .page-student-learning-journey .lj-node--done,
   .page-student-learning-journey .lj-trophy,
   .page-student-learning-journey .lj-drop__fill,
-  .page-student-learning-journey .lj-map__trail {
+  .page-student-learning-journey .lj-map__trail,
+  .page-student-learning-journey .lj-wall.is-breaking,
+  .page-student-learning-journey .lj-cloud {
     animation: none !important;
     transition: none !important;
   }
@@ -929,5 +1040,49 @@
   .page-student-learning-journey .lj-map__trail {
     stroke-dasharray: none;
     stroke-dashoffset: 0;
+  }
+}
+
+body.student-kids-mode.page-student-learning-journey .lj-map,
+body.student-kids-mode.page-student-learning-journey .lj-map--world {
+  max-width: 960px;
+}
+
+body.student-kids-mode.page-student-learning-journey .lj-node,
+body.student-kids-mode.page-student-learning-journey .lj-wall {
+  min-height: 0;
+  font-weight: 800;
+}
+
+body.student-kids-mode.page-student-learning-journey .lj-node {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 0.72rem;
+}
+
+body.student-kids-mode.page-student-learning-journey .lj-node--here {
+  width: 40px;
+  height: 40px;
+}
+
+body.student-kids-mode.page-student-learning-journey .lj-wall {
+  width: 34px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 720px) {
+  body.student-kids-mode.page-student-learning-journey .lj-node {
+    width: 26px;
+    height: 26px;
+    min-height: 0;
+    font-size: 0.55rem;
+  }
+
+  body.student-kids-mode.page-student-learning-journey .lj-node--here {
+    width: 30px;
+    height: 30px;
   }
 }

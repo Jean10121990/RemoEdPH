@@ -3902,6 +3902,7 @@
         /** Max linear lesson number the student may book for the selected level (next stop). */
         let studentMaxBookableLesson = 1;
         let studentLessonProgressKeys = null;
+        let studentCheckpointWalls = [];
 
         function curriculumLevelsMatch(a, b) {
             const normalize = (raw) => {
@@ -3950,7 +3951,10 @@
                     });
                     if (!res.ok) return;
                     const data = await res.json();
-                    studentLessonProgressKeys = Array.isArray(data.completedKeys) ? data.completedKeys : [];
+                    studentLessonProgressKeys = Array.isArray(data.bookableKeys)
+                        ? data.bookableKeys
+                        : (Array.isArray(data.completedKeys) ? data.completedKeys : []);
+                    studentCheckpointWalls = Array.isArray(data.checkpointWalls) ? data.checkpointWalls : [];
                 }
                 studentMaxBookableLesson = maxBookableFromCompletedKeys(
                     studentLessonProgressKeys,
@@ -4348,6 +4352,12 @@
                         if (shortCredits) {
                             option.dataset.lockReason = 'Not enough credits';
                             option.title = 'Add a credit before booking this class';
+                        } else if (aheadOfTrail && studentCheckpointWalls.some((wall) =>
+                            curriculumLevelsMatch(wall.level, selectedLevel) &&
+                            Number(wall.lessonNumber) === studentMaxBookableLesson
+                        )) {
+                            option.dataset.lockReason = 'Pass the Lesson ' + studentMaxBookableLesson + ' assessment first';
+                            option.title = 'Take the lesson assessment before this class';
                         } else if (aheadOfTrail) {
                             option.dataset.lockReason = 'Finish Lesson ' + studentMaxBookableLesson + ' first';
                             option.title = 'Finish the lessons before this one on your Learning Journey';

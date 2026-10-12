@@ -1186,8 +1186,8 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
     }
 
     const { resolveStudentCurriculumLevel } = require('./config/curriculumLevels');
-    const { buildCompletedLessonKeys } = require('./services/studentLessonUnlock');
-    const completedKeys = await buildCompletedLessonKeys(uniqueIdentifiers);
+    const { bookableLessonKeys } = require('./services/studentLessonUnlock');
+    const progress = await bookableLessonKeys(uniqueIdentifiers);
 
     const inProgressCount = await LessonProgress.countDocuments({
       studentId: { $in: uniqueIdentifiers },
@@ -1198,8 +1198,10 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
 
     res.json({
       success: true,
-      completedKeys: [...completedKeys],
-      completedCount: completedKeys.size,
+      completedKeys: [...progress.completedKeys],
+      bookableKeys: [...progress.bookableKeys],
+      checkpointWalls: progress.checkpointWalls,
+      completedCount: progress.completedKeys.size,
       inProgressCount,
       profileLevel,
       levels: require('./config/curriculumLevels').CURRICULUM_LEVELS,
@@ -1210,6 +1212,89 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
   } catch (err) {
     console.error('GET /student/lesson-progress:', err);
     res.status(500).json({ error: 'Failed to load lesson progress' });
+  }
+});
+
+router.get('/lesson-checkpoint', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { normalizeCurriculumLevel } = require('./config/curriculumLevels');
+    const { publicCheckpoint } = require('./services/lessonCheckpoint');
+    const { bookableLessonKeys, trailKey } = require('./services/studentLessonUnlock');
+    const level = normalizeCurriculumLevel(req.query.level);
+    const lessonNumber = parseInt(String(req.query.lessonNumber || ''), 10);
+    if (!level || !(lessonNumber >= 1 && lessonNumber <= 220)) {
+      return res.status(400).json({ error: 'Choose a level and lesson number.' });
+    }
+    const pack = publicCheckpoint(level, lessonNumber);
+    if (!pack) {
+      return res.status(404).json({ error: 'This lesson has no assessment yet.', code: 'NO_CHECKPOINT' });
+    }
+    const ids = collectStudentIdentifiers(req);
+    const progress = await bookableLessonKeys(ids);
+    const finished = progress.completedKeys.has(trailKey(level, lessonNumber));
+    if (!finished) {
+      return res.status(400).json({
+        error: 'Finish this class before the assessment.',
+        code: 'CLASS_NOT_FINISHED',
+      });
+    }
+    res.json({ success: true, checkpoint: pack, passed: progress.bookableKeys.has(trailKey(level, lessonNumber)) });
+  } catch (err) {
+    console.error('GET /student/lesson-checkpoint:', err);
+    res.status(500).json({ error: 'Could not load the assessment.' });
+  }
+});
+
+router.post('/lesson-checkpoint', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { normalizeCurriculumLevel } = require('./config/curriculumLevels');
+    const { scoreAnswers, publicCheckpoint } = require('./services/lessonCheckpoint');
+    const { bookableLessonKeys, trailKey } = require('./services/studentLessonUnlock');
+    const LessonCheckpointAttempt = require('./models/LessonCheckpointAttempt');
+    const level = normalizeCurriculumLevel(req.body && req.body.level);
+    const lessonNumber = parseInt(String((req.body && req.body.lessonNumber) || ''), 10);
+    if (!level || !(lessonNumber >= 1 && lessonNumber <= 220)) {
+      return res.status(400).json({ error: 'Choose a level and lesson number.' });
+    }
+    if (!publicCheckpoint(level, lessonNumber)) {
+      return res.status(404).json({ error: 'This lesson has no assessment yet.', code: 'NO_CHECKPOINT' });
+    }
+    const ids = collectStudentIdentifiers(req);
+    const progress = await bookableLessonKeys(ids);
+    if (!progress.completedKeys.has(trailKey(level, lessonNumber))) {
+      return res.status(400).json({
+        error: 'Finish this class before the assessment.',
+        code: 'CLASS_NOT_FINISHED',
+      });
+    }
+    const answers = Array.isArray(req.body && req.body.answers) ? req.body.answers.slice(0, 20) : [];
+    const scored = scoreAnswers(level, lessonNumber, answers);
+    if (!scored) {
+      return res.status(404).json({ error: 'This lesson has no assessment yet.', code: 'NO_CHECKPOINT' });
+    }
+    const username = String(req.student.username || '').trim();
+    if (!username) {
+      return res.status(400).json({ error: 'Student identifier missing' });
+    }
+    await LessonCheckpointAttempt.create({
+      studentId: username,
+      level,
+      lessonNumber,
+      scorePercent: scored.scorePercent,
+      correctCount: scored.correctCount,
+      total: scored.total,
+      passed: scored.passed,
+    });
+    res.json({
+      success: true,
+      passed: scored.passed,
+      scorePercent: scored.scorePercent,
+      correctCount: scored.correctCount,
+      total: scored.total,
+    });
+  } catch (err) {
+    console.error('POST /student/lesson-checkpoint:', err);
+    res.status(500).json({ error: 'Could not score the assessment.' });
   }
 });
 

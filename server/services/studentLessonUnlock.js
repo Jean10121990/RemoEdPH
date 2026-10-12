@@ -63,6 +63,52 @@ function maxBookableFromCompletedKeys(completedKeys, levelRaw) {
   return LESSONS_PER_LEVEL;
 }
 
+function linearFromTrailKey(key) {
+  const parts = String(key || '').split(':');
+  if (parts.length < 3) return null;
+  const batch = Number(parts[1]);
+  const lessonNum = Number(parts[2]);
+  if (!(batch >= 1 && batch <= 10) || !(lessonNum >= 1 && lessonNum <= LESSONS_PER_BATCH)) return null;
+  return linearFromBatchLesson(batch, lessonNum);
+}
+
+/**
+ * Drop a finished lesson from the bookable trail when it has a checkpoint
+ * the student has not passed. Lessons with no checkpoint stay bookable.
+ */
+function applyCheckpointGate(completedKeys, options) {
+  const opts = options || {};
+  const checkpoints = opts.checkpoints || {};
+  const passed = opts.passed || {};
+  const keys = new Set(completedKeys || []);
+  for (const key of [...keys]) {
+    const parts = String(key).split(':');
+    if (parts.length < 3) continue;
+    const level = normalizeCurriculumLevel(parts[0]);
+    const linear = linearFromTrailKey(key);
+    if (!level || linear == null) continue;
+    const required = checkpoints[level] || [];
+    if (!required.includes(linear)) continue;
+    const done = passed[level] || [];
+    if (!done.includes(linear)) keys.delete(key);
+  }
+  return keys;
+}
+
+function checkpointWallsFromKeys(completedKeys, bookableKeys) {
+  const open = bookableKeys instanceof Set ? bookableKeys : new Set(bookableKeys || []);
+  const walls = [];
+  for (const key of completedKeys || []) {
+    if (open.has(key)) continue;
+    const parts = String(key).split(':');
+    const linear = linearFromTrailKey(key);
+    if (!parts[0] || linear == null) continue;
+    walls.push({ level: parts[0], lessonNumber: linear });
+  }
+  walls.sort((a, b) => a.level.localeCompare(b.level) || a.lessonNumber - b.lessonNumber);
+  return walls;
+}
+
 async function hydrateLessonMap(ids) {
   const uniqueIds = [...new Set(ids.filter(Boolean).map(String))];
   if (!uniqueIds.length) return {};
@@ -271,6 +317,40 @@ async function buildCompletedLessonKeys(uniqueIdentifiers) {
   return completedKeys;
 }
 
+async function passedCheckpointsForIds(ids) {
+  const LessonCheckpointAttempt = require('../models/LessonCheckpointAttempt');
+  const rows = await LessonCheckpointAttempt.find({
+    studentId: { $in: ids },
+    passed: true,
+  })
+    .select('level lessonNumber')
+    .lean();
+  const passed = {};
+  rows.forEach((row) => {
+    const level = normalizeCurriculumLevel(row.level);
+    const num = Number(row.lessonNumber);
+    if (!level || !(num >= 1 && num <= LESSONS_PER_LEVEL)) return;
+    if (!passed[level]) passed[level] = [];
+    if (!passed[level].includes(num)) passed[level].push(num);
+  });
+  return passed;
+}
+
+async function bookableLessonKeys(uniqueIdentifiers) {
+  const ids = [...new Set((uniqueIdentifiers || []).filter(Boolean).map(String))];
+  const completedKeys = await buildCompletedLessonKeys(ids);
+  const { checkpointLessonsByLevel } = require('./lessonCheckpoint');
+  const bookableKeys = applyCheckpointGate(completedKeys, {
+    checkpoints: checkpointLessonsByLevel(),
+    passed: ids.length ? await passedCheckpointsForIds(ids) : {},
+  });
+  return {
+    completedKeys,
+    bookableKeys,
+    checkpointWalls: checkpointWallsFromKeys(completedKeys, bookableKeys),
+  };
+}
+
 async function resolveLessonNumber(lessonId, lessonTitle) {
   let lessonNum = null;
   if (lessonId && require('mongoose').Types.ObjectId.isValid(String(lessonId))) {
@@ -325,19 +405,28 @@ async function assertLessonNotAheadOfProgress({
     /* optional */
   }
 
-  const completedKeys = await buildCompletedLessonKeys(ids);
-  const maxBookable = maxBookableFromCompletedKeys(completedKeys, level);
+  const { completedKeys, bookableKeys } = await bookableLessonKeys(ids);
+  const maxBookable = maxBookableFromCompletedKeys(bookableKeys, level);
 
   if (lessonNum > maxBookable) {
+    const blockedKey = trailKey(level, maxBookable);
+    const needsCheckpoint = completedKeys.has(blockedKey) && !bookableKeys.has(blockedKey);
     return {
       ok: false,
       status: 400,
-      body: {
-        error: `You can book Lesson ${maxBookable} (your next stop) or any earlier lesson. Finish earlier lessons before jumping ahead.`,
-        code: 'LESSON_AHEAD_OF_PROGRESS',
-        maxBookable,
-        requestedLesson: lessonNum,
-      },
+      body: needsCheckpoint
+        ? {
+            error: `Pass the Lesson ${maxBookable} assessment first.`,
+            code: 'CHECKPOINT_REQUIRED',
+            maxBookable,
+            requestedLesson: lessonNum,
+          }
+        : {
+            error: `You can book Lesson ${maxBookable} (your next stop) or any earlier lesson. Finish earlier lessons before jumping ahead.`,
+            code: 'LESSON_AHEAD_OF_PROGRESS',
+            maxBookable,
+            requestedLesson: lessonNum,
+          },
       maxBookable,
       lessonNum,
     };
@@ -352,8 +441,12 @@ module.exports = {
   isBookingAbsence,
   isBookingLessonCompleted,
   applyFinishedClassToTrail,
+  trailKey,
   maxBookableFromCompletedKeys,
+  applyCheckpointGate,
+  checkpointWallsFromKeys,
   buildCompletedLessonKeys,
+  bookableLessonKeys,
   resolveLessonNumber,
   assertLessonNotAheadOfProgress,
 };
