@@ -111,7 +111,9 @@
             'body.student-kids-mode nav.remoed-sidebar .remoed-menu li:not(#logout-nav) svg{stroke:#fff;}' +
             'body.student-kids-mode nav.remoed-sidebar .remoed-menu li{margin:5px 12px;border-radius:18px!important;border-left:0!important;background:rgba(255,255,255,.16);}' +
             'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active{background:#fff!important;color:#1e3a8a!important;}' +
-            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active svg{stroke:#1e3a8a!important;}' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active .menu-label,' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active .remoed-menu-label{color:#1e3a8a!important;}' +
+            'body.student-kids-mode nav.remoed-sidebar .remoed-menu li.active svg{stroke:#1e3a8a!important;color:#1e3a8a!important;}' +
             'body.student-kids-mode [data-nav="dashboard"]{box-shadow:inset 7px 0 0 #fde047;}' +
             'body.student-kids-mode [data-nav="schedule"]{box-shadow:inset 7px 0 0 #fb7185;}' +
             'body.student-kids-mode [data-nav="book"]{box-shadow:inset 7px 0 0 #4ade80;}' +
