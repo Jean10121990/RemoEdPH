@@ -213,7 +213,7 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 
 ### Virtual backgrounds
 
-- `public/js/virtual-background.js` is **canvas-first**. Presets are real JPEGs: `office.jpg`, `classroom.jpg`, `nature.jpg`, `playground.jpg`. Keep SVG files only as unused leftovers; do not point presets back at `.svg` (canvas load / taint failed).
+- `public/js/virtual-background.js` is **canvas-first**. Presets are real JPEGs: `office.jpg`, `classroom.jpg`, `nature.jpg`, `playground.jpg`. Keep SVG files only as unused leftovers; do not point presets back at `.svg` (canvas load / taint failed). Device Check and the practice room keep the lesson as the large view (How to Navigate the Student Portal slides). The camera is the small tile. Camera filter and background stay on that tile. The practice room does not have an upload button.
 - Remap stored `*.svg` preset URLs to `.jpg` in `applyMode`. Do not let `applyTeacherCameraReadyLook()` overwrite an active VBG (`mode !== 'off'`).
 - MediaPipe person cutout is optional; blur and photo presets must work without it.
 
@@ -525,6 +525,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 - Teacher debug routes stay removed: `/api/teacher/test`, `/timezone-debug`, `/booking-test/:id`, `/test-remove-slide`, and the unauthenticated `/api/teacher/teacher/completed-classes`.
 - `GET /api/teacher/booking/by-classroom/:id` needs a token for that booking's teacher or student (or an admin). Students reach it through the `studentMayCallThisTeacherRoute` allowlist.
 - `GET /api/teacher/dashboard-stats` returns only the signed-in teacher. `GET /api/teacher/classes?teacherId&week` requires the matching teacher Bearer (`teacher-open-class.html` sends it).
+- `GET /api/teacher/slots` resolves an email-shaped id with `resolveToCanonicalTeacherId` (stored `Teacher.teacherId`, current email, username in any case). Profile email and username edits do not rewrite `Teacher.teacherId`. A teacher Bearer must still match that canonical id.
 - Message / notification socket rooms (`teacher-msg:`, `student-msg:`, `admin-msg:`, `notif:*`) come from the verified JWT via `resolveSocketIdentity` in `server/index.js`; clients send `token` in the join payload.
 - `verifyToken` must not log Authorization headers or decoded tokens.
 - Helmet CSP stays off until a dedicated inline-script cleanup pass.

@@ -136,30 +136,73 @@ body.page-practice-room .pr-main {
 
 body.page-practice-room .video-section,
 body.page-practice-room .pr-stage {
+  position: relative;
   background: #fff;
   border: 1px solid var(--pr-border);
   border-radius: 14px;
   padding: 12px;
   box-shadow: var(--pr-shadow);
   min-width: 0;
+  min-height: calc(100vh - 120px);
+  display: flex;
 }
 
-body.page-practice-room .video-grid {
-  height: auto;
-  min-height: 0;
-}
-
-body.page-practice-room .video-container {
+body.page-practice-room .pr-lesson {
+  flex: 1 1 auto;
   width: 100%;
+  min-height: 480px;
+  height: calc(100vh - 148px);
+  border: 0;
+  border-radius: 12px;
+  background: #0f1f18;
+}
+
+body.page-practice-room .video-container,
+body.page-practice-room .pr-camera {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  width: 240px;
+  max-width: 34%;
   height: auto;
   aspect-ratio: 16 / 9;
-  max-height: calc(100vh - 120px);
-  max-width: min(100%, calc((100vh - 120px) * 16 / 9));
-  margin-inline: auto;
-  border-radius: 14px;
+  max-height: none;
+  margin: 0;
+  border-radius: 12px;
   border: 1px solid var(--pr-border);
   background: #0f1f18;
-  box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 10px 24px -12px rgba(15, 23, 42, 0.55);
+  z-index: 2;
+  overflow: hidden;
+}
+
+body.page-practice-room .pr-camera video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.page-practice-room .pr-vbg .lc-camera-settings__modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body.page-practice-room .pr-vbg .lc-camera-settings__btn {
+  width: 100%;
+  margin: 0;
+  padding: 8px 6px;
+  border: 1px solid var(--pr-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+body.page-practice-room .pr-vbg .lc-camera-settings__btn.is-active {
+  border-color: var(--pr-green);
+  box-shadow: inset 0 0 0 1px var(--pr-green);
 }
 
 body.page-practice-room .video-label {
@@ -345,9 +388,17 @@ body.page-practice-room .notification.info {
     min-height: 0;
   }
 
+  body.page-practice-room .pr-lesson {
+    min-height: 320px;
+    height: 70vh;
+  }
+
   body.page-practice-room .video-container {
+    width: 180px;
+    max-width: 42%;
+    right: 12px;
+    bottom: 12px;
     aspect-ratio: 16 / 9;
     max-height: none;
-    max-width: 100%;
   }
 }

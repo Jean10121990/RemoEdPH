@@ -25,12 +25,12 @@
         min-height: 100vh;
       }
       body.page-device-check .remoed-content {
-        padding: 12px 16px;
+        padding: 12px 16px 16px;
         box-sizing: border-box;
-        min-height: 100vh;
+        min-height: calc(100vh - 64px);
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: stretch;
+        justify-content: stretch;
       }
       body.page-device-check .device-check-card {
         background: #fff;
@@ -38,14 +38,52 @@
         box-shadow: 0 4px 24px rgba(0,0,0,0.08);
         padding: 1rem 1.25rem;
         width: 100%;
-        max-width: 1100px;
-        max-height: calc(100vh - 24px);
+        max-width: none;
+        min-height: calc(100vh - 96px);
         display: flex;
         flex-direction: row;
-        gap: 1.25rem;
+        gap: 1rem;
         align-items: stretch;
+        flex-wrap: wrap;
         box-sizing: border-box;
+      }
+      body.page-device-check .dc-lesson {
+        flex: 1 1 auto;
+        min-width: min(100%, 720px);
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      body.page-device-check .dc-lesson-name {
+        margin: 0;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #475569;
+      }
+      body.page-device-check .dc-lesson-frame {
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 420px;
+        height: calc(100vh - 168px);
+        border: 0;
+        border-radius: 10px;
+        background: #0f172a;
+      }
+      body.page-device-check .dc-side {
+        flex: 0 1 300px;
+        width: 300px;
+        max-width: 100%;
+        max-height: calc(100vh - 120px);
         overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      body.page-device-check .dc-camera-frame {
+        width: 100%;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #0f172a;
       }
       body.page-device-check .device-title {
         font-size: 1.15rem;
@@ -53,19 +91,13 @@
         color: #0f172a;
         margin: 0 0 0.75rem;
       }
-      body.page-device-check .video-section {
-        flex: 1.1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
       body.page-device-check #video-preview {
+        display: block;
         width: 100%;
         aspect-ratio: 16 / 9;
-        max-height: 360px;
+        max-height: 180px;
         object-fit: cover;
-        border-radius: 10px;
+        border-radius: 0;
         background: #0f172a;
       }
       body.page-device-check .device-sysinfo {
@@ -108,8 +140,6 @@
         color: #94a3b8;
       }
       body.page-device-check .controls-section {
-        flex: 0.9;
-        min-width: 260px;
         display: flex;
         flex-direction: column;
         gap: 0.65rem;
@@ -225,6 +255,14 @@
       @media (max-width: 900px) {
         body.page-device-check .device-check-card {
           flex-direction: column;
+        }
+        body.page-device-check .dc-lesson-frame {
+          height: 62vh;
+          min-height: 280px;
+        }
+        body.page-device-check .dc-side {
+          flex: none;
+          width: 100%;
           max-height: none;
         }
       }
@@ -244,33 +282,17 @@
         </script>
     <div class="remoed-content">
         <div class="device-check-card">
-            <div class="video-section">
-                <div class="device-title">Check Your Camera & Microphone</div>
-                <video id="video-preview" autoplay playsinline muted></video>
-                <div class="device-sysinfo" id="device-sysinfo" aria-label="System information">
-                    <div class="device-sysinfo-title">System Information</div>
-                    <dl class="device-sysinfo-list">
-                        <div class="device-sysinfo-row">
-                            <dt>Date/Time</dt>
-                            <dd id="sysinfo-datetime">Detecting…</dd>
-                        </div>
-                        <div class="device-sysinfo-row">
-                            <dt>OS</dt>
-                            <dd id="sysinfo-os">Detecting…</dd>
-                        </div>
-                        <div class="device-sysinfo-row">
-                            <dt>Processor</dt>
-                            <dd id="sysinfo-processor">Detecting…</dd>
-                        </div>
-                        <div class="device-sysinfo-row">
-                            <dt>Memory</dt>
-                            <dd id="sysinfo-memory">Detecting…</dd>
-                        </div>
-                    </dl>
-                    <p class="device-sysinfo-note">Browser-reported readiness info (exact CPU model is private).</p>
+            <section class="dc-lesson" aria-label="Practice lesson">
+                <div class="device-title">Lesson</div>
+                <p class="dc-lesson-name">How to Navigate the Student Portal</p>
+                <iframe class="dc-lesson-frame" title="How to Navigate the Student Portal" allowfullscreen
+                    src="https://docs.google.com/presentation/d/1UPe8PcZKgNx_g8OOEanCr5GXvPinNDP1/embed?start=false&loop=false&delayms=3000"></iframe>
+            </section>
+            <section class="dc-side" aria-label="Camera and sound">
+                <div class="device-title">Camera</div>
+                <div class="dc-camera-frame">
+                    <video id="video-preview" autoplay playsinline muted></video>
                 </div>
-            </div>
-            
             <div class="controls-section">
                 <div class="dc-section-title">Camera filter</div>
                 <div class="dc-control-row">
@@ -306,10 +328,33 @@
                 </div>
                 <div id="mic-level"><div id="mic-bar"></div></div>
                 <div id="status-message">Checking devices...</div>
-                <div class="dc-tip">💡 Tip: Turn on Audio Feedback to hear yourself and test the mic.</div>
+                <div class="dc-tip">Tip: Turn on Audio Feedback to hear yourself and test the mic.</div>
+                <div class="device-sysinfo" id="device-sysinfo" aria-label="System information">
+                    <div class="device-sysinfo-title">System Information</div>
+                    <dl class="device-sysinfo-list">
+                        <div class="device-sysinfo-row">
+                            <dt>Date/Time</dt>
+                            <dd id="sysinfo-datetime">Detecting…</dd>
+                        </div>
+                        <div class="device-sysinfo-row">
+                            <dt>OS</dt>
+                            <dd id="sysinfo-os">Detecting…</dd>
+                        </div>
+                        <div class="device-sysinfo-row">
+                            <dt>Processor</dt>
+                            <dd id="sysinfo-processor">Detecting…</dd>
+                        </div>
+                        <div class="device-sysinfo-row">
+                            <dt>Memory</dt>
+                            <dd id="sysinfo-memory">Detecting…</dd>
+                        </div>
+                    </dl>
+                    <p class="device-sysinfo-note">Browser-reported readiness info (exact CPU model is private).</p>
+                </div>
                 <button class="proceed-btn" id="proceed-btn">Proceed to Practice Room</button>
                 <button class="back-btn" id="back-dashboard-btn">Back to Dashboard</button>
             </div>
+            </section>
         </div>
         
         

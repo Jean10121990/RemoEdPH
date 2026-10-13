@@ -26,6 +26,10 @@ async function resolveToCanonicalTeacherId(rawTeacherId) {
       const emailMatch = { email: { $regex: new RegExp('^' + escapeRegexForTeacherLookup(s) + '$', 'i') } };
       const byUsername = await Teacher.findOne({ $or: [{ username: s }, emailMatch] });
       if (byUsername) return String(byUsername.teacherId);
+      const byUsernameCi = await Teacher.findOne({
+        $expr: { $eq: [{ $toLower: { $ifNull: ['$username', ''] } }, s.toLowerCase()] },
+      });
+      if (byUsernameCi && byUsernameCi.teacherId) return String(byUsernameCi.teacherId);
     }
   }
   if (isProbableHexObjectIdForTeacher(String(rawTeacherId))) {

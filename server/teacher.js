@@ -1275,13 +1275,10 @@ router.get('/slots', async (req, res) => {
       console.log('🔍 TeacherId already in correct format:', teacherId);
       actualTeacherId = teacherId;
     } else if (teacherId && (teacherId.includes('@') || teacherId.includes('.'))) {
-      // Email/username -> lookup and use teacher.teacherId (email match is case-insensitive)
+      // Profile can change email and username. Slots stay on Teacher.teacherId (often the original email).
       console.log('🔍 Converting email/username to teacherId:', teacherId);
-      const emailRegex = { email: { $regex: new RegExp('^' + escapeRegexForTeacherLookup(teacherId) + '$', 'i') } };
-      const teacher = await Teacher.findOne({
-        $or: [emailRegex, { username: teacherId }],
-      });
-      if (!teacher) {
+      const resolved = await resolveToCanonicalTeacherId(teacherId);
+      if (!resolved) {
         return res.status(404).json({
           success: false,
           error: 'No teacher matches',
@@ -1290,7 +1287,7 @@ router.get('/slots', async (req, res) => {
           searchedId: teacherId,
         });
       }
-      actualTeacherId = teacher.teacherId;
+      actualTeacherId = resolved;
       console.log('🔍 Converted to teacherId:', actualTeacherId);
     } else if (teacherId && isProbableHexObjectIdForTeacher(teacherId)) {
       // MongoDB _id (24 hex) -> Teacher.findById(req.query.teacherId after redirect)

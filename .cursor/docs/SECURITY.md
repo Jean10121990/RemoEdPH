@@ -124,6 +124,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 | 2026-10-08 | Lesson files stay inside RemoEd. `GET /api/lessons/lesson-file/:id/raw?download=1` (any signed-in role) returns 403. The Office viewer file link refuses a browser-tab open. |
 | 2026-10-09 | `GET`/`POST /api/admin/settings/test-student-plan` (admin JWT, `system:settings`) sets free or paid for username `jeanserolf` only. |
 | 2026-10-13 | Lesson embeds accept Microsoft Office hosts and `https://docs.google.com/presentation/d/{id}/` only. The handler stores the Google `/embed` URL. |
+| 2026-10-13 | `GET /api/teacher/slots` resolves an email-shaped id with `resolveToCanonicalTeacherId` (stored `teacherId`, current email, username). A teacher Bearer must still match that canonical id (`SLOTS_TEACHER_SCOPE`). Profile email and username edits do not change `Teacher.teacherId`. |
 | 2026-10-13 | Super-Admin is exempt from attendance exceptions. A missed time-out still closes the session. It does not block that owner's Time In, and an open exception for that role is excused. Other employees still cannot approve their own request. |
 | 2026-10-12 | Attendance exceptions. Time In is blocked server-side while a mandatory exception is open. HR review requires `hr:attendance_review`. Employees cannot approve their own request. |
 | 2026-10-12 | Student Kids / Parents mode. `POST /api/student/portal-mode/pin` and `POST /api/student/portal-mode/verify` (student JWT) store and check a 4-digit PIN hash. The PIN is not returned. |

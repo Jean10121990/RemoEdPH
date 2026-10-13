@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Practice Room - RemoEdPH</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/practice-room.css?v=mint-forest-3">
+    <link rel="stylesheet" href="css/practice-room.css?v=lesson-cam-1">
 </head>
 <body class="page-practice-room">
     <div class="container">
@@ -22,14 +22,14 @@
         
         <div class="main-content pr-main">
             <div class="video-section pr-stage">
-                <div class="video-grid">
-                    <div class="video-container">
-                        <video id="local-video" autoplay playsinline muted></video>
-                        <div class="video-label">Your camera preview</div>
-                        <div class="controls">
-                            <button type="button" class="control-btn" id="toggle-camera" title="Toggle camera" aria-label="Toggle camera">📹</button>
-                            <button type="button" class="control-btn" id="toggle-mic" title="Toggle microphone" aria-label="Toggle microphone">🎤</button>
-                        </div>
+                <iframe id="pr-lesson" class="pr-lesson" title="How to Navigate the Student Portal" allowfullscreen
+                    src="https://docs.google.com/presentation/d/1UPe8PcZKgNx_g8OOEanCr5GXvPinNDP1/embed?start=false&loop=false&delayms=3000"></iframe>
+                <div class="video-container pr-camera">
+                    <video id="local-video" autoplay playsinline muted></video>
+                    <div class="video-label">Your camera</div>
+                    <div class="controls">
+                        <button type="button" class="control-btn" id="toggle-camera" title="Toggle camera" aria-label="Toggle camera">📹</button>
+                        <button type="button" class="control-btn" id="toggle-mic" title="Toggle microphone" aria-label="Toggle microphone">🎤</button>
                     </div>
                 </div>
             </div>
@@ -38,7 +38,6 @@
                 <div class="tab-container">
                     <div class="tab-buttons">
                         <button type="button" class="tab-button active" data-tab="controls">Controls</button>
-                        <button type="button" class="tab-button" data-tab="tools">Tools</button>
                         <button type="button" class="tab-button" data-tab="whiteboard">Board</button>
                         <button type="button" class="tab-button" data-tab="info">Info</button>
                     </div>
@@ -62,6 +61,7 @@
                                 <input type="range" id="beautify-slider" class="control-input" min="0" max="100" step="1" value="0">
                                 <span id="beautify-value" class="control-value">0%</span>
                             </div>
+                            <div id="pr-vbg" class="pr-vbg"></div>
                         </div>
                         
                         <div class="control-group">
@@ -96,14 +96,6 @@
                         </div>
                     </div>
                     
-                    <!-- Tools Tab -->
-                    <div class="tab-content" id="tools-tab">
-                        <h3>Tools</h3>
-                        <div class="tools-grid">
-                            <button class="tool-btn" id="file-upload-btn">Upload File</button>
-                        </div>
-                    </div>
-                    
                     <!-- Whiteboard Tab -->
                     <div class="tab-content" id="whiteboard-tab">
                         <h3>Board</h3>
@@ -129,6 +121,7 @@
         </div>
     </div>
 
+    <script src="js/virtual-background.js?v=vbg-9"></script>
     <script>
         // Initialize variables
         let stream;
@@ -173,6 +166,7 @@
         
         // Initialize practice room
         async function initializePracticeRoom() {
+            mountPracticeBackgrounds();
             try {
                 // Get user media
                 stream = await navigator.mediaDevices.getUserMedia({ 
@@ -203,6 +197,7 @@
                 if (brightnessSlider) brightnessSlider.value = 1.08;
                 if (contrastSlider) contrastSlider.value = 1.06;
                 updateVideoFilters();
+                mountPracticeBackgrounds();
 
             } catch (error) {
                 console.error('Error initializing practice room:', error);
@@ -304,6 +299,25 @@
             brightnessValue.textContent = Math.round(brightness * 100) + '%';
             contrastValue.textContent = Math.round(contrast * 100) + '%';
             beautifyValue.textContent = beautify + '%';
+        }
+
+        function mountPracticeBackgrounds() {
+            var panel = document.getElementById('pr-vbg');
+            if (!panel || !window.RemoedVirtualBackground) return;
+            if (!panel.querySelector('button[data-vbg-mode]')) {
+                var vb = RemoedVirtualBackground.create({
+                    getLocalStream: function () { return stream || null; },
+                    getPeerConnection: function () { return null; },
+                    localVideoEl: localVideo
+                });
+                RemoedVirtualBackground.mountSettingsUI(panel, vb, {
+                    storageKey: 'remoed_vbg_device_check',
+                    deferRestore: !stream,
+                    onApplied: function () { updateVideoFilters(); }
+                });
+            } else if (stream && typeof panel._remoedRestoreVbg === 'function') {
+                panel._remoedRestoreVbg();
+            }
         }
 
         brightnessSlider.addEventListener('input', updateVideoFilters);
