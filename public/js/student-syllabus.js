@@ -74,7 +74,7 @@
     if (!root || !scheduleTab || !syllabusTab) return;
     scheduleTab.addEventListener('click', function () { show('schedule'); });
     syllabusTab.addEventListener('click', function () { show('syllabus'); });
-    fetch('data/syllabus.json')
+    fetch('data/syllabus.json?v=little-seeds-full')
       .then(function (res) {
         if (!res.ok) throw new Error('syllabus');
         return res.json();

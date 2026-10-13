@@ -166,6 +166,62 @@
         background: #e2e8f0;
         color: #334155;
       }
+      body.page-device-check .dc-section-title {
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-top: 0.15rem;
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__title {
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.35rem;
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__status {
+        min-height: 1.1em;
+        margin: 0 0 8px;
+        font-size: 0.8rem;
+        color: #b45309;
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__modes {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__btn {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0;
+        padding: 10px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        min-height: 40px;
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__btn--photo {
+        min-height: 64px;
+        color: #fff;
+        background-color: #1f2937;
+        background-size: cover;
+        background-position: center;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__btn.is-active {
+        border-color: #47bc3e;
+        background: #ecfdf5;
+        color: #166534;
+        box-shadow: inset 0 0 0 1px #47bc3e;
+      }
+      body.page-device-check .dc-vbg .lc-camera-settings__btn--photo.is-active {
+        color: #fff;
+        box-shadow: inset 0 0 0 2px #47bc3e;
+      }
       @media (max-width: 900px) {
         body.page-device-check .device-check-card {
           flex-direction: column;
@@ -216,6 +272,7 @@
             </div>
             
             <div class="controls-section">
+                <div class="dc-section-title">Camera filter</div>
                 <div class="dc-control-row">
                   <label for="brightness-slider">Brightness</label>
                   <input type="range" id="brightness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
@@ -229,6 +286,7 @@
                   <input type="range" id="beautify-slider" min="0" max="100" step="1" value="0" style="flex:1;">
                   <span id="beautify-value" style="font-size:0.8rem; color:#666; min-width:28px;">0%</span>
                 </div>
+                <div id="dc-vbg" class="dc-vbg"></div>
                 
                 <!-- Audio Controls -->
                 <div class="audio-controls">
@@ -258,6 +316,7 @@
         </div>
     </div>
         <script src="avatar-helper.js"></script>
+        <script src="js/virtual-background.js?v=vbg-9"></script>
         <script>
         // Sidebar (avatar, username, logout) is handled by TeacherSidebar component
 
@@ -476,8 +535,10 @@
                     requestAnimationFrame(updateMicLevel);
                 }
                 updateMicLevel();
+                mountDeviceBackgrounds();
             } catch (err) {
                 statusMsg.textContent = 'Could not access camera or microphone. Please check your permissions.';
+                mountDeviceBackgrounds();
             }
         }
         
@@ -514,6 +575,26 @@
         brightnessSlider.addEventListener('input', updateVideoFilter);
         whitenessSlider.addEventListener('input', updateVideoFilter);
         beautifySlider.addEventListener('input', updateVideoFilter);
+
+        function mountDeviceBackgrounds() {
+            var panel = document.getElementById('dc-vbg');
+            if (!panel || !window.RemoedVirtualBackground) return;
+            if (!panel.querySelector('button[data-vbg-mode]')) {
+                var vb = RemoedVirtualBackground.create({
+                    getLocalStream: function () { return stream || null; },
+                    getPeerConnection: function () { return null; },
+                    localVideoEl: video
+                });
+                RemoedVirtualBackground.mountSettingsUI(panel, vb, {
+                    storageKey: 'remoed_vbg_device_check',
+                    deferRestore: !stream,
+                    onApplied: function () { updateVideoFilter(); }
+                });
+            } else if (stream && typeof panel._remoedRestoreVbg === 'function') {
+                panel._remoedRestoreVbg();
+            }
+        }
+        mountDeviceBackgrounds();
         
         // Volume control
         volumeSlider.addEventListener('input', function() {

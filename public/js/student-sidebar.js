@@ -132,7 +132,10 @@
             'body.student-kids-mode #credits-expiry-banner,' +
             'body.student-kids-mode #post-assessment-enroll-banner,' +
             'body.student-kids-mode #reschedule-section,' +
-            'body.student-kids-mode #menu-eco-badge{display:none!important;}' +
+            'body.student-kids-mode #menu-eco-badge,' +
+            'body.student-kids-mode .nav-header .nav-icon[title="My Profile"],' +
+            'body.student-kids-mode .student-page-nav-header .nav-icon[title="My Profile"],' +
+            'body.student-kids-mode #notifications-icon{display:none!important;}' +
             'body.student-kids-mode .dash-journey-progress{border:3px solid #34d399!important;border-radius:24px!important;background:linear-gradient(135deg,#ecfccb,#fce7f3)!important;}' +
             'body.student-kids-mode .kids-progress{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 1rem;}' +
             'body.student-kids-mode .kids-progress__card{display:flex;flex-direction:column;gap:4px;min-height:110px;padding:14px 16px;border-radius:22px;background:#fff;border:3px solid #fbbf24;color:#1e293b;text-decoration:none;}' +

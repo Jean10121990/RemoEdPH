@@ -8,7 +8,8 @@
   var PRESET_BACKGROUNDS = [
     { id: 'office', label: 'Office', url: '/images/virtual-bg/office.jpg' },
     { id: 'classroom', label: 'Classroom', url: '/images/virtual-bg/classroom.jpg' },
-    { id: 'nature', label: 'Nature', url: '/images/virtual-bg/nature.jpg' }
+    { id: 'nature', label: 'Nature', url: '/images/virtual-bg/nature.jpg' },
+    { id: 'playground', label: 'Playground', url: '/images/virtual-bg/playground.jpg' }
   ];
 
   function waitForVideo(video, timeoutMs) {
@@ -86,6 +87,33 @@
       ctx.fillRect(w * 0.08, h * 0.12, w * 0.84, 10);
       ctx.fillStyle = '#c4a574';
       ctx.fillRect(0, h * 0.78, w, h * 0.22);
+      return;
+    }
+    if (id === 'playground') {
+      var skyPlay = ctx.createLinearGradient(0, 0, 0, h);
+      skyPlay.addColorStop(0, '#7ec8f0');
+      skyPlay.addColorStop(0.45, '#b7e4ff');
+      skyPlay.addColorStop(1, '#7dce6a');
+      ctx.fillStyle = skyPlay;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#f4b942';
+      ctx.beginPath();
+      ctx.moveTo(w * 0.62, h * 0.42);
+      ctx.lineTo(w * 0.9, h * 0.72);
+      ctx.lineTo(w * 0.62, h * 0.72);
+      ctx.fill();
+      ctx.fillStyle = '#e11d48';
+      ctx.fillRect(w * 0.18, h * 0.58, w * 0.08, h * 0.22);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.28, h * 0.34);
+      ctx.lineTo(w * 0.28, h * 0.8);
+      ctx.moveTo(w * 0.42, h * 0.34);
+      ctx.lineTo(w * 0.42, h * 0.8);
+      ctx.moveTo(w * 0.22, h * 0.34);
+      ctx.lineTo(w * 0.48, h * 0.34);
+      ctx.stroke();
       return;
     }
     if (id === 'nature') {
@@ -396,6 +424,7 @@
     if (/office\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'office';
     else if (/classroom\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'classroom';
     else if (/nature\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'nature';
+    else if (/playground\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'playground';
 
     var stream = this.getLocalStream();
     if (!stream) return false;
@@ -546,6 +575,9 @@
       if (ok) {
         markActive(mode === 'custom' ? 'custom' : mode, url);
         persist(mode === 'custom' ? 'custom' : mode, url || '');
+        if (typeof options.onApplied === 'function') {
+          try { options.onApplied(mode, url || ''); } catch (_applied) {}
+        }
         setStatus(mode === 'off' ? 'Background off' : 'Background applied');
         if (!opts.silent) {
           setTimeout(function () {
