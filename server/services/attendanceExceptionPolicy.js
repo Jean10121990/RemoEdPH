@@ -87,6 +87,11 @@ function reviewerIsEmployee(reviewerUsername, workerId) {
   return false;
 }
 
+/** The owner account (Super-Admin) is not subject to attendance-exception review. */
+function ownerExemptFromAttendance(adminRole) {
+  return String(adminRole || '').trim().toLowerCase() === 'super_admin';
+}
+
 function releaseAllowed(status) {
   return status === 'APPROVED' || status === 'CANCELLED';
 }
@@ -102,5 +107,6 @@ module.exports = {
   isBlockingStatus,
   parseReportedTimeout,
   reviewerIsEmployee,
+  ownerExemptFromAttendance,
   releaseAllowed,
 };

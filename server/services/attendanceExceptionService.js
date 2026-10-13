@@ -12,6 +12,7 @@ const {
   isBlockingStatus,
   parseReportedTimeout,
   reviewerIsEmployee,
+  ownerExemptFromAttendance,
   BLOCKING_STATUSES,
   CLASSIFICATIONS,
 } = require('./attendanceExceptionPolicy');
@@ -92,8 +93,85 @@ async function notifyReviewers(message) {
   }
 }
 
+function usernameFromAdminWorker(workerId) {
+  return String(workerId || '').replace(/^admin:/i, '').trim();
+}
+
+async function isOwnerExemptWorker(workerId) {
+  const username = usernameFromAdminWorker(workerId);
+  if (!username || !/^admin:/i.test(String(workerId || ''))) return false;
+  const admin = await Admin.findOne({
+    username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+  })
+    .select('adminRole')
+    .lean();
+  if (!admin) return false;
+  return ownerExemptFromAttendance(admin.adminRole || 'super_admin');
+}
+
+async function ownerWorkerIds() {
+  const admins = await Admin.find({ adminRole: 'super_admin' }).select('username').limit(30).lean();
+  return admins
+    .map((row) => 'admin:' + String(row && row.username ? row.username : '').trim().toLowerCase())
+    .filter((id) => id !== 'admin:');
+}
+
+async function excuseOwnerException(doc, actor) {
+  if (!doc) return null;
+  if (!isBlockingStatus(doc.status) && doc.blocksTimeIn !== true) return doc;
+  const fromStatus = doc.status;
+  const fromClass = doc.classification;
+  const actorId = (actor && actor.username) || 'system';
+  doc.status = 'CANCELLED';
+  doc.classification = 'EXCUSED';
+  doc.blocksTimeIn = false;
+  doc.reviewedAt = new Date();
+  doc.reviewerUsername = actorId;
+  doc.reviewerComments = 'Owner is exempt from attendance exceptions.';
+  doc.decisions.push({
+    action: 'OWNER_EXEMPT',
+    actorId,
+    actorRole: 'super_admin',
+    at: new Date(),
+    comment: 'Owner is exempt from attendance exceptions.',
+    fromStatus,
+    toStatus: 'CANCELLED',
+    fromClassification: fromClass,
+    toClassification: 'EXCUSED',
+  });
+  await doc.save();
+  await writeAudit({
+    actorId,
+    actorRole: 'super_admin',
+    action: 'OWNER_EXEMPT',
+    entityId: doc._id,
+    reference: doc.reference,
+    previous: { status: fromStatus, classification: fromClass },
+    next: { status: 'CANCELLED', classification: 'EXCUSED', blocksTimeIn: false },
+    reason: 'Owner is exempt from attendance exceptions.',
+  });
+  return doc;
+}
+
+async function releaseOwnerExceptions(workerId) {
+  const ids = workerId ? [String(workerId)] : await ownerWorkerIds();
+  if (!ids.length) return;
+  const rows = await AttendanceException.find({
+    workerId: { $in: ids },
+    $or: [{ blocksTimeIn: true }, { status: { $in: BLOCKING_STATUSES } }],
+  });
+  for (const doc of rows) {
+    if (!(await isOwnerExemptWorker(doc.workerId))) continue;
+    await excuseOwnerException(doc, { username: 'system' });
+  }
+}
+
 async function findBlocking(workerId) {
   if (!workerId) return null;
+  if (await isOwnerExemptWorker(workerId)) {
+    await releaseOwnerExceptions(workerId);
+    return null;
+  }
   return AttendanceException.findOne({
     workerId: String(workerId),
     blocksTimeIn: true,
@@ -173,6 +251,10 @@ async function closeOpenSessions(now = new Date()) {
           continue;
         }
         const ownerType = updated.logOwnerType === 'admin' ? 'admin' : 'teacher';
+        if (ownerType === 'admin' && (await isOwnerExemptWorker(updated.teacherId))) {
+          closed += 1;
+          continue;
+        }
         const reference = await nextReference(updated.date);
         const name = await displayNameFor(ownerType, updated.teacherId);
         let created;
@@ -372,6 +454,7 @@ function escapeRegex(value) {
 }
 
 async function listForHr(query) {
+  await releaseOwnerExceptions();
   const filter = {};
   const status = String(query.status || '').trim();
   if (status && status !== 'ALL') filter.status = status;
@@ -408,6 +491,7 @@ async function listForHr(query) {
 }
 
 async function summary() {
+  await releaseOwnerExceptions();
   const cfg = attendanceConfig();
   const grouped = await AttendanceException.aggregate([
     { $group: { _id: { status: '$status', classification: '$classification' }, n: { $sum: 1 } } },
@@ -443,6 +527,11 @@ async function summary() {
 }
 
 async function getOne(id) {
+  const existing = await AttendanceException.findById(id);
+  if (!existing) return null;
+  if (await isOwnerExemptWorker(existing.workerId)) {
+    await excuseOwnerException(existing, { username: 'system' });
+  }
   const doc = await AttendanceException.findById(id).lean();
   if (!doc) return null;
   const audits = await AttendanceAudit.find({ reference: doc.reference }).sort({ at: 1 }).limit(100).lean();
@@ -471,6 +560,13 @@ async function decide(id, reviewer, action, body) {
   const role = String(reviewer.adminRole || 'admin');
   const doc = await AttendanceException.findById(id);
   if (!doc) return { error: { status: 404, message: 'Attendance exception not found.' } };
+  if (await isOwnerExemptWorker(doc.workerId)) {
+    const released = await excuseOwnerException(doc, { username, adminRole: role });
+    return {
+      doc: publicException(released.toObject(), { includeReviewNotes: true }),
+      timeInReleased: true,
+    };
+  }
   if (reviewerIsEmployee(username, doc.workerId)) {
     return { error: { status: 403, message: 'You cannot review your own attendance exception.' } };
   }
@@ -685,6 +781,7 @@ function OPEN_OR_PENDING(status) {
 }
 
 async function payrollReport(query) {
+  await releaseOwnerExceptions();
   const filter = { blocksTimeIn: true, status: { $in: BLOCKING_STATUSES } };
   if (query.from || query.to) {
     filter.attendanceDate = {};

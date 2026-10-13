@@ -7,6 +7,7 @@ const {
   parseReportedTimeout,
   isBlockingStatus,
   reviewerIsEmployee,
+  ownerExemptFromAttendance,
   releaseAllowed,
 } = require('../server/services/attendanceExceptionPolicy');
 
@@ -61,4 +62,10 @@ test('an employee cannot review their own session', () => {
   assert.equal(reviewerIsEmployee('jean', 'admin:jean'), true);
   assert.equal(reviewerIsEmployee('hrlead', 'admin:jean'), false);
   assert.equal(reviewerIsEmployee('hrlead', 'kjb00000001'), false);
+});
+
+test('only the owner role is exempt from attendance exceptions', () => {
+  assert.equal(ownerExemptFromAttendance('super_admin'), true);
+  assert.equal(ownerExemptFromAttendance('admin_hr'), false);
+  assert.equal(ownerExemptFromAttendance(''), false);
 });
