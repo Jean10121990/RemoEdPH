@@ -993,7 +993,8 @@
                 notesEl.textContent = notes || 'No teacher notes for this lesson yet.';
             }
             document.getElementById('lesson-info').style.display = 'block';
-            document.getElementById('upload-section').style.display = 'block';
+            const fixedSlides = String(lesson.title || '').trim().toLowerCase() === 'how to navigate the student portal';
+            document.getElementById('upload-section').style.display = fixedSlides ? 'none' : 'block';
 
             // Load files
             fetchLessonFiles(lesson._id);

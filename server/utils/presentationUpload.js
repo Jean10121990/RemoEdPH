@@ -23,6 +23,33 @@ function isValidOfficeEmbedUrl(raw) {
   return OFFICE_EMBED_HOSTS.some((h) => host === h || host.endsWith('.' + h));
 }
 
+/** Published Google Slides only. Other Google hosts and file types stay closed. */
+function googlePresentationEmbedUrl(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let url;
+  try {
+    url = new URL(raw.trim());
+  } catch (_e) {
+    return '';
+  }
+  if (url.protocol !== 'https:') return '';
+  if (url.hostname.toLowerCase() !== 'docs.google.com') return '';
+  const match = /^\/presentation\/d\/([a-zA-Z0-9_-]+)/.exec(url.pathname);
+  if (!match || match[1].length < 10) return '';
+  return (
+    'https://docs.google.com/presentation/d/' +
+    match[1] +
+    '/embed?start=false&loop=false&delayms=3000'
+  );
+}
+
+function normalizePresentationEmbedUrl(raw) {
+  const google = googlePresentationEmbedUrl(raw);
+  if (google) return google;
+  if (isValidOfficeEmbedUrl(raw)) return String(raw).trim();
+  return '';
+}
+
 function findHtml5Entry(dir) {
   const candidates = ['index.html', 'story.html', 'presentation.html', 'player.html'];
   for (let i = 0; i < candidates.length; i++) {
@@ -82,6 +109,8 @@ function presentationPublicFields(file) {
 
 module.exports = {
   isValidOfficeEmbedUrl,
+  googlePresentationEmbedUrl,
+  normalizePresentationEmbedUrl,
   extractHtml5Zip,
   findHtml5Entry,
   presentationPublicFields,

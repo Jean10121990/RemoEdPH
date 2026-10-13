@@ -18,7 +18,7 @@ const studentBadgeService = require('./services/studentBadgeService');
 // Import auth middleware
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const {
-  isValidOfficeEmbedUrl,
+  normalizePresentationEmbedUrl,
   extractHtml5Zip,
   presentationPublicFields,
   PRESENTATIONS_ROOT
@@ -920,8 +920,9 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
     let newFile;
 
     if (embedUrl && String(embedUrl).trim()) {
-      if (!isValidOfficeEmbedUrl(embedUrl)) {
-        return res.status(400).json({ error: 'Invalid Office/Microsoft embed URL' });
+      const normalizedEmbed = normalizePresentationEmbedUrl(embedUrl);
+      if (!normalizedEmbed) {
+        return res.status(400).json({ error: 'Invalid Office or Google Slides embed URL' });
       }
       newFile = {
         fileName: fileName || 'Office Presentation',
@@ -929,7 +930,7 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
         fileSize: fileSize || 0,
         fileData: '',
         presentationType: 'office_embed',
-        embedUrl: String(embedUrl).trim(),
+        embedUrl: normalizedEmbed,
         html5PackagePath: '',
         html5EntryUrl: '',
         uploadedBy,

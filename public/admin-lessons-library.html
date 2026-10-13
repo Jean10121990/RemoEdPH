@@ -1464,8 +1464,9 @@
             // Show lesson info using displayLessonInfo function
             displayLessonInfo(lesson);
             document.getElementById('lesson-info').style.display = 'block';
-            document.getElementById('upload-section').style.display = 'block';
-            setUploadMode(currentUploadMode || 'file');
+            const fixedSlides = String(lesson.title || '').trim().toLowerCase() === 'how to navigate the student portal';
+            document.getElementById('upload-section').style.display = fixedSlides ? 'none' : 'block';
+            if (!fixedSlides) setUploadMode(currentUploadMode || 'file');
 
             // Load files
             fetchLessonFiles(lesson._id);

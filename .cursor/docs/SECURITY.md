@@ -40,6 +40,7 @@ Rules:
 - `GET /api/auth/admin-login-path` and the obfuscated admin login page (path hiding is not the access control — 2FA + RBAC are)
 - `/api/public/*` assessment routes (rate limited, `express-validator`), `POST /api/applications`
 - `GET /api/office-viewer/presentation/:fileId/:token/:name` — Microsoft PowerPoint fetches the lesson deck here with no login. The token is a per-file JWT signed with `JWT_SECRET + ':office-viewer'` (cannot pass as a portal login), valid 6 hours, issued only by authenticated `local-preview` / `secure-embed`. Serves `.ppt` / `.pptx` only; rate limited.
+- Lesson embed links (`POST /api/lessons/lesson/:lessonId/upload-file`, teacher or admin JWT) accept Microsoft Office hosts and `https://docs.google.com/presentation/d/{id}/` only. The stored URL is the Google `/embed` form. Other Google hosts and file types are rejected.
 - `GET /api/rtc-config` also returns shared, 24-hour Cloudflare TURN credentials when `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` are set (`server/services/hostedTurn.js`); the API token stays server-side and the credentials are cached, so this public route does not call Cloudflare per request.
 - `GET /api/rtc-config` (registered before the `/api` routers that run `verifyToken`, or it returns 401 and the classroom loses TURN), `/api/health`, `/api`
 - Uploads under `teacher-profiles/` only (`server/middleware/uploadsAccess.js`); every other `/uploads/*` needs a token
@@ -122,6 +123,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 | 2026-10-08 | `GET /api/admin/referral-link/stats` (admin JWT, `mkt:commissions_view`) lists only the signed-in admin’s referral rows. Owner id comes from the token, not the query. |
 | 2026-10-08 | Lesson files stay inside RemoEd. `GET /api/lessons/lesson-file/:id/raw?download=1` (any signed-in role) returns 403. The Office viewer file link refuses a browser-tab open. |
 | 2026-10-09 | `GET`/`POST /api/admin/settings/test-student-plan` (admin JWT, `system:settings`) sets free or paid for username `jeanserolf` only. |
+| 2026-10-13 | Lesson embeds accept Microsoft Office hosts and `https://docs.google.com/presentation/d/{id}/` only. The handler stores the Google `/embed` URL. |
 | 2026-10-13 | Super-Admin is exempt from attendance exceptions. A missed time-out still closes the session. It does not block that owner's Time In, and an open exception for that role is excused. Other employees still cannot approve their own request. |
 | 2026-10-12 | Attendance exceptions. Time In is blocked server-side while a mandatory exception is open. HR review requires `hr:attendance_review`. Employees cannot approve their own request. |
 | 2026-10-12 | Student Kids / Parents mode. `POST /api/student/portal-mode/pin` and `POST /api/student/portal-mode/verify` (student JWT) store and check a 4-digit PIN hash. The PIN is not returned. |
