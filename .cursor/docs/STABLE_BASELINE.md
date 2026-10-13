@@ -213,7 +213,7 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 
 ### Virtual backgrounds
 
-- `public/js/virtual-background.js` is **canvas-first**. Presets are real JPEGs: `office.jpg`, `classroom.jpg`, `nature.jpg`, `playground.jpg`. Keep SVG files only as unused leftovers; do not point presets back at `.svg` (canvas load / taint failed). Device Check and the practice room keep the lesson as the large view (How to Navigate the Student Portal slides). The camera is the small tile. Camera filter and background stay on that tile. The practice room does not have an upload button.
+- `public/js/virtual-background.js` is **canvas-first**. Presets are real JPEGs: `office.jpg`, `classroom.jpg`, `nature.jpg`, `playground.jpg`. Keep SVG files only as unused leftovers; do not point presets back at `.svg` (canvas load / taint failed). Device Check is the camera and microphone check (filter and background stay on that page). The practice room keeps the lesson as the large view (How to Navigate the Student Portal slides) and the camera as the small tile. Camera filter and background stay on that tile. The practice room does not have an upload button.
 - Remap stored `*.svg` preset URLs to `.jpg` in `applyMode`. Do not let `applyTeacherCameraReadyLook()` overwrite an active VBG (`mode !== 'off'`).
 - MediaPipe person cutout is optional; blur and photo presets must work without it.
 

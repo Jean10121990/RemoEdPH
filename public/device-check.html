@@ -47,27 +47,12 @@
         flex-wrap: wrap;
         box-sizing: border-box;
       }
-      body.page-device-check .dc-lesson {
+      body.page-device-check .dc-camera {
         flex: 1 1 auto;
-        min-width: min(100%, 720px);
+        min-width: min(100%, 520px);
         display: flex;
         flex-direction: column;
-        gap: 0.4rem;
-      }
-      body.page-device-check .dc-lesson-name {
-        margin: 0;
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #475569;
-      }
-      body.page-device-check .dc-lesson-frame {
-        flex: 1 1 auto;
-        width: 100%;
-        min-height: 420px;
-        height: calc(100vh - 168px);
-        border: 0;
-        border-radius: 10px;
-        background: #0f172a;
+        gap: 0.75rem;
       }
       body.page-device-check .dc-side {
         flex: 0 1 300px;
@@ -95,7 +80,8 @@
         display: block;
         width: 100%;
         aspect-ratio: 16 / 9;
-        max-height: 180px;
+        max-height: calc(100vh - 220px);
+        min-height: 280px;
         object-fit: cover;
         border-radius: 0;
         background: #0f172a;
@@ -256,9 +242,9 @@
         body.page-device-check .device-check-card {
           flex-direction: column;
         }
-        body.page-device-check .dc-lesson-frame {
-          height: 62vh;
-          min-height: 280px;
+        body.page-device-check #video-preview {
+          min-height: 200px;
+          max-height: 52vh;
         }
         body.page-device-check .dc-side {
           flex: none;
@@ -282,17 +268,13 @@
         </script>
     <div class="remoed-content">
         <div class="device-check-card">
-            <section class="dc-lesson" aria-label="Practice lesson">
-                <div class="device-title">Lesson</div>
-                <p class="dc-lesson-name">How to Navigate the Student Portal</p>
-                <iframe class="dc-lesson-frame" title="How to Navigate the Student Portal" allowfullscreen
-                    src="https://docs.google.com/presentation/d/1UPe8PcZKgNx_g8OOEanCr5GXvPinNDP1/embed?start=false&loop=false&delayms=3000"></iframe>
-            </section>
-            <section class="dc-side" aria-label="Camera and sound">
-                <div class="device-title">Camera</div>
+            <section class="dc-camera" aria-label="Camera preview">
+                <div class="device-title">Check Your Camera &amp; Microphone</div>
                 <div class="dc-camera-frame">
                     <video id="video-preview" autoplay playsinline muted></video>
                 </div>
+            </section>
+            <section class="dc-side" aria-label="Camera and sound">
             <div class="controls-section">
                 <div class="dc-section-title">Camera filter</div>
                 <div class="dc-control-row">
