@@ -97,8 +97,9 @@
             'linear-gradient(180deg,#fff7ed 0%,#ecfeff 100%);}' +
             'body.student-kids-mode .menu-label{font-size:1.15rem;font-weight:800;}' +
             'body.student-kids-mode .remoed-menu li{min-height:52px;}' +
-            'body.student-kids-mode .nav-title-text{font-size:22px!important;font-weight:800;}' +
-            'body.student-kids-mode .nav-header{background:linear-gradient(90deg,#fff7ed,#e0f2fe 55%,#fce7f3);border-bottom:3px solid #fbbf24;}' +
+            'body.student-kids-mode .nav-header,body.student-kids-mode .student-page-nav-header{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;font-size:16px;background:#fff;border-bottom:1px solid #e2e8f0;}' +
+            'body.student-kids-mode .nav-header .nav-title-text,body.student-kids-mode .student-page-nav-header .nav-title-text{font-size:18px!important;font-weight:600!important;font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;}' +
+            'body.student-kids-mode .nav-header button,body.student-kids-mode .student-page-nav-header button{min-height:0;font-weight:inherit;}' +
             'body.student-kids-mode .remoed-content,body.student-kids-mode .remoed-section{font-size:1.08rem;}' +
             'body.student-kids-mode button,body.student-kids-mode .btn,body.student-kids-mode a.btn,body.student-kids-mode .dash-btn{font-size:1.05rem;min-height:48px;border-radius:999px;font-weight:800;}' +
             'body.student-kids-mode .sidebar-subtitle{font-weight:800;color:#fde68a!important;}' +
@@ -131,8 +132,6 @@
             'body.student-kids-mode #credits-expiry-banner,' +
             'body.student-kids-mode #post-assessment-enroll-banner,' +
             'body.student-kids-mode #reschedule-section,' +
-            'body.student-kids-mode .nav-right > .nav-icon,' +
-            'body.student-kids-mode #student-eco-chip-count,' +
             'body.student-kids-mode #menu-eco-badge{display:none!important;}' +
             'body.student-kids-mode .dash-journey-progress{border:3px solid #34d399!important;border-radius:24px!important;background:linear-gradient(135deg,#ecfccb,#fce7f3)!important;}' +
             'body.student-kids-mode .kids-progress{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 1rem;}' +
@@ -159,8 +158,7 @@
             '.portal-mode-switch button{width:52px;height:30px;border:none;border-radius:999px;background:#47BC3E;position:relative;cursor:pointer;padding:0;}' +
             '.portal-mode-switch button[aria-checked="true"]{background:#1ca7e7;}' +
             '.portal-mode-switch button i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;display:block;transition:transform .15s ease;}' +
-            '.portal-mode-switch button[aria-checked="true"] i{transform:translateX(22px);}' +
-            'body.student-kids-mode .portal-mode-switch span{font-size:15px;}';
+            '.portal-mode-switch button[aria-checked="true"] i{transform:translateX(22px);}';
         document.head.appendChild(style);
     }
 
