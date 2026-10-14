@@ -2054,8 +2054,8 @@ router.get('/referrals/teachers', verifyAdminApiAuth, requireAdmin, async (req, 
         teacherId: t.teacherId,
         teacherName,
         referralCode: t.referralCode || '',
-        // Single referral link (subscription): bring users to plans section on landing page
-        subscriptionLink: `/index.html?ref=${encodeURIComponent(t.referralCode || '')}#plans`
+        // Referral link opens the Free Level Assessment. The code is saved for signup.
+        subscriptionLink: `/index.html?ref=${encodeURIComponent(t.referralCode || '')}#assessment`
       });
     }
 
@@ -2193,8 +2193,8 @@ router.get('/referral-link', verifyAdminApiAuth, requireAdmin, async (req, res) 
       ownerType: 'admin',
       ownerId: admin.username,
       referralCode: code,
-      // Single referral link (subscription): bring users to plans section on landing page
-      subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#plans`
+      // Referral link opens the Free Level Assessment. The code is saved for signup.
+      subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#assessment`
     });
   } catch (err) {
     console.error('Admin referral-link error:', err);

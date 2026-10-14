@@ -147,8 +147,8 @@ router.get('/referral-link', verifyToken, requireTeacher, async (req, res) => {
       success: true,
       teacherId: teacher.teacherId,
       referralCode: code,
-      // Single referral link (subscription): bring users to plans section on landing page
-      subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#plans`
+      // Referral link opens the Free Level Assessment. The code is saved for signup.
+      subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#assessment`
     });
   } catch (err) {
     console.error('Teacher referral-link error:', err);

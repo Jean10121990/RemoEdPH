@@ -67,7 +67,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Signed-in student with `creditBalance > 0` can open **Book a Class**, see open slots, and complete `POST /api/student/book-class` (Network 2xx).
 - [ ] **Booking Details** opens as a centered body-level modal (not a side column inside `.remoed-content`).
-- [ ] A paid student with credits follows Learning Journey order on Little Seeds, Sprouts, Saplings, and Young Stewards: the next stop or any earlier lesson. Pre-Level stays open for a paid student and does not subtract a credit. Growth levels still use one credit. Free-plan students book the next of 3 Pre-Level lessons (How to Navigate the Student Portal, About RemoEd PH, Welcome), with no monthly lesson.
+- [ ] A paid student with credits follows Learning Journey order on Little Seeds, Sprouts, Saplings, and Young Stewards: the next stop or any earlier lesson. Pre-Level stays open for a paid student and does not subtract a credit. Growth levels still use one credit. Free-plan students book the next of 3 Pre-Level lessons (How to Navigate the Student Portal, About RemoEd PH, Welcome), with no monthly lesson. One free class can be open at a time. The booked lesson is labeled **Booked**. Later free lessons say **Finish Lesson N first**. **Subscribe to Book** is for levels after those 3.
 - [ ] Student with expired / zero credits gets a clear credit/subscription error code, not a 500 or `WRONG_PORTAL_TOKEN`.
 - [ ] A student without the current privacy version gets `CONSENT_REQUIRED` on book and logged-in checkout, then can continue after accepting. Booking confirmation and the student waiting room say classes are recorded for safety, quality assurance, and parent review.
 - [ ] Super-Admin **Settings** has a Student payment switch: MariBank QR or PayMongo. It is stored on `GlobalSettings.studentPaymentMethod` (default MariBank QR). Credits follows that switch. PayMongo `POST /api/payments/create-link` stays. A QR transaction number does not add credits. Accounting Hub → Student Subscriptions → **Confirm and add credits** does. Reject does not.
@@ -122,6 +122,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Admin → Users → add or edit a teacher: **Free Trial — ₱45 per 25-min class (₱90/hr)** is the first Professional tier. Picking it shows `Total hourly: ₱90 · Per 25-min class: ₱45` and ignores credential checkboxes; saving and reopening keeps it. Teachers on Tier 1 to 4 still compute `(base + ₱10 × credentials) ÷ 2`.
 - [ ] A Free Trial teacher's Teaching Fee shows ₱45 per class, and Career Growth lists the Free Trial row before Tier 1.
 - [ ] A referred student paying 1 month / 3 months / 6 months / 1 year creates a `successful` referral of ₱1,000 / ₱1,500 / ₱2,000 / ₱2,500. Marketing Hub → Unique Link Commissions and the teacher Referral Rewards page show those amounts. A repeat webhook or **Refresh** does not change an already awarded amount.
+- [ ] The teacher and admin shared link is `/index.html?ref=CODE#assessment` (Free Level Assessment). Signup lists the student by name as pending with ₱0. **Successful enrollees** counts only the first plan purchase. A later purchase does not add another bonus.
 
 ### Auth isolation
 
@@ -490,11 +491,26 @@ Source: pricing and margin table (trial rate ₱45 per 25-min class + conversion
 
 - **Free Trial tier** sits **before Tier 1** (Newbie). Stored as `payoutTierBase: 83` (keep this code; do not switch it to 90 or teachers already on the tier fall off it). Pay is **₱90 per hour, which is ₱45 per 25-minute class**. Credential add-ons do **not** apply. `ratePer25FromTeacher` in [server/utils/teacherPayoutTier.js](server/utils/teacherPayoutTier.js) is what Teaching Fee and payroll use, so a stale `hourlyRate` (the old ₱41.67) does not win. Mirrored in [public/js/teacher-payout-settings.js](public/js/teacher-payout-settings.js) (`TIER_VALUES` starts with 83, `FREE_TRIAL_RATE_PER_25MIN` is 45). Admin sets it in **Users → Professional tier** (`admin-users.html`); Career Growth lists it before Tier 1. Keep server and client tier lists in sync.
 - **Referral / Unique Link commission** is tiered by the plan the referred student buys (`server/utils/referralCommissionTiers.js`, used by `awardReferralCommissionOnPayment`): `spark` (1 month) ₱1,000, `steady` (3 months) ₱1,500, `scholar` (6 months) ₱2,000, `summit` (1 year) ₱2,500. Blank or unknown plan falls back to ₱1,000.
+- The shared link is `/index.html?ref=CODE#assessment` (Free Level Assessment). Signup writes a **pending** row with the student name and **₱0**. Commission is awarded once, on the first plan purchase. A later purchase does not add another bonus.
 - A Free Trial teacher whose own link brings a subscriber earns **both**: the trial rate on their trial classes and the plan-tier commission. They are separate payouts (no automatic Bonus / Incentive entry).
 - A commission already marked `successful` keeps its amount. Duplicate webhooks, reconcile, and later renewals must **not** rewrite it. Rows created before 2026-10-05 stay at the old flat ₱1,000 (no backfill).
 - Teacher copy lives in `teacher-referrals.html`, `teacher-dashboard.html`, and `admin-unique-link-commission.html`. The admin’s own card on `admin-dashboard.html` uses the same layout and the same ₱1,000 to ₱2,500 range, with stats on `admin-referrals.html` (`GET /api/admin/referral-link/stats`, identity from the admin JWT). Marketing Hub still lists every teacher. Update these pages if the amounts change.
+- The link is built in `GET /api/teacher/referral-link` (`server/teacher.js`) and the two admin `subscriptionLink` values in `server/admin.js`. Client fallbacks in `teacher-referrals.html`, `admin-referrals.html`, and the teacher dashboard use the same `#assessment` hash. Do not point a new official link at `#plans`.
+- Referral Rewards: the intro says the name appears at signup and the bonus waits for the first plan purchase. **Successful enrollees** uses `successfulCount`. The note under it is `Signed up, waiting for a first plan purchase: N` from `pendingCount`. A pending row reads **Signed up — bonus after first plan**. A successful row reads **Plan purchased**.
 - Teacher **Lessons Library** (`teacher-lessons-library.html`) shows each lesson’s **Teacher notes** (read-only). The same notes are the live-class cheat sheet. Students do not receive `teacherNotes`. Admins edit them in Admin → Lessons Library.
+- Level 1 Little Seeds (`69cafcd18e3e63155ed30c59`), Level 3 Saplings (`6aa2055cc2cc3a5a0b20f559`), and Level 4 Young Stewards (`6aa20571c2cc3a5a0b20f562`) have Lesson Description and Teacher Notes for lessons 1–22 in Atlas `test`. Level 2 Sprouts and Free Trial Lessons stay as they were. Existing titles and uploaded files stay. Level 3 lessons 7–12 were created with notes and empty `files`. Description is Unit, Core Pillars, Target Vocabulary, and Target Sentence. Notes are the teacher guidebook, then each slide’s **Teacher Script & TPR** only. Duration is 25. Rebuild only with `scripts/build-lesson-notes.py` and `scripts/apply-lesson-notes.js`, and only against database `test`. Do not re-run the Level 2-only scripts.
 - Lesson files are view-only inside RemoEd. Do not add a Download button in the teacher or admin Lessons Library, the live classroom, or `video-room.html`. `GET /api/lessons/lesson-file/:id/raw?download=1` returns 403. Opening the Microsoft PowerPoint file link in a browser tab is refused; the in-class viewer still loads it.
+
+## Soft-launch calling cards
+
+Printable 3.5 in × 2 in cards for the launch team. They live in Google Drive folder **RemoEd PH Soft Launch** (`1GEaOAy-RRK5tztI9F-_m1MXksUwvMeew`): [RemoEdPH-Calling-Cards.html](https://drive.google.com/file/d/17Pg84s3YZCGR3pib571qcAfgNyv1cIGJ/view) and the [design spec](https://docs.google.com/document/d/13HEuucegH9zMproOY2atRd-2jF76GqRSBqLMNgff7HA/edit).
+
+- Front mark is the icon-only open book with the yellow signal, and the word RemoEdPH beside it. Keep that icon. Do not swap in the favicon that already includes the wordmark, and do not replace it with a simplified drawing.
+- Every QR code opens `https://remoedph.com/index.html#assessment`. There is no per-person referral code on the card and no link editor.
+- Each Letter page holds eight cards, two of each person, in this order: Kristine, Kristine, Patrick, Patrick, Jeremiah, Jeremiah, Samuel, Samuel. Page 1 is the fronts. Page 2 is the backs, in the same positions. Do not print the “name · front” or “name · back” labels above the cards.
+- Phone and professional email stay blank until they are filled in the `TEAM` list in the HTML. Do not invent them.
+- Print from Chrome while online so the QR images can load: Letter, margins None, scale 100%, Background graphics on. Cut on the corner marks.
+- The print file the team opens is `D:\Users\Window11\Downloads\RemoEdPH-Calling-Cards.html`. The Drive copy is the earlier four-card version.
 
 ## Lesson slide generation — laptop Level folders
 
@@ -647,3 +663,11 @@ Teachers and admins time in through the existing `TimeLog` routes. An open sessi
 | Test student plan | Settings has a Free plan / Paid plan switch for username jeanserolf only. Other students keep their real plan. |
 | Attendance exceptions | A missed time-out is closed by the server and blocks the next Time In until HR approves a correction. The original system close is kept. Negligence is a separate HR decision and does not change pay by itself. Super-Admin is exempt from that block. |
 | Classroom SOS tiers | Same incident record. Tier 1 is technical and does not observe or end the class. Tier 2 and Tier 3 can. Escalation only goes up and keeps the first tier. Tier 3 stays pending review after resolve or end. There is no emergency phone number in the app. |
+
+## Baseline updates — 2026-10-13 to 2026-10-14
+
+| Area | What shipped |
+|------|----------------|
+| Lesson notes | Level 1 Little Seeds, Level 3 Saplings, and Level 4 Young Stewards have Lesson Description and Teacher Notes for lessons 1–22. Level 3 lessons 7–12 were added with notes and no file. Titles and existing PowerPoint files stayed. Level 2 and Free Trial were not rewritten. |
+| Referral link | Official teacher and admin links open `/index.html?ref=CODE#assessment`. Signup writes a pending row with the student name and ₱0. The bonus is paid once, on the first plan purchase. Referral Rewards counts successful enrollees from paid purchases only. |
+| Calling cards | Downloads file has eight cards per page, two of each person, fronts then backs. Every QR opens `https://remoedph.com/index.html#assessment`. The name · front and name · back labels are gone. |

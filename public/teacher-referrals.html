@@ -27,7 +27,7 @@
     <div class="remoed-content">
       <div class="page-head">
         
-        <p>Track students who subscribed using <strong>your</strong> referral link. Each enrollee gets a unique reference number. Totals show your commission and successful enrollee count.</p>
+        <p>Families who use <strong>your</strong> link appear here by name as soon as they sign up. There is no bonus yet. You receive the commission only when that student buys a plan for the first time.</p>
       </div>
 
       <div class="banner-info">
@@ -37,7 +37,7 @@
       <div class="referral-link-stats-row">
       <div class="link-card" id="link-section">
         <h2>Your referral link</h2>
-        <p class="muted" style="margin-top:0;">Share this link so new families land on plans with your code saved for signup.</p>
+        <p class="muted" style="margin-top:0;">Share this link. It opens the Free Level Assessment and keeps your code for signup.</p>
         <div class="code-row">
           <span>Code:</span>
           <span class="code-pill" id="ref-code">—</span>
@@ -56,7 +56,7 @@
         <div class="stat-card">
           <h3>Successful enrollees</h3>
           <div class="big" id="total-count">0</div>
-          <div class="muted">Students who paid via your referral</div>
+          <div class="muted" id="pending-note">Signed up, waiting for a first plan purchase: 0</div>
         </div>
       </div>
       </div>
@@ -122,7 +122,7 @@
           return;
         }
         const code = data.referralCode || '';
-        const path = data.subscriptionLink || ('/index.html?ref=' + encodeURIComponent(code) + '#plans');
+        const path = data.subscriptionLink || ('/index.html?ref=' + encodeURIComponent(code) + '#assessment');
         const full = window.location.origin + path;
         document.getElementById('ref-code').textContent = code || '—';
         const a = document.getElementById('ref-url');
@@ -152,7 +152,9 @@
         const rows = data.referrals || [];
         const t = data.totals || {};
         document.getElementById('total-commission').textContent = fmtPeso(t.totalCommission);
-        document.getElementById('total-count').textContent = String(t.count || 0);
+        document.getElementById('total-count').textContent = String(t.successfulCount || 0);
+        document.getElementById('pending-note').textContent =
+          'Signed up, waiting for a first plan purchase: ' + String(t.pendingCount || 0);
 
         const tbody = document.getElementById('tbody');
         const empty = document.getElementById('empty');
@@ -173,7 +175,7 @@
             '<td>' + escapeHtml(r.studentContact || '—') + '</td>' +
             '<td>' + escapeHtml(r.subscriptionPlan || '—') + '</td>' +
             '<td>' + fmtPeso(r.commissionAmount) + '</td>' +
-            '<td>' + escapeHtml(r.status || 'successful') + '</td>' +
+            '<td>' + escapeHtml(r.status === 'pending' ? 'Signed up — bonus after first plan' : (r.status === 'successful' ? 'Plan purchased' : (r.status || ''))) + '</td>' +
             '</tr>'
           );
         }).join('');

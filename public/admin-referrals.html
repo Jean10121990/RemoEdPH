@@ -180,7 +180,7 @@
           return;
         }
         const code = data.referralCode || '';
-        const path = data.subscriptionLink || ('/index.html?ref=' + encodeURIComponent(code) + '#plans');
+        const path = data.subscriptionLink || ('/index.html?ref=' + encodeURIComponent(code) + '#assessment');
         const full = window.location.origin + path;
         document.getElementById('ref-code').textContent = code || '—';
         const a = document.getElementById('ref-url');

@@ -4312,9 +4312,13 @@
                     } else if (studentFreePlanSequenceDone) {
                         hintEl.innerHTML = 'You finished all 3 free lessons. <a href="student-credits.html">Subscribe to Book</a> the next levels.';
                     } else if (studentFreePlanActive && !studentFreePlanCanBook) {
-                        hintEl.innerHTML = 'Your free lesson is already booked. After that class is finished, you can book Lesson ' + studentFreePlanNextLesson + '. <a href="student-credits.html">Subscribe to Book</a> any lesson now.';
+                        const bookedFree = studentFreePlanNextLesson;
+                        const nextFree = bookedFree + 1;
+                        hintEl.textContent = nextFree <= 3
+                            ? 'You booked Lesson ' + bookedFree + ' of 3 free lessons. After that class is finished, Lesson ' + nextFree + ' opens. The other free lessons stay free.'
+                            : 'You booked Lesson 3 of 3 free lessons. After that class is finished, subscribe to book the next levels.';
                     } else if (studentFreePlanActive) {
-                        hintEl.innerHTML = 'Free plan: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. Book it, then the next one after that class is finished. <a href="student-credits.html">Subscribe to Book</a> the other levels now.';
+                        hintEl.textContent = 'Free plan: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. The next free lesson opens after that class is finished.';
                     } else {
                         hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
                     }
@@ -4361,9 +4365,21 @@
                         } else if (aheadOfTrail) {
                             option.dataset.lockReason = 'Finish Lesson ' + studentMaxBookableLesson + ' first';
                             option.title = 'Finish the lessons before this one on your Learning Journey';
+                        } else if (locked && studentFreePlanActive && studentFreePlanSequenceDone) {
+                            option.dataset.lockReason = 'Finished';
+                            option.title = 'This free lesson is finished.';
+                        } else if (locked && studentFreePlanActive && Number.isFinite(num) && num < studentFreePlanNextLesson) {
+                            option.dataset.lockReason = 'Finished';
+                            option.title = 'This free lesson is finished.';
+                        } else if (locked && studentFreePlanActive && Number.isFinite(num) && num === studentFreePlanNextLesson && !studentFreePlanCanBook) {
+                            option.dataset.lockReason = 'Booked';
+                            option.title = 'This free lesson is already booked.';
+                        } else if (locked && studentFreePlanActive && Number.isFinite(num) && num > studentFreePlanNextLesson) {
+                            option.dataset.lockReason = 'Finish Lesson ' + (num - 1) + ' first';
+                            option.title = 'This lesson is free. It opens after the earlier free lesson is finished.';
                         } else if (locked && studentFreePlanActive) {
-                            option.dataset.lockReason = 'Subscribe to Book';
-                            option.title = 'Finish the free lesson before this one, or subscribe to book it now';
+                            option.dataset.lockReason = 'Finish the free lesson first';
+                            option.title = 'This lesson is free. It opens after the earlier free lesson is finished.';
                         } else if (locked) {
                             option.dataset.lockReason = 'Subscribe to Book';
                             option.title = 'Subscribe to book this lesson';
