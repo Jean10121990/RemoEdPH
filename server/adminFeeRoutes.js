@@ -1,6 +1,6 @@
 /**
  * Admin Fee & Attendance — 1% of subscription gross per bi-monthly cutoff,
- * gated by completed 8-hour shifts.
+ * gated by a time-in of at least 6 hours on every Monday to Friday in the cutoff.
  */
 const express = require('express');
 const Admin = require('./models/Admin');
@@ -14,7 +14,11 @@ const {
   requireAdminTwoFactorSatisfied,
   requireAdminSessionValid,
 } = require('./authMiddleware');
-const { REQUIRED_SHIFT_HOURS, syncAdminAttendanceFromTimeLog } = require('./services/adminAttendanceSync');
+const {
+  REQUIRED_SHIFT_HOURS,
+  syncAdminAttendanceFromTimeLog,
+  evaluateWeekdayAttendance,
+} = require('./services/adminAttendanceSync');
 const {
   isReleased,
   isDisbursed,
@@ -119,20 +123,37 @@ async function ensureAttendanceFromTimeLogs(username, startYmd, endYmd) {
   }
 }
 
-function summarizeAttendanceRows(rows) {
+function summarizeAttendanceRows(rows, startYmd, endYmd) {
   let totalHours = 0;
   let totalShifts = 0;
   let completedShifts = 0;
   for (const r of rows) {
     totalShifts += 1;
     totalHours += Number(r.totalHours) || 0;
-    if (r.metEightHours || r.status === 'completed') completedShifts += 1;
+    if ((Number(r.totalHours) || 0) >= REQUIRED_SHIFT_HOURS && r.status !== 'clocked_in') completedShifts += 1;
   }
+  const weekdays = evaluateWeekdayAttendance(rows, startYmd, endYmd);
   return {
     totalHours: Math.round(totalHours * 100) / 100,
     totalShifts,
     completedShifts,
-    eligible: completedShifts > 0,
+    requiredDays: weekdays.requiredDays,
+    metDays: weekdays.metDays,
+    missedDays: weekdays.missedDays,
+    pendingDays: weekdays.pendingDays,
+    onTrack: weekdays.onTrack,
+    weekdayDays: weekdays.days,
+    eligible: weekdays.eligible,
+  };
+}
+
+function weekdayFields(stats) {
+  return {
+    requiredDays: stats.requiredDays,
+    metDays: stats.metDays,
+    missedDays: stats.missedDays,
+    pendingDays: stats.pendingDays,
+    onTrack: stats.onTrack,
   };
 }
 
@@ -163,7 +184,7 @@ router.get('/summary', async (req, res) => {
       .sort({ date: -1 })
       .lean();
 
-    const stats = summarizeAttendanceRows(attendance);
+    const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
     const estimatedPayout = stats.eligible ? commissionPool : 0;
 
     const admin = await Admin.findOne({ username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') })
@@ -193,6 +214,8 @@ router.get('/summary', async (req, res) => {
       totalEligibleHours: stats.totalHours,
       totalShifts: stats.totalShifts,
       completedShifts: stats.completedShifts,
+      ...weekdayFields(stats),
+      weekdayDays: stats.weekdayDays,
       eligible: stats.eligible,
       estimatedPayout,
       payoutStatus: existingPayout ? existingPayout.status : 'none',
@@ -268,9 +291,9 @@ router.get('/attendance', async (req, res) => {
         metEightHours: r.metEightHours,
         statusLabel:
           r.status === 'completed'
-            ? '8h met'
+            ? REQUIRED_SHIFT_HOURS + 'h met'
             : r.status === 'short_shift'
-              ? 'Under 8h'
+              ? 'Under ' + REQUIRED_SHIFT_HOURS + 'h'
               : r.status === 'clocked_in'
                 ? 'In progress'
                 : 'Incomplete',
@@ -303,7 +326,7 @@ router.get('/payslip', async (req, res) => {
     })
       .sort({ date: 1 })
       .lean();
-    const stats = summarizeAttendanceRows(attendance);
+    const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
     const netPayout = stats.eligible ? commissionPool : 0;
 
     const admin = await Admin.findOne({ username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') })
@@ -329,6 +352,7 @@ router.get('/payslip', async (req, res) => {
           completedShifts: stats.completedShifts,
           totalHours: stats.totalHours,
           requiredHoursPerShift: REQUIRED_SHIFT_HOURS,
+          ...weekdayFields(stats),
           eligible: stats.eligible,
         },
         sales: {
@@ -366,7 +390,7 @@ router.post('/record-payout', async (req, res) => {
       adminUsername: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
       date: { $gte: startYmd, $lte: endYmd },
     }).lean();
-    const stats = summarizeAttendanceRows(attendance);
+    const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
     const totalAmount = stats.eligible ? commissionPool : 0;
 
     const admin = await Admin.findOne({ username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') })
@@ -438,7 +462,7 @@ router.get('/payroll', async (req, res) => {
         adminUsername: new RegExp('^' + String(a.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
         date: { $gte: startYmd, $lte: endYmd },
       }).lean();
-      const stats = summarizeAttendanceRows(attendance);
+      const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
       const amount = stats.eligible ? commissionPool : 0;
       const prev = byUser[String(a.username).toLowerCase()];
       let paymentStatus = 'Ineligible';
@@ -463,6 +487,7 @@ router.get('/payroll', async (req, res) => {
         totalHours: stats.totalHours,
         totalShifts: stats.totalShifts,
         completedShifts: stats.completedShifts,
+        ...weekdayFields(stats),
         eligible: stats.eligible,
         grossSales,
         commissionRate: COMMISSION_RATE,
@@ -538,7 +563,7 @@ router.post('/dispense', async (req, res) => {
         adminUsername: new RegExp('^' + String(a.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
         date: { $gte: startYmd, $lte: endYmd },
       }).lean();
-      const stats = summarizeAttendanceRows(attendance);
+      const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
       const amount = stats.eligible ? commissionPool : 0;
 
       const existing = await AdminPayout.findOne({

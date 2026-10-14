@@ -138,11 +138,11 @@
                         <p class="af-muted" id="af-period-label">—</p>
                         <p style="margin:10px 0 0;font-size:0.95rem;" id="af-elig-text">—</p>
                         <p class="af-note" id="af-admin-meta"></p>
-                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Completed 8-hour shifts in this period unlock the 1% fee.</p>
+                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 1% fee.</p>
                     </div>
                     <div class="af-card">
                         <h2>How payout works</h2>
-                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff after at least one completed 8-hour shift. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
+                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
                         <p class="af-note">Need MariBank? <a href="https://maribank.ph/c/earnfreemoney?referralCode=KB740303" target="_blank" rel="noopener noreferrer">Open MariBank</a>.</p>
                     </div>
                 </div>
@@ -298,9 +298,10 @@
     }
 
     function statusBadge(row) {
-        if (row.metEightHours || row.status === 'completed') return '<span class="badge-ok">8h met</span>';
+        var need = (lastSummary && lastSummary.requiredShiftHours) || 6;
         if (row.status === 'clocked_in') return '<span class="badge-info">In progress</span>';
-        if (row.status === 'short_shift') return '<span class="badge-warn">Under 8h</span>';
+        if ((Number(row.totalHours) || 0) >= need) return '<span class="badge-ok">' + need + 'h met</span>';
+        if (row.status === 'short_shift' || row.status === 'completed') return '<span class="badge-warn">Under ' + need + 'h</span>';
         return '<span class="badge-warn">Incomplete</span>';
     }
 
@@ -345,9 +346,23 @@
                 wBtn.removeAttribute('data-payout-id');
             }
         }
-        document.getElementById('af-elig-text').innerHTML = d.eligible
-            ? '<strong style="color:#15803d">Eligible</strong> — ' + (d.completedShifts || 0) + ' completed 8h shift(s) this period.'
-            : '<strong style="color:#b45309">Not yet eligible</strong> — complete at least one full 8-hour shift this period to unlock the 1% fee.';
+        var need = d.requiredShiftHours || 6;
+        var req = d.requiredDays || 0;
+        var met = d.metDays || 0;
+        var missed = (d.weekdayDays || []).filter(function (x) { return x.status === 'missing' || x.status === 'short'; });
+        var eligHtml;
+        if (d.eligible) {
+            eligHtml = '<strong style="color:#15803d">Eligible</strong> — you timed in all ' + req +
+                ' weekdays with at least ' + need + ' hours each.';
+        } else if (missed.length) {
+            eligHtml = '<strong style="color:#b91c1c">Not eligible this period</strong> — ' + missed.length +
+                ' weekday(s) without a time-in of at least ' + need + ' hours: ' +
+                missed.map(function (x) { return esc(x.weekday + ' ' + x.date + (x.status === 'short' ? ' (' + x.hours + 'h)' : ' (no time-in)')); }).join(', ') + '.';
+        } else {
+            eligHtml = '<strong style="color:#b45309">On track</strong> — ' + met + ' of ' + req +
+                ' weekdays done. Keep timing in every Monday to Friday and work at least ' + need + ' hours each day.';
+        }
+        document.getElementById('af-elig-text').innerHTML = eligHtml;
         if (d.admin) {
             document.getElementById('af-admin-meta').textContent =
                 (d.admin.name || '') + ' · ' + (d.admin.roleLabel || '') + (d.admin.email ? ' · ' + d.admin.email : '');
@@ -379,7 +394,7 @@
         var sh = ps.shiftSummary || {};
         document.getElementById('af-payslip-shifts').innerHTML =
             '<div class="payslip-row"><span>Total shifts</span><span>' + esc(sh.totalShifts) + '</span></div>' +
-            '<div class="payslip-row"><span>Completed 8h shifts</span><span>' + esc(sh.completedShifts) + '</span></div>' +
+            '<div class="payslip-row"><span>Weekdays with ' + esc(sh.requiredHoursPerShift || 6) + 'h or more</span><span>' + esc(sh.metDays || 0) + ' of ' + esc(sh.requiredDays || 0) + '</span></div>' +
             '<div class="payslip-row"><span>Total hours worked</span><span>' + esc(sh.totalHours) + '</span></div>' +
             '<div class="payslip-row"><span>Eligibility</span><span>' + (sh.eligible ? 'Eligible' : 'Not eligible') + '</span></div>';
         var s = ps.sales || {};
@@ -392,7 +407,7 @@
             '<span>Total net payout</span><span>' + peso(ps.netPayout) + '</span>';
         document.getElementById('af-payslip-foot').textContent =
             'Generated ' + new Date(ps.generatedAt || Date.now()).toLocaleString() +
-            ' · Payout requires at least one completed 8-hour shift in the period.';
+            ' · Payout requires a time-in of at least ' + (sh.requiredHoursPerShift || 6) + ' hours every Monday to Friday in the period.';
     }
 
     async function openPayslip() {

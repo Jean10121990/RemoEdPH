@@ -60,13 +60,15 @@ adminSosRouter.post('/incidents/:id/action', verifyAdminApiAuth, requirePermissi
       req.params.id,
       req.body && req.body.action,
       req.user.adminId || req.user.username,
-      req.body || {}
+      req.body || {},
+      { messengerId: 'admin:' + String(req.user.username || 'admin').trim().toLowerCase() }
     );
     res.json({
       success: true,
       incident: sos.publicIncident(result.incident, { staff: true }),
       observeUrl: result.observeUrl || '',
       creditRestored: !!result.creditRestored,
+      messagedTeacher: !!result.messagedTeacher,
     });
   } catch (e) {
     res.status(e.statusCode || 500).json({

@@ -187,7 +187,14 @@
         var reason = '';
         var nextTier = 0;
         if (act === 'note' || act === 'parent_contact' || act === 'pause' || act === 'terminate' || act === 'review' || (act === 'resolve' && btn.getAttribute('data-tier') === '3')) {
-          reason = window.prompt(act === 'parent_contact' ? 'Who did you contact, and what was said?' : 'Reason or note') || '';
+          reason = window.prompt(
+            act === 'parent_contact'
+              ? 'Who did you contact, and what was said?'
+              : act === 'note'
+                ? 'Note for the teacher. It is also sent to the teacher\u2019s Messages.'
+                : 'Reason or note'
+          ) || '';
+          if (act === 'note' && !reason.trim()) { btn.disabled = false; return; }
         }
         if (act === 'escalate') {
           nextTier = Number(btn.getAttribute('data-tier')) === 1 ? 2 : 3;
@@ -210,6 +217,8 @@
           alert(body.error || 'Action failed.');
         } else if (body.observeUrl) {
           window.open(body.observeUrl, '_blank', 'noopener');
+        } else if (act === 'note') {
+          alert(body.messagedTeacher ? 'Note saved and sent to the teacher\u2019s Messages.' : 'Note saved on the case. The copy to the teacher\u2019s Messages could not be sent.');
         }
         load();
       });

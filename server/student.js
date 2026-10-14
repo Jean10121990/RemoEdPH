@@ -2657,10 +2657,19 @@ router.post('/reschedule-class', verifyToken, requireStudent, async (req, res) =
       lesson: originalBooking.lesson,
       status: 'confirmed',
       originalBookingId: bookingId, // Reference to original booking
-      rescheduleReason: reason
+      rescheduleReason: reason,
+      studentLevel: originalBooking.studentLevel,
+      lessonId: originalBooking.lessonId,
+      isFreePlanBooking: originalBooking.isFreePlanBooking === true,
     });
     
     await newBooking.save();
+    if (newBooking.isFreePlanBooking) {
+      await Student.updateOne(
+        { _id: req.user.studentId, freeLessonActiveBookingId: originalBooking._id },
+        { $set: { freeLessonActiveBookingId: newBooking._id } }
+      );
+    }
     
     // Update the original booking status
     originalBooking.status = 'cancelled';

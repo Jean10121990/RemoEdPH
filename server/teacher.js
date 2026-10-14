@@ -668,10 +668,27 @@ router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
       .lean();
     const peerMap = new Map(peers.map((t) => [t.teacherId, t]));
 
+    const adminNames = new Map();
+    const adminUsernames = peerIds
+      .filter((id) => String(id || '').startsWith('admin:'))
+      .map((id) => String(id).slice(6));
+    if (adminUsernames.length) {
+      const Admin = require('./models/Admin');
+      const admins = await Admin.find({
+        username: { $in: adminUsernames.map((u) => new RegExp('^' + escapeRegexForTeacherLookup(u) + '$', 'i')) },
+      })
+        .select('username firstName lastName')
+        .lean();
+      admins.forEach((a) => {
+        const full = [a.firstName, a.lastName].filter(Boolean).join(' ').trim();
+        adminNames.set('admin:' + String(a.username).toLowerCase(), (full || a.username) + ' (Admin)');
+      });
+    }
+
     const chats = rows.map((c) => {
       const t = peerMap.get(c.peerId);
       const name =
-        publicTeacherLabel(t, c.peerId);
+        adminNames.get(String(c.peerId).toLowerCase()) || publicTeacherLabel(t, c.peerId);
       return {
         peerId: c.peerId,
         name,

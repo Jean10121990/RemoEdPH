@@ -240,7 +240,38 @@ async function incidentCounts() {
   return counts;
 }
 
-async function actOnIncident(incidentId, action, adminId, body) {
+/**
+ * Copy a QA note into the teacher's Messages as a direct message from that admin.
+ * Sender id matches /api/admin/messages/send (`admin:<username>`) so it joins the same thread.
+ */
+async function sendNoteToTeacherMessages(incident, messengerId, note) {
+  const recipientId = String((incident && incident.teacherId) || '').trim();
+  const senderId = String(messengerId || '').trim();
+  if (!recipientId || !senderId) return null;
+  const PeerMessage = require('../models/PeerMessage');
+  const label = CATEGORY_LABEL[incident.category] || incident.category || 'Classroom SOS';
+  const text =
+    'Classroom SOS ' + (incident.caseRef || '') +
+    ' (Tier ' + incident.tier + ', ' + label + ')' +
+    (incident.classroomId ? ' in class ' + incident.classroomId : '') +
+    '\nQA note: ' + note;
+  const saved = await PeerMessage.create({ senderId, recipientId, message: text });
+  const record = {
+    id: String(saved._id),
+    senderId,
+    recipientId,
+    message: saved.message,
+    attachment: null,
+    createdAt: saved.createdAt,
+  };
+  realtime.emitToRoom('teacher-msg:' + recipientId, 'peer-message:new', record);
+  if (senderId.startsWith('admin:')) {
+    realtime.emitToRoom('admin-msg:' + senderId.slice(6), 'peer-message:new', record);
+  }
+  return record;
+}
+
+async function actOnIncident(incidentId, action, adminId, body, opts) {
   const incident = await IncidentReport.findById(incidentId);
   if (!incident) throw httpError(404, 'Incident not found.', 'NOT_FOUND');
   const allowed = ['observe', 'pause', 'terminate', 'resolve', 'acknowledge', 'note', 'escalate', 'parent_contact', 'troubleshoot', 'review'];
@@ -268,7 +299,15 @@ async function actOnIncident(incidentId, action, adminId, body) {
     }
     pushAction(incident, { actor, action, reason, outcome: 'recorded' });
     await incident.save();
-    return { incident };
+    let messagedTeacher = false;
+    if (action === 'note') {
+      try {
+        messagedTeacher = !!(await sendNoteToTeacherMessages(incident, opts && opts.messengerId, reason));
+      } catch (e) {
+        console.warn('[sos] note to teacher messages failed:', e.message || e);
+      }
+    }
+    return { incident, messagedTeacher };
   }
   if (action === 'parent_contact') {
     if (reason.length < 8) throw httpError(400, 'Record who was contacted and what was said.', 'REASON_REQUIRED');
