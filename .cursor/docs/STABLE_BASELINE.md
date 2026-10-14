@@ -386,6 +386,16 @@ Product spec: [`SKILLS.md`](SKILLS.md) § Gamification. Lesson **credits** stay 
 - Award hook: first `LessonProgress` → `completed` in `upsertLessonProgressFromBooking` (+ direct `POST /api/lessons/progress/update`). Idempotent via `EcoDropLedger`.
 - **Layout (100% zoom):** keep portal `remoed-content` max-width `calc(100vw - sidebar)`. Never set `max-width: none` on garden content (overflows past the rail). Use `minmax(0, 1fr)`, `overflow-x: hidden`, and stack shop under the plot ≤1100px.
 
+## Play & Learn — picture games (ages 3–6)
+
+- Page: [`public/student-games-activities.html`](../public/student-games-activities.html) (sidebar id `games`, header `StudentPageHeader.render('games')`). Logic in [`public/js/student-play-learn.js`](../public/js/student-play-learn.js), words in [`public/js/student-play-words.js`](../public/js/student-play-words.js), styles in [`public/css/student-play-learn.css`](../public/css/student-play-learn.css) (scoped to `body.page-student-games-activities`).
+- Home lists **categories**. The first category is **Vocabulary and Listening** with four games: Pop the Bubbles, Mystery Box, Feed the Monster, Hide and Seek. Add a game as an entry in a category's `games` array; add a category as an entry in `CATEGORIES`. Hash routes: `#/`, `#/<category>`, `#/<category>/<game>`; Back from a game returns to its category.
+- Client only: no API, no Mongo writes, no scores saved. Play & Learn stays open on the free plan (no `feature-access.js` lock on this page).
+- Narration uses browser `speechSynthesis`; effects use Web Audio. Each game opens with a **Start** button so audio unlocks on a real tap. Mystery Box "My turn" uses SpeechRecognition when the browser has it; every round can be finished without the mic.
+- Pictures: transparent PNGs in [`public/images/play-learn/`](../public/images/play-learn/) (16 words plus `bubble`, `gift`, `monster`) and `room.jpg` for Hide and Seek. Game pictures are storybook 3D illustrations; Lucide is only for controls (back, hear again, star, mic). Word pictures have no faces so children can name them.
+- Phone: four bubbles max under 560px stage width; the Hide and Seek room is 780px wide inside its own horizontal swipe strip (`.remoed-main` stays the only vertical scroller). Feed the Monster places the tray beside the monster above 1024px.
+- The old level tabs and five quizzes are gone. `public/js/student-games-data.js` is no longer loaded.
+
 ## Admin Fee & Attendance
 
 - Page: `public/admin-fee.html` — bi-monthly 1% of subscription `creditHistory` purchases, eligibility, attendance history, printable payslip. **No Time In/Out UI on Admin Fee** (clock only from top header or Admin Dashboard via `/api/admin/time-tracking/*`). Login must **never** auto clock-in.
@@ -671,3 +681,4 @@ Teachers and admins time in through the existing `TimeLog` routes. An open sessi
 | Lesson notes | Level 1 Little Seeds, Level 3 Saplings, and Level 4 Young Stewards have Lesson Description and Teacher Notes for lessons 1–22. Level 3 lessons 7–12 were added with notes and no file. Titles and existing PowerPoint files stayed. Level 2 and Free Trial were not rewritten. |
 | Referral link | Official teacher and admin links open `/index.html?ref=CODE#assessment`. Signup writes a pending row with the student name and ₱0. The bonus is paid once, on the first plan purchase. Referral Rewards counts successful enrollees from paid purchases only. |
 | Calling cards | Downloads file has eight cards per page, two of each person, fronts then backs. Every QR opens `https://remoedph.com/index.html#assessment`. The name · front and name · back labels are gone. |
+| Play & Learn | The quiz page became a category list. Vocabulary and Listening holds Pop the Bubbles, Mystery Box, Feed the Monster, and Hide and Seek with spoken prompts and storybook pictures. Client only, open on the free plan. See § Play & Learn. |
