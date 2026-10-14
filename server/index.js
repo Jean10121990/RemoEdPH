@@ -157,6 +157,8 @@ app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
+    // Chat apps load the homepage picture from another site. same-origin hides it.
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 const http = require('http').createServer(app);
@@ -877,6 +879,21 @@ app.get('/favicon.ico', (req, res) => {
   res.set('Cache-Control', 'public, max-age=604800, immutable');
   res.sendFile(faviconPngPath);
 });
+
+// Homepage share cards: the picture URL must use the same host as the link (www or apex).
+function sendLandingHtml(req, res) {
+  const host = String(req.headers.host || 'remoedph.com').split(',')[0].trim();
+  const origin = 'https://' + host.replace(/:\d+$/, '');
+  const file = path.join(publicDir, 'index.html');
+  let html = fs.readFileSync(file, 'utf8');
+  html = html.replaceAll('https://remoedph.com', origin);
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.type('html');
+  res.send(html);
+}
+app.get(['/', '/index.html'], sendLandingHtml);
 
 // Static files after core /api mounts so API paths are never shadowed by public files
 app.use(
@@ -2091,11 +2108,6 @@ app.post('/api/attendance/mark', verifyToken, async (req, res) => {
 });
 
 
-
-// Serve the main HTML files
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
 
 app.get('/teachers', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/teachers.html'));

@@ -528,7 +528,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 - `GET /api/teacher/slots` resolves an email-shaped id with `resolveToCanonicalTeacherId` (stored `Teacher.teacherId`, current email, username in any case). Profile email and username edits do not rewrite `Teacher.teacherId`. A teacher Bearer must still match that canonical id.
 - Message / notification socket rooms (`teacher-msg:`, `student-msg:`, `admin-msg:`, `notif:*`) come from the verified JWT via `resolveSocketIdentity` in `server/index.js`; clients send `token` in the join payload.
 - `verifyToken` must not log Authorization headers or decoded tokens.
-- Helmet CSP stays off until a dedicated inline-script cleanup pass.
+- Helmet CSP stays off until a dedicated inline-script cleanup pass. `Cross-Origin-Resource-Policy` is `cross-origin` so chat apps can show the homepage share picture. `/` and `/index.html` rewrite that picture URL to the host in the shared link.
 
 ## Known product gates (not bugs)
 
