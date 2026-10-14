@@ -981,38 +981,6 @@
                         </select>
                     </div>
 
-                    <div id="add-lesson-section" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-                        <h3 style="margin: 0 0 1rem 0; color: #667eea; font-weight: 600;">Add New Lesson</h3>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="new-lesson-number">Lesson Number *</label>
-                            <input type="number" id="new-lesson-number" class="form-control" min="1" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="new-lesson-title">Lesson Title *</label>
-                            <input type="text" id="new-lesson-title" class="form-control" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="new-lesson-description">Description</label>
-                            <textarea id="new-lesson-description" class="form-control" rows="3"></textarea>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="new-lesson-duration">Duration (minutes)</label>
-                            <input type="number" id="new-lesson-duration" class="form-control" min="1" max="600" value="30">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="new-lesson-file">Lesson File *</label>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="file" id="new-lesson-file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
-                                <button type="button" onclick="document.getElementById('new-lesson-file').click()" class="btn-icon view" style="padding: 0.5rem 1rem; white-space: nowrap;">
-                                    📁 Browse
-                                </button>
-                            </div>
-                            <small style="color: #64748b; display: block; margin-top: 0.25rem;">Required. Max 50MB. Supported: PDF, DOC, PPT, HTML5 ZIP, Images, Videos</small>
-                            <div id="new-lesson-file-name" style="margin-top: 0.5rem; font-size: 0.9rem; color: #667eea; font-weight: 500; display: none;"></div>
-                        </div>
-                        <button class="upload-btn" onclick="createNewLesson()" id="create-lesson-btn">Create Lesson</button>
-                    </div>
-
                     <div id="lesson-info" class="lesson-info" style="display: none;">
                         <div class="lesson-info-header">
                             <h3 id="lesson-title"></h3>
@@ -1058,6 +1026,38 @@
                                 <button type="button" class="upload-btn" onclick="cancelEditMode()" style="flex: 1; margin: 0; background: #6b7280;" id="cancel-lesson-btn">Cancel</button>
                             </div>
                         </div>
+                    </div>
+
+                    <div id="add-lesson-section" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                        <h3 style="margin: 0 0 1rem 0; color: #667eea; font-weight: 600;">Add New Lesson</h3>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-lesson-number">Lesson Number *</label>
+                            <input type="number" id="new-lesson-number" class="form-control" min="1" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-lesson-title">Lesson Title *</label>
+                            <input type="text" id="new-lesson-title" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-lesson-description">Description</label>
+                            <textarea id="new-lesson-description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-lesson-duration">Duration (minutes)</label>
+                            <input type="number" id="new-lesson-duration" class="form-control" min="1" max="600" value="30">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-lesson-file">Lesson File *</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="file" id="new-lesson-file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
+                                <button type="button" onclick="document.getElementById('new-lesson-file').click()" class="btn-icon view" style="padding: 0.5rem 1rem; white-space: nowrap;">
+                                    📁 Browse
+                                </button>
+                            </div>
+                            <small style="color: #64748b; display: block; margin-top: 0.25rem;">Required. Max 50MB. Supported: PDF, DOC, PPT, HTML5 ZIP, Images, Videos</small>
+                            <div id="new-lesson-file-name" style="margin-top: 0.5rem; font-size: 0.9rem; color: #667eea; font-weight: 500; display: none;"></div>
+                        </div>
+                        <button class="upload-btn" onclick="createNewLesson()" id="create-lesson-btn">Create Lesson</button>
                     </div>
 
                     <div class="upload-section" id="upload-section" style="display: none;">
