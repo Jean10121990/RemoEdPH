@@ -1292,7 +1292,7 @@
 <body class="student-portal page-student-book">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=kids-header-2"></script>
+        <script src="js/student-sidebar.js?v=parent-pin-reset-1"></script>
         <script src="js/student-page-header.js?v=kids-mode-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'book');
@@ -2132,10 +2132,23 @@
             }
         }
         
+        var studentPlanStatusPromise = null;
+        function ensureStudentPlanStatus() {
+            if (!studentPlanStatusPromise) {
+                studentPlanStatusPromise = Promise.resolve()
+                    .then(() => refreshTrialBookingFlag())
+                    .catch((e) => console.warn('plan status', e));
+            }
+            return studentPlanStatusPromise;
+        }
+
         async function loadAvailableSlots() {
             console.log('🔍 Student booking - loadAvailableSlots() called');
             
             try {
+                await ensureStudentPlanStatus();
+                // Free plan books Free Trial teachers only (server: FREE_PLAN_TRIAL_TEACHER_ONLY).
+                const freeTrialTeachersOnly = studentFreePlanActive === true;
                 const weekStart = getWeekStartDate(currentWeek);
                 const weekString = getLocalDateString(weekStart); // Use consistent date formatting
                 
@@ -2146,7 +2159,7 @@
                 let scopedTeacherParam = '';
                 try {
                     const pt = sessionStorage.getItem('prefillPreferredTeacherId');
-                    if (pt && String(pt).trim()) {
+                    if (!freeTrialTeachersOnly && pt && String(pt).trim()) {
                         scopedTeacherParam = `&teacherId=${encodeURIComponent(String(pt).trim())}`;
                     }
                 } catch (e) {
@@ -2219,6 +2232,7 @@
                     console.log('🔍 Student booking - Processing', data.slots.length, 'slots from API');
                     data.slots.forEach(slot => {
                         if (slot.available !== true) return;
+                        if (freeTrialTeachersOnly && slot.freeTrialTeacher !== true) return;
                         let utc = slot.dateTimeUtc || null;
                         if (!utc && slot.date && slot.time) {
                             try {
@@ -3006,7 +3020,8 @@
                         const data = await res.json();
                         const idSet = new Set(ids);
                         teachers = (data.teachers || []).filter((x) =>
-                            idSet.has(normalizeId(x.teacherEmail || x.teacherId))
+                            idSet.has(normalizeId(x.teacherEmail || x.teacherId)) &&
+                            (!studentFreePlanActive || x.freeTrialTeacher === true)
                         );
                     }
                 } catch (e) {
@@ -4318,7 +4333,7 @@
                             ? 'You booked Lesson ' + bookedFree + ' of 3 free lessons. After that class is finished, Lesson ' + nextFree + ' opens. The other free lessons stay free.'
                             : 'You booked Lesson 3 of 3 free lessons. After that class is finished, subscribe to book the next levels.';
                     } else if (studentFreePlanActive) {
-                        hintEl.textContent = 'Free plan: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. The next free lesson opens after that class is finished.';
+                        hintEl.textContent = 'Free plan: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. The next free lesson opens after that class is finished. Free plan classes are with our Free Trial teachers.';
                     } else {
                         hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
                     }

@@ -223,42 +223,51 @@
         wrap.id = 'parent-pin-modal';
         wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
         var card = document.createElement('form');
-        card.style.cssText = 'background:#fff;border-radius:16px;max-width:420px;width:100%;box-sizing:border-box;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden;';
+        card.style.cssText = 'background:#fff;border-radius:16px;max-width:420px;width:100%;box-sizing:border-box;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);max-height:calc(100vh - 32px);overflow-x:hidden;overflow-y:auto;';
         var title = document.createElement('h2');
         title.style.cssText = 'margin:0 0 8px;font-size:1.35rem;';
-        title.textContent = kind === 'setup' ? 'Set a parent PIN' : 'Parents mode';
+        title.textContent = kind === 'setup' ? 'Set a parent PIN' : kind === 'reset' ? 'Set a new parent PIN' : 'Parents mode';
         var copy = document.createElement('p');
         copy.style.cssText = 'margin:0 0 12px;line-height:1.4;';
         copy.textContent = kind === 'setup'
             ? 'Choose a 4-digit PIN. Your child needs this PIN before Parents mode can open. Kids mode does not need a PIN.'
-            : 'Enter the parent PIN to open Parents mode.';
+            : kind === 'reset'
+                ? 'Enter the password you use to log in to this account, then choose a new 4-digit PIN.'
+                : 'Enter the parent PIN to open Parents mode.';
         card.appendChild(title);
         card.appendChild(copy);
-        function field(name, label) {
+        function field(name, label, isPassword) {
             var lab = document.createElement('label');
             lab.textContent = label;
             lab.style.cssText = 'display:block;font-weight:700;margin:8px 0 4px;';
             var input = document.createElement('input');
             input.name = name;
             input.type = 'password';
-            input.inputMode = 'numeric';
-            input.pattern = '[0-9]*';
-            input.maxLength = 4;
-            input.autocomplete = 'off';
+            if (isPassword) {
+                input.autocomplete = 'current-password';
+            } else {
+                input.inputMode = 'numeric';
+                input.pattern = '[0-9]*';
+                input.maxLength = 4;
+                input.autocomplete = 'off';
+            }
             input.required = true;
-            input.style.cssText = 'box-sizing:border-box;display:block;width:100%;max-width:100%;font-size:1.4rem;letter-spacing:.2em;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;';
+            input.style.cssText = isPassword
+                ? 'box-sizing:border-box;display:block;width:100%;max-width:100%;font-size:1rem;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;'
+                : 'box-sizing:border-box;display:block;width:100%;max-width:100%;font-size:1.4rem;letter-spacing:.2em;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;';
             card.appendChild(lab);
             card.appendChild(input);
         }
-        field('pin', '4-digit PIN');
-        if (kind === 'setup') field('confirm', 'Type the PIN again');
+        if (kind === 'reset') field('password', 'Account password', true);
+        field('pin', kind === 'reset' ? 'New 4-digit PIN' : '4-digit PIN');
+        if (kind === 'setup' || kind === 'reset') field('confirm', 'Type the PIN again');
         var msg = document.createElement('p');
         msg.style.cssText = 'min-height:1.2em;color:#991b1b;';
         var row = document.createElement('div');
         row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-width:100%;';
         var save = document.createElement('button');
         save.type = 'submit';
-        save.textContent = kind === 'setup' ? 'Save PIN' : 'Open Parents mode';
+        save.textContent = kind === 'verify' ? 'Open Parents mode' : 'Save PIN';
         save.style.cssText = 'box-sizing:border-box;flex:1 1 auto;min-width:0;max-width:100%;background:#1ca7e7;color:#fff;border:none;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer;';
         var cancel = document.createElement('button');
         cancel.type = 'button';
@@ -270,6 +279,14 @@
         row.appendChild(save);
         row.appendChild(cancel);
         card.appendChild(row);
+        if (kind === 'verify') {
+            var forgot = document.createElement('button');
+            forgot.type = 'button';
+            forgot.textContent = 'Forgot the PIN? Set a new one';
+            forgot.style.cssText = 'display:block;margin:10px 0 0;background:none;border:none;padding:4px 0;color:#0369a1;font-weight:700;text-decoration:underline;cursor:pointer;';
+            forgot.addEventListener('click', function () { openPinModal('reset'); });
+            card.appendChild(forgot);
+        }
         card.appendChild(msg);
         card.addEventListener('submit', function (ev) {
             ev.preventDefault();
@@ -279,17 +296,28 @@
                 msg.textContent = 'Use 4 numbers.';
                 return;
             }
+            if (kind !== 'verify' && card.confirm.value.trim() !== pin) {
+                msg.textContent = 'Use the same 4-digit PIN in both boxes.';
+                return;
+            }
             save.disabled = true;
-            var url = kind === 'setup' ? '/api/student/portal-mode/pin' : '/api/student/portal-mode/verify';
-            var body = kind === 'setup' ? { pin: pin, confirm: card.confirm.value.trim() } : { pin: pin };
+            var url = kind === 'setup'
+                ? '/api/student/portal-mode/pin'
+                : kind === 'reset' ? '/api/student/portal-mode/pin/reset' : '/api/student/portal-mode/verify';
+            var body = kind === 'verify' ? { pin: pin } : { pin: pin, confirm: card.confirm.value.trim() };
+            if (kind === 'reset') body.password = card.password.value;
             fetch(url, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             }).then(function (r) {
-                return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+                return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
             }).then(function (res) {
+                if (res.status === 409 && kind !== 'reset') {
+                    openPinModal(kind === 'verify' ? 'setup' : 'verify');
+                    return;
+                }
                 if (!res.ok || !res.j.success) throw new Error((res.j && res.j.message) || 'Could not check the PIN');
                 try {
                     sessionStorage.setItem(UNLOCK_KEY, '1');

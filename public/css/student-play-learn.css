@@ -663,9 +663,9 @@ body.page-student-games-activities .remoed-content {
   animation: pl-pulse 1s ease-in-out infinite;
 }
 
-/* ---------- Feed the Monster ---------- */
+/* ---------- Feed the Teddy Bear ---------- */
 
-.pl-stage[data-game='feed-the-monster'] {
+.pl-stage[data-game='feed-the-teddy-bear'] {
   overflow: visible;
 }
 

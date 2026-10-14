@@ -41,7 +41,7 @@
   var PIECES = {
     bubble: IMG + 'bubble.png',
     gift: IMG + 'gift.png',
-    monster: IMG + 'monster.png',
+    teddyHungry: IMG + 'teddy-hungry.png',
     room: IMG + 'room.jpg',
     remo: 'images/remo-green.png'
   };

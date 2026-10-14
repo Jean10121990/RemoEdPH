@@ -47,7 +47,7 @@ const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
 const { tutorCancellationDeductionPeso } = require('./utils/tutorCancellationDeduction');
 const { evaluateTeacherBadges } = require('./services/badgeRulesEngine');
-const { effectivePayoutFields, ratePer25FromTeacher } = require('./utils/teacherPayoutTier');
+const { effectivePayoutFields, ratePer25FromTeacher, isFreeTrialTeacher } = require('./utils/teacherPayoutTier');
 const {
   isProbableHexObjectIdForTeacher,
   escapeRegexForTeacherLookup,
@@ -1232,7 +1232,8 @@ router.get('/slots', async (req, res) => {
           ...slotObj,
           teacherId: bookingKey,
           teacherEmail: bookingKey,
-          teacherName: teacher ? teacher.username : 'Unknown Teacher'
+          teacherName: teacher ? teacher.username : 'Unknown Teacher',
+          freeTrialTeacher: isFreeTrialTeacher(teacher),
         };
         
         console.log('🔍 Student slots API - Slot data:', { dateTimeUtc: slotData.dateTimeUtc, teacherId: slotData.teacherId });
@@ -1695,7 +1696,7 @@ router.get('/available-teachers', async (req, res) => {
       const teachers = await Promise.all(
         candidates.map(async (tid) => {
           const t = await Teacher.findOne({ teacherId: tid }).select(
-            'teacherId username firstName middleName lastName nickname fullname profilePicture professionalCertifications documents.certifications language'
+            'teacherId username firstName middleName lastName nickname fullname profilePicture professionalCertifications documents.certifications language payoutTierBase hourlyRate'
           );
           const displayName = publicTeacherLabel(t, tid);
           const certNames = [];
@@ -1720,7 +1721,8 @@ router.get('/available-teachers', async (req, res) => {
             videoIntroduction: t?.videoIntroduction || null,
             certifications: certNames,
             rating: 4.9,
-            reviewCount: 0
+            reviewCount: 0,
+            freeTrialTeacher: isFreeTrialTeacher(t),
           };
         })
       );
@@ -1751,7 +1753,8 @@ router.get('/available-teachers', async (req, res) => {
         teacherEmail: bookingKey,
         name: t ? t.username : tid,
         photo: t?.profilePicture || null,
-        intro: t?.introduction || t?.intro || 'No introduction available'
+        intro: t?.introduction || t?.intro || 'No introduction available',
+        freeTrialTeacher: isFreeTrialTeacher(t),
       });
     }
 

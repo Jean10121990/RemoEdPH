@@ -244,6 +244,48 @@ router.post('/portal-mode/verify', verifyToken, requireStudent, async (req, res)
   }
 });
 
+/** Forgotten PIN: the parent confirms the account password, then nominates a new PIN. */
+router.post('/portal-mode/pin/reset', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const key = 'reset:' + parentPinClientKey(req);
+    const now = Date.now();
+    const row = parentPinAttempts.get(key);
+    if (row && row.lockedUntil > now) {
+      return res.status(429).json({ success: false, message: 'Too many tries. Wait a few minutes and try again.' });
+    }
+    const password = String((req.body && req.body.password) || '');
+    const pin = String((req.body && req.body.pin) || '').trim();
+    const confirm = String((req.body && req.body.confirm) || '').trim();
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Enter the account password.' });
+    }
+    if (!/^\d{4}$/.test(pin) || pin !== confirm) {
+      return res.status(400).json({ success: false, message: 'Use the same 4-digit PIN in both boxes.' });
+    }
+    const student = await Student.findById(req.user.studentId).select('password');
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+    const bcrypt = require('bcrypt');
+    const ok = student.password ? await bcrypt.compare(password, student.password).catch(() => false) : false;
+    if (!ok) {
+      const fails = (row && row.lockedUntil <= now ? 0 : row && row.fails) || 0;
+      const next = fails + 1;
+      parentPinAttempts.set(key, {
+        fails: next,
+        lockedUntil: next >= 5 ? now + 10 * 60 * 1000 : 0,
+      });
+      return res.status(403).json({ success: false, message: 'That password is not correct.' });
+    }
+    parentPinAttempts.delete(key);
+    parentPinAttempts.delete(parentPinClientKey(req));
+    const hash = await bcrypt.hash(pin, 10);
+    await Student.updateOne({ _id: student._id }, { $set: { parentPinHash: hash } });
+    res.json({ success: true, pinSet: true });
+  } catch (err) {
+    console.error('POST portal-mode/pin/reset:', err);
+    res.status(500).json({ success: false, message: 'Could not save the new parent PIN.' });
+  }
+});
+
 // Get student profile
 router.get('/profile', verifyToken, requireStudent, async (req, res) => {
   try {

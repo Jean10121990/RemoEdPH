@@ -727,7 +727,7 @@
 <body class="student-portal page-student-profile">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=kids-header-2"></script>
+        <script src="js/student-sidebar.js?v=parent-pin-reset-1"></script>
         <script src="js/student-page-header.js?v=kids-mode-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'profile');
@@ -968,6 +968,7 @@
                     <div id="settings" class="tab-content">
                         <div class="info-section">
                             <h4 class="info-section-title">Account Settings</h4>
+                            <p class="profile-password-hint">Choose Edit Profile to change your email, username, or password.</p>
                             <div class="form-grid">
                                 <div class="form-group full-width">
                                     <label class="form-label">Current Email</label>
@@ -975,7 +976,7 @@
                                 </div>
                                 <div class="form-group full-width">
                                     <label class="form-label">New Email</label>
-                                    <input type="email" class="form-input" id="new-email" placeholder="Enter new email address">
+                                    <input type="email" class="form-input settings-edit-field" id="new-email" placeholder="Enter new email address" disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Current Username</label>
@@ -983,7 +984,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">New Username</label>
-                                    <input type="text" class="form-input" id="new-username" placeholder="Enter new username">
+                                    <input type="text" class="form-input settings-edit-field" id="new-username" placeholder="Enter new username" disabled>
                                 </div>
                             </div>
                         </div>
@@ -994,23 +995,23 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label class="form-label" for="current-password">Current Password</label>
-                                    <input type="password" class="form-input" id="current-password" placeholder="Enter current password" autocomplete="current-password">
+                                    <input type="password" class="form-input settings-edit-field" id="current-password" placeholder="Enter current password" autocomplete="current-password" disabled>
                                     <a class="forgot-current-link" href="forgot-password.html">Forgot current password?</a>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="new-password">New Password</label>
-                                    <input type="password" class="form-input" id="new-password" placeholder="Enter new password" autocomplete="new-password">
+                                    <input type="password" class="form-input settings-edit-field" id="new-password" placeholder="Enter new password" autocomplete="new-password" disabled>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="confirm-password">Confirm New Password</label>
-                                    <input type="password" class="form-input" id="confirm-password" placeholder="Confirm new password" autocomplete="new-password">
+                                    <input type="password" class="form-input settings-edit-field" id="confirm-password" placeholder="Confirm new password" autocomplete="new-password" disabled>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="profile-settings-actions">
-                            <button class="save-btn" type="button" onclick="updateSettings()">Update Settings</button>
-                            <button class="cancel-btn" type="button" onclick="resetSettingsForm()">Reset Form</button>
+                            <button class="save-btn" type="button" id="update-settings-btn" onclick="updateSettings()" disabled>Update Settings</button>
+                            <button class="cancel-btn" type="button" id="settings-edit-btn" onclick="toggleSettingsEditing()">Edit Profile</button>
                         </div>
                     </div>
                 </div>
@@ -2080,7 +2081,7 @@
                     await loadProfile();
                     
                     // Disable editing after successful save
-                    const inputs = document.querySelectorAll('.form-input, .form-textarea');
+                    const inputs = document.querySelectorAll('#personal .form-input, #personal .form-textarea');
                     inputs.forEach(input => input.disabled = true);
                     
                     const fileInputs = document.querySelectorAll('input[type="file"]:not(#avatar-upload-input)');
@@ -2204,8 +2205,8 @@
         function enableEditing() {
             console.log('Enabling editing...');
             
-            // Enable all form inputs except computed age
-            const inputs = document.querySelectorAll('.form-input, .form-textarea');
+            // Enable personal-info fields. Settings stays locked until its own Edit Profile button.
+            const inputs = document.querySelectorAll('#personal .form-input, #personal .form-textarea');
             inputs.forEach(input => {
                 if (input.id === 'age' || input.classList.contains('form-input--computed')) {
                     input.disabled = true;
@@ -2246,8 +2247,8 @@
         }
         
         function cancelEditing() {
-            // Disable all form inputs
-            const inputs = document.querySelectorAll('.form-input, .form-textarea');
+            // Disable personal-info fields. Leave Settings on its own lock.
+            const inputs = document.querySelectorAll('#personal .form-input, #personal .form-textarea');
             inputs.forEach(input => input.disabled = true);
             
             // Disable document uploads (avatar stays available anytime)
@@ -2335,8 +2336,8 @@
                         updateProfileDisplay();
                     }
                     
-                    // Clear form
-                    resetSettingsForm();
+                    // Clear form and lock the fields again
+                    setSettingsEditing(false);
                     
                     // Reload profile data
                     await loadProfile();
@@ -2350,15 +2351,40 @@
             }
         }
         
+        function settingsEditFields() {
+            return document.querySelectorAll('#settings .settings-edit-field');
+        }
+
+        function setSettingsEditing(on) {
+            settingsEditFields().forEach(function (el) {
+                el.disabled = !on;
+            });
+            var updateBtn = document.getElementById('update-settings-btn');
+            if (updateBtn) updateBtn.disabled = !on;
+            var editBtn = document.getElementById('settings-edit-btn');
+            if (editBtn) editBtn.textContent = on ? 'Cancel' : 'Edit Profile';
+            if (!on) {
+                document.getElementById('new-email').value = '';
+                document.getElementById('new-username').value = '';
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+                loadSettingsData();
+            }
+        }
+
+        function toggleSettingsEditing() {
+            var editBtn = document.getElementById('settings-edit-btn');
+            var turnOn = !editBtn || editBtn.textContent !== 'Cancel';
+            setSettingsEditing(turnOn);
+            if (turnOn) {
+                var first = document.getElementById('new-email');
+                if (first) first.focus();
+            }
+        }
+
         function resetSettingsForm() {
-            document.getElementById('new-email').value = '';
-            document.getElementById('new-username').value = '';
-            document.getElementById('current-password').value = '';
-            document.getElementById('new-password').value = '';
-            document.getElementById('confirm-password').value = '';
-            
-            // Reload current values
-            loadSettingsData();
+            setSettingsEditing(false);
         }
         
         function loadSettingsData() {

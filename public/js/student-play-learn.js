@@ -400,14 +400,14 @@
         '<div class="pl-feed">' +
           '<div class="pl-monster">' +
             '<div class="pl-monster-says"></div>' +
-            '<img class="pl-monster-pic" src="' + esc(W.pieces.monster) + '" alt="Friendly monster" draggable="false">' +
+            '<img class="pl-monster-pic" src="' + esc(W.pieces.teddyHungry) + '" alt="Hungry teddy bear" draggable="false">' +
           '</div>' +
           '<div class="pl-tray">';
       tray.forEach(function (w) {
         html += '<button type="button" class="pl-food" data-id="' + esc(w.id) + '" aria-label="' + esc(w.word) + '">' +
           '<img src="' + esc(w.img) + '" alt="" draggable="false"></button>';
       });
-      html += '</div><p class="pl-hint">Drag the food to the monster\u2019s mouth, or tap it.</p></div>';
+      html += '</div><p class="pl-hint">Drag the food to the teddy bear\u2019s mouth, or tap it.</p></div>';
       ctx.stage.innerHTML = html;
       busy = false;
       sayPrompt();
@@ -416,7 +416,7 @@
     function mouthPoint() {
       var pic = ctx.stage.querySelector('.pl-monster-pic');
       var r = pic.getBoundingClientRect();
-      return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.5, rect: r };
+      return { x: r.left + r.width * 0.51, y: r.top + r.height * 0.43, rect: r };
     }
 
     /** `rest` is the food's box before any drag transform. */
@@ -599,7 +599,7 @@
       games: [
         { id: 'pop-the-bubbles', title: 'Pop the Bubbles', line: 'Pop the bubble with the word you hear.', cover: 'duck', tone: 'sky', rounds: 6, start: startBubbles },
         { id: 'mystery-box', title: 'Mystery Box', line: 'Open the gift and say the word.', coverImg: W.pieces.gift, tone: 'pink', rounds: 6, start: startMystery },
-        { id: 'feed-the-monster', title: 'Feed the Monster', line: 'Give the hungry monster the right food.', coverImg: W.pieces.monster, tone: 'purple', rounds: 5, start: startMonster },
+        { id: 'feed-the-teddy-bear', title: 'Feed the Teddy Bear', line: 'Give the hungry teddy bear the right food.', coverImg: W.pieces.teddyHungry, tone: 'purple', rounds: 5, start: startMonster },
         { id: 'hide-and-seek', title: 'Hide and Seek', line: 'Find the toy or pet hiding in the room.', cover: 'cat', tone: 'green', rounds: 5, start: startHide }
       ]
     }

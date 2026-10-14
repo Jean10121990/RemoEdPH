@@ -95,6 +95,12 @@ function effectivePayoutFields(doc) {
   return o;
 }
 
+/** Teacher on the Free Trial tier (stored code, or a legacy ₱45 hourlyRate). Free plan students book only these. */
+function isFreeTrialTeacher(teacher) {
+  if (!teacher) return false;
+  return isFreeTrialTier(effectivePayoutFields(teacher).payoutTierBase);
+}
+
 /** Class rate actually paid. Tier (including Free Trial) wins over a stale hourlyRate. */
 function ratePer25FromTeacher(teacher, fallback) {
   if (teacher && TIER_VALUES.includes(Number(teacher.payoutTierBase))) {
@@ -116,6 +122,7 @@ module.exports = {
   FREE_TRIAL_TIER_BASE,
   FREE_TRIAL_RATE_PER_25MIN,
   isFreeTrialTier,
+  isFreeTrialTeacher,
   computeRatePer25Min,
   derivePayoutFromHourlyRate25,
   effectivePayoutFields,
