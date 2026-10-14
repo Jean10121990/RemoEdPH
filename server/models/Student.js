@@ -69,7 +69,7 @@ const studentSchema = new mongoose.Schema({
   subscriptionStatus: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid'], default: 'unpaid' },
   /** Historical: bank/gcash/paypal from retired manual form; new purchases use paymongo only. */
-  paymentMethod: { type: String, enum: ['bank', 'gcash', 'paypal', 'paymongo', null], default: null },
+  paymentMethod: { type: String, enum: ['bank', 'gcash', 'paypal', 'paymongo', 'instapay_qr', null], default: null },
   paymentReference: { type: String, default: '' },
   paymentDetails: {
     bankName: { type: String, default: '' },

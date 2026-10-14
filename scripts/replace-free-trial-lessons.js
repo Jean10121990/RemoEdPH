@@ -12,23 +12,7 @@ const Curriculum = require('../server/models/Curriculum');
 const Lesson = require('../server/models/Lesson');
 const Student = require('../server/models/Student');
 
-const NEW_LESSONS = [
-  {
-    lessonNumber: 1,
-    title: 'How to Navigate the Student Portal',
-    description: 'How to move around the student portal.',
-  },
-  {
-    lessonNumber: 2,
-    title: 'About RemoEd PH',
-    description: 'What RemoEd PH is.',
-  },
-  {
-    lessonNumber: 3,
-    title: 'Welcome Lesson',
-    description: 'Welcome lesson for the free plan.',
-  },
-];
+const NEW_LESSONS = require('./data/free-trial-lesson-notes');
 
 async function main() {
   await connectDB();
@@ -68,6 +52,7 @@ async function main() {
       curriculumId: curriculum._id,
       title: item.title,
       description: item.description,
+      teacherNotes: item.teacherNotes,
       lessonNumber: item.lessonNumber,
       order: item.lessonNumber,
       estimatedDuration: 25,
