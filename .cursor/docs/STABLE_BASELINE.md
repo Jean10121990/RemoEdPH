@@ -382,7 +382,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 
 Product spec: [`SKILLS.md`](SKILLS.md) § Gamification. Lesson **credits** stay separate from Eco-Drops.
 
-- One centered monthly tree (`public/student-virtual-garden.html` + `public/js/student-virtual-garden.js` + `public/css/student-virtual-garden.css`, `?v=garden-v2-1`). No plot grid, no shop. Header Eco-Drop chip in `student-page-header.js` (`totalEcoDrops`, count-up + pop). Sidebar id `garden`.
+- One centered monthly tree (`public/student-virtual-garden.html` + `public/js/student-virtual-garden.js` + `public/css/student-virtual-garden.css`, `?v=garden-v2-2`). Scene size is `--vg-card-max` / `--vg-card-min-h` / `--vg-plant-scale` on `.vg-page`. No plot grid, no shop. Eco-Drop count is the header chip only (`student-page-header.js`); the sidebar Virtual Garden item has no number badge.
 - Domain: `server/garden/domain.js` (pure). Config: `garden.config.js` (timezone `Asia/Manila`, `GAME_REWARD_MODE = once-per-month`, stages, species). Games: `games.config.js`.
 - APIs (`server/garden/routes.js`, student Bearer, username from JWT only): `GET /api/garden/current`, `GET /api/garden/history`, `GET /api/garden/:monthKey`, `POST /api/garden/seen-stage`. Header: `GET /api/student/eco-drops`. Play: `POST /api/play-learn/games/:gameId/start|finish`. Backfill: `POST /api/student/lessons/complete` (does not complete a lesson).
 - Award: `ecoDropService.award` after a real pass/finish. Unique ledger `(studentId, sourceType, sourceId, monthKey)`. Lifetime `Student.totalEcoDropsEarned` is a cache; monthly progress is `countDocuments`.
@@ -584,7 +584,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 
 ## Curriculum levels — Pre-Level
 
-- Settings → **Test student plan** is a Free / Paid switch for username **jeanserolf** only (`Student.planModeOverride`, `GET`/`POST /api/admin/settings/test-student-plan`). Do not apply that field to any other student. Paid still spends that student’s real credits. Free books the next of 3 Pre-Level lessons, with no monthly lesson.
+- Settings → **Test student plan** is a Free / Paid switch per allowlisted test student (`Student.planModeOverride`, `GET`/`POST /api/admin/settings/test-student-plan`). Allowlist: **jeanserolf**, **plflores3302@gmail.com**, **jean10121990@gmail.com**. Do not apply that field to any other student. Paid still spends that student’s real credits. Free books the next of 3 Pre-Level lessons, with no monthly lesson.
 - `Pre-Level` (Free Trial Lessons) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). It stays out of `CURRICULUM_LEVELS`. QA Hub → Lesson Library lists it first. The catalog is exactly these 3 lessons, in order (`FREE_PLAN_LESSON_COUNT` in `server/services/freePlanAccess.js`). There is no monthly free lesson and no 22-lesson free trail.
 
 | # | Library title | File on the lesson |
@@ -680,7 +680,7 @@ Teachers and admins time in through the existing `TimeLog` routes. An open sessi
 | Kids and Parents | Kids home shows the next class, play links, level name, teacher stars, eco-drops, garden, and current lesson. Parent stats, profile, and My Level stay on Parents mode. The parent PIN field stays inside the card. |
 | QA issue review | On Issue Management, the card opens Review Issue or Update Review. Mark Resolved and Dismiss are on that review modal. Mark Resolved then opens the existing resolve modal. |
 | QA recording | Start only after the student is in the room, including a few minutes early. The recorder does not stop itself and does not close the tab. The teacher clicks Stop at the usual end (:25 on the hour, :55 for a :30 class), then Finish. A clip is about 25 minutes, or about 30 if the student came early, or shorter if late. The QA file is 480p (canvas clone, 8 fps); the student slide share stays full size. Server transcode also caps at 480p so a 25-minute clip stays small enough to download. Chunk uploads are not keepalive requests. An empty upload is marked failed after 30 minutes. Download uses the newest GridFS copy that has bytes. A second Finish on an already complete recording does not rebuild it. |
-| Test student plan | Settings has a Free plan / Paid plan switch for username jeanserolf only. Other students keep their real plan. |
+| Test student plan | Settings has a Free / Paid switch for jeanserolf, plflores3302@gmail.com, and jean10121990@gmail.com only. Other students keep their real plan. |
 | Attendance exceptions | A missed time-out is closed by the server and blocks the next Time In until HR approves a correction. The original system close is kept. Negligence is a separate HR decision and does not change pay by itself. Super-Admin is exempt from that block. |
 | Classroom SOS tiers | Same incident record. Tier 1 is technical and does not observe or end the class. Tier 2 and Tier 3 can. Escalation only goes up and keeps the first tier. Tier 3 stays pending review after resolve or end. There is no emergency phone number in the app. |
 

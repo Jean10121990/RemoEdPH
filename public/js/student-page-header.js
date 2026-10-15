@@ -125,7 +125,7 @@
             var e = document.createElement('link');
             e.id = 'student-eco-drops-css';
             e.rel = 'stylesheet';
-            e.href = 'css/student-eco-drops.css?v=garden-v2-1';
+            e.href = 'css/student-eco-drops.css?v=garden-v2-2';
             document.head.appendChild(e);
         }
     }

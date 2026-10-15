@@ -12,11 +12,56 @@ const { PRE_LEVEL, normalizeCurriculumDocLevel } = require('../config/curriculum
 
 const FREE_PLAN_LESSON_COUNT = 3;
 const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
-/** Admin Settings may force this username only. Other students ignore planModeOverride. */
-const TEST_PLAN_STUDENT_USERNAME = 'jeanserolf';
+/**
+ * Super-Admin Settings may force free/paid for these accounts only.
+ * Match username or email (case-insensitive). Everyone else ignores planModeOverride.
+ */
+const TEST_PLAN_STUDENTS = [
+  { key: 'jeanserolf', label: 'jeanserolf', username: 'jeanserolf' },
+  { key: 'plflores3302@gmail.com', label: 'plflores3302@gmail.com', email: 'plflores3302@gmail.com' },
+  { key: 'jean10121990@gmail.com', label: 'jean10121990@gmail.com', email: 'jean10121990@gmail.com' },
+];
+const TEST_PLAN_STUDENT_USERNAME = TEST_PLAN_STUDENTS[0].username;
+
+function normId(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function escapeRe(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function ciField(field, value) {
+  return { [field]: new RegExp('^' + escapeRe(value) + '$', 'i') };
+}
+
+function resolveTestPlanSpec(raw) {
+  const v = normId(raw);
+  if (!v) return null;
+  return (
+    TEST_PLAN_STUDENTS.find((s) => s.key === v || normId(s.username) === v || normId(s.email) === v) || null
+  );
+}
+
+function testPlanStudentQuery(spec) {
+  const or = [];
+  if (spec && spec.username) or.push(ciField('username', spec.username));
+  if (spec && spec.email) {
+    or.push(ciField('email', spec.email));
+    or.push(ciField('username', spec.email));
+  }
+  if (!or.length) return { _id: null };
+  return or.length === 1 ? or[0] : { $or: or };
+}
 
 function isTestPlanStudent(student) {
-  return String((student && student.username) || '').trim().toLowerCase() === TEST_PLAN_STUDENT_USERNAME;
+  const username = normId(student && student.username);
+  const email = normId(student && student.email);
+  return TEST_PLAN_STUDENTS.some((s) => {
+    const u = normId(s.username);
+    const e = normId(s.email);
+    return (u && username === u) || (e && (email === e || username === e));
+  });
 }
 
 function zoneOrManila(zone) {
@@ -200,7 +245,10 @@ async function freePlanProfile(student, zone) {
 module.exports = {
   FREE_PLAN_LESSON_COUNT,
   PRE_LEVEL,
+  TEST_PLAN_STUDENTS,
   TEST_PLAN_STUDENT_USERNAME,
+  resolveTestPlanSpec,
+  testPlanStudentQuery,
   isTestPlanStudent,
   isPaidSubscriber,
   currentPeriodKey,

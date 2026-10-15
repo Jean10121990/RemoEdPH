@@ -2869,7 +2869,7 @@ router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
   try {
     const { isPaidSubscriber } = require('./services/freePlanAccess');
     const student = await Student.findById(req.user.studentId).select(
-      'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
+      'username email planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
     );
     const paid = isPaidSubscriber(student);
     const list = await PortalVideo.find({ active: true }).sort({ createdAt: -1 }).lean();

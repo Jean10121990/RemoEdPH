@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Sprout">
-  <ellipse cx="120" cy="188" rx="78" ry="18" fill="#86efac"/>
-  <ellipse cx="120" cy="176" rx="64" ry="22" fill="#a16207"/>
-  <path d="M120 168c2-28 4-48 4-62" fill="none" stroke="#16a34a" stroke-width="6" stroke-linecap="round"/>
-  <path d="M124 118c-16-4-26-16-24-28 14 2 26 12 24 28z" fill="#4ade80"/>
-  <path d="M124 126c16-6 28-4 34 8-16 6-28 2-34-8z" fill="#22c55e"/>
+  <ellipse cx="120" cy="214" rx="96" ry="16" fill="#4ade80"/>
+  <ellipse cx="120" cy="202" rx="80" ry="24" fill="#a16207"/>
+  <path d="M120 190c4-46 8-88 6-124" fill="none" stroke="#16a34a" stroke-width="10" stroke-linecap="round"/>
+  <path d="M126 92c-36-8-58-36-52-64 34 6 58 28 52 64z" fill="#4ade80"/>
+  <path d="M128 110c36-12 62-6 72 20-34 14-62 4-72-20z" fill="#22c55e"/>
+  <path d="M122 70c18-22 40-28 52-18-20 22-38 24-52 18z" fill="#86efac"/>
 </svg>

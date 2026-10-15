@@ -621,9 +621,6 @@
             }
             var titleAttr = ' title="' + escapeLabel(label) + '"';
             var inner = item.icon + '<span class="menu-label">' + escapeLabel(label) + '</span>';
-            if (item.id === 'garden') {
-                inner += '<span class="menu-eco-badge" id="menu-eco-badge" style="display:none;">0</span>';
-            }
             if (item.id === 'book') {
                 return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
             }
@@ -733,7 +730,6 @@
 
     function loadEcoDropBadge(container) {
         try {
-            var badge = (container && container.querySelector('#menu-eco-badge')) || document.getElementById('menu-eco-badge');
             var tok =
                 (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
                 localStorage.getItem('remoed_student_token') ||
@@ -752,10 +748,6 @@
                 .then(function (data) {
                     if (!data) return;
                     var n = Number(data.totalEcoDrops) || 0;
-                    if (badge) {
-                        badge.textContent = n > 99 ? '99+' : String(n);
-                        badge.style.display = 'inline-flex';
-                    }
                     if (global.RemoEdEcoDropsBadge && RemoEdEcoDropsBadge.update) {
                         RemoEdEcoDropsBadge.update(n);
                     }

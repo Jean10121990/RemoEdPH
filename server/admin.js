@@ -2927,32 +2927,51 @@ router.post('/settings/payment-method', async (req, res) => {
   }
 });
 
-// Super-Admin Settings. Forces free or paid for username jeanserolf only.
+// Super-Admin Settings. Forces free or paid for the TEST_PLAN_STUDENTS allowlist only.
 router.get('/settings/test-student-plan', async (req, res) => {
   try {
-    const { TEST_PLAN_STUDENT_USERNAME, isPaidSubscriber } = require('./services/freePlanAccess');
-    const student = await Student.findOne({
-      username: { $regex: new RegExp('^' + TEST_PLAN_STUDENT_USERNAME + '$', 'i') },
-    })
-      .select('username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots')
-      .lean();
-    if (!student) {
-      return res.json({
-        success: true,
-        found: false,
-        username: TEST_PLAN_STUDENT_USERNAME,
-        mode: 'free',
+    const {
+      TEST_PLAN_STUDENTS,
+      TEST_PLAN_STUDENT_USERNAME,
+      testPlanStudentQuery,
+      isPaidSubscriber,
+    } = require('./services/freePlanAccess');
+    const students = [];
+    for (const spec of TEST_PLAN_STUDENTS) {
+      const doc = await Student.findOne(testPlanStudentQuery(spec))
+        .select('username email planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots')
+        .lean();
+      if (!doc) {
+        students.push({
+          key: spec.key,
+          label: spec.label,
+          found: false,
+          username: spec.username || '',
+          email: spec.email || '',
+          mode: 'free',
+          override: '',
+        });
+        continue;
+      }
+      const override = doc.planModeOverride === 'paid' || doc.planModeOverride === 'free' ? doc.planModeOverride : '';
+      students.push({
+        key: spec.key,
+        label: spec.label,
+        found: true,
+        username: doc.username || '',
+        email: doc.email || spec.email || '',
+        mode: isPaidSubscriber(doc) ? 'paid' : 'free',
+        override,
       });
     }
-    const override = student.planModeOverride === 'paid' || student.planModeOverride === 'free'
-      ? student.planModeOverride
-      : '';
+    const first = students[0] || { found: false, username: TEST_PLAN_STUDENT_USERNAME, mode: 'free' };
     return res.json({
       success: true,
-      found: true,
-      username: student.username,
-      mode: isPaidSubscriber(student) ? 'paid' : 'free',
-      override,
+      found: !!first.found,
+      username: first.username || TEST_PLAN_STUDENT_USERNAME,
+      mode: first.mode || 'free',
+      override: first.override || '',
+      students,
     });
   } catch (error) {
     console.error('Error loading test student plan:', error);
@@ -2962,18 +2981,20 @@ router.get('/settings/test-student-plan', async (req, res) => {
 
 router.post('/settings/test-student-plan', async (req, res) => {
   try {
-    const { TEST_PLAN_STUDENT_USERNAME } = require('./services/freePlanAccess');
+    const { resolveTestPlanSpec, testPlanStudentQuery, TEST_PLAN_STUDENT_USERNAME } = require('./services/freePlanAccess');
     const mode = String((req.body && req.body.mode) || '').trim().toLowerCase();
     if (mode !== 'free' && mode !== 'paid') {
       return res.status(400).json({ success: false, message: 'Choose Free plan or Paid plan.' });
     }
-    const student = await Student.findOne({
-      username: { $regex: new RegExp('^' + TEST_PLAN_STUDENT_USERNAME + '$', 'i') },
-    }).select('_id username');
+    const spec = resolveTestPlanSpec((req.body && req.body.student) || TEST_PLAN_STUDENT_USERNAME);
+    if (!spec) {
+      return res.status(400).json({ success: false, message: 'That student is not on the test-plan list.' });
+    }
+    const student = await Student.findOne(testPlanStudentQuery(spec)).select('_id username email');
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: 'Test student jeanserolf was not found.',
+        message: 'Test student ' + spec.label + ' was not found.',
       });
     }
     await Student.updateOne({ _id: student._id }, { $set: { planModeOverride: mode } });
@@ -2982,7 +3003,9 @@ router.post('/settings/test-student-plan', async (req, res) => {
     return res.json({
       success: true,
       found: true,
+      key: spec.key,
       username: student.username,
+      email: student.email || spec.email || '',
       mode,
     });
   } catch (error) {

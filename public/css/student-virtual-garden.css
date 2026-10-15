@@ -6,25 +6,33 @@ body.page-student-virtual-garden {
 body.page-student-virtual-garden .remoed-content {
   box-sizing: border-box !important;
   width: auto !important;
-  padding: 10px 14px 20px !important;
+  padding: 10px 16px 20px !important;
   overflow-x: hidden !important;
 }
 
 .page-student-virtual-garden .vg-page {
   --vg-ink: #0f172a;
   --vg-blue: #00aeef;
+  --vg-card-max: 1000px;
+  --vg-card-min-h: clamp(480px, 70vh, 760px);
+  --vg-plant-scale: 0.56;
+  --vg-arrow: 48px;
+  --vg-title: 1.15rem;
+  --vg-species: 2rem;
+  --vg-stage: 1.2rem;
+  --vg-copy: 1.05rem;
   width: 100%;
   max-width: 100%;
   margin: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .vg-banner {
   margin: 0;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: 14px;
   background: linear-gradient(120deg, #ecfdf5, #e0f2fe);
   border: 1px solid #a7f3d0;
@@ -39,28 +47,68 @@ body.page-student-virtual-garden .remoed-content {
   color: #9a3412;
 }
 
+/* The scene: fills most of the content column. */
 .vg-stage {
+  position: relative;
+  width: 100%;
+  max-width: var(--vg-card-max);
+  min-height: var(--vg-card-min-h);
+  margin: 0 auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  box-sizing: border-box;
   min-width: 0;
+  padding: 18px 64px 22px;
+  text-align: center;
+  background: linear-gradient(180deg, #e0f2fe 0%, #f0fdf4 58%, #86efac 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 28px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+}
+
+.vg-month {
+  margin: 0 0 6px;
+  font-size: var(--vg-title);
+  font-weight: 800;
+  color: var(--vg-ink);
+  flex: 0 0 auto;
+}
+
+.vg-month .vg-now {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #00aeef;
+  color: #fff;
+  font-size: 0.75rem;
+  vertical-align: middle;
 }
 
 .vg-arrow {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  width: var(--vg-arrow);
+  height: var(--vg-arrow);
+  min-width: 44px;
+  min-height: 44px;
   border: none;
   border-radius: 50%;
   background: #fff;
   color: #0f172a;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
+
+.vg-arrow--prev { left: 10px; }
+.vg-arrow--next { right: 10px; }
 
 .vg-arrow svg {
   width: 22px;
@@ -80,47 +128,35 @@ body.page-student-virtual-garden .remoed-content {
   display: none;
 }
 
-.vg-tree-card {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 520px;
-  text-align: center;
-  background: linear-gradient(180deg, #e0f2fe 0%, #f0fdf4 62%, #bbf7d0 100%);
-  border: 1px solid #bae6fd;
-  border-radius: 24px;
-  padding: 16px 16px 22px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-}
-
-.vg-month {
-  margin: 0 0 8px;
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--vg-ink);
-}
-
-.vg-month .vg-now {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #00aeef;
-  color: #fff;
-  font-size: 0.72rem;
-  vertical-align: middle;
-}
-
 .vg-canvas {
   position: relative;
-  width: min(100%, 360px);
-  aspect-ratio: 1;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  min-height: calc(var(--vg-card-min-h) * var(--vg-plant-scale));
   margin: 0 auto;
-  overflow: hidden;
+}
+
+.vg-ground {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 4%;
+  height: 14%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #a16207 0%, #854d0e 42%, #4d7c0f 78%, transparent 79%);
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .vg-plant {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1;
+  height: calc(var(--vg-card-min-h) * var(--vg-plant-scale));
+  width: auto;
+  max-width: min(72%, 560px);
   object-fit: contain;
   display: block;
 }
@@ -133,75 +169,85 @@ body.page-student-virtual-garden .remoed-content {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .vg-water-avatar {
   position: absolute;
-  left: 6%;
-  bottom: 18%;
-  width: 28%;
-  max-width: 96px;
-  filter: drop-shadow(0 6px 8px rgba(15, 23, 42, 0.18));
+  left: 10%;
+  bottom: 16%;
+  width: min(22%, 140px);
+  max-height: 38%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.2));
   animation: vg-walk 0.7s ease both;
 }
 
 .vg-can {
   position: absolute;
   left: 30%;
-  bottom: 34%;
-  width: 18%;
-  max-width: 64px;
+  bottom: 36%;
+  width: min(12%, 80px);
   transform-origin: 20% 80%;
   animation: vg-pour 0.9s 0.5s ease-in-out both;
 }
 
 .vg-drop {
   position: absolute;
-  left: 46%;
-  width: 10px;
-  height: 14px;
+  left: 44%;
+  bottom: 48%;
+  width: 12px;
+  height: 16px;
   border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
   background: #38bdf8;
   opacity: 0;
   animation: vg-drip 0.9s 0.7s ease-in both;
 }
 
-.vg-drop-2 { left: 50%; animation-delay: 0.85s; }
-.vg-drop-3 { left: 54%; animation-delay: 1s; }
+.vg-drop-2 { left: 48%; animation-delay: 0.85s; }
+.vg-drop-3 { left: 52%; animation-delay: 1s; }
 
 .vg-unlock {
   position: absolute;
   left: 50%;
-  top: 8%;
+  top: 6%;
   transform: translateX(-50%);
   margin: 0;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 999px;
   background: #065f46;
   color: #fff;
   font-weight: 800;
-  font-size: 0.86rem;
+  font-size: 1rem;
   white-space: nowrap;
+  z-index: 3;
+}
+
+.vg-meta {
+  flex: 0 0 auto;
+  width: min(100%, 560px);
+  margin: 8px auto 0;
 }
 
 .vg-species {
-  margin: 8px 0 0;
-  font-size: 1.35rem;
+  margin: 0;
+  font-size: var(--vg-species);
   font-weight: 800;
   color: #14532d;
+  line-height: 1.15;
 }
 
 .vg-stage-name {
-  margin: 2px 0 12px;
-  font-size: 1rem;
+  margin: 4px 0 12px;
+  font-size: var(--vg-stage);
   font-weight: 700;
   color: #334155;
 }
 
 .vg-progress {
-  height: 10px;
+  height: 12px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.1);
+  background: rgba(15, 23, 42, 0.12);
   overflow: hidden;
 }
 
@@ -215,8 +261,8 @@ body.page-student-virtual-garden .remoed-content {
 }
 
 .vg-next {
-  margin: 10px 0 0;
-  font-size: 0.92rem;
+  margin: 12px 0 0;
+  font-size: var(--vg-copy);
   font-weight: 600;
   color: #334155;
 }
@@ -236,7 +282,7 @@ body.page-student-virtual-garden .remoed-content {
 .vg-skip[hidden] { display: none; }
 
 @keyframes vg-walk {
-  from { transform: translateX(-24px); opacity: 0; }
+  from { transform: translateX(-28px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 
@@ -249,7 +295,7 @@ body.page-student-virtual-garden .remoed-content {
 @keyframes vg-drip {
   0% { transform: translateY(0); opacity: 0; }
   15% { opacity: 1; }
-  100% { transform: translateY(56px); opacity: 0; }
+  100% { transform: translateY(72px); opacity: 0; }
 }
 
 @keyframes vg-grow {
@@ -257,9 +303,36 @@ body.page-student-virtual-garden .remoed-content {
   to { transform: scale(1); opacity: 1; }
 }
 
+@media (max-width: 1024px) {
+  .page-student-virtual-garden .vg-page {
+    --vg-card-max: 100%;
+    --vg-card-min-h: clamp(420px, 64vh, 680px);
+    --vg-plant-scale: 0.52;
+  }
+}
+
 @media (max-width: 768px) {
-  .vg-arrow { width: 44px; height: 44px; }
-  .vg-tree-card { padding: 14px 10px 18px; }
+  .page-student-virtual-garden .vg-page {
+    --vg-card-max: 100%;
+    --vg-card-min-h: 60vh;
+    --vg-plant-scale: 0.5;
+    --vg-arrow: 44px;
+    --vg-species: 1.55rem;
+    --vg-stage: 1.05rem;
+    --vg-copy: 0.95rem;
+    --vg-title: 1rem;
+  }
+
+  .vg-stage {
+    padding: 14px 52px 16px;
+  }
+
+  .vg-arrow--prev { left: 6px; }
+  .vg-arrow--next { right: 6px; }
+
+  .vg-plant {
+    max-width: 86%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
