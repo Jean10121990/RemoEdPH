@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-3">
+    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v2-1">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
 </head>
@@ -20,65 +20,55 @@
         <div id="student-sidebar-root"></div>
         <link rel="stylesheet" href="css/feature-lock.css?v=free-plan-1">
         <script src="js/feature-access.js?v=free-plan-1"></script>
-        <script src="js/student-eco-drops.js?v=garden-1"></script>
+        <script src="js/student-eco-drops.js?v=garden-v2-1"></script>
         <script src="js/student-sidebar.js?v=parent-pin-reset-1"></script>
-        <script src="js/student-page-header.js?v=kids-mode-1"></script>
+        <script src="js/student-page-header.js?v=garden-v2-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'garden');
             StudentPageHeader.render('garden');
         </script>
         <div class="remoed-content">
             <div class="vg-page">
-                <div class="vg-banner">
-                    <p>Complete your next lesson to earn 1 Eco-Drop!</p>
-                    <a href="student-learning-journey.html">Open Learning Journey</a>
-                </div>
+                <p class="vg-banner" id="vg-banner">Finish a lesson, a lesson check, or a Play &amp; Learn game to earn 1 Eco-Drop. Your tree grows as you learn this month.</p>
 
-                <div class="vg-stats" aria-live="polite">
-                    <div class="vg-stat">
-                        <h3>Available Eco-Drops</h3>
-                        <div class="vg-val vg-val--drops" id="vg-available">—</div>
-                    </div>
-                    <div class="vg-stat">
-                        <h3>Total Eco-Drops Earned</h3>
-                        <div class="vg-val" id="vg-total-earned">—</div>
-                    </div>
-                    <div class="vg-stat">
-                        <h3>Plants &amp; Trees Grown</h3>
-                        <div class="vg-val" id="vg-plants-grown">—</div>
-                    </div>
-                </div>
+                <div class="vg-stage" id="vg-stage">
+                    <button type="button" class="vg-arrow" id="vg-prev" hidden aria-label="Previous month’s tree">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
 
-                <div class="vg-layout">
-                    <div class="vg-canvas-wrap">
-                        <h2 class="vg-canvas-title">Your garden plot</h2>
-                        <div class="vg-plots" id="vg-plots" aria-label="Garden plots"></div>
-                    </div>
-                    <aside class="vg-shop" aria-label="Garden shop">
-                        <h2>Garden Shop</h2>
-                        <p class="vg-shop-hint">Tap an empty plot, then buy seeds or a blooming tree. Tap a plant to water it.</p>
-                        <button type="button" class="vg-shop-btn" id="vg-buy-seed">
-                            <strong>Buy Seeds</strong>
-                            <span>Costs 5 Eco-Drops · plant a new seed</span>
-                        </button>
-                        <button type="button" class="vg-shop-btn" id="vg-water">
-                            <strong>Water Plant</strong>
-                            <span>Costs 5 Eco-Drops · grow one stage</span>
-                        </button>
-                        <button type="button" class="vg-shop-btn" id="vg-buy-tree">
-                            <strong>Buy Flowers &amp; Trees</strong>
-                            <span>Costs 22 Eco-Drops · fully grown!</span>
-                        </button>
-                        <div class="vg-milestones">
-                            <h3>Milestone unlocks</h3>
-                            <div id="vg-milestones-list"></div>
+                    <div class="vg-tree-card" id="vg-tree-card">
+                        <p class="vg-month" id="vg-month">Your tree</p>
+                        <div class="vg-canvas" id="vg-canvas" role="img" aria-label="Garden tree">
+                            <img class="vg-plant" id="vg-plant" src="/images/garden/stage-0-seed.svg" alt="">
+                            <div class="vg-water" id="vg-water" hidden>
+                                <img class="vg-water-avatar" id="vg-water-avatar" src="/images/remo-green.png" alt="">
+                                <svg class="vg-can" viewBox="0 0 64 64" aria-hidden="true">
+                                    <path d="M10 28h28l4 16H14z" fill="#38bdf8"/>
+                                    <path d="M38 32h12l4 6-10 4z" fill="#0284c7"/>
+                                    <rect x="18" y="18" width="10" height="12" rx="3" fill="#0ea5e9"/>
+                                </svg>
+                                <span class="vg-drop vg-drop-1" aria-hidden="true"></span>
+                                <span class="vg-drop vg-drop-2" aria-hidden="true"></span>
+                                <span class="vg-drop vg-drop-3" aria-hidden="true"></span>
+                            </div>
+                            <p class="vg-unlock" id="vg-unlock" hidden>Stage unlocked!</p>
                         </div>
-                        <p class="vg-msg" id="vg-msg" role="status"></p>
-                    </aside>
+                        <p class="vg-species" id="vg-species">Oak</p>
+                        <p class="vg-stage-name" id="vg-stage-name">Seed</p>
+                        <div class="vg-progress" role="progressbar" id="vg-progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Monthly tree growth">
+                            <span id="vg-progress-bar"></span>
+                        </div>
+                        <p class="vg-next" id="vg-next-line">Your first Eco-Drop starts a sprout.</p>
+                        <button type="button" class="vg-skip" id="vg-skip" hidden>Skip animation</button>
+                    </div>
+
+                    <button type="button" class="vg-arrow" id="vg-next" hidden aria-label="Next month’s tree">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-    <script src="js/student-virtual-garden.js?v=garden-1"></script>
+    <script src="js/student-virtual-garden.js?v=garden-v2-1"></script>
 </body>
 </html>

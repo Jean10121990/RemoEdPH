@@ -751,7 +751,7 @@
                 })
                 .then(function (data) {
                     if (!data) return;
-                    var n = Number(data.ecoDropsBalance) || 0;
+                    var n = Number(data.totalEcoDrops) || 0;
                     if (badge) {
                         badge.textContent = n > 99 ? '99+' : String(n);
                         badge.style.display = 'inline-flex';

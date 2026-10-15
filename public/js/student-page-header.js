@@ -68,6 +68,11 @@
             '</svg>'
     };
 
+    /** Lucide "droplet". */
+    var DROP_ICON =
+        '<svg class="eco-chip-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>';
+
     var ACTION = {
         person:
             '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
@@ -120,7 +125,7 @@
             var e = document.createElement('link');
             e.id = 'student-eco-drops-css';
             e.rel = 'stylesheet';
-            e.href = 'css/student-eco-drops.css?v=garden-1';
+            e.href = 'css/student-eco-drops.css?v=garden-v2-1';
             document.head.appendChild(e);
         }
     }
@@ -166,7 +171,7 @@
             '</span></h1>' +
             '</div>' +
             '<div class="nav-right">' +
-            '  <button type="button" id="student-eco-chip" title="Eco-Drops — Virtual Garden" onclick="window.location.href=\'student-virtual-garden.html\'">💧 <span id="student-eco-chip-count">0</span></button>' +
+            '  <button type="button" id="student-eco-chip" title="Eco-Drops — Virtual Garden" aria-label="Eco-Drops: 0. Open Virtual Garden" onclick="window.location.href=\'student-virtual-garden.html\'">' + DROP_ICON + '<span id="student-eco-chip-count">0</span></button>' +
             '  <div class="nav-icon" onclick="window.location.href=\'student-profile.html\'" title="My Profile">' +
             ACTION.person +
             '  </div>' +
@@ -248,17 +253,61 @@
         }
     }
 
+    function ecoLabel(n) {
+        return n > 999 ? '999+' : String(n);
+    }
+
+    function reducedMotion() {
+        return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    /** Count up from the shown value to n, then pop the chip. */
+    function animateEcoCount(el, from, to) {
+        if (reducedMotion() || to <= from) {
+            el.textContent = ecoLabel(to);
+            return;
+        }
+        var start = null;
+        var dur = Math.min(900, 250 + (to - from) * 120);
+        function step(ts) {
+            if (start == null) start = ts;
+            var t = Math.min(1, (ts - start) / dur);
+            el.textContent = ecoLabel(Math.round(from + (to - from) * t));
+            if (t < 1) global.requestAnimationFrame(step);
+        }
+        global.requestAnimationFrame(step);
+    }
+
+    var ecoShown = null;
+
     function bindEcoDropChip(header) {
         global.RemoEdEcoDropsBadge = global.RemoEdEcoDropsBadge || {
-            update: function (n) {
+            /** @param {number} n totalEcoDrops @param {{ animate?: boolean }=} opts */
+            update: function (n, opts) {
+                var total = Math.max(0, Math.floor(Number(n) || 0));
+                var grew = ecoShown != null && total > ecoShown;
+                var chip = document.getElementById('student-eco-chip');
                 var el = document.getElementById('student-eco-chip-count');
-                if (el) el.textContent = n > 99 ? '99+' : String(Math.max(0, Number(n) || 0));
+                if (el) {
+                    if (grew && opts && opts.animate) animateEcoCount(el, ecoShown, total);
+                    else el.textContent = ecoLabel(total);
+                }
+                if (chip) {
+                    chip.setAttribute('aria-label', 'Eco-Drops: ' + total + '. Open Virtual Garden');
+                    if (grew && opts && opts.animate && !reducedMotion()) {
+                        chip.classList.remove('is-pop');
+                        void chip.offsetWidth;
+                        chip.classList.add('is-pop');
+                    }
+                }
                 var badge = document.getElementById('menu-eco-badge');
                 if (badge) {
-                    badge.textContent = n > 99 ? '99+' : String(Math.max(0, Number(n) || 0));
+                    badge.textContent = total > 99 ? '99+' : String(total);
                     badge.style.display = 'inline-flex';
                 }
+                ecoShown = total;
             },
+            refresh: refreshEcoDrops,
         };
         var chip = document.getElementById('student-eco-chip');
         if (!chip && header) {
@@ -268,16 +317,27 @@
                 btn.type = 'button';
                 btn.id = 'student-eco-chip';
                 btn.title = 'Eco-Drops — Virtual Garden';
+                btn.setAttribute('aria-label', 'Eco-Drops: 0. Open Virtual Garden');
                 btn.onclick = function () {
                     window.location.href = 'student-virtual-garden.html';
                 };
-                btn.innerHTML = '💧 <span id="student-eco-chip-count">0</span>';
+                btn.innerHTML = DROP_ICON + '<span id="student-eco-chip-count">0</span>';
                 right.insertBefore(btn, right.firstChild);
             }
         }
+        if (!global.__remoedEcoVisibilityBound) {
+            global.__remoedEcoVisibilityBound = true;
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') refreshEcoDrops({ animate: true });
+            });
+        }
+        refreshEcoDrops();
+    }
+
+    function refreshEcoDrops(opts) {
         var tok = studentAuthToken();
-        if (!tok) return;
-        fetch('/api/student/eco-drops', {
+        if (!tok) return Promise.resolve(null);
+        return fetch('/api/student/eco-drops', {
             headers: { Authorization: 'Bearer ' + tok },
             credentials: 'include',
         })
@@ -285,10 +345,13 @@
                 return r.ok ? r.json() : null;
             })
             .then(function (data) {
-                if (!data) return;
-                global.RemoEdEcoDropsBadge.update(Number(data.ecoDropsBalance) || 0);
+                if (!data) return null;
+                global.RemoEdEcoDropsBadge.update(Number(data.totalEcoDrops) || 0, opts);
+                return data;
             })
-            .catch(function () {});
+            .catch(function () {
+                return null;
+            });
     }
 
     function bindNotificationBell(header) {

@@ -1,276 +1,256 @@
 /**
- * Virtual Garden page controller.
+ * Single monthly tree. Past months are read-only snapshots on this same screen.
  */
-(function (global) {
+(function () {
   'use strict';
 
-  var state = null;
-  var selectedPlot = null;
-  var selectedItemId = null;
+  var REMO = '/images/remo-green.png';
+  var FALLBACK_STAGE = '/images/garden/stage-0-seed.svg';
+
+  var current = null;
+  var history = [];
+  var viewingKey = '';
+  var cache = {};
+  var playing = false;
+  var skipFn = null;
 
   function token() {
-    if (global.RemoEdEcoDrops && RemoEdEcoDrops.studentToken) {
-      return RemoEdEcoDrops.studentToken();
-    }
-    return (
-      localStorage.getItem('remoed_student_token') ||
-      localStorage.getItem('remoed_student_auth') ||
-      localStorage.getItem('studentToken') ||
-      localStorage.getItem('token') ||
-      ''
-    );
-  }
-
-  function authHeaders(json) {
-    var h = { Authorization: 'Bearer ' + token() };
-    if (json) h['Content-Type'] = 'application/json';
-    return h;
-  }
-
-  function setMsg(text, ok) {
-    var el = document.getElementById('vg-msg');
-    if (!el) return;
-    el.textContent = text || '';
-    el.className = 'vg-msg' + (ok ? ' ok' : '');
-  }
-
-  function emojiFor(item) {
-    if (!item) return '';
-    var stage = Number(item.growthStage) || 0;
-    if (item.itemType === 'flower' || (stage >= 3 && item.itemType === 'flower')) return '🌸';
-    if (stage <= 0) return '🌱';
-    if (stage === 1) return '🌿';
-    if (stage === 2) return '🌳';
-    return '🌲';
-  }
-
-  function stageLabel(item) {
-    if (!item) return 'Empty';
-    var labels = ['Seed', 'Sprout', 'Young Tree', 'Blooming'];
-    return labels[Math.min(3, Number(item.growthStage) || 0)] || 'Plant';
-  }
-
-  function updateStats(data) {
-    var a = document.getElementById('vg-available');
-    var t = document.getElementById('vg-total-earned');
-    var p = document.getElementById('vg-plants-grown');
-    if (a) a.textContent = data.ecoDropsBalance != null ? data.ecoDropsBalance : '—';
-    if (t) t.textContent = data.totalEcoDropsEarned != null ? data.totalEcoDropsEarned : '—';
-    if (p) p.textContent = data.plantsGrown != null ? data.plantsGrown : '—';
-    if (global.RemoEdEcoDropsBadge && RemoEdEcoDropsBadge.update) {
-      RemoEdEcoDropsBadge.update(data.ecoDropsBalance);
+    if (window.RemoEdEcoDrops && RemoEdEcoDrops.studentToken) return RemoEdEcoDrops.studentToken();
+    try {
+      return localStorage.getItem('remoed_student_token') || localStorage.getItem('token') || '';
+    } catch (_e) {
+      return '';
     }
   }
 
-  function renderMilestones(data) {
-    var host = document.getElementById('vg-milestones-list');
-    if (!host) return;
-    var list = data.milestones || [];
-    if (!list.length) {
-      host.innerHTML = '<div class="vg-milestone">Keep learning to unlock surprises!</div>';
-      return;
+  function headers() {
+    return { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' };
+  }
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function reducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function asset(tree) {
+    return (tree && tree.stage && tree.stage.asset) || FALLBACK_STAGE;
+  }
+
+  function monthKeys() {
+    var keys = history.map(function (t) { return t.monthKey; });
+    if (current && current.tree && keys.indexOf(current.tree.monthKey) === -1) keys.push(current.tree.monthKey);
+    return keys;
+  }
+
+  function setArrowState() {
+    var keys = monthKeys();
+    var prev = $('vg-prev');
+    var next = $('vg-next');
+    var show = keys.length > 1;
+    prev.hidden = !show;
+    next.hidden = !show;
+    if (!show) return;
+    var i = keys.indexOf(viewingKey);
+    prev.disabled = i <= 0;
+    next.disabled = i < 0 || i >= keys.length - 1;
+  }
+
+  function paint(tree, opts) {
+    opts = opts || {};
+    var live = !!(current && current.tree && tree.monthKey === current.tree.monthKey);
+    viewingKey = tree.monthKey;
+    $('vg-month').innerHTML = '';
+    $('vg-month').appendChild(document.createTextNode(tree.label + ' · ' + tree.species));
+    if (live) {
+      var badge = document.createElement('span');
+      badge.className = 'vg-now';
+      badge.textContent = 'Current';
+      $('vg-month').appendChild(badge);
     }
-    host.innerHTML = list
-      .map(function (m) {
-        return (
-          '<div class="vg-milestone' +
-          (m.unlocked ? ' unlocked' : '') +
-          '">' +
-          (m.unlocked ? '✓ ' : '🔒 ') +
-          escapeHtml(m.label) +
-          ' (' +
-          m.at +
-          ' drops)</div>'
-        );
-      })
-      .join('');
+    $('vg-species').textContent = tree.species;
+    $('vg-stage-name').textContent = tree.stage.name;
+    $('vg-progress-bar').style.width = (tree.progressPercent || 0) + '%';
+    $('vg-progress').setAttribute('aria-valuenow', String(tree.progressPercent || 0));
+    var next = tree.nextStage;
+    $('vg-next-line').textContent = live
+      ? (next
+        ? next.dropsNeeded + ' more Eco-Drop' + (next.dropsNeeded === 1 ? '' : 's') + ' to ' + next.name
+        : 'Fully grown this month. Next month starts a new seed.')
+      : 'This tree finished at ' + tree.stage.name + '.';
+    var label = tree.species + ', ' + tree.stage.name + ', ' + tree.label + (live ? ', current month' : ', past month');
+    $('vg-canvas').setAttribute('aria-label', label);
+    $('vg-plant').alt = tree.stage.name;
+    if (!opts.holdPlant) $('vg-plant').src = asset(tree);
+    setArrowState();
   }
 
-  function escapeHtml(s) {
-    return String(s || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  function renderPlots(data, anim) {
-    var host = document.getElementById('vg-plots');
-    if (!host) return;
-    var plots = data.plots || [];
-    host.innerHTML = plots
-      .map(function (plot) {
-        var item = plot.item;
-        var sel =
-          selectedPlot === plot.positionIndex ||
-          (item && selectedItemId && item.id === selectedItemId)
-            ? ' selected'
-            : '';
-        var animCls = '';
-        if (anim && anim.positionIndex === plot.positionIndex) {
-          animCls = anim.kind === 'water' ? ' vg-anim-water' : ' vg-anim-plant';
-        }
-        return (
-          '<button type="button" class="vg-plot' +
-          sel +
-          animCls +
-          '" data-plot="' +
-          plot.positionIndex +
-          '" data-item-id="' +
-          (item ? escapeHtml(item.id) : '') +
-          '" aria-label="Plot ' +
-          (plot.positionIndex + 1) +
-          '">' +
-          (item ? '<span class="vg-plant">' + emojiFor(item) + '</span>' : '') +
-          '<span class="vg-plot-label">' +
-          (item ? stageLabel(item) : 'Empty') +
-          '</span></button>'
-        );
-      })
-      .join('');
-
-    host.querySelectorAll('.vg-plot').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        selectedPlot = Number(btn.getAttribute('data-plot'));
-        selectedItemId = btn.getAttribute('data-item-id') || null;
-        renderPlots(state, null);
-        setMsg(
-          selectedItemId
-            ? 'Selected plot ' + (selectedPlot + 1) + ' — use Water Plant to grow it.'
-            : 'Selected empty plot ' + (selectedPlot + 1) + ' — Buy Seeds or Buy Flowers & Trees.',
-          true
-        );
-      });
-    });
-  }
-
-  function applyState(data, anim) {
-    state = data;
-    updateStats(data);
-    renderPlots(data, anim);
-    renderMilestones(data);
-    refreshShopButtons(data);
-  }
-
-  function refreshShopButtons(data) {
-    var bal = Number(data.ecoDropsBalance) || 0;
-    var seedBtn = document.getElementById('vg-buy-seed');
-    var waterBtn = document.getElementById('vg-water');
-    var treeBtn = document.getElementById('vg-buy-tree');
-    if (seedBtn) seedBtn.disabled = bal < 5;
-    if (waterBtn) waterBtn.disabled = bal < 5;
-    if (treeBtn) treeBtn.disabled = bal < 22;
-  }
-
-  function loadGarden(ack) {
-    var q = ack ? '?ackCelebration=1' : '';
-    return fetch('/api/student/garden' + q, {
-      headers: authHeaders(false),
-      credentials: 'include',
-    })
-      .then(function (r) {
-        return r.json().then(function (j) {
-          return { ok: r.ok, j: j };
-        });
-      })
-      .then(function (res) {
-        if (!res.ok) throw new Error((res.j && res.j.error) || 'Could not load garden');
-        applyState(res.j, null);
-        if (res.j && res.j.locked && window.RemoedFeatureAccess) {
-          ['vg-buy-seed', 'vg-water', 'vg-buy-tree'].forEach(function (id) {
-            var btn = document.getElementById(id);
-            if (btn) btn.disabled = true;
-          });
-          var host = document.querySelector('.vg-layout');
-          RemoedFeatureAccess.mountFeatureLock(host, {
-            featureName: 'Virtual Garden',
-            blurb: 'Grow your garden with a learning plan. You can still look at it.',
-          });
-        }
-        return res.j;
-      });
-  }
-
-  function doAction(action) {
-    setMsg('');
-    var body = { action: action };
-    if (selectedPlot != null) body.positionIndex = selectedPlot;
-    if (selectedItemId) body.itemId = selectedItemId;
-    if (action === 'buy_tree') body.itemType = 'tree';
-
-    return fetch('/api/student/garden/action', {
+  function markSeen(tree) {
+    if (!tree || tree.readOnly) return;
+    fetch('/api/garden/seen-stage', {
       method: 'POST',
-      headers: authHeaders(true),
+      headers: headers(),
       credentials: 'include',
-      body: JSON.stringify(body),
-    })
-      .then(function (r) {
-        return r.json().then(function (j) {
-          return { ok: r.ok, j: j };
-        });
-      })
-      .then(function (res) {
-        if (!res.ok) {
-          setMsg((res.j && res.j.error) || 'Action failed', false);
-          return;
-        }
-        var anim = null;
-        if (res.j.actionResult) {
-          anim = {
-            positionIndex:
-              res.j.actionResult.positionIndex != null
-                ? res.j.actionResult.positionIndex
-                : selectedPlot,
-            kind: action === 'water_plant' ? 'water' : 'plant',
-          };
-          if (res.j.actionResult.itemId) selectedItemId = res.j.actionResult.itemId;
-        }
-        applyState(res.j, anim);
-        var labels = {
-          buy_seed: 'Seed planted! 🌱',
-          water_plant: 'Plant watered! Growing…',
-          buy_tree: 'Blooming tree planted! 🌲',
-        };
-        setMsg(labels[action] || 'Done!', true);
-      })
-      .catch(function (e) {
-        setMsg(e.message || 'Network error', false);
-      });
+      body: JSON.stringify({ monthKey: tree.monthKey, stage: tree.stage.index }),
+    }).catch(function () {});
   }
 
-  function init() {
-    if (localStorage.getItem('userType') !== 'student') {
-      window.location.href = 'index.html';
+  function stopWater() {
+    $('vg-water').hidden = true;
+    $('vg-unlock').hidden = true;
+    $('vg-skip').hidden = true;
+    playing = false;
+    skipFn = null;
+  }
+
+  function playUnlock(tree) {
+    if (playing || !tree || tree.readOnly) return;
+    var from = Math.max(0, Number(tree.lastSeenStage) || 0);
+    var to = tree.stage.index;
+    if (to <= from) {
+      markSeen(tree);
       return;
     }
-    document.getElementById('vg-buy-seed').addEventListener('click', function () {
-      doAction('buy_seed');
-    });
-    document.getElementById('vg-water').addEventListener('click', function () {
-      if (!selectedItemId) {
-        setMsg('Tap a plant in your garden first, then Water Plant.', false);
-        return;
-      }
-      doAction('water_plant');
-    });
-    document.getElementById('vg-buy-tree').addEventListener('click', function () {
-      doAction('buy_tree');
-    });
+    var stages = (current && current.stages) || [];
+    var before = stages[from] || stages[0];
+    playing = true;
+    $('vg-plant').src = (before && before.asset) || FALLBACK_STAGE;
+    $('vg-skip').hidden = false;
+    $('vg-skip').focus();
 
-    loadGarden(false)
-      .then(function (data) {
-        if (data && data.celebration > 0 && global.RemoEdEcoDrops) {
-          RemoEdEcoDrops.showModal(data.celebration);
-          loadGarden(true);
-        }
+    var avatar = (current && current.avatarUrl) || REMO;
+    $('vg-water-avatar').src = avatar;
+    $('vg-water-avatar').alt = avatar === REMO ? 'Remo watering the tree' : 'You watering the tree';
+
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      stopWater();
+      $('vg-plant').src = asset(tree);
+      if (!reducedMotion()) {
+        $('vg-plant').classList.remove('is-swap');
+        void $('vg-plant').offsetWidth;
+        $('vg-plant').classList.add('is-swap');
+      }
+      markSeen(tree);
+    }
+    skipFn = finish;
+
+    if (reducedMotion()) {
+      $('vg-unlock').hidden = false;
+      setTimeout(finish, 400);
+      return;
+    }
+
+    $('vg-water').hidden = false;
+    $('vg-unlock').hidden = false;
+    setTimeout(finish, 2200);
+  }
+
+  function showTree(tree) {
+    stopWater();
+    paint(tree);
+    if (!tree.readOnly && (Number(tree.lastSeenStage) || 0) < tree.stage.index) {
+      playUnlock(tree);
+    } else if (!tree.readOnly) {
+      markSeen(tree);
+    }
+  }
+
+  function loadMonth(monthKey) {
+    if (current && current.tree && monthKey === current.tree.monthKey) {
+      showTree(current.tree);
+      return Promise.resolve(current.tree);
+    }
+    if (cache[monthKey]) {
+      showTree(cache[monthKey]);
+      return Promise.resolve(cache[monthKey]);
+    }
+    return fetch('/api/garden/' + encodeURIComponent(monthKey), {
+      headers: headers(),
+      credentials: 'include',
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (!body || !body.success || !body.tree) throw new Error(body && body.error || 'Could not load that tree');
+        cache[monthKey] = body.tree;
+        showTree(body.tree);
+        return body.tree;
       })
-      .catch(function (e) {
-        setMsg(e.message || 'Failed to load garden', false);
+      .catch(function () {
+        if (current && current.tree) showTree(current.tree);
       });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  function step(delta) {
+    var keys = monthKeys();
+    var i = keys.indexOf(viewingKey);
+    if (i < 0) return;
+    var next = keys[i + delta];
+    if (next) loadMonth(next);
   }
-})(typeof window !== 'undefined' ? window : this);
+
+  function applyCurrent(data) {
+    current = data;
+    cache[data.tree.monthKey] = data.tree;
+    if (window.RemoEdEcoDropsBadge) {
+      RemoEdEcoDropsBadge.update(Number(data.totalEcoDrops) || 0);
+    }
+    var banner = $('vg-banner');
+    if (data.locked) {
+      banner.classList.add('is-lock');
+      banner.textContent = 'A learning plan adds more lessons — and more Eco-Drops — each month. You can still grow this tree from Play & Learn and your free lessons.';
+    }
+    if (!viewingKey || viewingKey === data.tree.monthKey) showTree(data.tree);
+  }
+
+  function boot() {
+    if (!token()) return;
+    Promise.all([
+      fetch('/api/garden/current', { headers: headers(), credentials: 'include' }).then(function (r) { return r.json(); }),
+      fetch('/api/garden/history', { headers: headers(), credentials: 'include' }).then(function (r) { return r.json(); }),
+    ]).then(function (pair) {
+      var now = pair[0];
+      var past = pair[1];
+      if (!now || !now.success || !now.tree) throw new Error((now && now.error) || 'Could not load the garden');
+      history = (past && past.trees) || [];
+      applyCurrent(now);
+      if (window.RemoEdEcoDrops) RemoEdEcoDrops.checkAndCelebrate({ preferToast: true });
+    }).catch(function (err) {
+      $('vg-next-line').textContent = (err && err.message) || 'Garden could not load.';
+    });
+  }
+
+  $('vg-prev').addEventListener('click', function () { step(-1); });
+  $('vg-next').addEventListener('click', function () { step(1); });
+  $('vg-skip').addEventListener('click', function () { if (skipFn) skipFn(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && skipFn) {
+      skipFn();
+      return;
+    }
+    var tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight') step(1);
+  });
+
+  var touchX = null;
+  $('vg-stage').addEventListener('touchstart', function (e) {
+    if (!e.changedTouches || !e.changedTouches[0]) return;
+    touchX = e.changedTouches[0].clientX;
+  }, { passive: true });
+  $('vg-stage').addEventListener('touchend', function (e) {
+    if (touchX == null || !e.changedTouches || !e.changedTouches[0]) return;
+    var dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) < 48) return;
+    step(dx > 0 ? -1 : 1);
+  });
+
+  boot();
+})();

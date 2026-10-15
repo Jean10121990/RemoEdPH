@@ -1,0 +1,69 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const domain = require('../server/garden/domain');
+const config = require('../server/garden/garden.config');
+
+test('monthKey uses Asia/Manila (default) so late-evening UTC can still be the next day', () => {
+  const lateUtc = new Date('2026-09-30T17:00:00.000Z');
+  assert.equal(domain.monthKeyOf(lateUtc, 'Asia/Manila'), '2026-10');
+  assert.equal(domain.monthKeyOf(lateUtc, 'UTC'), '2026-09');
+});
+
+test('monthKey and range reject bad values', () => {
+  assert.equal(domain.isValidMonthKey('2026-09'), true);
+  assert.equal(domain.isValidMonthKey('2026-13'), false);
+  assert.equal(domain.isValidMonthKey('26-09'), false);
+  assert.throws(() => domain.monthRange('nope'));
+});
+
+test('stage thresholds sit on 20/40/60/80/100 for a 100-drop target', () => {
+  const target = 100;
+  const name = (drops) => domain.stageFor(drops, target).key;
+  assert.equal(name(0), 'seed');
+  assert.equal(name(19), 'seed');
+  assert.equal(name(20), 'sprout');
+  assert.equal(name(39), 'sprout');
+  assert.equal(name(40), 'small-plant');
+  assert.equal(name(59), 'small-plant');
+  assert.equal(name(60), 'medium-plant');
+  assert.equal(name(79), 'medium-plant');
+  assert.equal(name(80), 'large-tree');
+  assert.equal(name(99), 'large-tree');
+  assert.equal(name(100), 'fully-grown');
+  assert.equal(name(250), 'fully-grown');
+});
+
+test('progress percent clamps at 100', () => {
+  assert.equal(domain.progressPercent(0, 12), 0);
+  assert.equal(domain.progressPercent(6, 12), 50);
+  assert.equal(domain.progressPercent(12, 12), 100);
+  assert.equal(domain.progressPercent(40, 12), 100);
+});
+
+test('monthly target falls back when there are no lessons', () => {
+  assert.equal(domain.computeMonthlyTarget({ lessons: 0, tasks: 2, games: 4 }), config.DEFAULT_MONTHLY_TARGET);
+  assert.equal(domain.computeMonthlyTarget({ lessons: 8, tasks: 1, games: 4 }), 13);
+});
+
+test('species rotation never repeats a neighbour and wraps the list', () => {
+  const first = domain.pickSpecies({ studentId: 'mia', previousSpecies: null, treeCount: 0 });
+  assert.ok(config.SPECIES.includes(first));
+  let prev = first;
+  const seen = new Set([first]);
+  for (let i = 0; i < config.SPECIES.length; i++) {
+    const next = domain.pickSpecies({ studentId: 'mia', previousSpecies: prev, treeCount: i + 1 });
+    assert.notEqual(next, prev);
+    seen.add(next);
+    prev = next;
+  }
+  assert.equal(seen.size, config.SPECIES.length);
+  assert.equal(domain.pickSpecies({ studentId: 'mia', previousSpecies: config.SPECIES[config.SPECIES.length - 1] }), config.SPECIES[0]);
+});
+
+test('game ledger id follows GAME_REWARD_MODE', () => {
+  assert.equal(domain.ledgerSourceId({ sourceType: 'game', sourceId: 'hide-and-seek', playId: 'abc' }, 'once-per-month'), 'hide-and-seek');
+  assert.equal(domain.ledgerSourceId({ sourceType: 'game', sourceId: 'hide-and-seek', playId: 'abc' }, 'every-play'), 'hide-and-seek#abc');
+  assert.equal(domain.paysOnceEver('lesson', 'once-per-month'), true);
+  assert.equal(domain.paysOnceEver('game', 'once-per-month'), false);
+  assert.equal(domain.paysOnceEver('game', 'once-ever'), true);
+});

@@ -1,7 +1,8 @@
 /**
  * Play & Learn (student-games-activities.html).
  * Home lists CATEGORIES; each category lists its games; a game runs on the play stage.
- * To add a game: add an entry to a category's `games` (id, title, line, cover, rounds, start).
+ * To add a game: add an entry to a category's `games` (id, title, line, cover, rounds, start)
+ * and the same id to server/garden/games.config.js so finishing it earns an Eco-Drop.
  * To add a category: add an entry to CATEGORIES. Routes: #/ , #/<category> , #/<category>/<game>.
  */
 (function () {
@@ -621,6 +622,32 @@
     return null;
   }
 
+  /* ---------- Eco-Drops (server checks the play ticket and awards) ---------- */
+
+  function studentToken() {
+    if (window.RemoEdEcoDrops && RemoEdEcoDrops.studentToken) return RemoEdEcoDrops.studentToken();
+    try { return localStorage.getItem('remoed_student_token') || localStorage.getItem('token') || ''; } catch (_e) { return ''; }
+  }
+
+  function playApi(gameId, step, body) {
+    var tok = studentToken();
+    if (!tok) return Promise.resolve(null);
+    return fetch('/api/play-learn/games/' + encodeURIComponent(gameId) + '/' + step, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .catch(function () { return null; });
+  }
+
+  function dropLine(ecoDrop) {
+    if (!ecoDrop) return '';
+    if (ecoDrop.awarded) return '+1 Eco-Drop for your garden!';
+    if (ecoDrop.reason === 'already_awarded') return 'You already got this game’s Eco-Drop this month.';
+    return '';
+  }
+
   /* ---------- views ---------- */
 
   function renderHome() {
@@ -683,6 +710,7 @@
     var starEls = app.querySelectorAll('.pl-star');
     var hear = null;
     var won = 0;
+    var ticket = null;
 
     app.querySelector('.pl-hear').addEventListener('click', function () {
       Sfx.unlock();
@@ -706,6 +734,7 @@
             '<img class="pl-finish-remo" src="' + esc(W.pieces.remo) + '" alt="" draggable="false">' +
             '<h2>You did it!</h2>' +
             '<p>You got ' + won + ' stars.</p>' +
+            '<p class="pl-drop-line" role="status" aria-live="polite"></p>' +
             '<div class="pl-actions">' +
               '<button type="button" class="pl-btn pl-btn--green" data-again>' + icon('rotate-ccw') + '<span>Play again</span></button>' +
               '<a class="pl-btn pl-btn--sky" href="#/' + esc(cat.id) + '">' + icon('gamepad-2') + '<span>More games</span></a>' +
@@ -715,6 +744,15 @@
         burst(stage.querySelector('.pl-finish-remo'), 20);
         Voice.say('You did it! Great job!');
         stage.querySelector('[data-again]').addEventListener('click', function () { route(); });
+        var line = stage.querySelector('.pl-drop-line');
+        Promise.resolve(ticket).then(function (t) {
+          if (!t) return null;
+          return playApi(game.id, 'finish', { ticket: t, roundsCompleted: won });
+        }).then(function (res) {
+          var ecoDrop = res && res.success ? res.ecoDrop : null;
+          if (line) line.textContent = dropLine(ecoDrop);
+          if (ecoDrop && window.RemoEdEcoDrops) RemoEdEcoDrops.applyAward(ecoDrop);
+        });
       }
     };
 
@@ -727,6 +765,7 @@
       '</div>';
     stage.querySelector('.pl-start .pl-btn').addEventListener('click', function () {
       Sfx.unlock();
+      ticket = playApi(game.id, 'start').then(function (res) { return res && res.success ? res.ticket : null; });
       stage.innerHTML = '';
       game.start(ctx);
     }, { once: true });

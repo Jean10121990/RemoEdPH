@@ -1495,7 +1495,7 @@ router.post('/progress/update', authenticateToken, requireTeacher, async (req, r
           reason: result.skipped || 'unknown',
         });
       }
-      return res.json({ message: 'Progress updated successfully', progress: result.progress });
+      return res.json({ message: 'Progress updated successfully', progress: result.progress, ecoDrop: result.ecoDrop || null });
     }
 
     if (!studentId || !lessonId || !curriculumId) {
@@ -1529,20 +1529,16 @@ router.post('/progress/update', authenticateToken, requireTeacher, async (req, r
       { upsert: true, new: true }
     );
 
+    let ecoDrop = null;
     if (normalizedStatus === 'completed' && !wasCompleted) {
-      try {
-        const ecoDropGardenService = require('./services/ecoDropGardenService');
-        await ecoDropGardenService.grantEcoDropForLessonComplete({
-          studentId: canonicalSid,
-          lessonId,
-          bookingId: bookingId || null,
-        });
-      } catch (ecoErr) {
-        console.warn('ecoDrop grant (progress/update):', ecoErr && ecoErr.message);
-      }
+      ecoDrop = await require('./garden').awardEcoDrop({
+        studentId: canonicalSid,
+        sourceType: 'lesson',
+        sourceId: String(lessonId),
+      });
     }
 
-    res.json({ message: 'Progress updated successfully', progress });
+    res.json({ message: 'Progress updated successfully', progress, ecoDrop });
   } catch (error) {
     console.error('Error updating lesson progress:', error);
     res.status(500).json({ error: 'Failed to update progress' });

@@ -1327,12 +1327,20 @@ router.post('/lesson-checkpoint', verifyToken, requireStudent, async (req, res) 
       total: scored.total,
       passed: scored.passed,
     });
+    const ecoDrop = scored.passed
+      ? await require('./garden').awardEcoDrop({
+          studentId: username,
+          sourceType: 'task',
+          sourceId: `checkpoint:${level}:${lessonNumber}`,
+        })
+      : null;
     res.json({
       success: true,
       passed: scored.passed,
       scorePercent: scored.scorePercent,
       correctCount: scored.correctCount,
       total: scored.total,
+      ecoDrop,
     });
   } catch (err) {
     console.error('POST /student/lesson-checkpoint:', err);
@@ -2887,102 +2895,58 @@ router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
 // ——— RemoEdKids growth badges & quarterly progress ———
 const studentBadgeService = require('./services/studentBadgeService');
 const ProgressReport = require('./models/ProgressReport');
-const ecoDropGardenService = require('./services/ecoDropGardenService');
+const { awardEcoDrop } = require('./garden');
 
 function gardenStudentKey(req) {
   if (req.student && req.student.username) return String(req.student.username);
-  return req.user.username || req.user.studentId || '';
+  return '';
 }
 
+/** Header / sidebar Eco-Drop count. totalEcoDrops never resets (monthly progress lives in /api/garden). */
 router.get('/eco-drops', verifyToken, requireStudent, async (req, res) => {
+  const total = Number(req.student && req.student.totalEcoDropsEarned) || 0;
+  res.json({
+    success: true,
+    totalEcoDrops: total,
+    pendingCelebration: Number(req.student && req.student.pendingEcoDropCelebration) || 0,
+  });
+});
+
+/** Clears the "+N Eco-Drops from your class" pop-up after the student sees it. */
+router.post('/eco-drops/ack', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = gardenStudentKey(req);
-    const bal = await ecoDropGardenService.getEcoDropBalance(studentId);
-    res.json({ success: true, ...bal });
+    await Student.updateOne({ _id: req.student._id }, { $set: { pendingEcoDropCelebration: 0 } });
+    res.json({ success: true });
   } catch (error) {
-    console.error('GET /api/student/eco-drops:', error);
-    res.status(500).json({ success: false, error: 'Failed to load Eco-Drops' });
+    console.error('POST /api/student/eco-drops/ack:', error);
+    res.status(500).json({ success: false, error: 'Could not save' });
   }
 });
 
-router.get('/garden', verifyToken, requireStudent, async (req, res) => {
-  try {
-    const studentId = gardenStudentKey(req);
-    const ack =
-      req.query.ackCelebration === '1' ||
-      req.query.ackCelebration === 'true' ||
-      req.query.ack === '1';
-    const state = await ecoDropGardenService.getGardenState(studentId, {
-      ackCelebration: !!ack,
-    });
-    const { isPaidSubscriber } = require('./services/freePlanAccess');
-    const studentDoc = req.user && req.user.studentId
-      ? await Student.findById(req.user.studentId).select(
-          'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
-        )
-      : null;
-    state.locked = !isPaidSubscriber(studentDoc);
-    res.json(state);
-  } catch (error) {
-    console.error('GET /api/student/garden:', error);
-    const status = error.status || 500;
-    res.status(status).json({
-      success: false,
-      error: error.message || 'Failed to load garden',
-    });
-  }
-});
-
-router.post('/garden/action', verifyToken, requireStudent, async (req, res) => {
-  try {
-    const { isPaidSubscriber } = require('./services/freePlanAccess');
-    const studentDoc = await Student.findById(req.user.studentId).select(
-      'username planModeOverride isSubscribed subscriptionStatus paymentStatus creditLots'
-    );
-    if (!isPaidSubscriber(studentDoc)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Subscribe to use the garden.',
-        code: 'FREE_PLAN_LOCKED',
-      });
-    }
-    const studentId = gardenStudentKey(req);
-    const result = await ecoDropGardenService.gardenAction(studentId, req.body || {});
-    res.json(result);
-  } catch (error) {
-    console.error('POST /api/student/garden/action:', error);
-    const status = error.status || 500;
-    res.status(status).json({
-      success: false,
-      error: error.message || 'Garden action failed',
-      code: error.code || undefined,
-    });
-  }
-});
-
-/** Backfill Eco-Drop if lesson already completed — does not force-complete. */
+/** Backfill the lesson Eco-Drop if the lesson is already completed; never completes a lesson. */
 router.post('/lessons/complete', verifyToken, requireStudent, async (req, res) => {
   try {
     const studentId = gardenStudentKey(req);
-    const lessonId = req.body && (req.body.lessonId || req.body.lesson_id);
-    const bookingId = req.body && (req.body.bookingId || req.body.booking_id);
-    if (!lessonId) {
-      return res.status(400).json({ success: false, error: 'lessonId is required' });
+    const lessonId = String((req.body && (req.body.lessonId || req.body.lesson_id)) || '').trim();
+    const { isMongoObjectId } = require('./utils/mongoObjectId');
+    if (!studentId || !isMongoObjectId(lessonId)) {
+      return res.status(400).json({ success: false, error: 'lessonId is required', code: 'INVALID_LESSON' });
     }
-    const result = await ecoDropGardenService.ensureEcoDropForCompletedLesson(
-      studentId,
+    const LessonProgress = require('./models/LessonProgress');
+    const aliases = await studentBadgeService.resolveStudentIdAliases(studentId);
+    const done = await LessonProgress.exists({
+      studentId: { $in: aliases && aliases.length ? aliases : [studentId] },
       lessonId,
-      bookingId
-    );
-    res.json({ success: true, ...result });
+      status: 'completed',
+    });
+    if (!done) {
+      return res.status(409).json({ success: false, error: 'Lesson is not completed yet.', code: 'LESSON_NOT_COMPLETED' });
+    }
+    const ecoDrop = await awardEcoDrop({ studentId, sourceType: 'lesson', sourceId: lessonId });
+    res.json({ success: true, ecoDrop });
   } catch (error) {
     console.error('POST /api/student/lessons/complete:', error);
-    const status = error.status || 500;
-    res.status(status).json({
-      success: false,
-      error: error.message || 'Could not sync lesson Eco-Drop',
-      code: error.code || undefined,
-    });
+    res.status(500).json({ success: false, error: 'Could not sync lesson Eco-Drop', code: 'SERVER_ERROR' });
   }
 });
 

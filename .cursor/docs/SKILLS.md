@@ -78,67 +78,39 @@ When a **student** opens `live-classroom.html` and the teacher is not in the Soc
 
 ## Gamification: Virtual Garden & Eco-Drop Engine
 
-### Vision
-
-Preschool and young learners nurture a digital garden as they complete Learning Journey lessons. Progress is rewarded with **Eco-Drops** — a kid-friendly currency separate from paid lesson **credits**.
+One monthly tree. Eco-Drops are separate from paid lesson **credits**. The student never spends drops; they only grow the current tree.
 
 | Event | Eco-Drops |
 |-------|-----------|
-| 1 completed Learning Journey lesson (first time) | **+1** earned |
-| Buy Seeds | **−5** → plant a seed in an empty soil plot |
-| Water Plant | **−5** → advance one growth stage |
-| Buy Flowers & Trees | **−22** → place a fully grown blooming flower/tree |
+| Finished lesson (first time ever) | **+1** |
+| Passed lesson check / task (first time ever) | **+1** |
+| Finished Play & Learn game | **+1** per game per month (`GAME_REWARD_MODE = once-per-month`) |
 
-**22 Eco-Drops earned** aligns with one Learning Journey batch (22 lessons / monthly learning cycle) and unlocks the tree milestone.
+There is no shop and no plot grid. Stage = `monthEcoDrops / monthlyTarget` (Seed 0%, Sprout 20%, Small Plant 40%, Medium Plant 60%, Large Tree 80%, Fully Grown 100%). Overflow clamps at Fully Grown.
 
-### Growth stages
+`monthlyTarget` = bookings in the month (not cancelled / absent) + distinct lesson checks opened that month + registered games. If the student has no bookings yet, `DEFAULT_MONTHLY_TARGET` (12). Timezone `GARDEN_TIMEZONE` (`Asia/Manila`). Months the student never opened have no tree.
 
-| Stage | Name | Notes |
-|-------|------|--------|
-| 0 | Seed | After Buy Seeds |
-| 1 | Sprout | After first Water |
-| 2 | Young Tree | After second Water |
-| 3 | Blooming Tree | After third Water, or instantly via Buy Flowers & Trees |
+### Collections
 
-Water on stage 3 is rejected (no charge). Default garden has **8 soil plots** (`positionIndex` 0–7).
+- `eco_drop_ledger` — unique `(studentId, sourceType, sourceId, monthKey)`. `totalEcoDropsEarned` on Student is a cached lifetime count; `monthEcoDrops` is an indexed count.
+- `garden_trees` — unique `(studentId, monthKey)`. Stage is computed; `finalStage` is stored only when the next month starts.
 
-### Inventory & item types
+### Award (server only)
 
-- Collection: `StudentGardenItem` — `studentId` (username), `itemType` (`seed` | `plant` | `flower` | `tree`), `growthStage` (0–3), `positionIndex`, `plantedAt`, optional `variant`.
-- As a seed is watered, `itemType` may promote (`seed` → `plant` → `tree`); Buy Flowers & Trees places `flower` or `tree` at stage 3.
-- Stats: **Available Eco-Drops** (`ecoDropsBalance`), **Total Eco-Drops Earned** (`totalEcoDropsEarned`), **Plants & Trees Grown** (count of items with `growthStage >= 1` or type flower/tree).
+`ecoDropService.award({ studentId, sourceType, sourceId, now })`. Clients cannot add drops. Hooks: `upsertLessonProgressFromBooking`, `POST /api/lessons/progress/update`, `POST /api/student/lesson-checkpoint` (on pass), Play & Learn `POST /api/play-learn/games/:id/finish`, `POST /api/student/lessons/complete` (backfill only).
 
-### Milestone unlocks
+Add a game: one row in `server/garden/games.config.js` plus the same id in `public/js/student-play-learn.js`. The finish route already awards.
 
-Tracked on Student as `gardenUnlockedMilestones` (string codes):
-
-| Code | Trigger | Unlocks (v1 catalog) |
-|------|---------|----------------------|
-| `drops_5` | `totalEcoDropsEarned >= 5` | Garden butterfly companion |
-| `drops_11` | `totalEcoDropsEarned >= 11` | Rainbow flower décor |
-| `drops_22` | `totalEcoDropsEarned >= 22` | Remo treehouse / monthly tree badge |
-
-Future: color/phonics achievement badges can add further codes without changing the Eco-Drop economy.
-
-### Award rules (idempotent)
-
-- Primary hook: first transition of `LessonProgress` → `status: 'completed'` in `upsertLessonProgressFromBooking`.
-- Ledger: `EcoDropLedger` with unique `(studentId, lessonId)` for `reason: lesson_complete` — never double-award the same lesson.
-- Celebration: increment `pendingEcoDropCelebration`; student UI shows toast/modal on next Garden / Journey / Dashboard visit, then acknowledges.
-
-### Student APIs
+### APIs (student Bearer; identity is `req.student.username`)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/student/garden` | Balance, stats, items, milestones; `?ackCelebration=1` clears pending celebration |
-| GET | `/api/student/eco-drops` | Light balance for sidebar/header badge |
-| POST | `/api/student/garden/action` | `{ action: 'buy_seed' \| 'water_plant' \| 'buy_tree', positionIndex?, itemId? }` |
-| POST | `/api/student/lessons/complete` | Backfill grant if lesson already completed; does **not** force-complete from the student client |
+| GET | `/api/garden/current` | Live tree, stage, progress, `hasHistory`, `locked` |
+| GET | `/api/garden/history` | Past trees only |
+| GET | `/api/garden/:monthKey` | One tree (read-only if past) |
+| POST | `/api/garden/seen-stage` | `{ monthKey, stage }` — unlock animation shown |
+| GET | `/api/student/eco-drops` | Header chip (`totalEcoDrops`) |
+| POST | `/api/student/eco-drops/ack` | Clears the away-from-class celebration |
+| POST | `/api/play-learn/games/:gameId/start` \| `/finish` | Signed play ticket, then award |
 
-Storage uses camelCase on Mongo (`ecoDropsBalance`). JSON may also expose snake_case aliases for the product spec.
-
-### UI surfaces
-
-- Sidebar: **Virtual Garden** (`student-virtual-garden.html`) with Eco-Drop badge.
-- Header chip: live Eco-Drop count.
-- Garden page: stats bar, 8-plot canvas, shop drawer, Learning Journey CTA banner.
+Placeholder art: `public/images/garden/stage-*.svg` (swap files, keep names). Watering character: student photo or `/images/remo-green.png`.

@@ -14,6 +14,7 @@
 
   var rates = { USD: 1, PHP: CHECKOUT_PHP_RATE };
   var updatedAt = null;
+  var live = false;
   var names = null;
   try { names = new Intl.DisplayNames(['en'], { type: 'currency' }); } catch (_e) {}
 
@@ -74,11 +75,15 @@
     var when = '';
     if (updatedAt) {
       var d = new Date(updatedAt);
-      if (!isNaN(d.getTime())) when = ' Rates updated ' + d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) + '.';
+      if (!isNaN(d.getTime())) {
+        when = live
+          ? ' Live rate, updated ' + d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) + '.'
+          : ' Rates updated ' + d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) + '.';
+      }
     }
     note.textContent = code === 'USD'
       ? 'Prices are in PHP, the amount you pay at checkout (₱' + CHECKOUT_PHP_RATE.toFixed(2) + ' per US$1).'
-      : 'Prices are in PHP, the amount you pay at checkout. The ' + code + ' line is an estimate at today’s exchange rate.' + when + ' Your bank sets the final amount.';
+      : 'Prices are in PHP, the amount you pay at checkout. The ' + code + ' line is an estimate at the current exchange rate.' + when + ' Your bank sets the final amount.';
   }
 
   var wanted = saved();
@@ -100,21 +105,29 @@
     });
   }
 
-  fetch('/api/public/fx-rates')
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (body) {
-      if (!body || !body.rates) return;
-      var next = {};
-      Object.keys(body.rates).forEach(function (code) {
-        var n = Number(body.rates[code]);
-        if (/^[A-Z]{3}$/.test(code) && isFinite(n) && n > 0) next[code] = n;
-      });
-      next.USD = 1;
-      if (!next.PHP) next.PHP = CHECKOUT_PHP_RATE;
-      rates = next;
-      updatedAt = body.updatedAt || null;
-      fillOptions();
-      render();
-    })
-    .catch(function () {});
+  function loadRates() {
+    fetch('/api/public/fx-rates', { cache: 'no-cache', credentials: 'omit' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (body) {
+        if (!body || !body.rates) return;
+        var next = {};
+        Object.keys(body.rates).forEach(function (code) {
+          var n = Number(body.rates[code]);
+          if (/^[A-Z]{3}$/.test(code) && isFinite(n) && n > 0) next[code] = n;
+        });
+        next.USD = 1;
+        if (!next.PHP) next.PHP = CHECKOUT_PHP_RATE;
+        rates = next;
+        updatedAt = body.updatedAt || null;
+        live = !!body.live;
+        fillOptions();
+        render();
+      })
+      .catch(function () {});
+  }
+
+  loadRates();
+  setInterval(function () {
+    if (document.visibilityState === 'visible') loadRates();
+  }, 60 * 1000);
 })();

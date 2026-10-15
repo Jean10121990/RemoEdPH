@@ -604,6 +604,11 @@ app.use('/api/teacher/training', noStoreProtectedResponse, teacherTrainingRoutes
 app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
+{
+  const { gardenRouter, playRouter } = require('./garden').buildRouters();
+  app.use('/api/garden', noStoreProtectedResponse, gardenRouter);
+  app.use('/api/play-learn', noStoreProtectedResponse, playRouter);
+}
 app.use('/api/leaderboard', noStoreProtectedResponse, require('./routes/leaderboard'));
 /**
  * WebRTC ICE servers for live-classroom.html (public: no Bearer on the classroom fetch).
