@@ -1,5 +1,5 @@
 /**
- * Admin Fee & Attendance — 1% of subscription gross per bi-monthly cutoff,
+ * Admin Fee & Attendance — 2% of subscription gross per bi-monthly cutoff,
  * gated by a time-in of at least 6 hours on every Monday to Friday in the cutoff.
  */
 const express = require('express');
@@ -35,7 +35,7 @@ const router = express.Router();
 
 router.use(verifyAdminApiAuth, requireAdmin, requireAdminTwoFactorSatisfied, requireAdminSessionValid);
 
-const COMMISSION_RATE = 1; // percent
+const COMMISSION_RATE = 2; // percent
 
 function parsePayPeriodKey(periodKey) {
   const m = String(periodKey || '').match(/^(\d{4})-(\d{2})-(1|2)$/);

@@ -114,7 +114,7 @@
         <script>AdminSidebar.render('admin-sidebar-root', 'admin-fee');</script>
         <div class="remoed-content">
             <div class="af-wrap">
-                <p class="af-intro">View your <strong>1% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.</p>
+                <p class="af-intro">View your <strong>2% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.</p>
 
                 <div class="af-toolbar">
                     <label for="af-period">Pay period</label>
@@ -127,7 +127,7 @@
 
                 <div class="af-stats" id="af-stats">
                     <div class="af-stat"><div class="lbl">Gross subscription sales</div><div class="val" id="af-gross">₱0</div></div>
-                    <div class="af-stat"><div class="lbl">1% Admin share</div><div class="val" id="af-share">₱0</div></div>
+                    <div class="af-stat"><div class="lbl">2% Admin share</div><div class="val" id="af-share">₱0</div></div>
                     <div class="af-stat"><div class="lbl">Hours worked</div><div class="val" id="af-hours">0</div></div>
                     <div class="af-stat"><div class="lbl" id="af-wallet-label">Pending earnings</div><div class="val" id="af-payout">₱0</div></div>
                 </div>
@@ -138,11 +138,11 @@
                         <p class="af-muted" id="af-period-label">—</p>
                         <p style="margin:10px 0 0;font-size:0.95rem;" id="af-elig-text">—</p>
                         <p class="af-note" id="af-admin-meta"></p>
-                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 1% fee.</p>
+                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 2% fee.</p>
                     </div>
                     <div class="af-card">
                         <h2>How payout works</h2>
-                        <p class="af-muted">1% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
+                        <p class="af-muted">2% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
                         <p class="af-note">Need MariBank? <a href="https://maribank.ph/c/earnfreemoney?referralCode=KB740303" target="_blank" rel="noopener noreferrer">Open MariBank</a>.</p>
                     </div>
                 </div>
@@ -402,7 +402,7 @@
             '<div class="payslip-row"><span>Gross subscription sales pool</span><span>' + peso(s.grossSubscriptionSales) + '</span></div>' +
             '<div class="payslip-row"><span>Purchases counted</span><span>' + esc(s.purchaseCount) + '</span></div>' +
             '<div class="payslip-row"><span>Commission rate</span><span>' + esc(s.commissionRate) + '%</span></div>' +
-            '<div class="payslip-row"><span>1% commission</span><span>' + peso(s.commissionAmount) + '</span></div>';
+            '<div class="payslip-row"><span>2% commission</span><span>' + peso(s.commissionAmount) + '</span></div>';
         document.getElementById('af-payslip-net').innerHTML =
             '<span>Total net payout</span><span>' + peso(ps.netPayout) + '</span>';
         document.getElementById('af-payslip-foot').textContent =

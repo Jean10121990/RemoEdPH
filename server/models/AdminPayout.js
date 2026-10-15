@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 /**
  * Admin fee payout snapshot for a bi-monthly cutoff (YYYY-MM-1 | YYYY-MM-2).
- * Each eligible admin earns 1% of subscription gross sales for that period.
+ * Each eligible admin earns 2% of subscription gross sales for that period.
  *
  * Lifecycle: generated → disbursed (Accounting release) → withdrawal_requested → completed.
  * Legacy rows may still be status `paid` (treat as completed for withdraw UI).
