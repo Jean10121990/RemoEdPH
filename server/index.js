@@ -669,6 +669,7 @@ app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiComb
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
+app.use('/api/public', require('./fxRatesRoutes'));
 app.use('/api/public', publicAssessmentRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint

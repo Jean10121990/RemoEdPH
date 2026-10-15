@@ -1470,6 +1470,40 @@ body.page-index #plans .plan-price-local {
   text-align: center;
 }
 
+body.page-index #plans .plan-currency-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 10px;
+  margin: 0 auto 18px;
+  max-width: 720px;
+  text-align: center;
+}
+
+body.page-index #plans .plan-currency-bar label {
+  font-weight: 700;
+  color: #1e3a5f;
+  font-size: 0.95rem;
+}
+
+body.page-index #plans .plan-currency-bar select {
+  min-width: 220px;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.95rem;
+}
+
+body.page-index #plans .plan-currency-note {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 body.page-index .home-teachers-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

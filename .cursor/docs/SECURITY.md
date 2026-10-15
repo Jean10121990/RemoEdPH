@@ -39,6 +39,7 @@ Rules:
 - `POST /api/student/book-class` (student JWT) and the equivalent `POST /api/teacher/book-class`
 - `GET /api/auth/admin-login-path` and the obfuscated admin login page (path hiding is not the access control — 2FA + RBAC are)
 - `/api/public/*` assessment routes (rate limited, `express-validator`), `POST /api/applications`
+- `GET /api/public/fx-rates` (`server/fxRatesRoutes.js`): read-only USD exchange rates for the landing plan converter. Takes no input; the server calls `open.er-api.com` at most every 6 hours (10-minute back-off on failure) and serves the cached copy, so visitors cannot make it call out per request.
 - `GET /api/office-viewer/presentation/:fileId/:token/:name` — Microsoft PowerPoint fetches the lesson deck here with no login. The token is a per-file JWT signed with `JWT_SECRET + ':office-viewer'` (cannot pass as a portal login), valid 6 hours, issued only by authenticated `local-preview` / `secure-embed`. Serves `.ppt` / `.pptx` only; rate limited.
 - Lesson embed links (`POST /api/lessons/lesson/:lessonId/upload-file`, teacher or admin JWT) accept Microsoft Office hosts and `https://docs.google.com/presentation/d/{id}/` only. The stored URL is the Google `/embed` form. Other Google hosts and file types are rejected.
 - `GET /api/rtc-config` also returns shared, 24-hour Cloudflare TURN credentials when `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` are set (`server/services/hostedTurn.js`); the API token stays server-side and the credentials are cached, so this public route does not call Cloudflare per request.

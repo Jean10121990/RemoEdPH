@@ -140,7 +140,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-12" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-13" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
   <!-- Google tag (gtag.js) -->
@@ -555,6 +555,13 @@
       <p class="plans-assessment-taken-note" id="plans-assessment-taken-note" hidden>
         Assessment already taken. Please check your email for your results and registration link.
       </p>
+      <div class="plan-currency-bar">
+        <label for="plan-currency">Also show in</label>
+        <select id="plan-currency" aria-describedby="plan-currency-note">
+          <option value="USD">USD — US Dollar</option>
+        </select>
+        <p class="plan-currency-note" id="plan-currency-note" aria-live="polite">Prices are in PHP. Pick a currency to see an estimate.</p>
+      </div>
       <div class="plans-grid">
         <div class="plan-card plan-spark">
           <div class="plan-icon plan-icon--character">
@@ -569,14 +576,14 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSpark</div>
-            <div class="plan-price">$154.00 USD</div>
+            <div class="plan-price">₱9,244.62</div>
           </div>
           <div class="plan-bundle">Starter Bundle</div>
-          <div class="plan-price-local">~₱9,244.62 PHP est.</div>
+          <div class="plan-price-local" data-usd="154">$154.00 USD</div>
           <div class="plan-period"><strong>22 Lessons</strong> · Valid for 3 Months</div>
           <p class="plan-tagline">Spark their curiosity.</p>
           <ul class="plan-features">
-            <li>22 classes × $7.00 = $154.00</li>
+            <li>22 classes × ₱420.21 = ₱9,244.62</li>
             <li>Credits remain active for 3 full months</li>
             <li>Access to digital and video library</li>
           </ul>
@@ -586,7 +593,7 @@
         </div>
 
         <div class="plan-card plan-steady plan-popular">
-          <div class="plan-badge">Save $63</div>
+          <div class="plan-badge">Save ₱3,781.89</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-steady-boy.png"
@@ -599,15 +606,15 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSteady</div>
-            <div class="plan-price">$399.00 USD</div>
+            <div class="plan-price">₱23,951.97</div>
           </div>
           <div class="plan-bundle">Progress Bundle</div>
-          <div class="plan-price-local">~₱23,951.97 PHP est.</div>
+          <div class="plan-price-local" data-usd="399">$399.00 USD</div>
           <div class="plan-period"><strong>66 Lessons</strong> · Valid for 6 Months</div>
           <p class="plan-tagline">Building a routine.</p>
           <ul class="plan-features">
-            <li>66 classes × $7.00</li>
-            <li>Founder Discount −$21/mo × 3 (−$63)</li>
+            <li>66 classes × ₱420.21</li>
+            <li>Founder Discount −₱1,260.63/mo × 3 (−₱3,781.89)</li>
             <li>Credits remain active for 6 full months</li>
             <li>Digital print outs</li>
           </ul>
@@ -618,7 +625,7 @@
 
         <div class="plan-card plan-scholar plan-recommended">
           <div class="plan-recommended-ribbon">Recommended</div>
-          <div class="plan-badge">Save $126</div>
+          <div class="plan-badge">Save ₱7,563.78</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-scholar-sophia.png"
@@ -631,15 +638,15 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoScholar</div>
-            <div class="plan-price">$798.00 USD</div>
+            <div class="plan-price">₱47,903.94</div>
           </div>
           <div class="plan-bundle">Mastery Bundle</div>
-          <div class="plan-price-local">~₱47,903.94 PHP est.</div>
+          <div class="plan-price-local" data-usd="798">$798.00 USD</div>
           <div class="plan-period"><strong>132 Lessons</strong> · Valid for 12 Months</div>
           <p class="plan-tagline">Mastering the basics.</p>
           <ul class="plan-features">
-            <li>132 classes × $7.00</li>
-            <li>Founder Discount −$21/mo × 6 (−$126)</li>
+            <li>132 classes × ₱420.21</li>
+            <li>Founder Discount −₱1,260.63/mo × 6 (−₱7,563.78)</li>
             <li>Credits remain active for 12 full months</li>
             <li>Mid-term progress report</li>
           </ul>
@@ -649,7 +656,7 @@
         </div>
 
         <div class="plan-card plan-summit">
-          <div class="plan-badge">Save $252</div>
+          <div class="plan-badge">Save ₱15,127.56</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-summit-sophia.png"
@@ -662,15 +669,15 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSummit</div>
-            <div class="plan-price">$1,596.00 USD</div>
+            <div class="plan-price">₱95,807.88</div>
           </div>
           <div class="plan-bundle">Ultimate Bundle</div>
-          <div class="plan-price-local">~₱95,807.88 PHP est.</div>
+          <div class="plan-price-local" data-usd="1596">$1,596.00 USD</div>
           <div class="plan-period"><strong>264 Lessons</strong> · Valid for 24 Months</div>
           <p class="plan-tagline">Reaching the peak.</p>
           <ul class="plan-features">
-            <li>264 classes × $7.00</li>
-            <li>Founder Discount −$21/mo × 12 (−$252)</li>
+            <li>264 classes × ₱420.21</li>
+            <li>Founder Discount −₱1,260.63/mo × 12 (−₱15,127.56)</li>
             <li>Credits remain active for 24 full months</li>
             <li>End-of-year certificate</li>
           </ul>
@@ -787,6 +794,7 @@
     </div>
 
     <script src="/js/referral-tracking.js"></script>
+    <script src="/js/plan-currency-converter.js?v=fx-2"></script>
     <script>
       let selectedPlan = "";
       const EXCHANGE_RATE_USED = 60.03;
