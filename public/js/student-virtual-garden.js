@@ -5,7 +5,7 @@
   'use strict';
 
   var REMO = '/images/remo-green.png';
-  var FALLBACK_STAGE = '/images/garden/stage-0-seed.svg';
+  var FALLBACK_STAGE = '/images/garden/stage-0-seed.svg?v=seed-2';
   var AMBIENT_CAP = { butterflies: 3, bees: 2, birds: 2 };
   var AMBIENT_CAP_MOBILE = { butterflies: 2, bees: 1, birds: 1 };
 
