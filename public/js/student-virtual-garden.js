@@ -124,6 +124,9 @@
     var amb = ambientFor(tree);
     var staticScene = !live || reducedMotion() || !!opts.static;
     var html = '';
+    html += '<img class="vg-cloud vg-cloud-1" src="/images/garden/ambient-cloud.svg" alt="">';
+    html += '<img class="vg-cloud vg-cloud-2" src="/images/garden/ambient-cloud.svg" alt="">';
+    html += '<img class="vg-cloud vg-cloud-3" src="/images/garden/ambient-cloud.svg" alt="">';
     html += '<img class="vg-sun" src="/images/garden/ambient-sun.svg" alt="">';
     if (amb.rainbow || opts.rainbowFlash) {
       html += '<img class="vg-rainbow' + (opts.rainbowFlash && !amb.rainbow ? ' is-flash' : '') + '" src="/images/garden/ambient-rainbow.svg" alt="">';

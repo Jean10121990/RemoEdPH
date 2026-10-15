@@ -1,7 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Seed">
-  <ellipse cx="120" cy="214" rx="88" ry="14" fill="#4d7c0f" opacity=".45"/>
-  <ellipse cx="120" cy="204" rx="64" ry="16" fill="#854d0e"/>
-  <ellipse cx="120" cy="198" rx="48" ry="10" fill="#a16207"/>
+  <ellipse cx="120" cy="214" rx="40" ry="8" fill="#14532d" opacity=".2"/>
   <ellipse cx="122" cy="118" rx="44" ry="58" fill="#166534" opacity=".18"/>
   <ellipse cx="120" cy="114" rx="40" ry="54" fill="#86efac"/>
   <ellipse cx="120" cy="118" rx="32" ry="46" fill="#bbf7d0"/>

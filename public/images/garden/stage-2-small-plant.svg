@@ -1,9 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Small Plant">
-  <ellipse cx="120" cy="196" rx="82" ry="16" fill="#86efac"/>
-  <ellipse cx="120" cy="184" rx="58" ry="16" fill="#a16207"/>
-  <path d="M120 184v-58" fill="none" stroke="#92400e" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="120" cy="108" r="28" fill="#22c55e"/>
-  <circle cx="98" cy="122" r="16" fill="#16a34a"/>
-  <circle cx="142" cy="120" r="16" fill="#4ade80"/>
-  <circle cx="120" cy="92" r="14" fill="#4ade80"/>
+  <defs>
+    <linearGradient id="sp-trunk" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#78350f"/>
+      <stop offset="42%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#92400e"/>
+    </linearGradient>
+    <radialGradient id="sp-leaf-d" cx="38%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="55%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </radialGradient>
+    <radialGradient id="sp-leaf-m" cx="40%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#86efac"/>
+      <stop offset="60%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </radialGradient>
+    <radialGradient id="sp-leaf-l" cx="42%" cy="28%" r="68%">
+      <stop offset="0%" stop-color="#bbf7d0"/>
+      <stop offset="50%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="120" cy="214" rx="54" ry="10" fill="#14532d" opacity=".22"/>
+  <path d="M108 208c2-52 4-96 12-128" fill="none" stroke="#451a03" stroke-width="16" stroke-linecap="round"/>
+  <path d="M112 208c2-50 4-94 10-124" fill="none" stroke="url(#sp-trunk)" stroke-width="13" stroke-linecap="round"/>
+  <path d="M118 150c-22 10-32 26-26 34" fill="none" stroke="#92400e" stroke-width="5" stroke-linecap="round"/>
+  <path d="M122 142c18 8 26 20 22 28" fill="none" stroke="#a16207" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M116 96c-2 18 0 32 4 46" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" opacity=".45"/>
+  <circle cx="86" cy="118" r="26" fill="url(#sp-leaf-d)"/>
+  <circle cx="154" cy="116" r="26" fill="url(#sp-leaf-d)"/>
+  <circle cx="120" cy="88" r="36" fill="url(#sp-leaf-m)"/>
+  <circle cx="102" cy="70" r="18" fill="url(#sp-leaf-l)"/>
+  <circle cx="138" cy="68" r="16" fill="url(#sp-leaf-l)"/>
+  <circle cx="120" cy="58" r="12" fill="#bbf7d0"/>
+  <circle cx="96" cy="102" r="6" fill="#dcfce7" opacity=".7"/>
+  <circle cx="140" cy="98" r="5" fill="#dcfce7" opacity=".65"/>
 </svg>

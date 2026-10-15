@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Sprout">
-  <ellipse cx="120" cy="214" rx="96" ry="16" fill="#4ade80"/>
-  <ellipse cx="120" cy="202" rx="80" ry="24" fill="#a16207"/>
+  <ellipse cx="120" cy="214" rx="36" ry="8" fill="#14532d" opacity=".2"/>
   <path d="M120 190c4-46 8-88 6-124" fill="none" stroke="#16a34a" stroke-width="10" stroke-linecap="round"/>
   <path d="M126 92c-36-8-58-36-52-64 34 6 58 28 52 64z" fill="#4ade80"/>
   <path d="M128 110c36-12 62-6 72 20-34 14-62 4-72-20z" fill="#22c55e"/>

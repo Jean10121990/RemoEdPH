@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v3-1">
+    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v3-2">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
 </head>
@@ -43,7 +43,19 @@
 
                     <div class="vg-canvas" id="vg-canvas" role="img" aria-label="Garden tree">
                         <div class="vg-ambient" id="vg-ambient" aria-hidden="true"></div>
-                        <div class="vg-ground" id="vg-ground" aria-hidden="true"></div>
+                        <div class="vg-ground" id="vg-ground" aria-hidden="true">
+                            <svg class="vg-meadow" viewBox="0 0 400 88" preserveAspectRatio="none">
+                                <path d="M0 48C48 28 96 20 160 28c48 6 80 22 140 14 40-5 72 4 100 16v30H0z" fill="#86efac"/>
+                                <path d="M0 58C56 40 112 36 176 44c56 8 88 18 140 10 36-5 60 6 84 16v18H0z" fill="#4ade80"/>
+                                <path d="M0 70C72 56 140 54 220 62c52 6 80 8 180 4v22H0z" fill="#22c55e"/>
+                            </svg>
+                            <span class="vg-tuft vg-tuft-1"></span>
+                            <span class="vg-tuft vg-tuft-2"></span>
+                            <span class="vg-tuft vg-tuft-3"></span>
+                            <span class="vg-flower vg-flower-1"></span>
+                            <span class="vg-flower vg-flower-2"></span>
+                            <span class="vg-flower vg-flower-3"></span>
+                        </div>
                         <img class="vg-plant" id="vg-plant" src="/images/garden/stage-0-seed.svg?v=seed-2" alt="">
                         <div class="vg-water" id="vg-water" hidden>
                             <img class="vg-water-avatar" id="vg-water-avatar" src="/images/remo-green.png" alt="">
@@ -90,6 +102,6 @@
             </div>
         </div>
     </div>
-    <script src="js/student-virtual-garden.js?v=garden-v3-1"></script>
+    <script src="js/student-virtual-garden.js?v=garden-v3-2"></script>
 </body>
 </html>

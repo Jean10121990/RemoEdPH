@@ -17,6 +17,7 @@ Placeholder SVGs. Swap the files, keep the names and viewBox.
 
 | File | Use |
 |------|-----|
+| `ambient-cloud.svg` | Soft drifting clouds (always in the scene) |
 | `ambient-sun.svg` | Sunshine (always on the current tree) |
 | `ambient-rainbow.svg` | Rainbow flash after Water; stays at Fully Grown |
 | `ambient-butterfly.svg` | Butterflies from Small Plant onward |

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Large Tree">
-  <ellipse cx="120" cy="210" rx="92" ry="12" fill="#86efac"/>
+  <ellipse cx="120" cy="214" rx="56" ry="10" fill="#14532d" opacity=".2"/>
   <path d="M120 210v-88" fill="none" stroke="#92400e" stroke-width="14" stroke-linecap="round"/>
   <path d="M120 168c-24 10-36 28-28 36" fill="none" stroke="#a16207" stroke-width="6" stroke-linecap="round"/>
   <path d="M120 160c22 8 32 22 26 32" fill="none" stroke="#a16207" stroke-width="6" stroke-linecap="round"/>

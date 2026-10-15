@@ -14,8 +14,8 @@ body.page-student-virtual-garden .remoed-content {
   --vg-ink: #0f172a;
   --vg-blue: #00aeef;
   --vg-card-max: 1000px;
-  --vg-card-min-h: clamp(480px, 70vh, 760px);
-  --vg-plant-scale: 0.56;
+  --vg-card-min-h: clamp(400px, 62vh, 680px);
+  --vg-plant-scale: 0.84;
   --vg-arrow: 48px;
   --vg-title: 1.15rem;
   --vg-species: 2rem;
@@ -27,12 +27,12 @@ body.page-student-virtual-garden .remoed-content {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .vg-banner {
   margin: 0;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 14px;
   background: linear-gradient(120deg, #ecfdf5, #e0f2fe);
   border: 1px solid #a7f3d0;
@@ -59,7 +59,7 @@ body.page-student-virtual-garden .remoed-content {
   align-items: stretch;
   box-sizing: border-box;
   min-width: 0;
-  padding: 18px 64px 22px;
+  padding: 10px 56px 12px;
   text-align: center;
   background: linear-gradient(180deg, #e0f2fe 0%, #f0fdf4 58%, #86efac 100%);
   border: 1px solid #bae6fd;
@@ -69,7 +69,7 @@ body.page-student-virtual-garden .remoed-content {
 }
 
 .vg-month {
-  margin: 0 0 6px;
+  margin: 0 0 2px;
   font-size: var(--vg-title);
   font-weight: 800;
   color: var(--vg-ink);
@@ -139,30 +139,67 @@ body.page-student-virtual-garden .remoed-content {
   margin: 0 auto;
 }
 
+/* Phase 1 — meadow ground, larger plant, drifting clouds */
 .vg-ground {
   position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: 4%;
-  height: 14%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, #a16207 0%, #854d0e 42%, #4d7c0f 78%, transparent 79%);
-  opacity: 0.55;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28%;
   pointer-events: none;
-  transition: filter 0.4s ease, opacity 0.4s ease;
+  z-index: 0;
+  transition: filter 0.4s ease;
 }
 
 .vg-ground.is-wet {
-  filter: brightness(0.72) saturate(1.15);
-  opacity: 0.8;
+  filter: brightness(0.78) saturate(1.2);
 }
+
+.vg-meadow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.vg-tuft,
+.vg-flower {
+  position: absolute;
+  pointer-events: none;
+}
+
+.vg-tuft {
+  width: 14px;
+  height: 16px;
+  border-radius: 40% 40% 20% 20%;
+  background: linear-gradient(180deg, #4ade80, #16a34a);
+  bottom: 38%;
+}
+
+.vg-tuft-1 { left: 14%; transform: rotate(-12deg); }
+.vg-tuft-2 { left: 78%; bottom: 42%; transform: rotate(10deg); }
+.vg-tuft-3 { left: 62%; bottom: 34%; width: 11px; height: 13px; }
+
+.vg-flower {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: -4px 0 0 #fb7185, 4px 0 0 #fb7185, 0 -4px 0 #fda4af, 0 4px 0 #fda4af;
+  background: #fde047;
+  bottom: 46%;
+}
+
+.vg-flower-1 { left: 22%; }
+.vg-flower-2 { left: 70%; bottom: 50%; background: #facc15; box-shadow: -4px 0 0 #f472b6, 4px 0 0 #f472b6, 0 -4px 0 #f9a8d4, 0 4px 0 #f9a8d4; }
+.vg-flower-3 { left: 86%; bottom: 40%; width: 8px; height: 8px; }
 
 .vg-plant {
   position: relative;
   z-index: 1;
   height: calc(var(--vg-card-min-h) * var(--vg-plant-scale));
   width: auto;
-  max-width: min(72%, 560px);
+  max-width: min(88%, 720px);
   object-fit: contain;
   display: block;
 }
@@ -238,11 +275,23 @@ body.page-student-virtual-garden .remoed-content {
   overflow: hidden;
 }
 
+.vg-cloud {
+  position: absolute;
+  top: 8%;
+  width: min(22%, 120px);
+  opacity: 0.92;
+  animation: vg-drift 28s linear infinite;
+}
+
+.vg-cloud-1 { left: 8%; top: 6%; animation-duration: 32s; }
+.vg-cloud-2 { left: 38%; top: 12%; width: min(16%, 88px); animation-duration: 26s; animation-delay: -8s; }
+.vg-cloud-3 { left: 62%; top: 5%; width: min(18%, 100px); animation-duration: 34s; animation-delay: -16s; }
+
 .vg-sun {
   position: absolute;
-  top: 4%;
-  right: 6%;
-  width: min(18%, 92px);
+  top: 3%;
+  right: 5%;
+  width: min(16%, 84px);
   transform-origin: 50% 50%;
   animation: vg-sun-spin 28s linear infinite;
 }
@@ -282,9 +331,11 @@ body.page-student-virtual-garden .remoed-content {
 .vg-ambient.is-static .vg-sun,
 .vg-ambient.is-static .vg-bug,
 .vg-ambient.is-static .vg-rainbow,
+.vg-ambient.is-static .vg-cloud,
 body.vg-paused .vg-ambient .vg-sun,
 body.vg-paused .vg-ambient .vg-bug,
-body.vg-paused .vg-ambient .vg-rainbow {
+body.vg-paused .vg-ambient .vg-rainbow,
+body.vg-paused .vg-ambient .vg-cloud {
   animation: none !important;
 }
 
@@ -338,7 +389,7 @@ body.vg-paused .vg-ambient .vg-rainbow {
   z-index: 3;
   flex: 0 0 auto;
   width: min(100%, 560px);
-  margin: 10px auto 0;
+  margin: 4px auto 0;
 }
 
 .vg-balance {
@@ -530,19 +581,25 @@ body.vg-paused .vg-ambient .vg-rainbow {
   100% { opacity: 0; transform: translateX(-50%) scale(1.15); }
 }
 
+@keyframes vg-drift {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(28px); }
+  100% { transform: translateX(0); }
+}
+
 @media (max-width: 1024px) {
   .page-student-virtual-garden .vg-page {
     --vg-card-max: 100%;
-    --vg-card-min-h: clamp(420px, 64vh, 680px);
-    --vg-plant-scale: 0.52;
+    --vg-card-min-h: clamp(380px, 58vh, 620px);
+    --vg-plant-scale: 0.78;
   }
 }
 
 @media (max-width: 768px) {
   .page-student-virtual-garden .vg-page {
     --vg-card-max: 100%;
-    --vg-card-min-h: 60vh;
-    --vg-plant-scale: 0.5;
+    --vg-card-min-h: 54vh;
+    --vg-plant-scale: 0.75;
     --vg-arrow: 44px;
     --vg-species: 1.55rem;
     --vg-stage: 1.05rem;
@@ -551,7 +608,7 @@ body.vg-paused .vg-ambient .vg-rainbow {
   }
 
   .vg-stage {
-    padding: 14px 52px 16px;
+    padding: 8px 48px 10px;
   }
 
   .vg-arrow--prev { left: 6px; }
@@ -573,7 +630,8 @@ body.vg-paused .vg-ambient .vg-rainbow {
   .vg-glow,
   .vg-sun,
   .vg-rainbow,
-  .vg-bug {
+  .vg-bug,
+  .vg-cloud {
     animation: none;
   }
   .vg-progress span,
