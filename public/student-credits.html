@@ -15,6 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
   <script src="timezone-utils.js"></script>
   <script src="js/user-session.js"></script>
+  <script src="js/plan-pricing.js?v=pricing-1"></script>
 </head>
 <body class="student-portal page-student-credits">
   <div class="remoed-main">
@@ -276,6 +277,28 @@
         usdTotal: 1596
       }
     };
+    /* Fallback above; GET /api/payments/plans (plan-pricing.js) replaces it with the checkout totals. */
+    Object.keys(PLAN_CHECKOUT).forEach(function (id) { PLAN_CHECKOUT[id].usdPerClass = 7; });
+    if (window.RemoEdPlanPricing) {
+      window.RemoEdPlanPricing.ready.then(function (data) {
+        if (!data) return;
+        EXCHANGE_RATE_USED = data.exchangeRatePhp;
+        Object.keys(data.plans).forEach(function (id) {
+          var p = data.plans[id];
+          var row = PLAN_CHECKOUT[id];
+          if (!row) return;
+          row.name = p.planName + ' — ' + p.bundleName;
+          row.lessons = p.lessonCredits;
+          row.months = p.months;
+          row.validityMonths = p.validityMonths;
+          row.usdPerClass = p.usdPerClass;
+          row.usdList = p.usdList;
+          row.usdDiscount = p.usdFounderDiscount;
+          row.usdTotal = p.usdTotal;
+        });
+        if (document.getElementById('refill-plan-select')) updateCheckoutBreakdown();
+      });
+    }
 
     function formatUsd(n) {
       return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -299,10 +322,10 @@
       var phpEl = document.getElementById('checkout-total-php');
       var validEl = document.getElementById('checkout-validity');
       if (nameEl) nameEl.textContent = plan.name;
-      if (classesEl) classesEl.textContent = plan.lessons + ' classes × $7.00';
+      if (classesEl) classesEl.textContent = plan.lessons + ' classes × ' + formatUsd(plan.usdPerClass);
       if (listEl) listEl.textContent = formatUsd(plan.usdList);
       if (plan.usdDiscount > 0) {
-        if (discLabel) discLabel.textContent = 'Founder Discount (−$21/mo × ' + plan.months + ')';
+        if (discLabel) discLabel.textContent = 'Founder Discount (−' + formatUsd(plan.usdDiscount / plan.months).replace('.00', '') + '/mo × ' + plan.months + ')';
         if (discEl) discEl.textContent = '−' + formatUsd(plan.usdDiscount);
       } else {
         if (discLabel) discLabel.textContent = 'Founder Discount';

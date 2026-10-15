@@ -4,6 +4,7 @@
  * Rates: GET /api/public/fx-rates (USD base, cached on the server).
  */
 (function () {
+  /** Fallback only; replaced by the server rate from plan-pricing.js. */
   var CHECKOUT_PHP_RATE = 60.03;
   var STORE_KEY = 'remoed_plan_currency';
   var select = document.getElementById('plan-currency');
@@ -90,6 +91,14 @@
 
   fillOptions();
   render();
+
+  if (window.RemoEdPlanPricing) {
+    window.RemoEdPlanPricing.ready.then(function (data) {
+      if (!data) return;
+      CHECKOUT_PHP_RATE = data.exchangeRatePhp;
+      render();
+    });
+  }
 
   fetch('/api/public/fx-rates')
     .then(function (r) { return r.ok ? r.json() : null; })

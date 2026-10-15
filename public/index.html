@@ -563,7 +563,7 @@
         <p class="plan-currency-note" id="plan-currency-note" aria-live="polite">Prices are in PHP. Pick a currency to see an estimate.</p>
       </div>
       <div class="plans-grid">
-        <div class="plan-card plan-spark">
+        <div class="plan-card plan-spark" data-plan="spark">
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-spark-robot.png"
@@ -583,7 +583,7 @@
           <div class="plan-period"><strong>22 Lessons</strong> · Valid for 3 Months</div>
           <p class="plan-tagline">Spark their curiosity.</p>
           <ul class="plan-features">
-            <li>22 classes × ₱420.21 = ₱9,244.62</li>
+            <li data-price-line="class">22 classes × ₱420.21 = ₱9,244.62</li>
             <li>Credits remain active for 3 full months</li>
             <li>Access to digital and video library</li>
           </ul>
@@ -592,7 +592,7 @@
           </button>
         </div>
 
-        <div class="plan-card plan-steady plan-popular">
+        <div class="plan-card plan-steady plan-popular" data-plan="steady">
           <div class="plan-badge">Save ₱3,781.89</div>
           <div class="plan-icon plan-icon--character">
             <img
@@ -613,8 +613,8 @@
           <div class="plan-period"><strong>66 Lessons</strong> · Valid for 6 Months</div>
           <p class="plan-tagline">Building a routine.</p>
           <ul class="plan-features">
-            <li>66 classes × ₱420.21</li>
-            <li>Founder Discount −₱1,260.63/mo × 3 (−₱3,781.89)</li>
+            <li data-price-line="class">66 classes × ₱420.21</li>
+            <li data-price-line="founder">Founder Discount −₱1,260.63/mo × 3 (−₱3,781.89)</li>
             <li>Credits remain active for 6 full months</li>
             <li>Digital print outs</li>
           </ul>
@@ -623,7 +623,7 @@
           </button>
         </div>
 
-        <div class="plan-card plan-scholar plan-recommended">
+        <div class="plan-card plan-scholar plan-recommended" data-plan="scholar">
           <div class="plan-recommended-ribbon">Recommended</div>
           <div class="plan-badge">Save ₱7,563.78</div>
           <div class="plan-icon plan-icon--character">
@@ -645,8 +645,8 @@
           <div class="plan-period"><strong>132 Lessons</strong> · Valid for 12 Months</div>
           <p class="plan-tagline">Mastering the basics.</p>
           <ul class="plan-features">
-            <li>132 classes × ₱420.21</li>
-            <li>Founder Discount −₱1,260.63/mo × 6 (−₱7,563.78)</li>
+            <li data-price-line="class">132 classes × ₱420.21</li>
+            <li data-price-line="founder">Founder Discount −₱1,260.63/mo × 6 (−₱7,563.78)</li>
             <li>Credits remain active for 12 full months</li>
             <li>Mid-term progress report</li>
           </ul>
@@ -655,7 +655,7 @@
           </button>
         </div>
 
-        <div class="plan-card plan-summit">
+        <div class="plan-card plan-summit" data-plan="summit">
           <div class="plan-badge">Save ₱15,127.56</div>
           <div class="plan-icon plan-icon--character">
             <img
@@ -676,8 +676,8 @@
           <div class="plan-period"><strong>264 Lessons</strong> · Valid for 24 Months</div>
           <p class="plan-tagline">Reaching the peak.</p>
           <ul class="plan-features">
-            <li>264 classes × ₱420.21</li>
-            <li>Founder Discount −₱1,260.63/mo × 12 (−₱15,127.56)</li>
+            <li data-price-line="class">264 classes × ₱420.21</li>
+            <li data-price-line="founder">Founder Discount −₱1,260.63/mo × 12 (−₱15,127.56)</li>
             <li>Credits remain active for 24 full months</li>
             <li>End-of-year certificate</li>
           </ul>
@@ -794,17 +794,37 @@
     </div>
 
     <script src="/js/referral-tracking.js"></script>
-    <script src="/js/plan-currency-converter.js?v=fx-2"></script>
+    <script src="/js/plan-pricing.js?v=pricing-1"></script>
+    <script src="/js/plan-currency-converter.js?v=fx-3"></script>
     <script>
       let selectedPlan = "";
-      const EXCHANGE_RATE_USED = 60.03;
-      /** $7/class; Founder Discount $21×months (spark = $0). Totals match server/payments.js */
+      let EXCHANGE_RATE_USED = 60.03;
+      /** Fallback until GET /api/payments/plans loads (public/js/plan-pricing.js); the server is the source of truth. */
       const PLAN_PRICING = {
         spark: { name: "RemoSpark Plan", months: 1, validityMonths: 3, lessonCredits: 22, usdList: 154.0, usdFounderDiscount: 0, usdTotal: 154.0 },
         steady: { name: "RemoSteady Plan", months: 3, validityMonths: 6, lessonCredits: 66, usdList: 462.0, usdFounderDiscount: 63.0, usdTotal: 399.0 },
         scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 12, lessonCredits: 132, usdList: 924.0, usdFounderDiscount: 126.0, usdTotal: 798.0 },
         summit: { name: "RemoSummit Plan", months: 12, validityMonths: 24, lessonCredits: 264, usdList: 1848.0, usdFounderDiscount: 252.0, usdTotal: 1596.0 },
       };
+      if (window.RemoEdPlanPricing) {
+        window.RemoEdPlanPricing.ready.then(function (data) {
+          if (!data) return;
+          EXCHANGE_RATE_USED = data.exchangeRatePhp;
+          Object.keys(data.plans).forEach(function (id) {
+            var p = data.plans[id];
+            if (!PLAN_PRICING[id]) return;
+            Object.assign(PLAN_PRICING[id], {
+              name: p.planName + " Plan",
+              months: p.months,
+              validityMonths: p.validityMonths,
+              lessonCredits: p.lessonCredits,
+              usdList: p.usdList,
+              usdFounderDiscount: p.usdFounderDiscount,
+              usdTotal: p.usdTotal,
+            });
+          });
+        });
+      }
       let assessmentData = null;
 
       function buildPlanDescription(plan) {

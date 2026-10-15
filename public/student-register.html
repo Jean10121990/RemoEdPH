@@ -8,6 +8,7 @@
   <title>Student Registration - RemoEdPH</title>
   <script src="js/referral-tracking.js"></script>
   <script src="js/user-session.js"></script>
+  <script src="js/plan-pricing.js?v=pricing-1"></script>
   <link rel="stylesheet" href="css/password-toggle.css?v=2">
   <style>
     :root {
@@ -401,15 +402,15 @@
   <div id="plan-selection-modal" class="plan-modal" style="display: none;">
     <div class="plan-modal-content">
       <h2 style="color: #00aeef; margin-bottom: 16px; text-align: center;">Choose Your Learning Plan</h2>
-      <p style="text-align: center; color: #666; margin-bottom: 20px; line-height: 1.45;">Select a plan. You’ll pay in PHP at checkout (estimates use <strong>1 USD = ₱60.03</strong>).</p>
+      <p style="text-align: center; color: #666; margin-bottom: 20px; line-height: 1.45;">Select a plan. You’ll pay in PHP at checkout (estimates use <strong data-plan-rate>1 USD = ₱60.03</strong>).</p>
 
       <div class="plans-grid-modal">
-        <div class="plan-card-modal">
+        <div class="plan-card-modal" data-plan="spark">
           <div class="plan-name-modal">RemoSpark — Starter</div>
-          <div class="plan-price-modal" style="font-size:1rem;">22 Lessons · Valid for 3 Months</div>
-          <div class="plan-period-modal"><strong>$154.00 USD</strong> · <strong>₱9,244.62</strong> est.</div>
+          <div class="plan-price-modal" style="font-size:1rem;" data-plan-field="lessonsValid">22 Lessons · Valid for 3 Months</div>
+          <div class="plan-period-modal"><strong data-plan-field="usdTotal">$154.00 USD</strong> · <strong data-plan-field="phpTotal">₱9,244.62</strong> est.</div>
           <ul class="plan-features-modal">
-            <li>22 classes × $7.00</li>
+            <li data-plan-field="usdClassLine">22 classes × $7.00</li>
             <li>Valid for 3 Months</li>
             <li>All Learning Games</li>
             <li>Progress Tracking</li>
@@ -417,42 +418,42 @@
           <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('spark')">Choose Plan</button>
         </div>
 
-        <div class="plan-card-modal featured-modal">
-          <div class="plan-badge-modal">Save $63</div>
+        <div class="plan-card-modal featured-modal" data-plan="steady">
+          <div class="plan-badge-modal" data-plan-field="usdSave">Save $63</div>
           <div class="plan-name-modal">RemoSteady — Progress</div>
-          <div class="plan-price-modal" style="font-size:1rem;">66 Lessons · Valid for 6 Months</div>
-          <div class="plan-period-modal"><strong>$399.00 USD</strong> · <strong>₱23,951.97</strong> est.</div>
+          <div class="plan-price-modal" style="font-size:1rem;" data-plan-field="lessonsValid">66 Lessons · Valid for 6 Months</div>
+          <div class="plan-period-modal"><strong data-plan-field="usdTotal">$399.00 USD</strong> · <strong data-plan-field="phpTotal">₱23,951.97</strong> est.</div>
           <ul class="plan-features-modal">
-            <li>66 classes × $7.00</li>
-            <li>Founder Discount −$63</li>
+            <li data-plan-field="usdClassLine">66 classes × $7.00</li>
+            <li data-plan-field="usdFounder">Founder Discount −$63</li>
             <li>Valid for 6 Months</li>
             <li>Priority Support</li>
           </ul>
           <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('steady')">Choose Plan</button>
         </div>
 
-        <div class="plan-card-modal">
-          <div class="plan-badge-modal">Save $126</div>
+        <div class="plan-card-modal" data-plan="scholar">
+          <div class="plan-badge-modal" data-plan-field="usdSave">Save $126</div>
           <div class="plan-name-modal">RemoScholar — Mastery</div>
-          <div class="plan-price-modal" style="font-size:1rem;">132 Lessons · Valid for 12 Months</div>
-          <div class="plan-period-modal"><strong>$798.00 USD</strong> · <strong>₱47,903.94</strong> est.</div>
+          <div class="plan-price-modal" style="font-size:1rem;" data-plan-field="lessonsValid">132 Lessons · Valid for 12 Months</div>
+          <div class="plan-period-modal"><strong data-plan-field="usdTotal">$798.00 USD</strong> · <strong data-plan-field="phpTotal">₱47,903.94</strong> est.</div>
           <ul class="plan-features-modal">
-            <li>132 classes × $7.00</li>
-            <li>Founder Discount −$126</li>
+            <li data-plan-field="usdClassLine">132 classes × $7.00</li>
+            <li data-plan-field="usdFounder">Founder Discount −$126</li>
             <li>Valid for 12 Months</li>
             <li>Mid-term progress report</li>
           </ul>
           <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('scholar')">Choose Plan</button>
         </div>
 
-        <div class="plan-card-modal">
-          <div class="plan-badge-modal">Save $252</div>
+        <div class="plan-card-modal" data-plan="summit">
+          <div class="plan-badge-modal" data-plan-field="usdSave">Save $252</div>
           <div class="plan-name-modal">RemoSummit — Ultimate</div>
-          <div class="plan-price-modal" style="font-size:1rem;">264 Lessons · Valid for 24 Months</div>
-          <div class="plan-period-modal"><strong>$1,596.00 USD</strong> · <strong>₱95,807.88</strong> est.</div>
+          <div class="plan-price-modal" style="font-size:1rem;" data-plan-field="lessonsValid">264 Lessons · Valid for 24 Months</div>
+          <div class="plan-period-modal"><strong data-plan-field="usdTotal">$1,596.00 USD</strong> · <strong data-plan-field="phpTotal">₱95,807.88</strong> est.</div>
           <ul class="plan-features-modal">
-            <li>264 classes × $7.00</li>
-            <li>Founder Discount −$252</li>
+            <li data-plan-field="usdClassLine">264 classes × $7.00</li>
+            <li data-plan-field="usdFounder">Founder Discount −$252</li>
             <li>Valid for 24 Months</li>
             <li>Certificate of Completion</li>
           </ul>

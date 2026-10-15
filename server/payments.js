@@ -378,6 +378,34 @@ function normalizeInstapayReference(raw) {
   return s;
 }
 
+/** Public price list for the landing / plan pages. Same totals as checkout (`computePlanTotals`). No input. */
+router.get('/plans', (req, res) => {
+  const plans = Object.keys(PLAN_CREDITS)
+    .map((id) => computePlanTotals(id))
+    .filter(Boolean)
+    .map((t) => ({
+      planId: t.planId,
+      planName: t.planName,
+      bundleName: t.bundleName,
+      months: t.months,
+      validityMonths: t.validityMonths,
+      lessonCredits: t.lessonCredits,
+      usdPerClass: t.usdPerClass,
+      usdList: t.usdList,
+      usdFounderDiscount: t.usdFounderDiscount,
+      usdTotal: t.usdTotal,
+      phpTotal: t.phpTotal,
+    }));
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({
+    success: true,
+    exchangeRatePhp: EXCHANGE_RATE_PHP,
+    usdPerClass: USD_PER_CLASS,
+    founderDiscountPerMonth: FOUNDER_DISCOUNT_PER_MONTH,
+    plans,
+  });
+});
+
 router.get('/plan-quote', async (req, res) => {
   const selectedPlanId = normalizePlanId(req.query.planId || req.query.plan);
   const totals = selectedPlanId ? computePlanTotals(selectedPlanId) : null;

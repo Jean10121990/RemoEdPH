@@ -5,3 +5,7 @@ node_modules
 *.pem
 *.key
 uploads/
+
+# Local TLS key/cert (never commit)
+server/key.pem
+server/cert.pem
