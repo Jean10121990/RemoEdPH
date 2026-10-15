@@ -10,8 +10,8 @@ Placeholder SVGs. Swap the files, keep the names and viewBox.
 | `stage-1-sprout.svg` | Sprout |
 | `stage-2-small-plant.svg` | Small Plant |
 | `stage-3-medium-plant.svg` | Medium Plant |
-| `stage-4-large-tree.svg` | Large Tree |
-| `stage-5-fully-grown.svg` | Fully Grown Tree |
+| `stage-4-large-tree.svg` | Large Tree / Big Tree |
+| `stage-5-fully-grown.svg` | Fully Grown Big Tree (yellow flowers) |
 
 ## Ambient scene (swap these for final art)
 

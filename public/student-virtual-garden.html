@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v3-2">
+    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v3-7">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
 </head>
@@ -33,6 +33,9 @@
 
                 <div class="vg-stage" id="vg-stage">
                     <p class="vg-month" id="vg-month">Your tree</p>
+                    <p class="vg-fact" id="vg-fact"></p>
+                    <ol class="vg-tracker" id="vg-tracker" aria-label="Tree growth stages"></ol>
+                    <button type="button" class="vg-mute" id="vg-mute" aria-pressed="false" aria-label="Sound is off. Turn sound on.">Sound off</button>
 
                     <button type="button" class="vg-arrow vg-arrow--prev" id="vg-prev" hidden aria-label="Previous month’s tree">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
@@ -56,7 +59,7 @@
                             <span class="vg-flower vg-flower-2"></span>
                             <span class="vg-flower vg-flower-3"></span>
                         </div>
-                        <img class="vg-plant" id="vg-plant" src="/images/garden/stage-0-seed.svg?v=seed-2" alt="">
+                        <img class="vg-plant" id="vg-plant" src="/images/garden/stage-0-seed.svg?v=stage-p2" alt="">
                         <div class="vg-water" id="vg-water" hidden>
                             <img class="vg-water-avatar" id="vg-water-avatar" src="/images/remo-green.png" alt="">
                             <svg class="vg-can" viewBox="0 0 64 64" aria-hidden="true">
@@ -67,41 +70,94 @@
                             <span class="vg-drop vg-drop-1" aria-hidden="true"></span>
                             <span class="vg-drop vg-drop-2" aria-hidden="true"></span>
                             <span class="vg-drop vg-drop-3" aria-hidden="true"></span>
+                            <span class="vg-drop vg-drop-4" aria-hidden="true"></span>
+                            <span class="vg-drop vg-drop-5" aria-hidden="true"></span>
+                            <span class="vg-spark vg-spark-1" aria-hidden="true"></span>
+                            <span class="vg-spark vg-spark-2" aria-hidden="true"></span>
+                            <span class="vg-spark vg-spark-3" aria-hidden="true"></span>
                         </div>
                         <div class="vg-fert" id="vg-fert" hidden>
                             <img class="vg-fert-avatar" id="vg-fert-avatar" src="/images/remo-green.png" alt="">
                             <span class="vg-grain vg-grain-1" aria-hidden="true"></span>
                             <span class="vg-grain vg-grain-2" aria-hidden="true"></span>
                             <span class="vg-grain vg-grain-3" aria-hidden="true"></span>
+                            <span class="vg-leaf vg-leaf-1" aria-hidden="true"></span>
+                            <span class="vg-leaf vg-leaf-2" aria-hidden="true"></span>
+                            <span class="vg-leaf vg-leaf-3" aria-hidden="true"></span>
+                            <span class="vg-leaf vg-leaf-4" aria-hidden="true"></span>
                             <span class="vg-glow" aria-hidden="true"></span>
+                        </div>
+                        <div class="vg-confetti" id="vg-confetti" hidden aria-hidden="true">
+                            <span></span><span></span><span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span><span></span><span></span>
                         </div>
                         <p class="vg-unlock" id="vg-unlock" hidden>Stage unlocked!</p>
                     </div>
 
+                    <div class="vg-celebrate" id="vg-celebrate" hidden role="dialog" aria-modal="true" aria-labelledby="vg-celebrate-title">
+                        <div class="vg-celebrate-card">
+                            <p class="vg-celebrate-title" id="vg-celebrate-title"></p>
+                            <button type="button" class="vg-celebrate-ok" id="vg-celebrate-ok">Nice!</button>
+                        </div>
+                    </div>
+
                     <div class="vg-tend" id="vg-tend">
-                        <p class="vg-balance" id="vg-balance">Balance: 0 · Total earned: 0</p>
+                        <div class="vg-wallet" id="vg-wallet">
+                            <span class="vg-wallet-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="36" height="36" fill="#38bdf8" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+                            </span>
+                            <div class="vg-wallet-text">
+                                <p class="vg-wallet-count"><span id="vg-balance">0</span> Eco-Drops</p>
+                                <p class="vg-wallet-earned" id="vg-earned">Total earned: 0</p>
+                            </div>
+                            <details class="vg-earn" id="vg-earn">
+                                <summary>How do I earn more?</summary>
+                                <p>Finish a <a href="student-learning-journey.html">lesson</a>, a task, or a <a href="student-games-activities.html">Play &amp; Learn</a> game. Each one gives 1 Eco-Drop.</p>
+                            </details>
+                        </div>
                         <div class="vg-tend-actions" id="vg-tend-actions">
                             <button type="button" class="vg-care-btn vg-care-btn--water" id="vg-water-btn" aria-label="Water the tree, costs 1 Eco-Drop">Water · 1 💧</button>
                             <button type="button" class="vg-care-btn vg-care-btn--fert" id="vg-fert-btn" aria-label="Fertilize the tree, costs 3 Eco-Drops">Fertilizer · 3 💧</button>
                         </div>
                         <p class="vg-grown" id="vg-grown" hidden>Fully grown! 🎉</p>
+                        <p class="vg-short-hint" id="vg-short-hint" hidden>Not enough drops</p>
                         <p class="vg-tend-hint" id="vg-tend-hint" hidden>Earn Eco-Drops by finishing a <a href="student-learning-journey.html">lesson</a>, task, or <a href="student-games-activities.html">Play &amp; Learn</a> game.</p>
                         <p class="vg-live" id="vg-live" aria-live="polite"></p>
                     </div>
 
                     <div class="vg-meta">
                         <p class="vg-species" id="vg-species"></p>
-                        <p class="vg-stage-name" id="vg-stage-name">Seed</p>
+                        <p class="vg-stage-badge" id="vg-stage-name">Level 1: Seed</p>
                         <div class="vg-progress" role="progressbar" id="vg-progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Monthly tree growth">
                             <span id="vg-progress-bar"></span>
                         </div>
-                        <p class="vg-next" id="vg-next-line">Water your tree with Eco-Drops to help it grow.</p>
+                        <div class="vg-mascot-row">
+                            <svg class="vg-mascot" viewBox="0 0 64 64" aria-hidden="true">
+                                <ellipse cx="32" cy="38" rx="16" ry="20" fill="#bbf7d0" stroke="#16a34a" stroke-width="2"/>
+                                <ellipse cx="32" cy="20" rx="8" ry="6" fill="#a16207"/>
+                                <circle cx="26" cy="36" r="2.2" fill="#14532d"/>
+                                <circle cx="38" cy="36" r="2.2" fill="#14532d"/>
+                                <path d="M26 44c4 3 8 3 12 0" fill="none" stroke="#14532d" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                            <p class="vg-bubble" id="vg-next-line">Water your tree with Eco-Drops to help it grow.</p>
+                        </div>
                         <button type="button" class="vg-skip" id="vg-skip" hidden>Skip animation</button>
                     </div>
                 </div>
+                <div class="vg-gallery" id="vg-gallery" hidden>
+                    <p class="vg-gallery-title">Garden gallery</p>
+                    <div class="vg-gallery-row" id="vg-gallery-row"></div>
+                </div>
+                <aside class="vg-parents" id="vg-parents" hidden>
+                    <p class="vg-parents-title">For parents</p>
+                    <p id="vg-parents-line">Your child earns 1 Eco-Drop for each finished lesson, task, or Play &amp; Learn game.</p>
+                </aside>
             </div>
         </div>
     </div>
-    <script src="js/student-virtual-garden.js?v=garden-v3-2"></script>
+    <script type="application/json" id="vg-theme-data">
+{"Narra":{"tint":"amber","fact":"This tree is known for strong wood and pretty yellow flowers."},"Mango":{"tint":"mango","fact":"This tree can grow sweet fruit in the hot season."},"Acacia":{"tint":"gold","fact":"This tree has tiny leaves and grows well in the sun."},"Oak":{"tint":"oak","fact":"This tree grows slowly and can live for a very long time."},"Cherry Blossom":{"tint":"cherry","fact":"This tree is famous for soft pink flowers in spring."},"Pine":{"tint":"pine","fact":"This tree stays green all year and smells like the forest."},"Banyan":{"tint":"banyan","fact":"This tree can grow extra roots that look like new trunks."},"Maple":{"tint":"maple","fact":"This tree is known for bright leaves in cool weather."},"Mahogany":{"tint":"wood","fact":"This tree has rich brown wood used for fine furniture."},"Molave":{"tint":"stone","fact":"This tree is very hardy and grows in rocky Philippine soil."},"Bamboo":{"tint":"bamboo","fact":"Bamboo can grow very fast and is used to build homes."}}
+    </script>
+    <script src="js/student-virtual-garden.js?v=garden-v3-7"></script>
 </body>
 </html>

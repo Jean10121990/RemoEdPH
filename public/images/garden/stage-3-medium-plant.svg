@@ -1,9 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Medium Plant">
-  <ellipse cx="120" cy="214" rx="48" ry="9" fill="#14532d" opacity=".2"/>
-  <path d="M120 210v-86" fill="none" stroke="#92400e" stroke-width="10" stroke-linecap="round"/>
-  <path d="M120 150c-18 8-28 22-22 28" fill="none" stroke="#a16207" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="120" cy="96" r="40" fill="#16a34a"/>
-  <circle cx="86" cy="118" r="22" fill="#22c55e"/>
-  <circle cx="154" cy="116" r="22" fill="#22c55e"/>
-  <circle cx="120" cy="70" r="20" fill="#4ade80"/>
+  <defs>
+    <linearGradient id="mp-trunk" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#451a03"/>
+      <stop offset="40%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+    <radialGradient id="mp-d" cx="36%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#166534"/>
+    </radialGradient>
+    <radialGradient id="mp-m" cx="40%" cy="28%" r="70%">
+      <stop offset="0%" stop-color="#86efac"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </radialGradient>
+    <radialGradient id="mp-l" cx="42%" cy="26%" r="68%">
+      <stop offset="0%" stop-color="#dcfce7"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="120" cy="214" rx="58" ry="10" fill="#14532d" opacity=".22"/>
+  <path d="M106 210c3-56 6-104 14-140" fill="none" stroke="#451a03" stroke-width="20" stroke-linecap="round"/>
+  <path d="M110 210c3-54 6-102 12-136" fill="none" stroke="url(#mp-trunk)" stroke-width="15" stroke-linecap="round"/>
+  <path d="M116 150c-26 12-38 30-30 40" fill="none" stroke="#92400e" stroke-width="6" stroke-linecap="round"/>
+  <path d="M124 142c24 10 36 26 30 38" fill="none" stroke="#a16207" stroke-width="6" stroke-linecap="round"/>
+  <path d="M118 100c-1 20 1 36 5 52" fill="none" stroke="#fbbf24" stroke-width="2.2" opacity=".4" stroke-linecap="round"/>
+  <circle cx="74" cy="118" r="28" fill="url(#mp-d)"/>
+  <circle cx="166" cy="114" r="28" fill="url(#mp-d)"/>
+  <circle cx="96" cy="78" r="24" fill="url(#mp-m)"/>
+  <circle cx="146" cy="74" r="24" fill="url(#mp-m)"/>
+  <circle cx="120" cy="70" r="40" fill="url(#mp-m)"/>
+  <circle cx="108" cy="52" r="16" fill="url(#mp-l)"/>
+  <circle cx="134" cy="48" r="15" fill="url(#mp-l)"/>
+  <circle cx="88" cy="100" r="6" fill="#dcfce7" opacity=".7"/>
+  <circle cx="150" cy="96" r="5" fill="#dcfce7" opacity=".65"/>
 </svg>

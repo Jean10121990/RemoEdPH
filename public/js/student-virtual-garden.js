@@ -5,7 +5,19 @@
   'use strict';
 
   var REMO = '/images/remo-green.png';
-  var FALLBACK_STAGE = '/images/garden/stage-0-seed.svg?v=seed-2';
+  var FALLBACK_STAGE = '/images/garden/stage-0-seed.svg?v=stage-p2';
+  /** Five tracker steps. Server stages 4 and 5 both map to Big Tree. */
+  var TRACKER_STEPS = [
+    { key: 'seed', label: 'Seed' },
+    { key: 'sprout', label: 'Sprout' },
+    { key: 'small-plant', label: 'Small Plant' },
+    { key: 'medium-plant', label: 'Medium Plant' },
+    { key: 'big-tree', label: 'Big Tree' },
+  ];
+  var ICON_CHECK =
+    '<svg class="vg-tracker-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5L20 7"/></svg>';
+  var ICON_LOCK =
+    '<svg class="vg-tracker-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
   var AMBIENT_CAP = { butterflies: 3, bees: 2, birds: 2 };
   var AMBIENT_CAP_MOBILE = { butterflies: 2, bees: 1, birds: 1 };
 
@@ -17,6 +29,9 @@
   var skipFn = null;
   var inFlight = false;
   var rainbowTimer = null;
+  var SOUND_KEY = 'remoed_vg_sound';
+  var audioCtx = null;
+  var themes = null;
 
   function token() {
     if (window.RemoEdEcoDrops && RemoEdEcoDrops.studentToken) return RemoEdEcoDrops.studentToken();
@@ -62,6 +77,12 @@
     };
   }
 
+  function percentOf(points, target) {
+    var t = Math.max(1, Math.floor(Number(target) || 1));
+    var p = Math.max(0, Math.floor(Number(points) || 0));
+    return Math.min(100, Math.floor((p * 100) / t));
+  }
+
   function available() {
     if (!current) return 0;
     if (current.availableDrops != null) return Math.max(0, Number(current.availableDrops) || 0);
@@ -89,6 +110,150 @@
     var i = keys.indexOf(viewingKey);
     prev.disabled = i <= 0;
     next.disabled = i < 0 || i >= keys.length - 1;
+  }
+
+  function loadThemes() {
+    if (themes) return themes;
+    themes = {};
+    var el = $('vg-theme-data');
+    if (!el) return themes;
+    try {
+      themes = JSON.parse(el.textContent || '{}') || {};
+    } catch (_e) {
+      themes = {};
+    }
+    return themes;
+  }
+
+  function themeFor(species) {
+    var map = loadThemes();
+    return (species && map[species]) || { tint: 'meadow', fact: 'Trees need water, sun, and care to grow.' };
+  }
+
+  function applyTheme(tree) {
+    var theme = themeFor(tree && tree.species);
+    var stage = $('vg-stage');
+    if (stage) stage.setAttribute('data-tint', theme.tint || 'meadow');
+    var fact = $('vg-fact');
+    if (fact) fact.textContent = theme.fact || '';
+  }
+
+  function soundOn() {
+    try {
+      return localStorage.getItem(SOUND_KEY) === 'on';
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  function setSoundOn(on) {
+    try {
+      if (on) localStorage.setItem(SOUND_KEY, 'on');
+      else localStorage.removeItem(SOUND_KEY);
+    } catch (_e) { /* ignore quota / private mode */ }
+    paintMute();
+  }
+
+  function paintMute() {
+    var btn = $('vg-mute');
+    if (!btn) return;
+    var on = soundOn();
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.textContent = on ? 'Sound on' : 'Sound off';
+    btn.setAttribute('aria-label', on ? 'Sound is on. Turn sound off.' : 'Sound is off. Turn sound on.');
+  }
+
+  function audio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    return audioCtx;
+  }
+
+  function beep(freq, start, dur, type, vol) {
+    var c = audio();
+    if (!c) return;
+    var osc = c.createOscillator();
+    var gain = c.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    var t0 = c.currentTime + start;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  function playSound(kind) {
+    if (!soundOn()) return;
+    var c = audio();
+    if (!c) return;
+    if (c.state === 'suspended' && typeof c.resume === 'function') c.resume();
+    if (kind === 'water') {
+      beep(880, 0, 0.08, 'sine', 0.08);
+      beep(660, 0.09, 0.1, 'sine', 0.07);
+      beep(520, 0.2, 0.12, 'triangle', 0.06);
+      return;
+    }
+    if (kind === 'fert') {
+      beep(392, 0, 0.12, 'triangle', 0.08);
+      beep(494, 0.1, 0.14, 'triangle', 0.07);
+      return;
+    }
+    beep(523, 0, 0.16, 'sine', 0.1);
+    beep(659, 0.12, 0.18, 'sine', 0.1);
+    beep(784, 0.26, 0.22, 'sine', 0.11);
+  }
+
+  function isParentsView() {
+    return !document.body.classList.contains('student-kids-mode');
+  }
+
+  function paintParents() {
+    var box = $('vg-parents');
+    var line = $('vg-parents-line');
+    if (!box) return;
+    box.hidden = !isParentsView();
+    if (!line || !current) return;
+    var earned = totalEarned();
+    var avail = available();
+    var spent = Math.max(0, earned - avail);
+    line.textContent = 'Your child has earned ' + earned + ' Eco-Drop' + (earned === 1 ? '' : 's') +
+      ' so far. ' + avail + (avail === 1 ? ' is' : ' are') + ' still available. ' +
+      spent + (spent === 1 ? ' has' : ' have') + ' been used to water or fertilize the garden. ' +
+      'Each finished lesson, task, or Play & Learn game adds 1 Eco-Drop.';
+  }
+
+  function paintGallery() {
+    var wrap = $('vg-gallery');
+    var row = $('vg-gallery-row');
+    if (!wrap || !row) return;
+    wrap.hidden = history.length === 0;
+    row.innerHTML = '';
+    history.forEach(function (item) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vg-gallery-card' + (item.monthKey === viewingKey ? ' is-on' : '');
+      btn.setAttribute('aria-label', (item.label || item.monthKey) + ', ' + (item.species || 'tree'));
+      var img = document.createElement('img');
+      var stage = item.finalStage || {};
+      img.src = stage.asset || FALLBACK_STAGE;
+      img.alt = '';
+      var cap = document.createElement('span');
+      cap.className = 'vg-gallery-cap';
+      cap.textContent = item.label || item.monthKey;
+      var name = document.createElement('span');
+      name.className = 'vg-gallery-sp';
+      name.textContent = item.species || '';
+      btn.appendChild(img);
+      btn.appendChild(cap);
+      btn.appendChild(name);
+      btn.addEventListener('click', function () { loadMonth(item.monthKey); });
+      row.appendChild(btn);
+    });
   }
 
   function announce(text) {
@@ -174,9 +339,8 @@
     var costs = careCosts();
     var bal = available();
     var grown = live && (tree.progressPercent || 0) >= 100;
-    $('vg-balance').textContent = live
-      ? 'Balance: ' + bal + ' · Total earned: ' + totalEarned()
-      : 'This month’s tree is a snapshot.';
+    $('vg-balance').textContent = String(bal);
+    if ($('vg-earned')) $('vg-earned').textContent = 'Total earned: ' + totalEarned();
     $('vg-water-btn').textContent = 'Water · ' + costs.water + ' 💧';
     $('vg-fert-btn').textContent = 'Fertilizer · ' + costs.fertilize + ' 💧';
     $('vg-water-btn').setAttribute('aria-label', 'Water the tree, costs ' + costs.water + ' Eco-Drop' + (costs.water === 1 ? '' : 's'));
@@ -185,12 +349,28 @@
     var showActions = live && !grown && !tree.readOnly;
     $('vg-tend-actions').hidden = !showActions;
     $('vg-grown').hidden = !(live && grown);
-    var needHint = showActions && bal < costs.water;
-    $('vg-tend-hint').hidden = !needHint;
-
+    var needWater = showActions && bal < costs.water;
+    var needFert = showActions && bal < costs.fertilize;
+    $('vg-tend-hint').hidden = !needWater;
+    if ($('vg-short-hint')) $('vg-short-hint').hidden = !(needWater || needFert);
     $('vg-water-btn').disabled = inFlight || !showActions || bal < costs.water;
     $('vg-fert-btn').disabled = inFlight || !showActions || bal < costs.fertilize;
     $('vg-tend').classList.toggle('is-readonly', !live);
+    $('vg-tend').classList.toggle('is-busy', inFlight);
+    $('vg-water-btn').setAttribute('aria-busy', inFlight ? 'true' : 'false');
+    $('vg-fert-btn').setAttribute('aria-busy', inFlight ? 'true' : 'false');
+    paintParents();
+  }
+
+  function bubbleText(tree, live) {
+    if (!live) return 'This tree is from a past month.';
+    if ((tree.progressPercent || 0) >= 100) return 'Your tree is all grown up!';
+    if (available() < 1) return 'Finish a game to earn more drops!';
+    var next = tree.nextStage;
+    if (next) {
+      return next.dropsNeeded + ' more growth point' + (next.dropsNeeded === 1 ? '' : 's') + ' to ' + next.name + '.';
+    }
+    return 'Water your tree to help it grow.';
   }
 
   function paint(tree, opts) {
@@ -206,22 +386,76 @@
       $('vg-month').appendChild(badge);
     }
     $('vg-species').textContent = tree.species || '';
-    $('vg-stage-name').textContent = tree.stage.name;
+    $('vg-stage-name').textContent = 'Level ' + ((Number(tree.stage.index) || 0) + 1) + ': ' + tree.stage.name;
     $('vg-progress-bar').style.width = (tree.progressPercent || 0) + '%';
     $('vg-progress').setAttribute('aria-valuenow', String(tree.progressPercent || 0));
-    var next = tree.nextStage;
-    $('vg-next-line').textContent = live
-      ? (next
-        ? next.dropsNeeded + ' more growth point' + (next.dropsNeeded === 1 ? '' : 's') + ' to ' + next.name
-        : 'Fully grown this month. Next month starts a new seed.')
-      : 'This tree finished at ' + tree.stage.name + '.';
+    $('vg-next-line').textContent = bubbleText(tree, live);
     var label = tree.species + ', ' + tree.stage.name + ', ' + tree.label + (live ? ', current month' : ', past month');
     $('vg-canvas').setAttribute('aria-label', label);
     $('vg-plant').alt = tree.stage.name;
+    $('vg-plant').classList.toggle('is-sway', live && !tree.readOnly && !reducedMotion());
     if (!opts.holdPlant) $('vg-plant').src = asset(tree);
     renderAmbient(tree, { static: !live });
+    applyTheme(tree);
+    paintTracker(tree);
     paintTend(tree);
+    paintGallery();
     setArrowState();
+  }
+
+  function trackerSlot(stageIndex) {
+    return Math.min(4, Math.max(0, Number(stageIndex) || 0));
+  }
+
+  function trackerThumb(step, stages, serverIndex) {
+    if (step.key === 'big-tree') {
+      if (serverIndex >= 5 && stages[5]) return stages[5].asset;
+      return (stages[4] && stages[4].asset) || FALLBACK_STAGE;
+    }
+    var i;
+    for (i = 0; i < stages.length; i++) {
+      if (stages[i].key === step.key) return stages[i].asset;
+    }
+    return FALLBACK_STAGE;
+  }
+
+  function paintTracker(tree) {
+    var list = $('vg-tracker');
+    if (!list) return;
+    var stages = (current && current.stages) || [];
+    var serverIndex = tree && tree.stage ? Number(tree.stage.index) || 0 : 0;
+    var nowSlot = trackerSlot(serverIndex);
+    var allDone = serverIndex >= 5;
+    list.innerHTML = '';
+    TRACKER_STEPS.forEach(function (step, i) {
+      var li = document.createElement('li');
+      var done = allDone || i < nowSlot;
+      var currentStep = !allDone && i === nowSlot;
+      var locked = !done && !currentStep;
+      li.className = 'vg-tracker-item' + (done ? ' is-done' : '') + (currentStep ? ' is-now' : '') + (locked ? ' is-lock' : '');
+      if (currentStep) li.setAttribute('aria-current', 'step');
+      var img = document.createElement('img');
+      img.src = trackerThumb(step, stages, serverIndex);
+      img.alt = '';
+      var name = document.createElement('span');
+      name.className = 'vg-tracker-label';
+      name.textContent = step.label;
+      var state = document.createElement('span');
+      state.className = 'vg-tracker-state';
+      if (done) {
+        state.innerHTML = ICON_CHECK;
+        li.setAttribute('title', step.label + ' — done');
+      } else if (locked) {
+        state.innerHTML = ICON_LOCK;
+        li.setAttribute('title', step.label + ' — locked');
+      } else {
+        li.setAttribute('title', step.label + ' — now');
+      }
+      li.appendChild(img);
+      li.appendChild(state);
+      li.appendChild(name);
+      list.appendChild(li);
+    });
   }
 
   function stopFx() {
@@ -230,36 +464,78 @@
     $('vg-unlock').hidden = true;
     $('vg-skip').hidden = true;
     $('vg-ground').classList.remove('is-wet');
+    $('vg-progress').classList.remove('is-pop');
     $('vg-plant').classList.remove('is-swap', 'is-bounce');
+    $('vg-water').classList.remove('is-play');
+    $('vg-fert').classList.remove('is-play');
     playing = false;
     skipFn = null;
   }
 
+  function hideCelebrate() {
+    var box = $('vg-celebrate');
+    if (!box) return;
+    box.hidden = true;
+    if ($('vg-confetti')) $('vg-confetti').hidden = true;
+  }
+
+  function replayLayer(el) {
+    if (!el) return;
+    el.classList.remove('is-play');
+    void el.offsetWidth;
+    el.classList.add('is-play');
+  }
+
+  function showCelebrate(tree) {
+    var box = $('vg-celebrate');
+    var title = $('vg-celebrate-title');
+    if (!box || !title || !tree || !tree.stage) return;
+    title.textContent = 'Your ' + tree.species + ' grew into a ' + tree.stage.name + '!';
+    box.hidden = false;
+    var ok = $('vg-celebrate-ok');
+    if (ok) ok.focus();
+    announce(title.textContent);
+  }
+
+  function popProgress() {
+    var bar = $('vg-progress');
+    bar.classList.remove('is-pop');
+    void bar.offsetWidth;
+    bar.classList.add('is-pop');
+  }
+
   function playCare(kind, before, after) {
+    var upgraded = !!(after && before && after.stage && before.stage && after.stage.index > before.stage.index);
+    playSound(upgraded ? 'grow' : (kind === 'water' ? 'water' : 'fert'));
     if (reducedMotion()) {
       $('vg-plant').src = asset(after);
-      if (after.stage.index > before.stage.index) {
-        $('vg-unlock').hidden = false;
-        setTimeout(function () { $('vg-unlock').hidden = true; }, 800);
-      }
+      if (upgraded) showCelebrate(after);
       return Promise.resolve();
     }
     playing = true;
     $('vg-skip').hidden = false;
+    $('vg-plant').classList.remove('is-sway');
     var avatar = (current && current.avatarUrl) || REMO;
     if (kind === 'water') {
       $('vg-water-avatar').src = avatar;
       $('vg-water-avatar').alt = avatar === REMO ? 'Remo watering the tree' : 'You watering the tree';
       $('vg-water').hidden = false;
+      replayLayer($('vg-water'));
       $('vg-ground').classList.add('is-wet');
       flashRainbow(after);
     } else {
       $('vg-fert-avatar').src = avatar;
       $('vg-fert-avatar').alt = avatar === REMO ? 'Remo fertilizing the tree' : 'You fertilizing the tree';
       $('vg-fert').hidden = false;
+      replayLayer($('vg-fert'));
     }
+    popProgress();
     glowSun();
-    if (after.stage.index > before.stage.index) $('vg-unlock').hidden = false;
+    if (upgraded) {
+      $('vg-unlock').hidden = false;
+      $('vg-confetti').hidden = false;
+      replayLayer($('vg-confetti'));
+    }
 
     return new Promise(function (resolve) {
       var done = false;
@@ -271,6 +547,7 @@
         void $('vg-plant').offsetWidth;
         $('vg-plant').classList.add('is-bounce');
         stopFx();
+        if (upgraded) showCelebrate(after);
         resolve();
       }
       skipFn = finish;
@@ -383,11 +660,11 @@
       isCurrent: true,
       readOnly: false,
       stage: before.stage,
-      progressPercent: before.progressPercent,
       growthPoints: (Number(before.growthPoints) || 0) + (action === 'fertilize' ? 2 : 1),
       monthlyTarget: before.monthlyTarget,
       nextStage: before.nextStage,
     };
+    optimistic.progressPercent = percentOf(optimistic.growthPoints, optimistic.monthlyTarget);
     paint(optimistic, { holdPlant: true });
     syncHeader(available(), true);
 
@@ -445,6 +722,7 @@
       })
       .then(function (past) {
         history = (past && past.trees) || [];
+        paintGallery();
         setArrowState();
       })
       .catch(function (err) {
@@ -457,10 +735,25 @@
   $('vg-skip').addEventListener('click', function () { if (skipFn) skipFn(); });
   $('vg-water-btn').addEventListener('click', function () { tend('water'); });
   $('vg-fert-btn').addEventListener('click', function () { tend('fertilize'); });
+  $('vg-celebrate-ok').addEventListener('click', hideCelebrate);
+  if ($('vg-mute')) {
+    $('vg-mute').addEventListener('click', function () { setSoundOn(!soundOn()); });
+  }
+  paintMute();
+  if (window.MutationObserver) {
+    new MutationObserver(function () { paintParents(); }).observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+  }
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && skipFn) {
       skipFn();
+      return;
+    }
+    if (e.key === 'Escape' && $('vg-celebrate') && !$('vg-celebrate').hidden) {
+      hideCelebrate();
       return;
     }
     var tag = e.target && e.target.tagName;

@@ -28,7 +28,41 @@ test('garden page no longer posts lastSeenStage', () => {
   assert.equal(/lastSeenStage/.test(gardenJs), false);
 });
 
+test('stage tracker maps six server stages onto five icons', () => {
+  assert.match(gardenJs, /TRACKER_STEPS/);
+  assert.match(gardenJs, /paintTracker/);
+  assert.match(gardenHtml, /id="vg-tracker"/);
+  assert.equal(/Math\.random\s*\(/.test(gardenJs), false);
+});
+
+test('garden wallet and mascot tip stay in the page', () => {
+  assert.match(gardenHtml, /How do I earn more/);
+  assert.match(gardenHtml, /vg-mascot/);
+  assert.match(gardenHtml, /id="vg-short-hint"/);
+  assert.match(gardenJs, /Finish a game to earn more drops/);
+});
+
+test('stage-up copy uses the server species, not a hardcoded name', () => {
+  assert.match(gardenJs, /Your ' \+ tree\.species \+ ' grew into/);
+  assert.match(gardenHtml, /id="vg-celebrate"/);
+});
+
 test('past-tree ambient uses the static class', () => {
   assert.match(gardenJs, /is-static/);
   assert.match(gardenJs, /renderAmbient\(tree,\s*\{\s*static:\s*!live/);
+});
+
+test('gallery, theme facts, mute, and parents extras stay frontend-only', () => {
+  assert.match(gardenHtml, /id="vg-gallery"/);
+  assert.match(gardenHtml, /id="vg-theme-data"/);
+  assert.match(gardenHtml, /id="vg-parents"/);
+  assert.match(gardenHtml, /id="vg-mute"/);
+  assert.match(gardenJs, /paintGallery/);
+  assert.match(gardenJs, /applyTheme/);
+  assert.match(gardenJs, /playSound/);
+  assert.match(gardenJs, /remoed_vg_sound/);
+  assert.match(gardenJs, /student-kids-mode/);
+  assert.equal(/localStorage\.(get|set)Item\([^)]*species/i.test(gardenJs), false);
+  assert.equal(/Math\.random\s*\(/.test(gardenJs), false);
+  assert.equal(/\b(Oak|Narra|Acacia|Mahogany)\b/.test(gardenJs), false);
 });
