@@ -46,6 +46,17 @@
         .sos-legend div { background: #f8fafc; border-radius: 8px; padding: 8px 10px; }
         .sos-legend strong { display: block; color: #1e3a5f; font-size: 0.85rem; }
         .sos-legend span { color: #475569; font-size: 0.85rem; line-height: 1.4; }
+        .sos-spiels { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin: 14px 0 4px; }
+        .sos-spiels-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+        .sos-spiels-head strong { color: #1e3a5f; font-size: 0.95rem; }
+        .sos-spiel-tabs { display: flex; gap: 6px; }
+        .sos-spiel-tabs button { border: 1px solid #cbd5e1; background: #fff; border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+        .sos-spiel-tabs button.is-active { background: #1ca7e7; border-color: #1ca7e7; color: #fff; }
+        .sos-spiel-list { display: flex; flex-direction: column; gap: 6px; }
+        .sos-spiel { text-align: left; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; padding: 8px 10px; font-size: 0.88rem; color: #1e293b; cursor: pointer; line-height: 1.4; }
+        .sos-spiel:hover { border-color: #1ca7e7; }
+        .sos-spiel.is-copied { border-color: #15803d; background: #f0fdf4; }
+        .sos-spiel.is-copied::after { content: '  Copied'; color: #15803d; font-weight: 700; }
     </style>
 </head>
 <body class="page-admin-incidents admin-hub-page has-admin-page-header">
@@ -69,6 +80,17 @@
                     <div><strong>Ended</strong><span>The class was ended. A technical failure can restore one lesson credit. Other reasons do not change credits.</span></div>
                     <div><strong>Resolved</strong><span>The alert is closed after it was handled.</span></div>
                     <div><strong>All</strong><span>Shows every status together.</span></div>
+                </div>
+                <div class="sos-spiels" aria-label="QA spiels">
+                    <div class="sos-spiels-head">
+                        <strong>QA spiels — click to copy, then paste in class chat or Messages</strong>
+                        <div class="sos-spiel-tabs" id="sos-spiel-tabs">
+                            <button type="button" data-tier="1" class="is-active">Tier 1</button>
+                            <button type="button" data-tier="2">Tier 2</button>
+                            <button type="button" data-tier="3">Tier 3</button>
+                        </div>
+                    </div>
+                    <div class="sos-spiel-list" id="sos-spiel-list"></div>
                 </div>
                 <div id="sos-counts" class="sos-counts" aria-live="polite"></div>
                 <div class="sos-filters">
@@ -96,6 +118,7 @@
             </div>
         </div>
     </div>
+    <script src="js/sos-qa-spiels.js?v=spiels-2"></script>
     <script>
     (function () {
       function token() {
@@ -118,6 +141,31 @@
       var statusSel = document.getElementById('incident-status');
       var tierSel = document.getElementById('incident-tier');
       var countsEl = document.getElementById('sos-counts');
+      var spielTabs = document.getElementById('sos-spiel-tabs');
+      var spielList = document.getElementById('sos-spiel-list');
+      var spielTier = 1;
+      var spielName = '';
+      function showSpiels(tier) {
+        if (!window.RemoEdQaSpiels || !spielList) return;
+        spielTier = Number(tier) || 1;
+        Array.prototype.forEach.call(spielTabs.querySelectorAll('button'), function (b) {
+          b.classList.toggle('is-active', Number(b.getAttribute('data-tier')) === spielTier);
+        });
+        RemoEdQaSpiels.render(spielList, { tier: spielTier, name: spielName });
+      }
+      if (spielTabs) {
+        spielTabs.addEventListener('click', function (event) {
+          var b = event.target.closest('button[data-tier]');
+          if (b) showSpiels(b.getAttribute('data-tier'));
+        });
+      }
+      if (window.RemoEdQaSpiels) {
+        showSpiels(1);
+        RemoEdQaSpiels.loadName(token()).then(function (name) {
+          spielName = name;
+          showSpiels(spielTier);
+        });
+      }
       async function load() {
         var status = statusSel ? statusSel.value : 'open';
         var tier = tierSel ? tierSel.value : '';
@@ -192,7 +240,7 @@
               ? 'Who did you contact, and what was said?'
               : act === 'note'
                 ? 'Note for the teacher. It is also sent to the teacher\u2019s Messages.'
-                : 'Reason or note'
+                : 'Reason or note. The teacher gets this in Messages.'
           ) || '';
           if (act === 'note' && !reason.trim()) { btn.disabled = false; return; }
         }
@@ -215,15 +263,21 @@
         var body = await res.json().catch(function () { return {}; });
         if (!res.ok) {
           alert(body.error || 'Action failed.');
-        } else if (body.observeUrl) {
-          window.open(body.observeUrl, '_blank', 'noopener');
-        } else if (act === 'note') {
-          alert(body.messagedTeacher ? 'Note saved and sent to the teacher\u2019s Messages.' : 'Note saved on the case. The copy to the teacher\u2019s Messages could not be sent.');
+        } else {
+          if (body.observeUrl) window.open(body.observeUrl, '_blank', 'noopener');
+          if (body.messagedTeacher === false) {
+            alert('Saved on the case. The update to the teacher\u2019s Messages could not be sent.');
+          } else if (act === 'note') {
+            alert('Note saved and sent to the teacher\u2019s Messages.');
+          }
         }
         load();
       });
       if (statusSel) statusSel.addEventListener('change', load);
-      if (tierSel) tierSel.addEventListener('change', load);
+      if (tierSel) tierSel.addEventListener('change', function () {
+        if (tierSel.value) showSpiels(tierSel.value);
+        load();
+      });
       load();
       setInterval(load, 8000);
       function listen() {

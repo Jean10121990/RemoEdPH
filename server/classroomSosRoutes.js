@@ -68,7 +68,7 @@ adminSosRouter.post('/incidents/:id/action', verifyAdminApiAuth, requirePermissi
       incident: sos.publicIncident(result.incident, { staff: true }),
       observeUrl: result.observeUrl || '',
       creditRestored: !!result.creditRestored,
-      messagedTeacher: !!result.messagedTeacher,
+      messagedTeacher: result.messagedTeacher == null ? null : !!result.messagedTeacher,
     });
   } catch (e) {
     res.status(e.statusCode || 500).json({

@@ -257,6 +257,8 @@
       <h2>Classroom SOS</h2>
       <p id="lc-sos-admin-text" class="lc-sos-lead"></p>
       <p id="lc-sos-admin-status"></p>
+      <p style="margin:6px 0 4px;font-weight:700;font-size:0.85rem;">QA spiels (click to copy into chat)</p>
+      <div id="lc-sos-admin-spiels" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;"></div>
       <div class="lc-sos-actions">
         <button type="button" id="lc-sos-admin-close">Close</button>
         <button type="button" id="lc-sos-admin-pause">Pause class</button>
@@ -265,6 +267,12 @@
       </div>
     </div>
   </div>
+  <style>
+    #lc-sos-admin-spiels .sos-spiel { text-align:left; border:1px solid #e2e8f0; background:#f8fafc; border-radius:8px; padding:6px 9px; font-size:0.82rem; color:#1e293b; cursor:pointer; line-height:1.35; }
+    #lc-sos-admin-spiels .sos-spiel:hover { border-color:#1ca7e7; }
+    #lc-sos-admin-spiels .sos-spiel.is-copied { border-color:#15803d; background:#f0fdf4; }
+  </style>
+  <script src="js/sos-qa-spiels.js?v=spiels-2"></script>
   <div id="lc-student-waiting" class="lc-student-waiting-overlay" hidden>
     <div class="lc-wait-card">
       <p class="lc-wait-kicker"><span data-lucide="clock"></span> Waiting room</p>
@@ -1508,6 +1516,33 @@
             hideModal();
             hideBar();
           }
+          var spielsEl = document.getElementById('lc-sos-admin-spiels');
+          var spielName = '';
+          var spielTier = 0;
+          function renderSpiels(tier) {
+            if (!spielsEl || !window.RemoEdQaSpiels) return;
+            var t = Number(tier) || 1;
+            if (t === spielTier && spielsEl.childNodes.length) return;
+            spielTier = t;
+            RemoEdQaSpiels.render(spielsEl, {
+              tier: t,
+              name: spielName,
+              onPick: function (text) {
+                var input = document.getElementById('chat-input');
+                if (!input) return;
+                input.value = text;
+                try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (_ev) {}
+                try { input.focus(); } catch (_f) {}
+                if (statusEl) statusEl.textContent = 'Copied and placed in chat. Press Enter in chat to send.';
+              }
+            });
+          }
+          if (window.RemoEdQaSpiels) {
+            RemoEdQaSpiels.loadName(resolveLiveClassroomAuthToken()).then(function (name) {
+              spielName = name;
+              if (spielTier) { var t = spielTier; spielTier = 0; renderSpiels(t); }
+            });
+          }
           function isActive(row) {
             var st = row && row.status;
             return st === 'open' || st === 'observing' || st === 'paused';
@@ -1523,6 +1558,7 @@
                 '. Status: ' + (incident.status || 'open') + '.';
             }
             if (statusEl) statusEl.textContent = '';
+            renderSpiels(incident.tier);
             showBar();
             if (panelClosed) return;
             alertEl.hidden = false;
@@ -1614,7 +1650,12 @@
               var incident = payload && payload.incident;
               if (!incident || incident.classroomId !== room) return;
               if (!isActive(incident)) {
-                if (incident.id === currentId) hideAlert();
+                if (incident.id === currentId) {
+                  hideAlert();
+                  if (incident.status === 'resolved' || incident.status === 'terminated') {
+                    window.location.href = '/admin-qa-hub.html#sos';
+                  }
+                }
                 return;
               }
               showAlert(incident);
@@ -1636,10 +1677,28 @@
         });
         socket.on('classroom-session-command', function (data) {
           var command = data && data.command;
+          if (window.__lcObserver && command !== 'terminate') return;
           if (command === 'resume') {
-            var pausedNote = document.getElementById('lc-session-command-note');
-            if (pausedNote) pausedNote.remove();
-            if (!window.__lcObserver) {
+            var resumeNote = document.getElementById('lc-session-command-note');
+            if (!resumeNote) {
+              resumeNote = document.createElement('div');
+              resumeNote.id = 'lc-session-command-note';
+              resumeNote.setAttribute('role', 'status');
+              resumeNote.style.cssText = 'position:fixed;inset:0;z-index:var(--z-blocking);background:rgba(15,23,42,0.78);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:1.15rem;';
+              document.body.appendChild(resumeNote);
+            }
+            resumeNote.textContent = '';
+            var resumeBox = document.createElement('div');
+            var resumeMsg = document.createElement('p');
+            resumeMsg.style.cssText = 'margin:0 0 16px;';
+            resumeMsg.textContent = 'RemoEd resolved the issue. You can continue the class.';
+            var continueBtn = document.createElement('button');
+            continueBtn.type = 'button';
+            continueBtn.id = 'lc-session-continue-btn';
+            continueBtn.textContent = 'Continue class';
+            continueBtn.style.cssText = 'background:#15803d;color:#fff;border:0;border-radius:10px;padding:12px 24px;font-size:1rem;font-weight:700;cursor:pointer;';
+            continueBtn.addEventListener('click', function () {
+              resumeNote.remove();
               var liveTracks = (typeof localStream !== 'undefined' && localStream && localStream.getTracks)
                 ? localStream.getTracks()
                 : [];
@@ -1649,7 +1708,14 @@
               if (mediaDead && typeof initializeWebcam === 'function') {
                 initializeWebcam();
               }
-            }
+              document.querySelectorAll('video').forEach(function (v) {
+                if (v.paused && v.srcObject) v.play().catch(function () {});
+              });
+            });
+            resumeBox.appendChild(resumeMsg);
+            resumeBox.appendChild(continueBtn);
+            resumeNote.appendChild(resumeBox);
+            try { continueBtn.focus(); } catch (_focus) {}
             return;
           }
           try {

@@ -240,21 +240,50 @@ async function incidentCounts() {
   return counts;
 }
 
+function qaActionLine(action, reason, result) {
+  const incident = result.incident;
+  const why = reason ? '\nReason: ' + reason : '';
+  switch (action) {
+    case 'note':
+      return 'QA note: ' + reason;
+    case 'acknowledge':
+      return 'QA received your SOS and is looking into it.';
+    case 'observe':
+      return 'QA is joining your class as an observer.';
+    case 'troubleshoot':
+      return 'QA troubleshooting step: ' + reason;
+    case 'parent_contact':
+      return 'QA contacted the parent: ' + reason;
+    case 'escalate':
+      return 'QA moved this case to Tier ' + incident.tier + '.' + why;
+    case 'pause':
+      return 'QA paused the class. Please wait for the next update.' + why;
+    case 'terminate':
+      return 'QA ended the class.' + why + (result.creditRestored ? '\nThe student\u2019s credit was restored.' : '');
+    case 'resolve':
+      return 'QA marked this case resolved. You can continue the class.' + why;
+    case 'review':
+      return 'QA completed the supervisory review: ' + reason;
+    default:
+      return '';
+  }
+}
+
 /**
- * Copy a QA note into the teacher's Messages as a direct message from that admin.
+ * Copy a QA action into the teacher's Messages as a direct message from that admin.
  * Sender id matches /api/admin/messages/send (`admin:<username>`) so it joins the same thread.
  */
-async function sendNoteToTeacherMessages(incident, messengerId, note) {
+async function sendQaMessageToTeacher(incident, messengerId, line) {
   const recipientId = String((incident && incident.teacherId) || '').trim();
   const senderId = String(messengerId || '').trim();
-  if (!recipientId || !senderId) return null;
+  if (!recipientId || !senderId || !line) return null;
   const PeerMessage = require('../models/PeerMessage');
   const label = CATEGORY_LABEL[incident.category] || incident.category || 'Classroom SOS';
   const text =
     'Classroom SOS ' + (incident.caseRef || '') +
     ' (Tier ' + incident.tier + ', ' + label + ')' +
     (incident.classroomId ? ' in class ' + incident.classroomId : '') +
-    '\nQA note: ' + note;
+    '\n' + line;
   const saved = await PeerMessage.create({ senderId, recipientId, message: text });
   const record = {
     id: String(saved._id),
@@ -272,6 +301,25 @@ async function sendNoteToTeacherMessages(incident, messengerId, note) {
 }
 
 async function actOnIncident(incidentId, action, adminId, body, opts) {
+  const result = await runIncidentAction(incidentId, action, adminId, body);
+  result.messagedTeacher = null;
+  if (!result.quiet) {
+    result.messagedTeacher = false;
+    const reason = String((body && body.reason) || '').trim().slice(0, 500);
+    try {
+      result.messagedTeacher = !!(await sendQaMessageToTeacher(
+        result.incident,
+        opts && opts.messengerId,
+        qaActionLine(action, reason, result)
+      ));
+    } catch (e) {
+      console.warn('[sos] QA message to teacher failed:', e.message || e);
+    }
+  }
+  return result;
+}
+
+async function runIncidentAction(incidentId, action, adminId, body) {
   const incident = await IncidentReport.findById(incidentId);
   if (!incident) throw httpError(404, 'Incident not found.', 'NOT_FOUND');
   const allowed = ['observe', 'pause', 'terminate', 'resolve', 'acknowledge', 'note', 'escalate', 'parent_contact', 'troubleshoot', 'review'];
@@ -284,13 +332,14 @@ async function actOnIncident(incidentId, action, adminId, body, opts) {
   const actor = String(adminId || '');
 
   if (action === 'acknowledge') {
+    const alreadyAcknowledged = !!incident.acknowledgedAt;
     incident.acknowledgedAt = incident.acknowledgedAt || new Date();
     incident.acknowledgedBy = actor;
     incident.assignedTo = incident.assignedTo || actor;
     pushAction(incident, { actor, action, outcome: 'acknowledged' });
     await incident.save();
     emitSos(incident, { event: 'acknowledged' });
-    return { incident };
+    return { incident, quiet: alreadyAcknowledged };
   }
   if (action === 'note' || action === 'troubleshoot') {
     if (reason.length < 4) throw httpError(400, 'Add a short note.', 'REASON_REQUIRED');
@@ -299,15 +348,7 @@ async function actOnIncident(incidentId, action, adminId, body, opts) {
     }
     pushAction(incident, { actor, action, reason, outcome: 'recorded' });
     await incident.save();
-    let messagedTeacher = false;
-    if (action === 'note') {
-      try {
-        messagedTeacher = !!(await sendNoteToTeacherMessages(incident, opts && opts.messengerId, reason));
-      } catch (e) {
-        console.warn('[sos] note to teacher messages failed:', e.message || e);
-      }
-    }
-    return { incident, messagedTeacher };
+    return { incident };
   }
   if (action === 'parent_contact') {
     if (reason.length < 8) throw httpError(400, 'Record who was contacted and what was said.', 'REASON_REQUIRED');
