@@ -47,16 +47,25 @@ function createEcoDropService({ repo, garden, rewardMode = config.GAME_REWARD_MO
       if (inserted) reason = undefined;
     }
 
-    const [after, totalEcoDrops] = await Promise.all([
+    const [after, totals, points] = await Promise.all([
       repo.countMonthDrops(username, tree.monthKey),
-      repo.getTotalDrops(username),
+      repo.getDropTotals
+        ? repo.getDropTotals(username)
+        : repo.getTotalDrops(username).then((earned) => ({ earned, spent: 0 })),
+      repo.sumGrowthPoints ? repo.sumGrowthPoints(username, tree.monthKey) : Promise.resolve(0),
     ]);
+    const earned = Math.max(0, Number(totals.earned) || 0);
+    const spent = Math.max(0, Number(totals.spent) || 0);
+    const available = Math.max(0, earned - spent);
+    const growth = Math.max(0, Number(points) || 0);
     const result = {
       awarded: inserted,
-      totalEcoDrops,
+      totalEcoDrops: available,
+      availableDrops: available,
+      totalEarned: earned,
       monthEcoDrops: after,
-      stageBefore: stageSummary(domain.stageFor(inserted ? after - 1 : after, target)),
-      stageAfter: stageSummary(domain.stageFor(after, target)),
+      stageBefore: stageSummary(domain.stageFor(growth, target)),
+      stageAfter: stageSummary(domain.stageFor(growth, target)),
       monthKey: tree.monthKey,
       monthlyTarget: target,
     };

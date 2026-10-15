@@ -228,8 +228,10 @@ const studentSchema = new mongoose.Schema({
     quietHoursStart: { type: Number, default: 22 },
     quietHoursEnd: { type: Number, default: 7 },
   },
-  /** Lifetime Eco-Drops (never resets). Cached count of eco_drop_ledger rows; written only by ecoDropService. */
+  /** Lifetime Eco-Drops earned (never resets). Cached count of eco_drop_ledger rows; written only by ecoDropService. */
   totalEcoDropsEarned: { type: Number, default: 0 },
+  /** Lifetime Eco-Drops spent on water/fertilizer. available = earned − spent. */
+  totalEcoDropsSpent: { type: Number, default: 0 },
   /** Lesson drops to celebrate on next portal visit (toast/modal). */
   pendingEcoDropCelebration: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }

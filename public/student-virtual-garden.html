@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v2-2">
+    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v3-1">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
 </head>
@@ -20,16 +20,16 @@
         <div id="student-sidebar-root"></div>
         <link rel="stylesheet" href="css/feature-lock.css?v=free-plan-1">
         <script src="js/feature-access.js?v=free-plan-1"></script>
-        <script src="js/student-eco-drops.js?v=garden-v2-1"></script>
-        <script src="js/student-sidebar.js?v=garden-v2-2"></script>
-        <script src="js/student-page-header.js?v=garden-v2-1"></script>
+        <script src="js/student-eco-drops.js?v=garden-v3-1"></script>
+        <script src="js/student-sidebar.js?v=garden-v3-1"></script>
+        <script src="js/student-page-header.js?v=garden-v3-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'garden');
             StudentPageHeader.render('garden');
         </script>
         <div class="remoed-content">
             <div class="vg-page">
-                <p class="vg-banner" id="vg-banner">Finish a lesson, a lesson check, or a Play &amp; Learn game to earn 1 Eco-Drop. Your tree grows as you learn this month.</p>
+                <p class="vg-banner" id="vg-banner">Finish lessons, tasks, and Play &amp; Learn games to earn Eco-Drops, then use them to water and fertilize your tree.</p>
 
                 <div class="vg-stage" id="vg-stage">
                     <p class="vg-month" id="vg-month">Your tree</p>
@@ -42,7 +42,8 @@
                     </button>
 
                     <div class="vg-canvas" id="vg-canvas" role="img" aria-label="Garden tree">
-                        <div class="vg-ground" aria-hidden="true"></div>
+                        <div class="vg-ambient" id="vg-ambient" aria-hidden="true"></div>
+                        <div class="vg-ground" id="vg-ground" aria-hidden="true"></div>
                         <img class="vg-plant" id="vg-plant" src="/images/garden/stage-0-seed.svg" alt="">
                         <div class="vg-water" id="vg-water" hidden>
                             <img class="vg-water-avatar" id="vg-water-avatar" src="/images/remo-green.png" alt="">
@@ -55,22 +56,40 @@
                             <span class="vg-drop vg-drop-2" aria-hidden="true"></span>
                             <span class="vg-drop vg-drop-3" aria-hidden="true"></span>
                         </div>
+                        <div class="vg-fert" id="vg-fert" hidden>
+                            <img class="vg-fert-avatar" id="vg-fert-avatar" src="/images/remo-green.png" alt="">
+                            <span class="vg-grain vg-grain-1" aria-hidden="true"></span>
+                            <span class="vg-grain vg-grain-2" aria-hidden="true"></span>
+                            <span class="vg-grain vg-grain-3" aria-hidden="true"></span>
+                            <span class="vg-glow" aria-hidden="true"></span>
+                        </div>
                         <p class="vg-unlock" id="vg-unlock" hidden>Stage unlocked!</p>
                     </div>
 
+                    <div class="vg-tend" id="vg-tend">
+                        <p class="vg-balance" id="vg-balance">Balance: 0 · Total earned: 0</p>
+                        <div class="vg-tend-actions" id="vg-tend-actions">
+                            <button type="button" class="vg-care-btn vg-care-btn--water" id="vg-water-btn" aria-label="Water the tree, costs 1 Eco-Drop">Water · 1 💧</button>
+                            <button type="button" class="vg-care-btn vg-care-btn--fert" id="vg-fert-btn" aria-label="Fertilize the tree, costs 3 Eco-Drops">Fertilizer · 3 💧</button>
+                        </div>
+                        <p class="vg-grown" id="vg-grown" hidden>Fully grown! 🎉</p>
+                        <p class="vg-tend-hint" id="vg-tend-hint" hidden>Earn Eco-Drops by finishing a <a href="student-learning-journey.html">lesson</a>, task, or <a href="student-games-activities.html">Play &amp; Learn</a> game.</p>
+                        <p class="vg-live" id="vg-live" aria-live="polite"></p>
+                    </div>
+
                     <div class="vg-meta">
-                        <p class="vg-species" id="vg-species">Oak</p>
+                        <p class="vg-species" id="vg-species"></p>
                         <p class="vg-stage-name" id="vg-stage-name">Seed</p>
                         <div class="vg-progress" role="progressbar" id="vg-progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Monthly tree growth">
                             <span id="vg-progress-bar"></span>
                         </div>
-                        <p class="vg-next" id="vg-next-line">Your first Eco-Drop starts a sprout.</p>
+                        <p class="vg-next" id="vg-next-line">Water your tree with Eco-Drops to help it grow.</p>
                         <button type="button" class="vg-skip" id="vg-skip" hidden>Skip animation</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="js/student-virtual-garden.js?v=garden-v2-2"></script>
+    <script src="js/student-virtual-garden.js?v=garden-v3-1"></script>
 </body>
 </html>

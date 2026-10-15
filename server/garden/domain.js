@@ -108,15 +108,15 @@ function hashString(value) {
 }
 
 /**
- * Next species: the one after last month's in the rotation (so consecutive months differ
- * and repeats come only after the whole list). The first tree starts at a per-student offset.
+ * Species is assigned once at create. No randomness and no mutable counts.
+ * If last month has a known species, take the next in the list (consecutive months differ).
+ * Otherwise hash (studentId|monthKey) so the same month always gets the same first pick.
  */
-function pickSpecies({ studentId, previousSpecies = null, treeCount = 0 }, list = config.SPECIES) {
+function pickSpecies({ studentId, monthKey = '', previousSpecies = null }, list = config.SPECIES) {
   if (!list.length) return 'Tree';
   const prevIndex = previousSpecies ? list.indexOf(previousSpecies) : -1;
   if (prevIndex !== -1) return list[(prevIndex + 1) % list.length];
-  const start = hashString(studentId) % list.length;
-  return list[(start + Math.max(0, Number(treeCount) || 0)) % list.length];
+  return list[hashString(String(studentId || '') + '|' + String(monthKey || '')) % list.length];
 }
 
 /** Ledger sourceId for a source, honouring GAME_REWARD_MODE for games. */

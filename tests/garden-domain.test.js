@@ -46,18 +46,27 @@ test('monthly target falls back when there are no lessons', () => {
 });
 
 test('species rotation never repeats a neighbour and wraps the list', () => {
-  const first = domain.pickSpecies({ studentId: 'mia', previousSpecies: null, treeCount: 0 });
+  const first = domain.pickSpecies({ studentId: 'mia', monthKey: '2026-10', previousSpecies: null });
   assert.ok(config.SPECIES.includes(first));
   let prev = first;
   const seen = new Set([first]);
   for (let i = 0; i < config.SPECIES.length; i++) {
-    const next = domain.pickSpecies({ studentId: 'mia', previousSpecies: prev, treeCount: i + 1 });
+    const next = domain.pickSpecies({ studentId: 'mia', monthKey: '2026-1' + (i % 2), previousSpecies: prev });
     assert.notEqual(next, prev);
     seen.add(next);
     prev = next;
   }
   assert.equal(seen.size, config.SPECIES.length);
   assert.equal(domain.pickSpecies({ studentId: 'mia', previousSpecies: config.SPECIES[config.SPECIES.length - 1] }), config.SPECIES[0]);
+});
+
+test('first species is a hash of studentId|monthKey and ignores treeCount', () => {
+  const a = domain.pickSpecies({ studentId: 'mia', monthKey: '2026-10' });
+  const b = domain.pickSpecies({ studentId: 'mia', monthKey: '2026-10', treeCount: 99 });
+  const c = domain.pickSpecies({ studentId: 'mia', monthKey: '2026-11' });
+  assert.equal(a, b);
+  assert.ok(config.SPECIES.includes(a));
+  assert.ok(config.SPECIES.includes(c));
 });
 
 test('game ledger id follows GAME_REWARD_MODE', () => {

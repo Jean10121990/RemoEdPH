@@ -5,6 +5,7 @@ const { createMemoryRepo } = require('./helpers/garden-memory-repo');
 const { createGardenService } = require('../server/garden/gardenService');
 const { createEcoDropService } = require('../server/garden/ecoDropService');
 const { createGardenRouter } = require('../server/garden/routes');
+const { createCareService } = require('../server/garden/careService');
 const { GardenError } = require('../server/garden/errors');
 const config = require('../server/garden/garden.config');
 
@@ -12,7 +13,8 @@ function setup(seed) {
   const repo = createMemoryRepo(seed);
   const garden = createGardenService({ repo, timeZone: 'Asia/Manila' });
   const ecoDrops = createEcoDropService({ repo, garden });
-  return { repo, garden, ecoDrops };
+  const care = createCareService({ repo, garden });
+  return { repo, garden, ecoDrops, care };
 }
 
 function listen(app) {
@@ -28,22 +30,24 @@ function listen(app) {
 }
 
 test('new month creates a new species and finalizes last month’s tree', async () => {
-  const { garden, ecoDrops, repo } = setup();
+  const { garden, ecoDrops, care, repo } = setup();
   const sept = new Date('2026-09-15T02:00:00.000Z');
   await ecoDrops.award({ studentId: 'mia', sourceType: 'lesson', sourceId: 'L1', now: sept });
   const first = await garden.getCurrent('mia', sept);
+  await care.applyCare('mia', { action: 'water', requestId: 'water-sept-1' }, sept);
+  const grown = await garden.getCurrent('mia', sept);
   const oct = new Date('2026-10-15T02:00:00.000Z');
   const second = await garden.getCurrent('mia', oct);
   assert.notEqual(second.tree.species, first.tree.species);
   assert.equal(second.tree.stage.key, 'seed');
   const old = repo.trees().find((t) => t.monthKey === '2026-09');
   assert.ok(old.finalizedAt);
-  assert.equal(old.finalStage, first.tree.stage.index);
+  assert.equal(old.finalStage, grown.tree.stage.index);
   assert.equal(old.monthEcoDrops, 1);
   const hist = await garden.getHistory('mia', oct);
   assert.equal(hist.length, 1);
   assert.equal(hist[0].monthKey, '2026-09');
-  assert.equal(hist[0].finalStage.key, first.tree.stage.key);
+  assert.equal(hist[0].finalStage.key, grown.tree.stage.key);
 });
 
 test('ensureCurrentMonthTree is idempotent under two overlapping calls', async () => {
@@ -114,22 +118,30 @@ test('student A cannot read student B’s tree', async () => {
 });
 
 test('reaching the monthly target lands on Fully Grown Tree', async () => {
-  const { garden, ecoDrops } = setup({ lessons: 2, tasks: 0 });
+  const { garden, ecoDrops, care } = setup({ lessons: 2, tasks: 0 });
   const now = new Date('2026-10-15T02:00:00.000Z');
   const first = await garden.getCurrent('mia', now);
   const need = first.tree.monthlyTarget;
   for (let i = 0; i < need; i++) {
     await ecoDrops.award({ studentId: 'mia', sourceType: 'lesson', sourceId: 'L' + i, now });
   }
+  for (let i = 0; i < need; i++) {
+    await care.applyCare('mia', { action: 'water', requestId: 'w-full-' + i }, now);
+  }
   const after = await garden.getCurrent('mia', now);
   assert.equal(after.tree.stage.key, 'fully-grown');
   assert.equal(after.tree.progressPercent, 100);
   assert.equal(after.tree.nextStage, null);
+  await assert.rejects(
+    () => care.applyCare('mia', { action: 'water', requestId: 'w-overflow' }, now),
+    (err) => err instanceof GardenError && err.code === 'TREE_COMPLETE'
+  );
   const extra = await ecoDrops.award({ studentId: 'mia', sourceType: 'lesson', sourceId: 'overflow', now });
   assert.equal(extra.awarded, true);
   const clamped = await garden.getCurrent('mia', now);
   assert.equal(clamped.tree.stage.key, 'fully-grown');
   assert.equal(clamped.tree.progressPercent, 100);
+  assert.equal(clamped.availableDrops, 1);
 });
 
 test('stages list matches the config module', () => {

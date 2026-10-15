@@ -4,6 +4,7 @@
  */
 const { createMongoRepository } = require('./repository');
 const { createGardenService } = require('./gardenService');
+const { createCareService } = require('./careService');
 const { createEcoDropService } = require('./ecoDropService');
 const { createPlayService } = require('./playService');
 const { createGardenRouter, createPlayRouter } = require('./routes');
@@ -15,9 +16,10 @@ function getServices() {
   const { getJwtSecret } = require('../config/jwtSecret');
   const repo = createMongoRepository();
   const garden = createGardenService({ repo });
+  const care = createCareService({ repo, garden });
   const ecoDropService = createEcoDropService({ repo, garden });
   const play = createPlayService({ ecoDrops: ecoDropService, secret: getJwtSecret() });
-  services = { repo, garden, ecoDropService, play };
+  services = { repo, garden, care, ecoDropService, play };
   return services;
 }
 
@@ -35,9 +37,9 @@ function buildRouters() {
   const { verifyToken, requireStudent } = require('../authMiddleware');
   const { isPaidSubscriber } = require('../services/freePlanAccess');
   const auth = [verifyToken, requireStudent];
-  const { garden, play } = getServices();
+  const { garden, care, play } = getServices();
   return {
-    gardenRouter: createGardenRouter({ garden, auth, isLocked: (req) => !isPaidSubscriber(req.student) }),
+    gardenRouter: createGardenRouter({ garden, care, auth, isLocked: (req) => !isPaidSubscriber(req.student) }),
     playRouter: createPlayRouter({ play, auth }),
   };
 }

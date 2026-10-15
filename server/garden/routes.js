@@ -40,9 +40,9 @@ function safeAvatar(value) {
 }
 
 /**
- * @param {{ garden, play, auth: Function[], isLocked?: (req) => boolean, clock?: () => Date }} deps
+ * @param {{ garden, care, play, auth: Function[], isLocked?: (req) => boolean, clock?: () => Date }} deps
  */
-function createGardenRouter({ garden, auth, isLocked = () => false, clock = () => new Date() }) {
+function createGardenRouter({ garden, care, auth, isLocked = () => false, clock = () => new Date() }) {
   const router = express.Router();
   router.use(...auth);
 
@@ -67,16 +67,23 @@ function createGardenRouter({ garden, auth, isLocked = () => false, clock = () =
   );
 
   router.post(
-    '/seen-stage',
+    '/care',
     withStudent(async (req, res, studentId) => {
+      if (!care || typeof care.applyCare !== 'function') {
+        return res.status(500).json({ success: false, error: 'Care is not available.', code: 'SERVER_ERROR' });
+      }
       const body = req.body || {};
-      const result = await garden.markSeenStage(
+      const result = await care.applyCare(
         studentId,
-        { monthKey: typeof body.monthKey === 'string' ? body.monthKey : '', stage: body.stage },
+        {
+          action: typeof body.action === 'string' ? body.action : '',
+          requestId: typeof body.requestId === 'string' ? body.requestId : '',
+          monthKey: typeof body.monthKey === 'string' ? body.monthKey : '',
+        },
         clock()
       );
       res.json({ success: true, ...result });
-    }, 'Could not save the garden')
+    }, 'Could not tend the tree')
   );
 
   router.get(

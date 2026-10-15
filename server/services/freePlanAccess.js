@@ -17,11 +17,10 @@ const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
  * Match username or email (case-insensitive). Everyone else ignores planModeOverride.
  */
 const TEST_PLAN_STUDENTS = [
-  { key: 'jeanserolf', label: 'jeanserolf', username: 'jeanserolf' },
-  { key: 'plflores3302@gmail.com', label: 'plflores3302@gmail.com', email: 'plflores3302@gmail.com' },
-  { key: 'jean10121990@gmail.com', label: 'jean10121990@gmail.com', email: 'jean10121990@gmail.com' },
+  { key: 'plflores3302@gmail.com', label: 'CTO · plflores3302@gmail.com', email: 'plflores3302@gmail.com' },
+  { key: 'jean10121990@gmail.com', label: 'CEO · jean10121990@gmail.com', email: 'jean10121990@gmail.com' },
 ];
-const TEST_PLAN_STUDENT_USERNAME = TEST_PLAN_STUDENTS[0].username;
+const TEST_PLAN_STUDENT_USERNAME = TEST_PLAN_STUDENTS[0].key;
 
 function normId(value) {
   return String(value || '').trim().toLowerCase();

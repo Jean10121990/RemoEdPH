@@ -263,7 +263,7 @@
 
     /** Count up from the shown value to n, then pop the chip. */
     function animateEcoCount(el, from, to) {
-        if (reducedMotion() || to <= from) {
+        if (reducedMotion() || to === from) {
             el.textContent = ecoLabel(to);
             return;
         }
@@ -282,19 +282,19 @@
 
     function bindEcoDropChip(header) {
         global.RemoEdEcoDropsBadge = global.RemoEdEcoDropsBadge || {
-            /** @param {number} n totalEcoDrops @param {{ animate?: boolean }=} opts */
+            /** @param {number} n available Eco-Drops @param {{ animate?: boolean }=} opts */
             update: function (n, opts) {
                 var total = Math.max(0, Math.floor(Number(n) || 0));
-                var grew = ecoShown != null && total > ecoShown;
+                var changed = ecoShown != null && total !== ecoShown;
                 var chip = document.getElementById('student-eco-chip');
                 var el = document.getElementById('student-eco-chip-count');
                 if (el) {
-                    if (grew && opts && opts.animate) animateEcoCount(el, ecoShown, total);
+                    if (changed && opts && opts.animate) animateEcoCount(el, ecoShown, total);
                     else el.textContent = ecoLabel(total);
                 }
                 if (chip) {
                     chip.setAttribute('aria-label', 'Eco-Drops: ' + total + '. Open Virtual Garden');
-                    if (grew && opts && opts.animate && !reducedMotion()) {
+                    if (changed && opts && opts.animate && !reducedMotion()) {
                         chip.classList.remove('is-pop');
                         void chip.offsetWidth;
                         chip.classList.add('is-pop');

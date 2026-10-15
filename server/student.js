@@ -2902,13 +2902,31 @@ function gardenStudentKey(req) {
   return '';
 }
 
-/** Header / sidebar Eco-Drop count. totalEcoDrops never resets (monthly progress lives in /api/garden). */
+/** Header Eco-Drop count. totalEcoDrops is the spendable balance (earned − spent). */
 router.get('/eco-drops', verifyToken, requireStudent, async (req, res) => {
-  const total = Number(req.student && req.student.totalEcoDropsEarned) || 0;
+  const username = req.student && req.student.username ? String(req.student.username) : '';
+  let earned = Number(req.student && req.student.totalEcoDropsEarned) || 0;
+  let spent = Number(req.student && req.student.totalEcoDropsSpent) || 0;
+  let pending = Number(req.student && req.student.pendingEcoDropCelebration) || 0;
+  try {
+    if (username) {
+      const row = await Student.findOne({ username })
+        .select('totalEcoDropsEarned totalEcoDropsSpent pendingEcoDropCelebration')
+        .lean();
+      if (row) {
+        earned = Number(row.totalEcoDropsEarned) || 0;
+        spent = Number(row.totalEcoDropsSpent) || 0;
+        pending = Number(row.pendingEcoDropCelebration) || 0;
+      }
+    }
+  } catch (_e) {}
+  const available = Math.max(0, earned - spent);
   res.json({
     success: true,
-    totalEcoDrops: total,
-    pendingCelebration: Number(req.student && req.student.pendingEcoDropCelebration) || 0,
+    totalEcoDrops: available,
+    availableDrops: available,
+    totalEarned: earned,
+    pendingCelebration: pending,
   });
 });
 

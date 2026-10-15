@@ -158,7 +158,7 @@
     var grew = result.stageAfter && result.stageBefore && result.stageAfter.index > result.stageBefore.index;
     showToast(
       '+1 Eco-Drop!',
-      grew ? 'Your tree grew to ' + String(result.stageAfter.name) + '!' : 'Your tree drank it up.'
+      grew ? 'Your tree grew to ' + String(result.stageAfter.name) + '!' : 'Spend it in the garden to water your tree.'
     );
   }
 

@@ -149,6 +149,12 @@ body.page-student-virtual-garden .remoed-content {
   background: radial-gradient(ellipse at center, #a16207 0%, #854d0e 42%, #4d7c0f 78%, transparent 79%);
   opacity: 0.55;
   pointer-events: none;
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
+
+.vg-ground.is-wet {
+  filter: brightness(0.72) saturate(1.15);
+  opacity: 0.8;
 }
 
 .vg-plant {
@@ -161,7 +167,8 @@ body.page-student-virtual-garden .remoed-content {
   display: block;
 }
 
-.vg-plant.is-swap {
+.vg-plant.is-swap,
+.vg-plant.is-bounce {
   animation: vg-grow 0.7s ease;
 }
 
@@ -221,6 +228,179 @@ body.page-student-virtual-garden .remoed-content {
   font-size: 1rem;
   white-space: nowrap;
   z-index: 3;
+}
+
+.vg-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.vg-sun {
+  position: absolute;
+  top: 4%;
+  right: 6%;
+  width: min(18%, 92px);
+  transform-origin: 50% 50%;
+  animation: vg-sun-spin 28s linear infinite;
+}
+
+.vg-sun.is-glow {
+  animation: vg-sun-spin 28s linear infinite, vg-sun-glow 2.4s ease;
+}
+
+.vg-rainbow {
+  position: absolute;
+  top: 8%;
+  left: 8%;
+  width: min(46%, 280px);
+  opacity: 0.9;
+}
+
+.vg-rainbow.is-flash {
+  animation: vg-fade-flash 2.2s ease both;
+}
+
+.vg-bug,
+.vg-blossom {
+  position: absolute;
+  width: min(9%, 44px);
+}
+
+.vg-butterfly-1 { left: 18%; top: 38%; animation: vg-flutter 5s ease-in-out infinite; }
+.vg-butterfly-2 { left: 68%; top: 32%; animation: vg-flutter 6s 0.4s ease-in-out infinite reverse; }
+.vg-butterfly-3 { left: 42%; top: 22%; animation: vg-flutter 7s 0.8s ease-in-out infinite; }
+.vg-bee-1 { left: 58%; top: 46%; width: min(7%, 34px); animation: vg-buzz 4.5s linear infinite; }
+.vg-bee-2 { left: 28%; top: 50%; width: min(7%, 34px); animation: vg-buzz 5.2s 0.6s linear infinite reverse; }
+.vg-bird-1 { left: 62%; top: 18%; animation: vg-perch 9s ease-in-out infinite; }
+.vg-bird-2 { left: 22%; top: 14%; animation: vg-fly 12s linear infinite; }
+.vg-blossom-1 { left: 34%; bottom: 42%; width: min(8%, 36px); }
+.vg-blossom-2 { left: 58%; bottom: 48%; width: min(8%, 36px); }
+
+.vg-ambient.is-static .vg-sun,
+.vg-ambient.is-static .vg-bug,
+.vg-ambient.is-static .vg-rainbow,
+body.vg-paused .vg-ambient .vg-sun,
+body.vg-paused .vg-ambient .vg-bug,
+body.vg-paused .vg-ambient .vg-rainbow {
+  animation: none !important;
+}
+
+.vg-fert {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.vg-fert-avatar {
+  position: absolute;
+  right: 8%;
+  bottom: 16%;
+  width: min(22%, 140px);
+  max-height: 38%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.2));
+  animation: vg-walk 0.7s ease both;
+}
+
+.vg-grain {
+  position: absolute;
+  left: 48%;
+  top: 36%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #854d0e;
+  opacity: 0;
+  animation: vg-drip 0.8s 0.5s ease-in both;
+}
+
+.vg-grain-2 { left: 52%; animation-delay: 0.65s; }
+.vg-grain-3 { left: 56%; animation-delay: 0.8s; }
+
+.vg-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: min(40%, 220px);
+  height: min(40%, 220px);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.55) 0%, transparent 70%);
+  animation: vg-pulse 1.4s ease-in-out both;
+}
+
+.vg-tend {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  width: min(100%, 560px);
+  margin: 10px auto 0;
+}
+
+.vg-balance {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #14532d;
+}
+
+.vg-tend-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.vg-tend-actions[hidden] { display: none; }
+
+.vg-care-btn {
+  min-height: 48px;
+  min-width: 148px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  color: #fff;
+}
+
+.vg-care-btn--water { background: #0284c7; }
+.vg-care-btn--fert { background: #16a34a; }
+
+.vg-care-btn:hover:not(:disabled) { filter: brightness(1.06); }
+
+.vg-care-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.vg-grown {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #14532d;
+}
+
+.vg-tend-hint {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.vg-tend-hint a { color: #0284c7; }
+
+.vg-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .vg-meta {
@@ -303,6 +483,53 @@ body.page-student-virtual-garden .remoed-content {
   to { transform: scale(1); opacity: 1; }
 }
 
+@keyframes vg-sun-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes vg-sun-glow {
+  0%, 100% { filter: none; }
+  40% { filter: drop-shadow(0 0 18px #fde047) brightness(1.25); }
+}
+
+@keyframes vg-flutter {
+  0%, 100% { transform: translate(0, 0) rotate(-6deg); }
+  50% { transform: translate(12px, -16px) rotate(8deg); }
+}
+
+@keyframes vg-buzz {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(18px, -10px); }
+  50% { transform: translate(8px, 8px); }
+  75% { transform: translate(-10px, -6px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes vg-perch {
+  0%, 70%, 100% { transform: translate(0, 0); }
+  80% { transform: translate(24px, -8px); }
+}
+
+@keyframes vg-fly {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(80px, -12px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes vg-fade-flash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes vg-pulse {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+  40% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(1.15); }
+}
+
 @media (max-width: 1024px) {
   .page-student-virtual-garden .vg-page {
     --vg-card-max: 100%;
@@ -337,10 +564,18 @@ body.page-student-virtual-garden .remoed-content {
 
 @media (prefers-reduced-motion: reduce) {
   .vg-plant.is-swap,
+  .vg-plant.is-bounce,
   .vg-water-avatar,
+  .vg-fert-avatar,
   .vg-can,
-  .vg-drop {
+  .vg-drop,
+  .vg-grain,
+  .vg-glow,
+  .vg-sun,
+  .vg-rainbow,
+  .vg-bug {
     animation: none;
   }
-  .vg-progress span { transition: none; }
+  .vg-progress span,
+  .vg-ground { transition: none; }
 }

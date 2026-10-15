@@ -86,14 +86,15 @@ One monthly tree. Eco-Drops are separate from paid lesson **credits**. The stude
 | Passed lesson check / task (first time ever) | **+1** |
 | Finished Play & Learn game | **+1** per game per month (`GAME_REWARD_MODE = once-per-month`) |
 
-There is no shop and no plot grid. Stage = `monthEcoDrops / monthlyTarget` (Seed 0%, Sprout 20%, Small Plant 40%, Medium Plant 60%, Large Tree 80%, Fully Grown 100%). Overflow clamps at Fully Grown.
+There is no shop and no plot grid. Students spend Eco-Drops on Water (1 drop → +1 growth) and Fertilizer (3 drops → +2 growth, once per stage) via `POST /api/garden/care`. Stage = `sum(care growthPoints) / monthlyTarget` (Seed 0%, Sprout 20%, Small Plant 40%, Medium Plant 60%, Large Tree 80%, Fully Grown 100%). Overflow clamps at Fully Grown. `availableDrops = totalEarned − totalSpent`.
 
 `monthlyTarget` = bookings in the month (not cancelled / absent) + distinct lesson checks opened that month + registered games. If the student has no bookings yet, `DEFAULT_MONTHLY_TARGET` (12). Timezone `GARDEN_TIMEZONE` (`Asia/Manila`). Months the student never opened have no tree.
 
 ### Collections
 
-- `eco_drop_ledger` — unique `(studentId, sourceType, sourceId, monthKey)`. `totalEcoDropsEarned` on Student is a cached lifetime count; `monthEcoDrops` is an indexed count.
-- `garden_trees` — unique `(studentId, monthKey)`. Stage is computed; `finalStage` is stored only when the next month starts.
+- `eco_drop_ledger` — unique `(studentId, sourceType, sourceId, monthKey)`. `totalEcoDropsEarned` / `totalEcoDropsSpent` on Student are cached lifetime counts.
+- `garden_trees` — unique `(studentId, monthKey)`. Species is written once at create. Stage is computed; `finalStage` is stored only when the next month starts.
+- `care_actions` — unique `requestId`; fertilizer also unique per `(studentId, monthKey, stageAt)`.
 
 ### Award (server only)
 
@@ -105,12 +106,12 @@ Add a game: one row in `server/garden/games.config.js` plus the same id in `publ
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/garden/current` | Live tree, stage, progress, `hasHistory`, `locked` |
-| GET | `/api/garden/history` | Past trees only |
+| GET | `/api/garden/current` | Live tree, stage, progress, `availableDrops`, `totalEarned`, `hasHistory`, `locked` |
+| GET | `/api/garden/history` | Past trees only (read; does not create) |
 | GET | `/api/garden/:monthKey` | One tree (read-only if past) |
-| POST | `/api/garden/seen-stage` | `{ monthKey, stage }` — unlock animation shown |
-| GET | `/api/student/eco-drops` | Header chip (`totalEcoDrops`) |
+| POST | `/api/garden/care` | `{ action: water\|fertilize, requestId }` |
+| GET | `/api/student/eco-drops` | Header chip (`totalEcoDrops` = available) |
 | POST | `/api/student/eco-drops/ack` | Clears the away-from-class celebration |
 | POST | `/api/play-learn/games/:gameId/start` \| `/finish` | Signed play ticket, then award |
 
-Placeholder art: `public/images/garden/stage-*.svg` (swap files, keep names). Watering character: student photo or `/images/remo-green.png`.
+Placeholder art: `public/images/garden/stage-*.svg` and `ambient-*.svg` (swap files, keep names). Watering character: student photo or `/images/remo-green.png`.

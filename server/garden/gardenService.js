@@ -1,13 +1,21 @@
 /**
- * Garden trees: lazy monthly rollover, current tree, history, seen-stage.
+ * Garden trees: lazy monthly rollover, current tree, history. Reads do not pick species.
  */
 const config = require('./garden.config');
 const domain = require('./domain');
 const { gamesRegistry } = require('./games.config');
 const { GardenError } = require('./errors');
+const { grandfatherCurrentTree } = require('./migrate');
 
 function publicStages() {
-  return config.STAGES.map((s, index) => ({ index, key: s.key, name: s.name, minPercent: s.minPercent, asset: s.asset }));
+  return config.STAGES.map((s, index) => ({
+    index,
+    key: s.key,
+    name: s.name,
+    minPercent: s.minPercent,
+    asset: s.asset,
+    ambient: s.ambient || { butterflies: 0, bees: 0, birds: 0, rainbow: false },
+  }));
 }
 
 function createGardenService({ repo, games = gamesRegistry, timeZone = config.GARDEN_TIMEZONE }) {
@@ -23,10 +31,10 @@ function createGardenService({ repo, games = gamesRegistry, timeZone = config.GA
   async function finalizePrevious(studentId, monthKey, now) {
     const open = await repo.listUnfinalizedBefore(studentId, monthKey);
     for (const tree of open) {
-      const drops = await repo.countMonthDrops(studentId, tree.monthKey);
+      const points = await repo.sumGrowthPoints(studentId, tree.monthKey);
       await repo.finalizeTree(studentId, tree.monthKey, {
-        finalStage: domain.stageIndexFor(drops, tree.monthlyTarget),
-        monthEcoDrops: drops,
+        finalStage: domain.stageIndexFor(points, tree.monthlyTarget),
+        monthEcoDrops: points,
         finalizedAt: now,
       });
     }
@@ -40,15 +48,14 @@ function createGardenService({ repo, games = gamesRegistry, timeZone = config.GA
     const monthKey = domain.monthKeyOf(now, timeZone);
     let tree = await repo.findTree(studentId, monthKey);
     if (!tree) {
-      const [previous, treeCount, monthlyTarget] = await Promise.all([
+      const [previous, monthlyTarget] = await Promise.all([
         repo.latestTreeBefore(studentId, monthKey),
-        repo.countTrees(studentId),
         computeTarget(studentId, monthKey),
       ]);
       const species = domain.pickSpecies({
         studentId,
+        monthKey,
         previousSpecies: previous ? previous.species : null,
-        treeCount,
       });
       tree =
         (await repo.insertTree({
@@ -56,23 +63,23 @@ function createGardenService({ repo, games = gamesRegistry, timeZone = config.GA
           monthKey,
           species,
           monthlyTarget,
-          lastSeenStage: 0,
+          careModel: 'actions',
           finalStage: null,
           monthEcoDrops: null,
           createdAt: now,
           finalizedAt: null,
         })) || (await repo.findTree(studentId, monthKey));
+      await finalizePrevious(studentId, monthKey, now);
     }
-    await finalizePrevious(studentId, monthKey, now);
     return tree;
   }
 
-  function view(tree, liveDrops, isCurrent) {
+  function view(tree, growthPoints, isCurrent) {
     const finalized = !isCurrent && tree.finalizedAt != null;
-    const drops = finalized ? Number(tree.monthEcoDrops) || 0 : liveDrops;
+    const points = finalized ? Number(tree.monthEcoDrops) || 0 : growthPoints;
     const stageIndex = finalized
       ? Math.min(config.STAGES.length - 1, Math.max(0, Number(tree.finalStage) || 0))
-      : domain.stageIndexFor(drops, tree.monthlyTarget);
+      : domain.stageIndexFor(points, tree.monthlyTarget);
     const s = config.STAGES[stageIndex];
     return {
       monthKey: tree.monthKey,
@@ -80,40 +87,54 @@ function createGardenService({ repo, games = gamesRegistry, timeZone = config.GA
       species: tree.species,
       isCurrent,
       readOnly: !isCurrent,
-      stage: { index: stageIndex, key: s.key, name: s.name, asset: s.asset },
-      progressPercent: domain.progressPercent(drops, tree.monthlyTarget),
-      monthEcoDrops: drops,
+      stage: { index: stageIndex, key: s.key, name: s.name, asset: s.asset, ambient: s.ambient },
+      progressPercent: domain.progressPercent(points, tree.monthlyTarget),
+      growthPoints: points,
+      monthEcoDrops: points,
       monthlyTarget: tree.monthlyTarget,
-      nextStage: isCurrent ? domain.nextStageInfo(drops, tree.monthlyTarget) : null,
-      lastSeenStage: isCurrent ? Math.min(stageIndex, Number(tree.lastSeenStage) || 0) : stageIndex,
+      nextStage: isCurrent ? domain.nextStageInfo(points, tree.monthlyTarget) : null,
     };
+  }
+
+  async function balances(studentId) {
+    const totals = repo.getDropTotals
+      ? await repo.getDropTotals(studentId)
+      : { earned: await repo.getTotalDrops(studentId), spent: 0 };
+    const earned = Math.max(0, Number(totals.earned) || 0);
+    const spent = Math.max(0, Number(totals.spent) || 0);
+    return { totalEarned: earned, totalSpent: spent, availableDrops: Math.max(0, earned - spent) };
   }
 
   async function getCurrent(studentId, now = new Date()) {
     let tree = await ensureCurrentMonthTree(studentId, now);
-    const drops = await repo.countMonthDrops(studentId, tree.monthKey);
+    await grandfatherCurrentTree(repo, { studentId, monthKey: tree.monthKey, now });
+    tree = (await repo.findTree(studentId, tree.monthKey)) || tree;
+    const points = await repo.sumGrowthPoints(studentId, tree.monthKey);
     const computed = await computeTarget(studentId, tree.monthKey);
-    const target = domain.reconcileTarget(tree.monthlyTarget, computed, drops);
+    const target = domain.reconcileTarget(tree.monthlyTarget, computed, points);
     if (target !== tree.monthlyTarget) {
       await repo.setTreeTarget(studentId, tree.monthKey, target);
       tree = { ...tree, monthlyTarget: target };
     }
-    const [treeCount, totalEcoDrops] = await Promise.all([repo.countTrees(studentId), repo.getTotalDrops(studentId)]);
+    const [treeCount, wallet] = await Promise.all([repo.countTrees(studentId), balances(studentId)]);
     return {
-      tree: view(tree, drops, true),
-      totalEcoDrops,
+      tree: view(tree, points, true),
+      totalEcoDrops: wallet.availableDrops,
+      availableDrops: wallet.availableDrops,
+      totalEarned: wallet.totalEarned,
       hasHistory: treeCount > 1,
       stages: publicStages(),
+      care: require('./care.config').ACTIONS,
       timeZone,
     };
   }
 
-  /** Past trees only, oldest first. Months the student never opened have no tree. */
+  /** Past trees only. Does not create a current tree (read-only). */
   async function getHistory(studentId, now = new Date()) {
-    const current = await ensureCurrentMonthTree(studentId, now);
+    const monthKey = domain.monthKeyOf(now, timeZone);
     const trees = await repo.listTrees(studentId);
     return trees
-      .filter((t) => domain.compareMonthKeys(t.monthKey, current.monthKey) < 0)
+      .filter((t) => domain.compareMonthKeys(t.monthKey, monthKey) < 0)
       .map((t) => {
         const v = view(t, 0, false);
         return { monthKey: v.monthKey, label: v.label, species: v.species, finalStage: v.stage };
@@ -132,29 +153,11 @@ function createGardenService({ repo, games = gamesRegistry, timeZone = config.GA
     if (!tree || domain.compareMonthKeys(monthKey, current.monthKey) > 0) {
       throw new GardenError(404, 'TREE_NOT_FOUND', 'No tree for that month.');
     }
-    return view(tree, 0, false);
+    const points = tree.finalizedAt != null ? Number(tree.monthEcoDrops) || 0 : await repo.sumGrowthPoints(studentId, monthKey);
+    return view(tree, points, false);
   }
 
-  /** Records that the unlock animation up to `stage` was shown (never above the real stage). */
-  async function markSeenStage(studentId, { monthKey, stage }, now = new Date()) {
-    if (!domain.isValidMonthKey(monthKey)) {
-      throw new GardenError(400, 'INVALID_MONTH', 'Month must look like 2026-09.');
-    }
-    const n = Number(stage);
-    if (!Number.isInteger(n) || n < 0 || n >= config.STAGES.length) {
-      throw new GardenError(400, 'INVALID_STAGE', 'Stage must be a stage number.');
-    }
-    const tree = await ensureCurrentMonthTree(studentId, now);
-    if (tree.monthKey !== monthKey) {
-      throw new GardenError(409, 'NOT_CURRENT_MONTH', 'Only the current tree can be updated.');
-    }
-    const drops = await repo.countMonthDrops(studentId, monthKey);
-    const real = domain.stageIndexFor(drops, tree.monthlyTarget);
-    const lastSeenStage = await repo.raiseLastSeenStage(studentId, monthKey, Math.min(n, real));
-    return { monthKey, lastSeenStage };
-  }
-
-  return { ensureCurrentMonthTree, getCurrent, getHistory, getTree, markSeenStage, computeTarget };
+  return { ensureCurrentMonthTree, getCurrent, getHistory, getTree, computeTarget, view, balances };
 }
 
 module.exports = { createGardenService, publicStages };
