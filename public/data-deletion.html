@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User data deletion — RemoEdPH</title>
+    <meta
+      name="description"
+      content="How to request deletion of your RemoEdPH account and personal data, including data received from Facebook Login."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-9" />
+  </head>
+  <body class="page-index page-site-doc">
+    <nav class="navbar">
+      <a class="logo-section" href="/" aria-label="RemoEdPH home">
+        <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="180" height="56" />
+      </a>
+      <div class="nav-buttons" id="nav-buttons">
+        <a href="/teachers" class="nav-btn">Our Teachers</a>
+        <a href="/#assessment" class="nav-btn">Free Assessment</a>
+        <a href="/#plans" class="nav-btn">Plans</a>
+        <a href="/login/" class="nav-btn primary">Login</a>
+      </div>
+      <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+    </nav>
+
+    <main class="site-doc">
+      <header class="site-doc__header">
+        <p class="brand-kicker">Legal</p>
+        <h1>User data deletion</h1>
+        <p class="site-doc__lead">
+          How to ask RemoEdPH to delete your account and personal data, including information received from Facebook Login or Google sign-in.
+        </p>
+        <p class="site-doc__meta">Last updated: October 2026</p>
+      </header>
+
+      <article class="site-doc__card site-doc__prose">
+        <h2>Request deletion</h2>
+        <p>
+          Email <a href="mailto:support@remoedph.com">support@remoedph.com</a> from the email address on your RemoEdPH account.
+        </p>
+        <ul>
+          <li><strong>Subject:</strong> Delete my RemoEdPH account</li>
+          <li>Your RemoEdPH username, if you know it</li>
+          <li>The email used to sign in (including Facebook or Google, if that is how you registered)</li>
+          <li>Whether you want the student account, the teacher account, or both deleted</li>
+        </ul>
+        <p>
+          A parent or guardian should send the request for a student account. We may ask you to confirm you control that email before we delete anything.
+        </p>
+
+        <h2>What we delete</h2>
+        <p>
+          After we confirm the request, we delete or anonymize the account profile, sign-in links (including Facebook and Google), and other personal data we no longer need to provide the service.
+        </p>
+        <p>
+          We may keep limited records when the law, payment partners, or safety reviews require it (for example invoices, fraud prevention, or an open incident). Those records are not used for marketing.
+        </p>
+
+        <h2>How long it takes</h2>
+        <p>
+          We aim to complete confirmed deletion requests within 30 days and will email you when it is done.
+        </p>
+
+        <p>
+          See also the <a href="/site-privacy.html">Privacy Policy</a>.
+        </p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__grid">
+        <nav class="site-footer__col" aria-label="Legal">
+          <h3 class="site-footer__heading">Legal</h3>
+          <a href="/site-privacy.html">Privacy Policy</a>
+          <a href="/data-deletion.html">User data deletion</a>
+          <a href="/legal/terms">Terms</a>
+        </nav>
+      </div>
+      <p class="site-footer__copy">&copy; <span class="footer-year">2026</span> RemoEdPH. All rights reserved.</p>
+    </footer>
+
+    <script>
+      document.querySelectorAll(".footer-year").forEach(function (el) {
+        el.textContent = String(new Date().getFullYear());
+      });
+      var toggle = document.getElementById("nav-menu-toggle");
+      var buttons = document.getElementById("nav-buttons");
+      if (toggle && buttons) {
+        toggle.addEventListener("click", function () {
+          var open = buttons.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+      }
+    </script>
+  </body>
+</html>
