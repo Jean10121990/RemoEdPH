@@ -29,7 +29,8 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
 | Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
 | Admin Marketing role (`admin_marketing`) | Seeded in `server/services/adminRbac.js`; assign via Settings → Admin Roles / HR Users; ops helper `scripts/ensure-admin-marketing.js` |
-| Admin login / first-setup | `server/utils/adminRouteConfig.js`, `ADMIN_LOGIN_PATH` in `.env`, `public/admin-login.html` (served only at obfuscated path), `public/admin-first-setup.html`, `public/js/admin-session.js`, `GET /api/auth/admin-login-path` + `POST /api/auth/admin-first-setup` in `server/auth.js` |
+| Admin login / first-setup | `server/utils/adminRouteConfig.js`, `ADMIN_LOGIN_PATH` in `.env`, `public/admin-login.html` (served only at obfuscated path), `public/admin-first-setup.html`, `public/js/admin-session.js`, `GET /api/auth/admin-login-path` + `POST /api/auth/admin-first-setup` in `server/auth.js`. Continue with Google is on that page only; authenticator still runs (`server/services/adminAuthChallenge.js`, `POST /api/auth/oauth/admin-gate`). |
+| Social sign-in | `server/services/oauthService.js`, `server/routes/oauthRoutes.js`, `server/config/oauth.js`, `public/js/remoed-oauth.js`, `public/oauth-finish.html`, `/login/`, `public/student-register.html`, `public/teacher-signup.html`, `public/data-deletion.html`. Env: `GOOGLE_*`, `FACEBOOK_*`, `OAUTH_STATE_SECRET`, `OAUTH_PUBLIC_BASE_URL` or `FRONTEND_URL=https://remoedph.com`. |
 | Admin HR staff documents | `public/admin-hr-documents.html`, `GET/PATCH /api/admin/hr-documents*` in `server/admin.js`; teacher NBI: `Teacher.nbiClearanceStatus` + `documents.nbiClearances` |
 | Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
 | Student privacy consent | `server/config/privacyConsent.js` (version `2026-10-01`), `Student.privacyConsents`, `POST /api/student/privacy-consent`, `public/legal/student-privacy.html`, `public/legal/terms.html`. Profile checkbox source is `profile`. Students are international; the Philippine Data Privacy Act still covers the accounts RemoEd holds. |
@@ -128,7 +129,10 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Auth isolation
 
-- [ ] With Google/Facebook env configured: assessment → Claim Free Trial → register with **Continue with Google** using the same email creates a student and redeems the trial; `/login/` Google for a new Gmail without assessment does **not** create an account.
+- [ ] With Google/Facebook env configured: assessment → Claim Free Trial → register with **Continue with Google** using the same email creates a student and redeems the trial; `/login/` Google for a new Gmail without assessment does **not** create an account. The Google callback `redirect_uri` is `https://remoedph.com/api/auth/oauth/google/callback` (Facebook: `…/facebook/callback`). `publicBase` uses `OAUTH_PUBLIC_BASE_URL` or `FRONTEND_URL`, never `http://` from the nginx proxy.
+- [ ] Login welcome says live one-on-one classes with real teachers. It does not say AI-powered.
+- [ ] Obfuscated admin login shows **Continue with Google** and no Facebook button. Google matches an existing Admin **email** or username and does not create an admin. The next screen is still authenticator enrollment or the 6-digit code. A portal session is not stored from the Google callback alone.
+- [ ] HR Hub → User Management → Admins shows **Username** (password login, unchanged) and **Email** (Google address). Empty email shows **Not set**. Saving a Google email does not replace the username or password.
 - [ ] Student token cannot call a random `/api/teacher/*` route outside the allowlist (`WRONG_PORTAL_TOKEN`).
 - [ ] A 401 or a plain 403 from `/api/*` signs the portal out, but a 403 whose JSON `code` is a business gate (`CONSENT_REQUIRED`, `INSUFFICIENT_CREDITS`, `CREDITS_EXPIRED`, `SUBSCRIPTION_REQUIRED_LESSON_2`, `TRIAL_LESSON_1_ONLY`, `LESSON_AHEAD_OF_PROGRESS`, `FREE_PLAN_LESSON_ONLY`, `FREE_PLAN_SEQUENCE`, `FREE_PLAN_ALREADY_BOOKED`, `FREE_PLAN_TRIAL_TEACHER_ONLY`, `FREE_PLAN_SEQUENCE_DONE`, `FREE_PLAN_LOCKED`, `ALREADY_BOOKED`, `SLOT_NOT_AVAILABLE`) must **not** (`BUSINESS_GATE_CODES` in `public/js/user-session.js`). When you add a new gate code that uses 401/403, add it there.
 - [ ] Teacher token cannot call `/api/student/*` profile/bookings as a student.
@@ -179,7 +183,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Root `/admin-login` and `/admin-login.html` return **404 Not found** (intentional). Login works only at `/${ADMIN_LOGIN_PATH}` (or the default segment from `adminRouteConfig.js`).
 - [ ] After **First-time password setup** succeeds, the browser redirects to that obfuscated login path — **not** to `/admin-login.html`.
 - [ ] “Admin login” on `admin-first-setup.html` and idle/logout via `RemoedAdminSession.redirectToAdminLogin()` also land on the obfuscated path (`GET /api/auth/admin-login-path` when `remoedAdminEntryPath` is missing).
-- [ ] First-time **2FA QR enroll** (`require2FASetup`): scan + 6-digit code succeeds via `POST /api/admin/verify-2fa` (must **not** return **403** from RBAC). Delete any old RemoEdPH Admin authenticator entry before scanning a new QR.
+- [ ] First-time **2FA QR enroll** (`require2FASetup`): scan + 6-digit code succeeds via `POST /api/admin/verify-2fa` (must **not** return **403** from RBAC). Delete any old RemoEdPH Admin authenticator entry before scanning a new QR. The same enroll or 6-digit step runs after **Continue with Google**.
 
 ### Deploy hygiene
 
@@ -467,7 +471,9 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
   - `GET /api/auth/admin-login-path` → `{ path: "/…" }`, or
   - `loginPath` on successful `POST /api/auth/admin-first-setup`.
 - First-time setup UI: `public/admin-first-setup.html` (public). After save, redirect with `loginPath` / API path and remember it in `remoedAdminEntryPath`.
-- **Forced 2FA enroll:** password OK + `isTwoFactorEnabled !== true` → login returns `require2FASetup` + QR; client confirms via `POST /api/admin/verify-2fa` with enrollment Bearer (not a full admin JWT). Enrollment handlers in [server/admin.js](server/admin.js) must stay **before** `adminRouterRbac`, and [server/adminRbacRoutes.js](server/adminRbacRoutes.js) must skip non-RBAC paths so enrollment is not 403’d.
+- **Forced 2FA enroll:** password OK **or** Google match + `isTwoFactorEnabled !== true` → `require2FASetup` + QR; client confirms via `POST /api/admin/verify-2fa` with enrollment Bearer (not a full admin JWT). Enrollment handlers in [server/admin.js](server/admin.js) must stay **before** `adminRouterRbac`, and [server/adminRbacRoutes.js](server/adminRbacRoutes.js) must skip non-RBAC paths so enrollment is not 403’d. When 2FA is already on, both password and Google return `require2FA` + `tempToken` and finish at `POST /api/auth/verify-2fa`. Do not issue `twoFactorVerified` from the Google callback.
+- **Continue with Google** is only on `public/admin-login.html` (`intent=admin_login`). Facebook is not offered. The callback finds an existing Admin by verified Google email matching `Admin.email` or `Admin.username`. It never inserts an Admin. The browser returns to the obfuscated path with a short HMAC ticket; `POST /api/auth/oauth/admin-gate` then runs `sendAdminAuthChallenge` in `server/services/adminAuthChallenge.js`.
+- **Username stays the password login.** HR Hub → Admins has a separate **Email** column for the Google address (`public/admin-users.html`). Super-Admin sets it on create or edit. Leave username and password as they are. An empty email shows **Not set**. Duplicate Google emails are rejected. Do not treat the `@remoedph.com` username as the Gmail unless that is actually the Google account.
 - Idle logout / session expiry: `public/js/admin-session.js` → `redirectToAdminLogin()` (API fallback; do not restore the `/admin/admin-login.html` fallback).
 - `admin-login.html` sets `window.__REMOED_ADMIN_LOGIN_HTML__ = true` before `security-guard.js` so the obfuscated path is not treated as a protected `/admin-*` portal page.
 - **Scoped roles (QA / HR / Accounting / Marketing):** dashboard `adminApiFetch` must **not** treat every HTTP 403 as logout. Role gates return plain 403 (“cannot access this resource”); only `401` or `403` with `ADMIN_2FA_REQUIRED` / `WRONG_PORTAL_TOKEN` / `ADMIN_SESSION_REVOKED` should clear the session. Otherwise QA login → dashboard → `teachers-list` 403 → instant logout loop.
@@ -494,7 +500,20 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 - **Portal currency converter** (`public/js/currency-converter.js`, loaded with `defer` on every page that shows ₱ / $ amounts: admin dashboard, payroll, admin payroll, admin fee, referrals, unique link commissions, student subscriptions, users, user profile, QA hub, student credits / register / booking history, teacher dashboard, class table, Teaching Fee, payslip, professional development, referrals). A **Currency** button (bottom-left, after the sidebar; above the phone tab bar) opens a panel with a calculator and **Show amounts on this page in**. The choice is saved app-wide in `localStorage` `remoed_display_currency` (empty = off). When on, each element whose own text is exactly one PHP or USD amount gets `data-remoed-fx="≈ …"`, shown by a CSS `::after` label. **Never write the estimate into the element text**: Teaching Fee and other pages read totals back with `textContent.replace(/[^\d.-]/g, '')`. Buttons, inputs, selects, options, elements with child elements, lines with two or more amounts, and anything inside `[data-no-fx]` are skipped. Print hides the button and labels, so payslips print in PHP only. Rates come only from `GET /api/public/fx-rates` (no third-party calls from the browser); amounts never leave the device. To add a new money page, include the script tag; to exclude an area, add `data-no-fx`.
 - After guest assessment completes, landing `#plans` shows level + **You have taken the assessment…** with **Register Now** (hides the pre-assessment register note). Same email cannot retake: `GET /api/public/assessment-status` + landing form / guest assessment gate → “Assessment already taken. Please check your email…”.
 - Assessment email **Claim Free Trial** link includes `trial` + `email`. Register page asks **student first name → last name → email** (then username/password). Prefill via query + `GET /api/public/assessment-trial/:token`. Trial links **do not expire**; the only hard block is **email already registered**. Stale/invalid tokens must not block first-time signup (`POST /api/auth/student-register` resolves unredeemed trial by email).
-- **Social sign-in (Google / Facebook):** buttons on `/login/` (existing accounts only), `student-register.html?trial=…` (assessment-gated create + consent), and invite-only `teacher-signup.html`. Finish page: `public/oauth-finish.html`. Env + redirect URIs: `.env.example`. OAuth student create must redeem `AssessmentTrial` with matching email; `/login/` social never creates a student (sends unknown emails to assessment / register). Profile Settings → Connected accounts link/unlink + set-password for OAuth-only users (`Student`/`Teacher.authProviders`, optional `password`). Admin login (obfuscated path only) may Continue with Google, then still requires authenticator enrollment or a 6-digit code. Google must match an existing Admin email or username. Facebook is not on the admin page.
+- **Social sign-in (Google / Facebook):** see § Social sign-in below. Classes are live one-on-one video with real teachers. Login welcome copy must not call the product AI-powered.
+
+## Social sign-in (Google / Facebook)
+
+Server code flow. Do not switch to a client-only Google or Facebook token. Details also in [`SECURITY.md`](SECURITY.md) and [`SKILLS.md`](SKILLS.md) § Social sign-in.
+
+- **Routes:** `GET /api/auth/oauth/providers`, `GET /api/auth/oauth/{google|facebook}/start`, `GET /api/auth/oauth/{provider}/callback`, `POST /api/auth/oauth/exchange` (public, rate-limited). Link, unlink, and set-password need a student or teacher JWT (`/me/*`, `/:provider/link`). `POST /api/auth/oauth/admin-gate` is the admin second step only.
+- **Redirect URIs (exact):** `https://remoedph.com/api/auth/oauth/google/callback` and `https://remoedph.com/api/auth/oauth/facebook/callback`. `publicBase()` in `server/services/oauthService.js` prefers `OAUTH_PUBLIC_BASE_URL`, then `FRONTEND_URL`. Behind nginx, `req.protocol` is often `http` and must not become the Google `redirect_uri`.
+- **State:** HMAC tickets (`OAUTH_STATE_SECRET`, else a derived secret). Finish tickets last 2 minutes. `POST /exchange` rejects `role: admin_gate` (no portal JWT in that ticket).
+- **Students:** Create only for `intent=student_register` with an unredeemed `AssessmentTrial`, verified provider email matching `parentEmail`, and privacy consent already in the state. Redeem the trial. `/login/` (`student_login`) never inserts a Student. Unknown email goes to assessment or register-with-trial. Password may be empty when `authProviders` is set. Password login of an OAuth-only account returns `USE_SOCIAL_LOGIN`. Set a password with `POST /api/auth/oauth/me/set-password`.
+- **Teachers:** Invite-only. `teacher_signup` needs a valid invite and the Google/Facebook email must match the application. Existing teachers may log in or link. `POST /api/auth/register` stays invitation-only. Do not create a teacher from a cold social login.
+- **Admins:** Google on the obfuscated login page only. Match `Admin.email` or `Admin.username`. Never create an admin. Never skip authenticator enrollment or the 6-digit code. Facebook is not on that page. HR sets the Google address in the Admins **Email** column; username and password stay the hardcoded login.
+- **UI:** `public/js/remoed-oauth.js` (Google G and Facebook f marks). Finish page `public/oauth-finish.html` stores `remoed_student_token` or `remoed_teacher_token` only. Profile Settings → Connected accounts. Public deletion instructions: `public/data-deletion.html`.
+- **Do not** put admin into the student/teacher unified login, and do not store an admin session from `oauth-finish.html`.
 
 ## Teaching Fee — Bonus / Incentive (Accounting)
 
@@ -560,7 +579,7 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 
 Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whenever a route, socket room, or auth rule changes.
 
-- Public on purpose (keep open): `GET /api/teacher/slots`, public teacher profile / landing / directory, student booking, obfuscated admin login path, `/api/public/*` assessment, `POST /api/applications`, `teacher-profiles/` uploads.
+- Public on purpose (keep open): `GET /api/teacher/slots`, public teacher profile / landing / directory, student booking, obfuscated admin login path, `/api/public/*` assessment, `POST /api/applications`, `teacher-profiles/` uploads, `GET /api/auth/oauth/providers` and the OAuth start/callback/exchange routes. `POST /api/auth/oauth/admin-gate` proves Google identity only; it does not skip authenticator.
 - Teacher debug routes stay removed: `/api/teacher/test`, `/timezone-debug`, `/booking-test/:id`, `/test-remove-slide`, and the unauthenticated `/api/teacher/teacher/completed-classes`.
 - `GET /api/teacher/booking/by-classroom/:id` needs a token for that booking's teacher or student (or an admin). Students reach it through the `studentMayCallThisTeacherRoute` allowlist.
 - `GET /api/teacher/dashboard-stats` returns only the signed-in teacher. `GET /api/teacher/classes?teacherId&week` requires the matching teacher Bearer (`teacher-open-class.html` sends it).
@@ -587,6 +606,10 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 | `LESSON_AHEAD_OF_PROGRESS` | The lesson is ahead of that level’s Learning Journey. The student can book the next stop or any earlier lesson. |
 | `CHECKPOINT_REQUIRED` | The next lesson stays locked until the student passes that lesson’s assessment. The finished class still counts as done. |
 | `WRONG_PORTAL_TOKEN` | Wrong role token for this API path |
+| `ASSESSMENT_REQUIRED` | Social student create has no unredeemed assessment trial |
+| `EMAIL_MISMATCH` | Social email does not match the assessment parent email |
+| `USE_SOCIAL_LOGIN` | Account has no password; use Google or Facebook |
+| `GOOGLE_ONLY` | Admin social sign-in is Google only |
 
 ## Curriculum levels — Pre-Level
 
@@ -719,3 +742,13 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Plan pricing source | Landing, register plan modal, and Credits read prices and the PHP rate from `GET /api/payments/plans` (`public/js/plan-pricing.js`). Change prices on the server only. |
 | Virtual Garden | One monthly tree (no plot grid). Species is locked at create and never changes inside the month. Eco-Drops are earned from finished lessons, lesson checks, and Play & Learn games, then spent on Water / Fertilizer (`POST /api/garden/care`). Header chip shows available drops and only navigates. Past months use on-screen arrows (read-only). See § Virtual Garden & Eco-Drops. |
 | Repo hygiene | Unused `server/key.pem` / `server/cert.pem` are no longer tracked (`.gitignore`). No real secrets were found in tracked files; `.env` stays ignored. |
+
+## Baseline updates — 2026-10-16
+
+| Area | What shipped |
+|------|----------------|
+| Social sign-in | Google and Facebook for students (assessment first) and teachers (invite or existing account). `/login/` never creates a student. Redirect URIs must be HTTPS. See § Social sign-in. |
+| Admin Google | Obfuscated admin login has Continue with Google. It matches `Admin.email` or username, never creates an admin, and still requires authenticator enrollment or a 6-digit code. Facebook is not on that page. |
+| Admin email column | HR Hub → Admins lists Username (password login) and Email (Google address). Editing the email does not change the username or password. |
+| Login copy | Welcome text is live one-on-one classes with real teachers. Do not put “AI-powered” back on the login page. |
+| Test student | `jean10121990@gmail.com` is not a student account. Its leftover redeemed assessment trial was removed. The CEO test-plan allowlist entry in Settings is separate and stays. |

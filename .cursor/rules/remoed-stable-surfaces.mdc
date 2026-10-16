@@ -22,6 +22,16 @@ Before changing shared auth, booking, class schedule, or Mongo scripts, read [.c
 - `server/authMiddleware.js` enforces portal separation (`WRONG_PORTAL_TOKEN`). Student JWT may call only the teacher-route allowlist (`/api/teacher/slots`, paths ending `/book-class`, `/available-teachers`, `/public/...`). **Extend** the allowlist for new student needs; do not remove the gate.
 - `GET /api/teacher/slots` and public profile routes are intentionally usable without Bearer. Do not lock them behind teacher auth without a student replacement.
 
+## Social sign-in
+
+Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Social sign-in.
+
+- Students: Google/Facebook create only after an unredeemed assessment whose email matches. `/login/` never creates a student.
+- Teachers: invite or existing account only.
+- Admins: Continue with Google on the obfuscated login only. Match `Admin.email` or username. Never create an admin. Authenticator enrollment or a 6-digit code still runs. Username and password stay the login; the HR Admins **Email** column is the Google address. Facebook is not on the admin page.
+- OAuth `redirect_uri` stays `https://remoedph.com/api/auth/oauth/{google|facebook}/callback`. Do not build it from `req.protocol` behind nginx.
+- Login welcome describes live one-on-one classes with real teachers. Do not call the product AI-powered.
+
 ## Student booking
 
 - Preferred client: `POST /api/student/book-class` (`public/student-book.html`).
