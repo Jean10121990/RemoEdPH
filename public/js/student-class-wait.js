@@ -1,5 +1,5 @@
 /**
- * Student waiting room: overlay + mini-game + looping watch animation
+ * Student waiting room: overlay + mini-game + promo video
  * until the teacher is in the live classroom.
  */
 (function (global) {
@@ -11,7 +11,7 @@
   var teacherHere = false;
   var score = 0;
   var orbs = [];
-  var watchT = 0;
+  var PROMO_VIDEO = 'https://drive.google.com/file/d/1anvz4zRdlZ_i8AVWKefAsbvZVmZCDeP-/preview';
 
   function token() {
     try {
@@ -65,6 +65,7 @@
       cancelAnimationFrame(raf);
       raf = 0;
     }
+    stopPromo();
     if (overlay) {
       overlay.hidden = true;
       overlay.setAttribute('hidden', '');
@@ -206,12 +207,25 @@
     ctx.restore();
   }
 
+  function promoFrame() {
+    return document.getElementById('lc-wait-promo');
+  }
+
+  function stopPromo() {
+    var frame = promoFrame();
+    if (frame) frame.removeAttribute('src');
+  }
+
+  function startPromo() {
+    var frame = promoFrame();
+    if (!frame) return;
+    if (frame.getAttribute('src') !== PROMO_VIDEO) frame.src = PROMO_VIDEO;
+  }
+
   function startPlay() {
     var game = document.getElementById('lc-wait-game');
-    var watch = document.getElementById('lc-wait-watch');
-    if (!game || !watch) return;
+    if (!game) return;
     var gctx = game.getContext('2d');
-    var wctx = watch.getContext('2d');
     score = 0;
     orbs = [];
     var scoreEl = document.getElementById('lc-wait-score');
@@ -247,23 +261,6 @@
     function tick() {
       if (teacherHere) return;
       var gs = sizeCanvas(game);
-      var ws = sizeCanvas(watch);
-      watchT += 0.016;
-      wctx.clearRect(0, 0, ws.w, ws.h);
-      var grd = wctx.createLinearGradient(0, 0, ws.w, ws.h);
-      grd.addColorStop(0, '#d9f7ff');
-      grd.addColorStop(0.5, '#e8fce3');
-      grd.addColorStop(1, '#fff6c8');
-      wctx.fillStyle = grd;
-      wctx.fillRect(0, 0, ws.w, ws.h);
-      for (var k = 0; k < 8; k++) {
-        var px = (ws.w * 0.12 * k + watchT * (18 + k * 4)) % (ws.w + 80) - 40;
-        var py = ws.h * 0.25 + Math.sin(watchT * 0.8 + k) * 28 + k * 18;
-        wctx.beginPath();
-        wctx.fillStyle = 'rgba(71,188,62,' + (0.18 + (k % 3) * 0.08) + ')';
-        wctx.arc(px, py, 22 + (k % 4) * 8, 0, Math.PI * 2);
-        wctx.fill();
-      }
 
       gctx.clearRect(0, 0, gs.w, gs.h);
       gctx.fillStyle = '#0b3d2e';
@@ -291,6 +288,8 @@
     var playGame = mode !== 'watch';
     if (gameWrap) gameWrap.hidden = !playGame;
     if (watchWrap) watchWrap.hidden = playGame;
+    if (playGame) stopPromo();
+    else startPromo();
     if (gameBtn) gameBtn.classList.toggle('is-active', playGame);
     if (watchBtn) watchBtn.classList.toggle('is-active', !playGame);
   }
@@ -337,7 +336,7 @@
         '<span class="lc-wait-score-label">Treats <strong id="lc-wait-score">0</strong></span>' +
         '</div>' +
         '<div id="lc-wait-game-wrap" class="lc-wait-canvas-wrap"><canvas id="lc-wait-game"></canvas><p class="lc-wait-hint">Tap the falling candies and toys!</p></div>' +
-        '<div id="lc-wait-watch-wrap" class="lc-wait-canvas-wrap" hidden><canvas id="lc-wait-watch"></canvas><p class="lc-wait-hint">A calm loop while you wait.</p></div>';
+        '<div id="lc-wait-watch-wrap" class="lc-wait-video-wrap" hidden><iframe id="lc-wait-promo" title="RemoEdPH" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>';
     }
     startPlay();
     setMode('game');
