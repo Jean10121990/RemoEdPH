@@ -160,6 +160,7 @@
                             <tr>
                                 <th style="width:52px;">Profile</th>
                                 <th>Username</th>
+                                <th>Email</th>
                                 <th>Role</th>
                                 <th>Status</th>
                                 <th>Join Date</th>
@@ -193,8 +194,9 @@
                 </div>
                 
                 <div style="margin-bottom: 15px;">
-                    <label for="email" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email *</label>
+                    <label for="email" id="email-label" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email *</label>
                     <input type="email" id="email" name="email" required placeholder="name@example.com" autocomplete="email" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    <small id="admin-email-hint" style="display: none; color: #666;">Google sign-in uses this address. Username and password stay the login.</small>
                 </div>
 
                 <div id="admin-only-fields" style="display: none; margin-bottom: 15px;">
@@ -641,15 +643,15 @@
                 const tbody = document.getElementById('admins-tbody');
                 if (response.status === 401 || response.status === 403) {
                     const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
                     return;
                 }
                 if (!response.ok) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load admins') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load admins') + '</td></tr>';
                     return;
                 }
                 if (!admins.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No admins found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No admins found</td></tr>';
                     return;
                 }
 
@@ -661,6 +663,12 @@
                     return m[r] || r || '—';
                 };
                 
+                const esc = (value) => String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+
                 tbody.innerHTML = admins.map(admin => `
                     <tr>
                         <td>
@@ -671,8 +679,9 @@
                                 </svg>
                             </button>
                         </td>
-                        <td>${admin.username}</td>
-                        <td>${roleLabel(admin.adminRole)}</td>
+                        <td>${esc(admin.username)}</td>
+                        <td>${admin.email ? esc(admin.email) : '<span style="color:#94a3b8;">Not set</span>'}</td>
+                        <td>${esc(roleLabel(admin.adminRole))}</td>
                         <td><span class="status-badge ${admin.status === 'suspended' ? 'status-inactive' : 'status-active'}">${admin.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
                         <td>${new Date(admin.createdAt).toLocaleDateString()}</td>
                         <td>
@@ -697,7 +706,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading admins:', error);
-                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
+                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
             }
         }
 
@@ -732,6 +741,8 @@
             document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
             document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
             document.getElementById('email').required = true;
+            document.getElementById('email-label').textContent = userType === 'admin' ? 'Google email *' : 'Email *';
+            document.getElementById('admin-email-hint').style.display = userType === 'admin' ? 'block' : 'none';
             document.getElementById('password-hint').textContent =
                 userType === 'admin'
                     ? 'Optional for new admins: leave blank and share the setup token so they set a password in Profile / first-time setup.'
@@ -796,6 +807,8 @@
                 document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
                 document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
                 document.getElementById('email').required = true;
+                document.getElementById('email-label').textContent = userType === 'admin' ? 'Google email *' : 'Email *';
+                document.getElementById('admin-email-hint').style.display = userType === 'admin' ? 'block' : 'none';
                 document.getElementById('password-hint').textContent =
                     userType === 'admin'
                         ? 'Set a new password here, or leave blank to keep the current one.'

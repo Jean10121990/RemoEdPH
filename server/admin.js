@@ -5310,7 +5310,8 @@ router.post('/user', async (req, res) => {
       case 'admin': {
         const orAdmin = [{ username: String(username).trim() }];
         if (email && String(email).trim()) {
-          orAdmin.push({ email: String(email).trim() });
+          const emailEsc = String(email).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          orAdmin.push({ email: new RegExp(`^${emailEsc}$`, 'i') });
         }
         existingUser = await Admin.findOne({ $or: orAdmin });
         break;
@@ -5463,7 +5464,7 @@ router.post('/user', async (req, res) => {
           hashedPassword = await bcrypt.hash(String(password).trim(), 12);
           newUser = new Admin({
             username: String(username).trim(),
-            email: email && String(email).trim() ? String(email).trim() : null,
+            email: email && String(email).trim() ? String(email).trim().toLowerCase() : null,
             adminRole: assignedRole,
             passwordHash: hashedPassword,
             mustSetPassword: false,
@@ -5474,7 +5475,7 @@ router.post('/user', async (req, res) => {
           // Omit password/passwordHash so schema defaults apply; explicit null has caused save issues on some stacks.
           newUser = new Admin({
             username: String(username).trim(),
-            email: email && String(email).trim() ? String(email).trim() : null,
+            email: email && String(email).trim() ? String(email).trim().toLowerCase() : null,
             adminRole: assignedRole,
             mustSetPassword: true,
             passwordSetupTokenHash: tokenHash,
@@ -5700,9 +5701,24 @@ router.put('/user/:userId', async (req, res) => {
       }
     }
 
-    // Update fields
+    // Update fields. Admin username stays the password login; email is the Google address.
     if (username) user.username = username;
-    if (email !== undefined) user.email = email || null;
+    if (userType === 'admin' && email !== undefined) {
+      const nextEmail = String(email || '').trim().toLowerCase();
+      if (nextEmail) {
+        const esc = nextEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const clash = await Admin.findOne({
+          _id: { $ne: user._id },
+          $or: [{ email: new RegExp(`^${esc}$`, 'i') }, { username: new RegExp(`^${esc}$`, 'i') }],
+        }).select('_id').lean();
+        if (clash) {
+          return res.status(400).json({ error: 'That Google email is already used by another admin.' });
+        }
+      }
+      user.email = nextEmail || null;
+    } else if (email !== undefined) {
+      user.email = email || null;
+    }
     if (password) {
       const h = await bcrypt.hash(password, 12);
       if (userType === 'admin') {
