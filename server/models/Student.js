@@ -6,7 +6,20 @@ const studentSchema = new mongoose.Schema({
   studentCode: { type: String, unique: true, sparse: true },
   username: { type: String, required: true, unique: true },
   email: { type: String, required: false, unique: true },
-  password: { type: String, required: true },
+  /** Optional when the account has at least one authProviders entry (Google / Facebook). */
+  password: { type: String, required: false, default: null },
+  /**
+   * Linked social providers. Unique per (provider, providerId).
+   * OAuth-only students may have password null until they set one in profile.
+   */
+  authProviders: [
+    {
+      provider: { type: String, enum: ['google', 'facebook'], required: true },
+      providerId: { type: String, required: true },
+      email: { type: String, default: '' },
+      linkedAt: { type: Date, default: Date.now },
+    },
+  ],
   firstName: { type: String, required: false },
   middleName: { type: String },
   lastName: { type: String, required: false },
@@ -244,5 +257,14 @@ const studentSchema = new mongoose.Schema({
 studentSchema.index({ email: 1, accountStatus: 1 });
 studentSchema.index({ email: 1, status: 1 });
 studentSchema.index({ email: 1, referredByTeacherId: 1 });
+studentSchema.index(
+  { 'authProviders.provider': 1, 'authProviders.providerId': 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      'authProviders.providerId': { $type: 'string' },
+    },
+  }
+);
 
 module.exports = mongoose.model('Student', studentSchema); 

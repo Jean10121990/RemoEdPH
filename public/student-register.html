@@ -377,6 +377,7 @@
         </div>
         <button type="submit" class="btn" id="register-btn" disabled>Create Account</button>
       </form>
+      <div class="remoed-oauth" id="remoed-oauth-register" hidden></div>
       <div class="register-error" id="student-register-error"></div>
 
       <div class="links">
@@ -767,6 +768,64 @@
     }
   </script>
   <script src="js/password-toggle.js?v=2"></script>
+  <script src="js/remoed-oauth.js?v=oauth-1"></script>
+  <script>
+    (function mountRegisterOAuth() {
+      if (!window.RemoEdOAuth) return;
+      var params = new URLSearchParams(window.location.search);
+      var errEl = document.getElementById('student-register-error');
+      if (errEl && params.get('msg')) {
+        errEl.textContent = params.get('msg');
+        errEl.className = 'register-error';
+        errEl.style.display = 'block';
+      }
+      var trial = params.get('trial') || '';
+      RemoEdOAuth.mountButtons('remoed-oauth-register', {
+        title: trial ? 'Or register with' : 'Social registration',
+        hint: trial
+          ? 'Use the same Google/Facebook email as your assessment. Privacy policy must be accepted first.'
+          : 'Take the level assessment and open Claim Free Trial from your email before using Google or Facebook.',
+        beforeStart: function () {
+          if (!trial) {
+            if (errEl) {
+              errEl.textContent =
+                'Finish the level assessment first, then open Claim Free Trial in your email to register with Google or Facebook.';
+              errEl.className = 'register-error';
+              errEl.style.display = 'block';
+            }
+            return false;
+          }
+          var privacy = document.getElementById('privacy-consent');
+          if (!privacy || !privacy.checked) {
+            if (errEl) {
+              errEl.textContent =
+                'A parent or guardian must accept the Student Privacy and Recording Policy before continuing.';
+              errEl.className = 'register-error';
+              errEl.style.display = 'block';
+            }
+            return false;
+          }
+          return true;
+        },
+        query: function () {
+          return {
+            intent: 'student_register',
+            trialToken: trial,
+            privacyConsentAccepted: 'true',
+            marketingConsent:
+              document.getElementById('marketing-consent') &&
+              document.getElementById('marketing-consent').checked
+                ? 'true'
+                : 'false',
+            firstName: (document.getElementById('student-register-first-name') || {}).value || '',
+            lastName: (document.getElementById('student-register-last-name') || {}).value || '',
+            username: (document.getElementById('student-register-username') || {}).value || '',
+            rememberMe: 'true',
+          };
+        },
+      });
+    })();
+  </script>
 <script src="/js/currency-converter.js?v=fx-live-1" defer></script>
 </body>
 </html>

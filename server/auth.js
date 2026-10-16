@@ -39,10 +39,14 @@ const { decryptTotpSecret, encryptTotpSecret } = require('./utils/twoFactorSecre
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
+const oauthRoutes = require('./routes/oauthRoutes');
 
 function adminLoginPublicPath() {
   return `/${getAdminLoginPathSegment()}`;
 }
+
+/** Social sign-in (Google / Facebook). See server/services/oauthService.js */
+router.use('/oauth', oauthRoutes);
 const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 
 // TOTP tolerance window (number of 30s steps allowed before/after).
@@ -724,6 +728,13 @@ router.post('/login', authLoginLimiter, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact the administrator.' });
     }
     
+    if (!teacher.password) {
+      return res.status(401).json({
+        success: false,
+        code: 'USE_SOCIAL_LOGIN',
+        message: 'This teacher account uses Google or Facebook sign-in. Use Continue with Google / Facebook on the login page.',
+      });
+    }
     const passwordMatch = await bcrypt.compare(password, teacher.password);
     // Do not log password checks (avoid leaking auth signals)
     
@@ -821,6 +832,13 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact the administrator.' });
     }
     
+    if (!student.password) {
+      return res.status(401).json({
+        success: false,
+        code: 'USE_SOCIAL_LOGIN',
+        message: 'This student account uses Google or Facebook sign-in. Use Continue with Google / Facebook on the login page.',
+      });
+    }
     const passwordMatch = await bcrypt.compare(password, student.password);
     // Do not log password checks (avoid leaking auth signals)
     if (passwordMatch) {
@@ -1013,6 +1031,13 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
         return res.status(423).json({ success: false, message: lockoutMessage() });
       }
 
+      if (!teacher.password) {
+        return res.status(401).json({
+          success: false,
+          code: 'USE_SOCIAL_LOGIN',
+          message: 'This teacher account uses Google or Facebook sign-in. Use Continue with Google / Facebook, or set a password in your profile.',
+        });
+      }
       const ok = await bcrypt.compare(String(password), teacher.password);
       if (!ok) {
         await applyFailedLogin(teacher);
@@ -1057,6 +1082,13 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
       return res.status(423).json({ success: false, message: lockoutMessage() });
     }
 
+    if (!student.password) {
+      return res.status(401).json({
+        success: false,
+        code: 'USE_SOCIAL_LOGIN',
+        message: 'This student account uses Google or Facebook sign-in. Use Continue with Google / Facebook, or set a password in your profile.',
+      });
+    }
     const ok = await bcrypt.compare(String(password), student.password);
     if (!ok) {
       await applyFailedLogin(student);
@@ -1925,6 +1957,14 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 
     const hash = storedPasswordHash(user, role);
     if (!hash) {
+      const hasSocial = !!(user.authProviders && user.authProviders.length);
+      if (hasSocial && role !== 'admin') {
+        return res.status(400).json({
+          success: false,
+          code: 'USE_SET_PASSWORD',
+          message: 'This account has no password yet. Use Set Password under Connected accounts.',
+        });
+      }
       return res.status(400).json({ success: false, message: 'Current password is incorrect' });
     }
     const isCurrentPasswordValid = await bcrypt.compare(String(currentPassword), hash);

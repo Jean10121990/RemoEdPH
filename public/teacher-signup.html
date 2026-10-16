@@ -286,6 +286,7 @@
           <a class="btn btn-primary" id="login-link" href="/login/" hidden>Go to login</a>
           <button type="submit" class="btn btn-primary" id="submit-btn">Activate teacher account</button>
         </div>
+        <div class="remoed-oauth" id="remoed-oauth-teacher" hidden></div>
         <div id="status" class="status"></div>
       </form>
     </div>
@@ -294,6 +295,7 @@
   <script>
     window.__TEACHER_SIGNUP_APPLICANT__ = __TEACHER_SIGNUP_BOOTSTRAP__;
   </script>
+  <script src="js/remoed-oauth.js?v=oauth-1"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const invitation = params.get('invitation');
@@ -443,8 +445,36 @@
       }
     });
 
+    function mountTeacherOAuth() {
+      if (!window.RemoEdOAuth || !invitation) return;
+      RemoEdOAuth.mountButtons('remoed-oauth-teacher', {
+        title: 'Or activate with',
+        hint: 'Use the same Google/Facebook email as your teacher invitation.',
+        beforeStart: function () {
+          var first = String((document.getElementById('firstName') || {}).value || '').trim();
+          var last = String((document.getElementById('lastName') || {}).value || '').trim();
+          if (!first || !last) {
+            setStatus('Enter your first and last name before continuing with social sign-in.', 'error');
+            return false;
+          }
+          return true;
+        },
+        query: function () {
+          return {
+            intent: 'teacher_signup',
+            inviteToken: invitation,
+            firstName: String((document.getElementById('firstName') || {}).value || '').trim(),
+            lastName: String((document.getElementById('lastName') || {}).value || '').trim(),
+            username: String((document.getElementById('username') || {}).value || '').trim(),
+            rememberMe: 'true',
+          };
+        },
+      });
+    }
+
     (async function init() {
       await validateToken();
+      if (!submitBtn.disabled && !submitBtn.hidden) mountTeacherOAuth();
     })();
   </script>
   <script src="js/password-toggle.js"></script>

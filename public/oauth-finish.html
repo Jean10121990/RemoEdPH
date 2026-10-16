@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finishing sign-in — RemoEdPH</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: linear-gradient(165deg, #e0f2fe, #f0fdf4);
+      color: #0f172a;
+    }
+    .card {
+      max-width: 420px;
+      padding: 28px 24px;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+      text-align: center;
+    }
+    .err { color: #b91c1c; font-weight: 600; }
+    a { color: #0284c7; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p id="msg">Finishing sign-in…</p>
+    <p id="extra" hidden></p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var msg = document.getElementById('msg');
+      var extra = document.getElementById('extra');
+      var err = params.get('error');
+      if (err) {
+        msg.className = 'err';
+        msg.textContent = err;
+        extra.hidden = false;
+        extra.innerHTML = '<a href="/login/">Back to login</a> · <a href="/student-assessment.html">Take assessment</a>';
+        return;
+      }
+      var ticket = params.get('ticket');
+      if (!ticket) {
+        msg.className = 'err';
+        msg.textContent = 'Missing sign-in ticket. Please try again.';
+        extra.hidden = false;
+        extra.innerHTML = '<a href="/login/">Back to login</a>';
+        return;
+      }
+
+      fetch('/api/auth/oauth/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ ticket: ticket }),
+      })
+        .then(function (r) {
+          return r.json().then(function (body) {
+            return { ok: r.ok, body: body };
+          });
+        })
+        .then(function (res) {
+          var data = res.body || {};
+          if (!res.ok || !data.success || !data.token) {
+            throw new Error((data && data.message) || 'Sign-in failed.');
+          }
+          try {
+            localStorage.removeItem('remoed_user_token');
+            localStorage.removeItem('remoed_teacher_token');
+            localStorage.removeItem('remoed_teacher_auth');
+            localStorage.removeItem('remoed_student_token');
+            localStorage.removeItem('remoed_student_auth');
+            sessionStorage.removeItem('remoed_user_token');
+            sessionStorage.removeItem('remoed_teacher_token');
+            sessionStorage.removeItem('remoed_teacher_auth');
+            sessionStorage.removeItem('remoed_student_token');
+            sessionStorage.removeItem('remoed_student_auth');
+            var roleKey =
+              data.userRole === 'teacher'
+                ? 'remoed_teacher_token'
+                : data.userRole === 'student'
+                  ? 'remoed_student_token'
+                  : 'remoed_user_token';
+            var store = data.rememberMe ? localStorage : sessionStorage;
+            store.setItem(roleKey, data.token);
+            store.setItem('remoed_user_token', data.token);
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('userType', data.userRole);
+            localStorage.setItem('userRole', data.userRole);
+            if (data.studentId) localStorage.setItem('studentId', String(data.studentId));
+            if (data.teacherId) localStorage.setItem('teacherId', String(data.teacherId));
+            if (data.teacherMongoId) localStorage.setItem('teacherMongoId', String(data.teacherMongoId));
+          } catch (_e) {}
+
+          var dest = data.redirectTo || '/login/';
+          if (dest.indexOf('/teacher/dashboard') !== -1) dest = '/teacher-dashboard.html';
+          if (dest.indexOf('/student/dashboard') !== -1) dest = '/student-dashboard.html';
+          window.location.replace(dest);
+        })
+        .catch(function (e) {
+          msg.className = 'err';
+          msg.textContent = (e && e.message) || 'Sign-in failed.';
+          extra.hidden = false;
+          extra.innerHTML = '<a href="/login/">Back to login</a>';
+        });
+    })();
+  </script>
+</body>
+</html>

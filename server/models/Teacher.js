@@ -5,7 +5,16 @@ const teacherSchema = new mongoose.Schema({
   /** Stable id for slots/bookings — same as `username` for new accounts; legacy kjb/T* values still supported. */
   teacherId: { type: String, required: true, unique: true },
   username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  /** Optional when the account has at least one authProviders entry (Google / Facebook). */
+  password: { type: String, required: false, default: null },
+  authProviders: [
+    {
+      provider: { type: String, enum: ['google', 'facebook'], required: true },
+      providerId: { type: String, required: true },
+      email: { type: String, default: '' },
+      linkedAt: { type: Date, default: Date.now },
+    },
+  ],
   hireDate: { type: Date, default: null },
   
      // Basic teacher info (for compatibility with existing code)
@@ -400,6 +409,15 @@ const teacherSchema = new mongoose.Schema({
 teacherSchema.index({ email: 1, teacherId: 1 });
 teacherSchema.index({ email: 1, status: 1 });
 teacherSchema.index({ teacherId: 1, status: 1 });
+teacherSchema.index(
+  { 'authProviders.provider': 1, 'authProviders.providerId': 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      'authProviders.providerId': { $type: 'string' },
+    },
+  }
+);
 /** Public teacher directory / landing: filter by status + stable sort (avoids in-memory sorts on large sets). */
 teacherSchema.index({ status: 1, fullname: 1, teacherId: 1 });
 // Service-fee / payout: teacher + line status (multikey on paymentHistory)

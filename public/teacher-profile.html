@@ -519,6 +519,16 @@
                             </div>
                         </div>
                         
+                        <div class="section-title">Connected accounts</div>
+                        <p style="font-size:0.9rem;color:#64748b;margin:0 0 10px;">Link Google or Facebook to sign in without a password.</p>
+                        <div id="oauth-providers-list" style="margin-bottom:12px;"></div>
+                        <div id="oauth-link-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+                        <div id="oauth-set-password-wrap" hidden>
+                            <label class="form-label" for="oauth-new-password">Set a password (social accounts)</label>
+                            <input type="password" class="form-input" id="oauth-new-password" placeholder="New password" autocomplete="new-password">
+                            <button type="button" class="save-btn" id="oauth-set-password-btn" style="margin-top:8px;">Save password</button>
+                        </div>
+
                         <div class="section-title">Change Password</div>
                         <div class="form-grid">
                             <div class="form-group">
@@ -4405,6 +4415,12 @@
 <script src="js/remo-ai-engine.js?v=smart-1"></script>
 <script src="js/remo-ai-enhance.js?v=smart-1"></script>
 <script src="js/password-toggle.js"></script>
+<script src="js/remoed-oauth-profile.js?v=oauth-1"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.RemoEdOAuthProfile) RemoEdOAuthProfile.mount({});
+  });
+</script>
 </body>
 </html> 
 

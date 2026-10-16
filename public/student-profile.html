@@ -989,6 +989,18 @@
                             </div>
                         </div>
                         
+                        <div class="info-section" id="connected-accounts-section">
+                            <h4 class="info-section-title">Connected accounts</h4>
+                            <p class="profile-password-hint">Link Google or Facebook to sign in without a password. You must keep a password or at least one social login.</p>
+                            <div id="oauth-providers-list" style="margin-bottom:12px;"></div>
+                            <div id="oauth-link-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+                            <div id="oauth-set-password-wrap" hidden>
+                                <label class="form-label" for="oauth-new-password">Set a password (social accounts)</label>
+                                <input type="password" class="form-input" id="oauth-new-password" placeholder="New password" autocomplete="new-password">
+                                <button type="button" class="save-btn" id="oauth-set-password-btn" style="margin-top:8px;">Save password</button>
+                            </div>
+                        </div>
+
                         <div class="info-section profile-password-section">
                             <h4 class="info-section-title">Change Password</h4>
                             <p class="profile-password-hint">Update your password here if you still know your current one.</p>
@@ -2500,5 +2512,11 @@
 
     </script>
     <script src="js/password-toggle.js"></script>
+    <script src="js/remoed-oauth-profile.js?v=oauth-1"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.RemoEdOAuthProfile) RemoEdOAuthProfile.mount({});
+      });
+    </script>
 </body>
 </html> 

@@ -4,6 +4,16 @@ Agent-facing product specs that feature work should extend. Lesson slide chrome 
 
 ---
 
+## Social sign-in (Google / Facebook)
+
+Assessment-first for students; invite-only for teachers. Implementation: `server/services/oauthService.js`, `server/routes/oauthRoutes.js`. UI: `/login/`, `student-register.html?trial=…`, `teacher-signup.html`, `oauth-finish.html`, profile Connected accounts.
+
+- **Student create:** only with unredeemed `AssessmentTrial` + provider email = `parentEmail` + privacy consent in OAuth state. Never create from cold `/login/` social.
+- **Teacher:** invite complete or existing login/link only. **Admin:** never.
+- Env: see `.env.example` (`GOOGLE_*`, `FACEBOOK_*`, `OAUTH_STATE_SECRET`). Same portal JWTs as password login.
+
+---
+
 ## UI icons (Lucide)
 
 **Catalog:** [https://lucide.dev/icons/](https://lucide.dev/icons/) (ISC license). Pick names from that site; do not invent paths or use emoji for chrome.

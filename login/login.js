@@ -75,6 +75,27 @@ function redirectFromToken(token) {
   }
 })();
 
+(function mountOAuthLogin() {
+  if (!window.RemoEdOAuth) return;
+  var params = new URLSearchParams(window.location.search);
+  var note = document.getElementById('oauth-login-note');
+  if (note && params.get('msg')) {
+    note.style.display = 'block';
+    note.textContent = params.get('msg');
+  }
+  RemoEdOAuth.mountButtons('remoed-oauth-login', {
+    title: 'Or continue with',
+    hint: 'New students: take the level assessment first. Social sign-in here is for existing accounts.',
+    query: function () {
+      var remember = !!(document.getElementById('remember-me') && document.getElementById('remember-me').checked);
+      return {
+        intent: 'student_login',
+        rememberMe: remember ? 'true' : 'false',
+      };
+    },
+  });
+})();
+
 document.getElementById('unified-login-form').addEventListener('submit', async function (e) {
   e.preventDefault();
 
