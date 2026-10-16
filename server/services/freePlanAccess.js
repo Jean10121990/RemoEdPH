@@ -18,7 +18,6 @@ const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
  */
 const TEST_PLAN_STUDENTS = [
   { key: 'plflores3302@gmail.com', label: 'CTO · plflores3302@gmail.com', email: 'plflores3302@gmail.com' },
-  { key: 'jean10121990@gmail.com', label: 'CEO · jean10121990@gmail.com', email: 'jean10121990@gmail.com' },
 ];
 const TEST_PLAN_STUDENT_USERNAME = TEST_PLAN_STUDENTS[0].key;
 
