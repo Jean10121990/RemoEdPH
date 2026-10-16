@@ -17,7 +17,7 @@ const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
  * Match username or email (case-insensitive). Everyone else ignores planModeOverride.
  */
 const TEST_PLAN_STUDENTS = [
-  { key: 'plflores3302@gmail.com', label: 'CTO · plflores3302@gmail.com', email: 'plflores3302@gmail.com' },
+  { key: 'plflores3303@gmail.com', label: 'plflores3303@gmail.com', email: 'plflores3303@gmail.com' },
 ];
 const TEST_PLAN_STUDENT_USERNAME = TEST_PLAN_STUDENTS[0].key;
 

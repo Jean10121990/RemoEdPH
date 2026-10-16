@@ -613,7 +613,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 
 ## Curriculum levels — Pre-Level
 
-- Settings → **Test student plan** is a Free / Paid switch per allowlisted test student (`Student.planModeOverride`, `GET`/`POST /api/admin/settings/test-student-plan`). Allowlist: **plflores3302@gmail.com** (CTO) only. Do not apply that field to any other student. Paid still spends that student’s real credits. Free books the next of 3 Pre-Level lessons, with no monthly lesson.
+- Settings → **Test student plan** is a Free / Paid switch per allowlisted test student (`Student.planModeOverride`, `GET`/`POST /api/admin/settings/test-student-plan`). Allowlist: **plflores3303@gmail.com** only. Do not apply that field to any other student. Paid still spends that student’s real credits. Free books the next of 3 Pre-Level lessons, with no monthly lesson.
 - `Pre-Level` (Free Trial Lessons) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). It stays out of `CURRICULUM_LEVELS`. QA Hub → Lesson Library lists it first. The catalog is exactly these 3 lessons, in order (`FREE_PLAN_LESSON_COUNT` in `server/services/freePlanAccess.js`). There is no monthly free lesson and no 22-lesson free trail.
 
 | # | Library title | File on the lesson |
@@ -709,7 +709,7 @@ Teachers and admins time in through the existing `TimeLog` routes. An open sessi
 | Kids and Parents | Kids home shows the next class, play links, level name, teacher stars, eco-drops, garden, and current lesson. Parent stats, profile, and My Level stay on Parents mode. The parent PIN field stays inside the card. |
 | QA issue review | On Issue Management, the card opens Review Issue or Update Review. Mark Resolved and Dismiss are on that review modal. Mark Resolved then opens the existing resolve modal. |
 | QA recording | Start only after the student is in the room, including a few minutes early. The recorder does not stop itself and does not close the tab. The teacher clicks Stop at the usual end (:25 on the hour, :55 for a :30 class), then Finish. A clip is about 25 minutes, or about 30 if the student came early, or shorter if late. The QA file is 480p (canvas clone, 8 fps); the student slide share stays full size. Server transcode also caps at 480p so a 25-minute clip stays small enough to download. Chunk uploads are not keepalive requests. An empty upload is marked failed after 30 minutes. Download uses the newest GridFS copy that has bytes. A second Finish on an already complete recording does not rebuild it. |
-| Test student plan | Settings has a Free / Paid switch for plflores3302@gmail.com (CTO) only. Other students keep their real plan. |
+| Test student plan | Settings has a Free / Paid switch for plflores3303@gmail.com only. Other students keep their real plan. |
 | Attendance exceptions | A missed time-out is closed by the server and blocks the next Time In until HR approves a correction. The original system close is kept. Negligence is a separate HR decision and does not change pay by itself. Super-Admin is exempt from that block. |
 | Classroom SOS tiers | Same incident record. Tier 1 is technical and does not observe or end the class. Tier 2 and Tier 3 can. Escalation only goes up and keeps the first tier. Tier 3 stays pending review after resolve or end. There is no emergency phone number in the app. |
 
@@ -751,4 +751,4 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Admin Google | Obfuscated admin login has Continue with Google. It matches `Admin.email` or username, never creates an admin, and still requires authenticator enrollment or a 6-digit code. Facebook is not on that page. |
 | Admin email column | HR Hub → Admins lists Username (password login) and Email (Google address). Editing the email does not change the username or password. |
 | Login copy | Welcome text is live one-on-one classes with real teachers. Do not put “AI-powered” back on the login page. |
-| Test student | `jean10121990@gmail.com` is not a student account and is not on the Settings test-plan list. Only the CTO address remains. |
+| Test student | Settings test-plan list is `plflores3303@gmail.com` only. |
