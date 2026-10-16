@@ -43,9 +43,24 @@ const INTENTS = new Set([
 ]);
 
 function publicBase(req) {
-  const override = String(process.env.OAUTH_PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+  // Prefer explicit public HTTPS base. Behind nginx, req.protocol is often "http"
+  // and that causes Google redirect_uri_mismatch vs https://…/callback.
+  const override = String(process.env.OAUTH_PUBLIC_BASE_URL || process.env.FRONTEND_URL || '')
+    .trim()
+    .replace(/\/$/, '');
   if (override) return override;
-  return resolveFrontendBaseUrl(req);
+  const fromReq = resolveFrontendBaseUrl(req);
+  if (/^https?:\/\//i.test(fromReq)) {
+    try {
+      const u = new URL(fromReq);
+      // Force https for real domains (not localhost) when proxy did not set x-forwarded-proto.
+      if (u.protocol === 'http:' && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+        u.protocol = 'https:';
+        return u.origin;
+      }
+    } catch (_e) { /* fall through */ }
+  }
+  return fromReq;
 }
 
 function callbackUrl(req, provider) {
