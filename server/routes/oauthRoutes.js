@@ -13,10 +13,13 @@ const {
   unlinkProvider,
   setPasswordForOAuthUser,
 } = require('../services/oauthService');
-const { verifyFinishTicket } = require('../services/oauthState');
+const { verifyFinishTicket, verifyState } = require('../services/oauthState');
 const { verifyToken } = require('../authMiddleware');
+const { getAdminLoginPathSegment } = require('../utils/adminRouteConfig');
+const { sendAdminAuthChallenge } = require('../services/adminAuthChallenge');
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
+const Admin = require('../models/Admin');
 
 const router = express.Router();
 
@@ -51,12 +54,21 @@ function sendOAuthError(res, err) {
   return res.status(500).json({ success: false, message: 'Social sign-in failed. Please try again.' });
 }
 
-function redirectError(res, req, err) {
+function redirectError(res, req, err, query) {
   const base = String(process.env.OAUTH_PUBLIC_BASE_URL || process.env.FRONTEND_URL || '')
     .trim()
     .replace(/\/$/, '');
   const host = base || `${req.protocol}://${req.get('host') || 'localhost'}`.replace(/\/$/, '');
-  const url = new URL(`${host}/oauth-finish.html`);
+  let path = '/oauth-finish.html';
+  try {
+    const state = query && query.state ? verifyState(query.state) : null;
+    if (state && state.intent === 'admin_login') {
+      path = `/${getAdminLoginPathSegment()}`;
+    }
+  } catch (_e) {
+    path = '/oauth-finish.html';
+  }
+  const url = new URL(`${host}${path}`);
   url.searchParams.set('error', (err && err.message) || 'Social sign-in failed. Please try again.');
   if (err && err.code) url.searchParams.set('code', err.code);
   return res.redirect(302, url.toString());
@@ -70,7 +82,7 @@ router.post('/exchange', authLoginLimiter, (req, res) => {
   try {
     const ticket = String((req.body && req.body.ticket) || '').trim();
     const body = verifyFinishTicket(ticket);
-    if (!body || !body.token || !body.role) {
+    if (!body || !body.token || !body.role || body.role === 'admin_gate') {
       return res.status(400).json({ success: false, message: 'Sign-in session expired. Please try again.' });
     }
     return res.json({
@@ -144,6 +156,30 @@ router.post('/me/set-password', verifyToken, async (req, res) => {
   }
 });
 
+/** Google identified an existing admin. Still requires authenticator before a portal session. */
+router.post('/admin-gate', authLoginLimiter, async (req, res) => {
+  try {
+    const ticket = String((req.body && req.body.ticket) || '').trim();
+    const body = verifyFinishTicket(ticket);
+    if (!body || body.role !== 'admin_gate' || !body.adminId) {
+      return res.status(400).json({ success: false, message: 'Sign-in session expired. Please try again.' });
+    }
+    const admin = await Admin.findById(String(body.adminId));
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Staff account not found.' });
+    }
+    if (admin.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended. Please contact the system administrator.',
+      });
+    }
+    return sendAdminAuthChallenge(req, res, admin);
+  } catch (err) {
+    return sendOAuthError(res, err);
+  }
+});
+
 router.get('/:provider/start', authLoginLimiter, async (req, res) => {
   try {
     const provider = String(req.params.provider || '').toLowerCase();
@@ -171,7 +207,8 @@ router.get('/:provider/callback', authRegisterLimiter, async (req, res) => {
       req,
       err instanceof OAuthError
         ? err
-        : new OAuthError(500, 'OAUTH_FAILED', 'Social sign-in failed. Please try again.')
+        : new OAuthError(500, 'OAUTH_FAILED', 'Social sign-in failed. Please try again.'),
+      req.query || {}
     );
   }
 });

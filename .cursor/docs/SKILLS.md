@@ -9,7 +9,8 @@ Agent-facing product specs that feature work should extend. Lesson slide chrome 
 Assessment-first for students; invite-only for teachers. Implementation: `server/services/oauthService.js`, `server/routes/oauthRoutes.js`. UI: `/login/`, `student-register.html?trial=…`, `teacher-signup.html`, `oauth-finish.html`, profile Connected accounts.
 
 - **Student create:** only with unredeemed `AssessmentTrial` + provider email = `parentEmail` + privacy consent in OAuth state. Never create from cold `/login/` social.
-- **Teacher:** invite complete or existing login/link only. **Admin:** never.
+- **Teacher:** invite complete or existing login/link only.
+- **Admin:** Continue with Google on the obfuscated admin login only. Match existing Admin email or username. Never create an admin. Authenticator enrollment or a 6-digit code is still required (`POST /api/auth/oauth/admin-gate`). Facebook is not offered.
 - Env: see `.env.example` (`GOOGLE_*`, `FACEBOOK_*`, `OAUTH_STATE_SECRET`). Same portal JWTs as password login.
 
 ---

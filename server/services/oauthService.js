@@ -40,6 +40,7 @@ const INTENTS = new Set([
   'teacher_signup',
   'link_student',
   'link_teacher',
+  'admin_login',
 ]);
 
 function publicBase(req) {
@@ -186,6 +187,9 @@ async function buildAuthUrl(req, provider, query) {
   const intent = String(query.intent || 'student_login').trim();
   if (!INTENTS.has(intent)) {
     throw new OAuthError(400, 'INVALID_INTENT', 'Invalid OAuth intent.');
+  }
+  if (intent === 'admin_login' && provider !== 'google') {
+    throw new OAuthError(400, 'GOOGLE_ONLY', 'Admin sign-in uses Google only.');
   }
 
   const statePayload = {
@@ -754,7 +758,42 @@ async function handleCallback(req, provider, query) {
 
   if (state.intent === 'link_student') return handleLink(req, profile, state, 'student');
   if (state.intent === 'link_teacher') return handleLink(req, profile, state, 'teacher');
+  if (state.intent === 'admin_login') return handleAdminLogin(req, profile);
   return handleLoginResolve(req, profile, state);
+}
+
+/**
+ * Match an existing staff account by verified Google email or username.
+ * Does not create an admin and does not issue a portal JWT. The admin login
+ * page exchanges the ticket and still requires authenticator setup or a code.
+ */
+async function handleAdminLogin(req, profile) {
+  if (profile.provider !== 'google') {
+    throw new OAuthError(400, 'GOOGLE_ONLY', 'Admin sign-in uses Google only.');
+  }
+  const Admin = require('../models/Admin');
+  const { getAdminLoginPathSegment } = require('../utils/adminRouteConfig');
+  const emailNorm = normalizeEmail(profile.email);
+  const page = `${publicBase(req).replace(/\/$/, '')}/${getAdminLoginPathSegment()}`;
+  function fail(message) {
+    const url = new URL(page);
+    url.searchParams.set('error', message);
+    return url.toString();
+  }
+  if (!emailNorm) return fail('Google did not share a verified email.');
+  const esc = emailNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^${esc}$`, 'i');
+  const admin = await Admin.findOne({ $or: [{ email: re }, { username: re }] });
+  if (!admin) {
+    return fail('No staff account uses this Google email. A Super-Admin must set that email on the admin profile.');
+  }
+  if (admin.status === 'suspended') {
+    return fail('Your account has been suspended. Please contact the system administrator.');
+  }
+  const ticket = signFinishTicket({ role: 'admin_gate', adminId: String(admin._id) });
+  const url = new URL(page);
+  url.searchParams.set('g', ticket);
+  return url.toString();
 }
 
 async function listProvidersForUser(user) {

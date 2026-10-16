@@ -42,6 +42,7 @@
       </div>
       <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Login</button>
     </form>
+    <div id="admin-oauth" class="remoed-oauth" hidden></div>
     <div id="admin-2fa-panel" style="display: none;">
       <p class="remoed-form-label" style="margin-bottom: 0.5rem;">Two-factor authentication</p>
       <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">Enter the 6-digit code from your authenticator app.</p>
@@ -74,8 +75,49 @@
       <a href="index.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">&larr; Back to Home</a>
     </div>
   </div>
+  <script src="js/remoed-oauth.js?v=oauth-3"></script>
   <script>
     let admin2faTempToken = '';
+
+    function showAdminLoginError(errorDiv, message) {
+      errorDiv.textContent = message || 'Invalid credentials.';
+      errorDiv.style.display = 'block';
+      errorDiv.style.background = '';
+      errorDiv.style.borderColor = '';
+      errorDiv.style.color = '';
+    }
+
+    function applyAdminLoginPayload(data, errorDiv) {
+      if (data && data.success && data.require2FASetup && data.enrollmentToken) {
+        try {
+          sessionStorage.setItem('admin2faEnrollmentToken', data.enrollmentToken);
+        } catch (e) {}
+        var oauthBox = document.getElementById('admin-oauth');
+        if (oauthBox) oauthBox.style.display = 'none';
+        if (data.qrCodeData) {
+          showAdmin2faEnrollModal(data.qrCodeData);
+          return true;
+        }
+        var setupUrl = (data.setupPath || '/admin/2fa-setup') + '?t=' + encodeURIComponent(data.enrollmentToken);
+        window.location.replace(setupUrl);
+        return true;
+      }
+
+      if (data && data.success && data.require2FA && data.tempToken) {
+        admin2faTempToken = data.tempToken;
+        try { sessionStorage.setItem('admin2faTempToken', data.tempToken); } catch (e) {}
+        window.location.replace('/admin/2fa-verify?t=' + encodeURIComponent(data.tempToken));
+        return true;
+      }
+
+      if (data && data.success && data.token) {
+        applyAdminSession(data);
+        return true;
+      }
+
+      showAdminLoginError(errorDiv, (data && data.message) || 'Invalid credentials.');
+      return false;
+    }
 
     function showAdmin2faEnrollModal(qrCodeData) {
       var modal = document.getElementById('admin-2fa-enroll-modal');
@@ -176,37 +218,69 @@
         return;
       }
 
-      if (data.success && data.require2FASetup && data.enrollmentToken) {
-        try {
-          sessionStorage.setItem('admin2faEnrollmentToken', data.enrollmentToken);
-        } catch (e) {}
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Login';
-        if (data.qrCodeData) {
-          showAdmin2faEnrollModal(data.qrCodeData);
-          return;
-        }
-        var setupUrl = (data.setupPath || '/admin/2fa-setup') + '?t=' + encodeURIComponent(data.enrollmentToken);
-        window.location.replace(setupUrl);
-        return;
-      }
-
-      if (data.success && data.require2FA && data.tempToken) {
-        admin2faTempToken = data.tempToken;
-        try { sessionStorage.setItem('admin2faTempToken', data.tempToken); } catch (e) {}
-        window.location.replace('/admin/2fa-verify?t=' + encodeURIComponent(data.tempToken));
-        return;
-      }
-
-      if (data.success && data.token) {
-        applyAdminSession(data);
-      } else {
-        errorDiv.textContent = data.message || 'Invalid credentials.';
-        errorDiv.style.display = 'block';
+      var leaving =
+        data.success &&
+        ((data.require2FA && data.tempToken) ||
+          data.token ||
+          (data.require2FASetup && data.enrollmentToken && !data.qrCodeData));
+      applyAdminLoginPayload(data, errorDiv);
+      if (!leaving) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Login';
       }
     };
+
+    if (window.RemoEdOAuth) {
+      RemoEdOAuth.mountButtons('admin-oauth', {
+        providers: ['google'],
+        title: 'Or continue with',
+        hint: 'Google only identifies your staff account. You still enter the authenticator code.',
+        query: function () {
+          return { intent: 'admin_login' };
+        },
+      });
+    }
+
+    (function resumeGoogleAdmin() {
+      var params = new URLSearchParams(window.location.search);
+      var errorDiv = document.getElementById('admin-login-error');
+      var oauthError = params.get('error');
+      var ticket = params.get('g');
+      if (!oauthError && !ticket) return;
+      if (window.history && history.replaceState) {
+        history.replaceState({}, '', window.location.pathname);
+      }
+      if (oauthError) {
+        showAdminLoginError(errorDiv, oauthError);
+      }
+      if (!ticket) return;
+      var form = document.getElementById('admin-login-form');
+      if (form) form.style.display = 'none';
+      fetch('/api/auth/oauth/admin-gate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ticket: ticket }),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { response: response, data: data };
+          });
+        })
+        .then(function (out) {
+          if (form) form.style.display = 'block';
+          if (out.response.status === 403) {
+            errorDiv.textContent = (out.data && out.data.message) || 'Your account has been suspended.';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          applyAdminLoginPayload(out.data || {}, errorDiv);
+        })
+        .catch(function () {
+          if (form) form.style.display = 'block';
+          showAdminLoginError(errorDiv, 'Unable to finish Google sign-in. Please try again.');
+        });
+    })();
 
     document.getElementById('admin-enroll-cancel').onclick = async function() {
       try {

@@ -41,8 +41,11 @@
     var el = typeof root === 'string' ? document.getElementById(root) : root;
     if (!el) return Promise.resolve();
     return providers().then(function (p) {
+      var allow = opts.providers || ['google', 'facebook'];
       el.innerHTML = '';
-      el.hidden = !(p.google || p.facebook);
+      el.hidden = !allow.some(function (name) {
+        return !!p[name];
+      });
       if (el.hidden) return;
 
       var title = document.createElement('p');
@@ -77,8 +80,8 @@
         row.appendChild(btn);
       }
 
-      addBtn('google', 'Continue with Google');
-      addBtn('facebook', 'Continue with Facebook');
+      if (allow.indexOf('google') !== -1) addBtn('google', 'Continue with Google');
+      if (allow.indexOf('facebook') !== -1) addBtn('facebook', 'Continue with Facebook');
       el.appendChild(row);
 
       if (opts.hint) {

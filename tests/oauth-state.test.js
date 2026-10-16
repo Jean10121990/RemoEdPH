@@ -36,6 +36,9 @@ test('oauth student create stays assessment-gated in source', () => {
   assert.match(oauthServiceSrc, /EMAIL_MISMATCH/);
   assert.match(oauthServiceSrc, /teacher_signup/);
   assert.equal(/createAdmin|Admin\.create|userRole:\s*'admin'/.test(oauthServiceSrc), false);
+  assert.match(oauthServiceSrc, /admin_login/);
+  assert.match(oauthServiceSrc, /admin_gate/);
+  assert.match(oauthRoutesSrc, /admin-gate/);
 });
 
 test('models and routes expose authProviders + providers endpoint', () => {
