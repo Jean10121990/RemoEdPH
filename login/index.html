@@ -249,8 +249,11 @@
       }
       .login-card .remoed-oauth-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         gap: 12px;
+      }
+      .login-card .remoed-oauth-row:has(:nth-child(2)) {
+        grid-template-columns: 1fr 1fr;
       }
       .login-card .remoed-oauth-btn {
         width: 100%;
@@ -378,7 +381,7 @@
     <script src="/js/security-guard.js?v=4"></script>
     <script src="/js/password-toggle.js?v=2"></script>
     <script src="/js/remoed-oauth.js?v=oauth-2"></script>
-    <script src="/login/login.js"></script>
+    <script src="/login/login.js?v=fb-off-1"></script>
   </body>
 </html>
 

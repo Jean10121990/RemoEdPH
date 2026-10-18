@@ -84,6 +84,7 @@ function redirectFromToken(token) {
     note.textContent = params.get('msg');
   }
   RemoEdOAuth.mountButtons('remoed-oauth-login', {
+    providers: ['google'],
     title: 'Or continue with',
     hint: 'New students: take the level assessment first. Social sign-in here is for existing accounts.',
     query: function () {
