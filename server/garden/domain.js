@@ -73,15 +73,13 @@ function nextStageInfo(monthEcoDrops, monthlyTarget, stages = config.STAGES) {
 }
 
 /**
- * Monthly target = lessons + tasks (+ games) available that month. Falls back to
- * DEFAULT_MONTHLY_TARGET when the student has no lessons scheduled yet.
+ * Monthly target is the lessons scheduled for this level. Tasks and games earn drops
+ * but do not raise the target. No lessons yet → DEFAULT_MONTHLY_TARGET.
  */
-function computeMonthlyTarget({ lessons = 0, tasks = 0, games = 0 } = {}) {
+function computeMonthlyTarget({ lessons = 0 } = {}) {
   const l = Math.max(0, Math.floor(Number(lessons) || 0));
-  const t = Math.max(0, Math.floor(Number(tasks) || 0));
-  const g = Math.max(0, Math.floor(Number(games) || 0));
   if (l === 0) return config.DEFAULT_MONTHLY_TARGET;
-  return l + t + g;
+  return l;
 }
 
 /**

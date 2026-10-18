@@ -19,7 +19,7 @@ function stageSummary(index) {
 
 function createCareService({ repo, garden }) {
   async function snapshot(studentId, tree, now) {
-    const points = await repo.sumGrowthPoints(studentId, tree.monthKey);
+    const points = await repo.sumGrowthPoints(studentId, tree.monthKey, tree.sequence || 1);
     const wallet = await garden.balances(studentId);
     const viewed = garden.view(tree, points, true);
     return {
@@ -41,7 +41,9 @@ function createCareService({ repo, garden }) {
       throw new GardenError(400, 'INVALID_REQUEST_ID', 'Each tap needs its own request id.');
     }
 
-    const tree = await garden.ensureCurrentMonthTree(studentId, now);
+    const tree = garden.activeTree
+      ? await garden.activeTree(studentId, now)
+      : await garden.ensureCurrentMonthTree(studentId, now);
     if ((monthKey && monthKey !== tree.monthKey) || tree.finalizedAt) {
       throw new GardenError(409, 'READ_ONLY_TREE', 'Past trees cannot be watered.');
     }
@@ -61,7 +63,8 @@ function createCareService({ repo, garden }) {
 
     await grandfatherCurrentTree(repo, { studentId, monthKey: tree.monthKey, now });
 
-    const pointsBefore = await repo.sumGrowthPoints(studentId, tree.monthKey);
+    const sequence = tree.sequence || 1;
+    const pointsBefore = await repo.sumGrowthPoints(studentId, tree.monthKey, sequence);
     const progressBefore = domain.progressPercent(pointsBefore, tree.monthlyTarget);
     const stageBefore = domain.stageIndexFor(pointsBefore, tree.monthlyTarget);
     if (progressBefore >= 100) {
@@ -69,7 +72,7 @@ function createCareService({ repo, garden }) {
     }
 
     if (spec.oncePerStage) {
-      const used = await repo.countFertilizerAtStage(studentId, tree.monthKey, stageBefore);
+      const used = await repo.countFertilizerAtStage(studentId, tree.monthKey, stageBefore, sequence);
       if (used > 0) {
         throw new GardenError(409, 'FERTILIZER_LIMIT', 'Fertilizer can be used once per stage.');
       }
@@ -86,6 +89,7 @@ function createCareService({ repo, garden }) {
       action: spec.action,
       cost: spec.cost,
       growthPoints: spec.growthPoints,
+      sequence,
       stageAt: stageBefore,
       requestId,
       createdAt: now,
@@ -116,6 +120,15 @@ function createCareService({ repo, garden }) {
     }
 
     const pointsAfter = pointsBefore + spec.growthPoints;
+    if (domain.progressPercent(pointsAfter, tree.monthlyTarget) >= 100 && garden.markTreeComplete) {
+      const lessonsDone = repo.countLedger ? await repo.countLedger(studentId, tree.monthKey, 'lesson') : 0;
+      await garden.markTreeComplete(tree, {
+        points: pointsAfter,
+        dropsSpent: spec.cost,
+        lessonsDone,
+        now,
+      });
+    }
     const stageAfter = domain.stageIndexFor(pointsAfter, tree.monthlyTarget);
     const viewed = garden.view(tree, pointsAfter, true);
     const afterWallet = await garden.balances(studentId);

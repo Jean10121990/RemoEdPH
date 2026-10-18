@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v3-7">
+    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-v4-1">
     <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
     <script src="js/user-session.js"></script>
 </head>
@@ -22,7 +22,7 @@
         <script src="js/feature-access.js?v=free-plan-1"></script>
         <script src="js/student-eco-drops.js?v=garden-v3-1"></script>
         <script src="js/student-sidebar.js?v=garden-v3-1"></script>
-        <script src="js/student-page-header.js?v=garden-v3-1"></script>
+        <script src="js/student-page-header.js?v=garden-v3-8"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'garden');
             StudentPageHeader.render('garden');
@@ -117,9 +117,15 @@
                         </div>
                         <div class="vg-tend-actions" id="vg-tend-actions">
                             <button type="button" class="vg-care-btn vg-care-btn--water" id="vg-water-btn" aria-label="Water the tree, costs 1 Eco-Drop">Water · 1 💧</button>
-                            <button type="button" class="vg-care-btn vg-care-btn--fert" id="vg-fert-btn" aria-label="Fertilize the tree, costs 3 Eco-Drops">Fertilizer · 3 💧</button>
+                            <button type="button" class="vg-care-btn vg-care-btn--fert" id="vg-fert-btn" aria-label="Fertilize the tree, costs 2 Eco-Drops">Fertilizer · 2 💧</button>
                         </div>
                         <p class="vg-grown" id="vg-grown" hidden>Fully grown! 🎉</p>
+                        <p class="vg-reward" id="vg-reward" hidden></p>
+                        <div class="vg-tend-actions">
+                            <button type="button" class="vg-care-btn" id="vg-claim" hidden>Claim your reward</button>
+                            <button type="button" class="vg-care-btn" id="vg-plant" hidden>Plant a new tree</button>
+                            <button type="button" class="vg-care-btn" id="vg-forest">My Forest</button>
+                        </div>
                         <p class="vg-short-hint" id="vg-short-hint" hidden>Not enough drops</p>
                         <p class="vg-tend-hint" id="vg-tend-hint" hidden>Earn Eco-Drops by finishing a <a href="student-learning-journey.html">lesson</a>, task, or <a href="student-games-activities.html">Play &amp; Learn</a> game.</p>
                         <p class="vg-live" id="vg-live" aria-live="polite"></p>
@@ -155,9 +161,20 @@
             </div>
         </div>
     </div>
+    <div id="vg-forest-panel" class="vg-forest" hidden>
+        <div class="vg-forest-card" role="dialog" aria-labelledby="vg-forest-title">
+            <button type="button" class="vg-forest-close" id="vg-forest-close" aria-label="Close">×</button>
+            <h2 id="vg-forest-title">My Forest</h2>
+            <p id="vg-forest-totals"></p>
+            <div id="vg-forest-grid" class="vg-forest-grid"></div>
+            <h3>Badges</h3>
+            <div id="vg-badge-grid" class="vg-badge-grid"></div>
+            <button type="button" class="vg-care-btn" id="vg-pond">Add a pond · 5 💧</button>
+        </div>
+    </div>
     <script type="application/json" id="vg-theme-data">
 {"Narra":{"tint":"amber","fact":"This tree is known for strong wood and pretty yellow flowers."},"Mango":{"tint":"mango","fact":"This tree can grow sweet fruit in the hot season."},"Acacia":{"tint":"gold","fact":"This tree has tiny leaves and grows well in the sun."},"Oak":{"tint":"oak","fact":"This tree grows slowly and can live for a very long time."},"Cherry Blossom":{"tint":"cherry","fact":"This tree is famous for soft pink flowers in spring."},"Pine":{"tint":"pine","fact":"This tree stays green all year and smells like the forest."},"Banyan":{"tint":"banyan","fact":"This tree can grow extra roots that look like new trunks."},"Maple":{"tint":"maple","fact":"This tree is known for bright leaves in cool weather."},"Mahogany":{"tint":"wood","fact":"This tree has rich brown wood used for fine furniture."},"Molave":{"tint":"stone","fact":"This tree is very hardy and grows in rocky Philippine soil."},"Bamboo":{"tint":"bamboo","fact":"Bamboo can grow very fast and is used to build homes."}}
     </script>
-    <script src="js/student-virtual-garden.js?v=garden-v3-7"></script>
+    <script src="js/student-virtual-garden.js?v=garden-v4-1"></script>
 </body>
 </html>

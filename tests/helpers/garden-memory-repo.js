@@ -15,6 +15,11 @@ function createMemoryRepo(seed = {}) {
   const trees = [];
   const care = [];
   const requestIds = new Set();
+  const claims = [];
+  const badges = [];
+  const decorations = [];
+  const grants = [];
+  const notices = [];
   let lessonCount = seed.lessons != null ? seed.lessons : 8;
   let taskCount = seed.tasks != null ? seed.tasks : 0;
   let nextId = 1;
@@ -93,10 +98,14 @@ function createMemoryRepo(seed = {}) {
     },
 
     async insertTree(doc) {
-      if (!this.allowDuplicateTrees && trees.some((t) => t.studentId === doc.studentId && t.monthKey === doc.monthKey)) {
+      const sequence = doc.sequence || 1;
+      if (
+        !this.allowDuplicateTrees &&
+        trees.some((t) => t.studentId === doc.studentId && t.monthKey === doc.monthKey && (t.sequence || 1) === sequence)
+      ) {
         return null;
       }
-      const row = { ...doc, _id: 't' + nextId++ };
+      const row = { ...doc, sequence, _id: doc._id || 't' + nextId++ };
       trees.push(row);
       return { ...row };
     },
@@ -106,9 +115,10 @@ function createMemoryRepo(seed = {}) {
     },
 
     async latestTreeBefore(studentId, monthKey) {
-      return trees
-        .filter((t) => t.studentId === studentId && t.monthKey < monthKey)
-        .sort((a, b) => (a.monthKey < b.monthKey ? 1 : -1))[0] || null;
+      const older = trees.filter((t) => t.studentId === studentId && t.monthKey < monthKey);
+      if (!older.length) return null;
+      const latestMonth = older.map((t) => t.monthKey).sort().pop();
+      return earliestMatch(older.filter((t) => t.monthKey === latestMonth));
     },
 
     async countTrees(studentId) {
@@ -125,9 +135,14 @@ function createMemoryRepo(seed = {}) {
       if (t) Object.assign(t, patch);
     },
 
-    async setTreeTarget(studentId, monthKey, monthlyTarget) {
+    async setTreeTarget(studentId, monthKey, monthlyTarget, backup) {
       const t = trees.find((x) => x.studentId === studentId && x.monthKey === monthKey && !x.finalizedAt);
-      if (t) t.monthlyTarget = monthlyTarget;
+      if (!t) return;
+      const prev = t.grandfatherBackup && typeof t.grandfatherBackup === 'object' ? t.grandfatherBackup : {};
+      if (prev.monthlyTargetBefore == null) {
+        t.grandfatherBackup = { ...prev, ...(backup || {}), monthlyTargetBefore: t.monthlyTarget };
+      }
+      t.monthlyTarget = monthlyTarget;
     },
 
     async setTreeCareModel(studentId, monthKey, careModel, backup) {
@@ -154,9 +169,9 @@ function createMemoryRepo(seed = {}) {
         .map((t) => ({ ...t }));
     },
 
-    async sumGrowthPoints(studentId, monthKey) {
+    async sumGrowthPoints(studentId, monthKey, sequence = 1) {
       return care
-        .filter((c) => c.studentId === studentId && c.monthKey === monthKey)
+        .filter((c) => c.studentId === studentId && c.monthKey === monthKey && (c.sequence || 1) === sequence)
         .reduce((n, c) => n + (Number(c.growthPoints) || 0), 0);
     },
 
@@ -165,9 +180,14 @@ function createMemoryRepo(seed = {}) {
       return row ? { ...row } : null;
     },
 
-    async countFertilizerAtStage(studentId, monthKey, stageAt) {
+    async countFertilizerAtStage(studentId, monthKey, stageAt, sequence = 1) {
       return care.filter(
-        (c) => c.studentId === studentId && c.monthKey === monthKey && c.action === 'fertilize' && c.stageAt === stageAt
+        (c) =>
+          c.studentId === studentId &&
+          c.monthKey === monthKey &&
+          c.action === 'fertilize' &&
+          c.stageAt === stageAt &&
+          (c.sequence || 1) === sequence
       ).length;
     },
 
@@ -183,7 +203,8 @@ function createMemoryRepo(seed = {}) {
             c.studentId === doc.studentId &&
             c.monthKey === doc.monthKey &&
             c.action === 'fertilize' &&
-            c.stageAt === doc.stageAt
+            c.stageAt === doc.stageAt &&
+            (c.sequence || 1) === (doc.sequence || 1)
         )
       ) {
         return { inserted: false, duplicate: 'fertilizer', doc: null };
@@ -216,6 +237,99 @@ function createMemoryRepo(seed = {}) {
       const s = students.get(studentId);
       if (!s) return;
       s.totalSpent = (s.totalSpent || 0) + Math.max(0, Math.floor(Number(amount) || 0));
+    },
+
+    findTreeById(id) {
+      const t = trees.find((row) => String(row._id) === String(id));
+      return t ? { ...t } : null;
+    },
+
+    async findTreeBySequence(studentId, monthKey, sequence) {
+      const t = trees.find((row) => row.studentId === studentId && row.monthKey === monthKey && (row.sequence || 1) === sequence);
+      return t ? { ...t } : null;
+    },
+
+    async listAllTrees(studentId) {
+      return trees
+        .filter((t) => t.studentId === studentId)
+        .sort((a, b) => (a.monthKey === b.monthKey ? (a.sequence || 1) - (b.sequence || 1) : a.monthKey < b.monthKey ? -1 : 1))
+        .map((t) => ({ ...t }));
+    },
+
+    async completeTree(id, patch) {
+      const t = trees.find((row) => String(row._id) === String(id));
+      if (t && !t.completedAt) Object.assign(t, patch);
+    },
+
+    async markTreeClaimed(id, patch) {
+      const t = trees.find((row) => String(row._id) === String(id));
+      if (t) Object.assign(t, patch);
+    },
+
+    async countLedger(studentId, monthKey, sourceType) {
+      return ledger.filter((e) => e.studentId === studentId && e.monthKey === monthKey && e.sourceType === sourceType).length;
+    },
+
+    async findClaim(studentId, treeId) {
+      const row = claims.find((c) => c.studentId === studentId && String(c.treeId) === String(treeId));
+      return row ? { ...row } : null;
+    },
+
+    async listClaims(studentId) {
+      return claims.filter((c) => c.studentId === studentId).map((c) => ({ ...c }));
+    },
+
+    async insertClaim(doc) {
+      if (claims.some((c) => c.studentId === doc.studentId && String(c.treeId) === String(doc.treeId))) return null;
+      claims.push({ ...doc });
+      return { ...doc };
+    },
+
+    async markReminder(treeId, now) {
+      const row = claims.find((c) => String(c.treeId) === String(treeId));
+      if (row && !row.reminderSentAt) row.reminderSentAt = now;
+    },
+
+    async notify(studentId, note) {
+      notices.push({ studentId, ...note });
+    },
+
+    async grantLessonCredits({ studentId, claimId, credits }) {
+      const n = Math.max(0, Math.floor(Number(credits) || 0));
+      if (!n) return { granted: false, credits: 0 };
+      if (grants.some((g) => g.claimId === String(claimId))) return { granted: false, credits: n };
+      grants.push({ studentId, claimId: String(claimId), credits: n });
+      const s = students.get(studentId);
+      if (s) s.lessonCredits = (s.lessonCredits || 0) + n;
+      return { granted: true, credits: n };
+    },
+
+    grants() { return grants.slice(); },
+    notices() { return notices.slice(); },
+
+    async listBadges(studentId) {
+      return badges.filter((b) => b.studentId === studentId).map((b) => ({ ...b }));
+    },
+
+    async insertBadge(doc) {
+      if (badges.some((b) => b.studentId === doc.studentId && b.badgeKey === doc.badgeKey)) return false;
+      badges.push({ ...doc });
+      return true;
+    },
+
+    async listDecorations(studentId) {
+      return decorations.filter((d) => d.studentId === studentId).map((d) => ({ ...d }));
+    },
+
+    async insertDecoration(doc) {
+      if (decorations.some((d) => d.studentId === doc.studentId && d.itemKey === doc.itemKey)) return false;
+      decorations.push({ ...doc });
+      return true;
+    },
+
+    async deleteDecoration(studentId, itemKey) {
+      const i = decorations.findIndex((d) => d.studentId === studentId && d.itemKey === itemKey);
+      if (i >= 0) decorations.splice(i, 1);
     },
 
     async countMonthlyLessons() { return lessonCount; },

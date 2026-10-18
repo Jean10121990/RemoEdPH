@@ -74,8 +74,46 @@ test('findTree keeps the earliest duplicate and GET does not rewrite species', a
   assert.equal(current.tree.species, 'Narra');
 });
 
-test('species list is the single config (includes Oak, Narra, Acacia plus the extras)', () => {
-  ['Oak', 'Narra', 'Acacia', 'Mahogany', 'Mango', 'Banyan', 'Molave', 'Cherry Blossom', 'Pine', 'Maple'].forEach((name) => {
-    assert.ok(config.SPECIES.includes(name), name);
+test('species list is the rotation config, in order', () => {
+  assert.deepEqual(config.SPECIES, [
+    'Acacia',
+    'Narra',
+    'Oak',
+    'Mahogany',
+    'Mango',
+    'Banyan',
+    'Molave',
+    'Cherry Blossom',
+    'Pine',
+    'Maple',
+  ]);
+});
+
+test('duplicate previous-month trees do not change the next species', async () => {
+  const repo = createMemoryRepo();
+  const garden = createGardenService({ repo, timeZone: 'Asia/Manila' });
+  const early = new Date('2026-09-01T00:00:00.000Z');
+  const late = new Date('2026-09-02T00:00:00.000Z');
+  repo.forcePushTree({
+    studentId: 'mia',
+    monthKey: '2026-09',
+    species: 'Acacia',
+    monthlyTarget: 12,
+    careModel: 'actions',
+    createdAt: early,
+    finalizedAt: null,
   });
+  repo.forcePushTree({
+    studentId: 'mia',
+    monthKey: '2026-09',
+    species: 'Narra',
+    monthlyTarget: 12,
+    careModel: 'actions',
+    createdAt: late,
+    finalizedAt: null,
+  });
+  const now = new Date('2026-10-15T02:00:00.000Z');
+  const results = await Promise.all(Array.from({ length: 20 }, () => garden.getCurrent('mia', now)));
+  results.forEach((row) => assert.equal(row.tree.species, 'Narra'));
+  assert.equal(repo.trees().filter((t) => t.monthKey === '2026-10').length, 1);
 });

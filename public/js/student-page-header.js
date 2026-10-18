@@ -171,7 +171,7 @@
             '</span></h1>' +
             '</div>' +
             '<div class="nav-right">' +
-            '  <button type="button" id="student-eco-chip" title="Eco-Drops — Virtual Garden" aria-label="Eco-Drops: 0. Open Virtual Garden" onclick="window.location.href=\'student-virtual-garden.html\'">' + DROP_ICON + '<span id="student-eco-chip-count">0</span></button>' +
+            '  <button type="button" id="student-eco-chip" title="Eco-Drops — Virtual Garden" aria-label="Eco-Drops: 0. Open Virtual Garden" onclick="if((location.pathname||\'\').indexOf(\'student-virtual-garden.html\')===-1)window.location.href=\'student-virtual-garden.html\'">' + DROP_ICON + '<span id="student-eco-chip-count">0</span></button>' +
             '  <div class="nav-icon" onclick="window.location.href=\'student-profile.html\'" title="My Profile">' +
             ACTION.person +
             '  </div>' +
@@ -319,6 +319,7 @@
                 btn.title = 'Eco-Drops — Virtual Garden';
                 btn.setAttribute('aria-label', 'Eco-Drops: 0. Open Virtual Garden');
                 btn.onclick = function () {
+                    if ((window.location.pathname || '').indexOf('student-virtual-garden.html') !== -1) return;
                     window.location.href = 'student-virtual-garden.html';
                 };
                 btn.innerHTML = DROP_ICON + '<span id="student-eco-chip-count">0</span>';

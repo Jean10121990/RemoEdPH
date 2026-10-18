@@ -38,8 +38,8 @@ async function main() {
   if (KEEP.has('garden_trees')) throw new Error('Refusing to touch KEEP collection');
 
   const trees = await db.collection('garden_trees').find({}).toArray();
-  const { drop } = planTreeDedupes(trees);
-  console.log(APPLY ? 'Apply' : 'Dry run', 'duplicates:', drop.length);
+  const { keep, drop } = planTreeDedupes(trees);
+  console.log(APPLY ? 'Apply' : 'Dry run', 'duplicates:', drop.length, 'kept:', keep.length);
   drop.forEach((t) => {
     console.log('drop', {
       _id: String(t._id),

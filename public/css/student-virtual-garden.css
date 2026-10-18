@@ -14,8 +14,8 @@ body.page-student-virtual-garden .remoed-content {
   --vg-ink: #0f172a;
   --vg-blue: #00aeef;
   --vg-card-max: 1000px;
-  --vg-card-min-h: clamp(400px, 62vh, 680px);
-  --vg-plant-scale: 0.84;
+  --vg-card-min-h: clamp(480px, 70vh, 760px);
+  --vg-plant-scale: 0.55;
   --vg-arrow: 48px;
   --vg-title: 1.15rem;
   --vg-species: 2rem;
@@ -404,9 +404,9 @@ body.page-student-virtual-garden .remoed-content {
 
 .vg-sun {
   position: absolute;
-  top: 3%;
-  right: 5%;
-  width: min(16%, 84px);
+  top: 6%;
+  left: 6%;
+  width: min(14%, 72px);
   transform-origin: 50% 50%;
   animation: vg-sun-spin 28s linear infinite;
 }
@@ -441,16 +441,20 @@ body.page-student-virtual-garden .remoed-content {
 .vg-bird-1 { left: 62%; top: 18%; animation: vg-perch 9s ease-in-out infinite; }
 .vg-bird-2 { left: 22%; top: 14%; animation: vg-fly 12s linear infinite; }
 .vg-blossom-1 { left: 34%; bottom: 42%; width: min(8%, 36px); }
-.vg-blossom-2 { left: 58%; bottom: 48%; width: min(8%, 36px); }
+.vg-fruit { left: 58%; bottom: 46%; width: min(7%, 32px); }
 
 .vg-ambient.is-static .vg-sun,
 .vg-ambient.is-static .vg-bug,
 .vg-ambient.is-static .vg-rainbow,
 .vg-ambient.is-static .vg-cloud,
+.vg-ambient.is-static .vg-blossom,
+.vg-ambient.is-static .vg-fruit,
 body.vg-paused .vg-ambient .vg-sun,
 body.vg-paused .vg-ambient .vg-bug,
 body.vg-paused .vg-ambient .vg-rainbow,
 body.vg-paused .vg-ambient .vg-cloud,
+body.vg-paused .vg-ambient .vg-blossom,
+body.vg-paused .vg-ambient .vg-fruit,
 body.vg-paused .vg-plant.is-sway {
   animation: none !important;
 }
@@ -638,6 +642,15 @@ body.vg-paused .vg-plant.is-sway {
   color: #b45309;
 }
 
+.vg-reward { margin: 8px 0 0; color: #166534; font-weight: 700; }
+.vg-forest { position: fixed; inset: 0; z-index: var(--z-modal, 80); background: rgba(15, 23, 42, 0.45); display: grid; place-items: center; padding: 16px; }
+.vg-forest[hidden] { display: none; }
+.vg-forest-card { background: #fff; border-radius: 16px; max-width: 560px; width: 100%; max-height: 86vh; overflow: auto; padding: 18px; position: relative; }
+.vg-forest-close { position: absolute; top: 8px; right: 8px; border: 0; background: transparent; font-size: 24px; }
+.vg-forest-grid, .vg-badge-grid { display: grid; gap: 8px; }
+.vg-forest-tree, .vg-badge { border: 1px solid #bbf7d0; border-radius: 12px; padding: 8px 10px; background: #f0fdf4; text-align: left; }
+.vg-forest-tree.is-perfect { box-shadow: 0 0 0 3px #f59e0b; }
+.vg-badge.is-locked { color: #94a3b8; background: #f8fafc; }
 .vg-grown {
   margin: 0;
   font-size: 1.15rem;
@@ -1085,16 +1098,16 @@ body.student-kids-mode .vg-parents {
 @media (max-width: 1024px) {
   .page-student-virtual-garden .vg-page {
     --vg-card-max: 100%;
-    --vg-card-min-h: clamp(380px, 58vh, 620px);
-    --vg-plant-scale: 0.78;
+    --vg-card-min-h: clamp(480px, 70vh, 760px);
+    --vg-plant-scale: 0.55;
   }
 }
 
 @media (max-width: 768px) {
   .page-student-virtual-garden .vg-page {
     --vg-card-max: 100%;
-    --vg-card-min-h: 54vh;
-    --vg-plant-scale: 0.75;
+    --vg-card-min-h: 60vh;
+    --vg-plant-scale: 0.55;
     --vg-arrow: 44px;
     --vg-species: 1.55rem;
     --vg-stage: 1.05rem;

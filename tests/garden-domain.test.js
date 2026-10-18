@@ -40,9 +40,25 @@ test('progress percent clamps at 100', () => {
   assert.equal(domain.progressPercent(40, 12), 100);
 });
 
-test('monthly target falls back when there are no lessons', () => {
-  assert.equal(domain.computeMonthlyTarget({ lessons: 0, tasks: 2, games: 4 }), config.DEFAULT_MONTHLY_TARGET);
-  assert.equal(domain.computeMonthlyTarget({ lessons: 8, tasks: 1, games: 4 }), 13);
+test('monthly target is scheduled lessons only, otherwise the default', () => {
+  assert.equal(config.DEFAULT_MONTHLY_TARGET, 22);
+  assert.equal(domain.computeMonthlyTarget({ lessons: 0, tasks: 2, games: 4 }), 22);
+  assert.equal(domain.computeMonthlyTarget({ lessons: 8, tasks: 1, games: 4 }), 8);
+});
+
+test('stage thresholds for targets 20, 22, and 26 use ceil of 20/40/60/80/100%', () => {
+  function pointsFor(target) {
+    return config.STAGES.map((stage) => Math.ceil((stage.minPercent * target) / 100));
+  }
+  assert.deepEqual(pointsFor(20), [0, 4, 8, 12, 16, 20]);
+  assert.deepEqual(pointsFor(22), [0, 5, 9, 14, 18, 22]);
+  assert.deepEqual(pointsFor(26), [0, 6, 11, 16, 21, 26]);
+  [20, 22, 26].forEach((target) => {
+    pointsFor(target).forEach((points, index) => {
+      assert.equal(domain.stageIndexFor(points, target), index);
+      if (points > 0) assert.equal(domain.stageIndexFor(points - 1, target), index - 1);
+    });
+  });
 });
 
 test('species rotation never repeats a neighbour and wraps the list', () => {

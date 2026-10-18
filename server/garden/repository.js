@@ -3,7 +3,14 @@
  * so tests can pass an in-memory repository with the same methods.
  */
 const mongoose = require('mongoose');
-const { EcoDropEntry, GardenTree, CareAction } = require('./models');
+const {
+  EcoDropEntry,
+  GardenTree,
+  CareAction,
+  GardenRewardClaim,
+  GardenStudentBadge,
+  GardenDecoration,
+} = require('./models');
 
 function isDuplicateKey(err) {
   return !!(err && (err.code === 11000 || /E11000|duplicate key/i.test(String(err.message || ''))));
@@ -17,6 +24,13 @@ function transactionsUnsupported(err) {
 function fertilizerDup(err) {
   const msg = String((err && err.message) || '');
   return isDuplicateKey(err) && /stageAt|fertilize/i.test(msg);
+}
+
+async function ensureGardenIndexes() {
+  await GardenTree.updateMany({ sequence: { $exists: false } }, { $set: { sequence: 1 } });
+  await CareAction.updateMany({ sequence: { $exists: false } }, { $set: { sequence: 1 } });
+  await GardenTree.syncIndexes();
+  await CareAction.syncIndexes();
 }
 
 function createMongoRepository() {
@@ -126,8 +140,11 @@ function createMongoRepository() {
       }
     },
 
+    /** Earliest tree of the latest previous month. Duplicate rows must not change the next species. */
     latestTreeBefore(studentId, monthKey) {
-      return GardenTree.findOne({ studentId, monthKey: { $lt: monthKey } }).sort({ monthKey: -1 }).lean();
+      return GardenTree.findOne({ studentId, monthKey: { $lt: monthKey } })
+        .sort({ monthKey: -1, createdAt: 1, _id: 1 })
+        .lean();
     },
 
     countTrees(studentId) {
@@ -145,8 +162,17 @@ function createMongoRepository() {
       );
     },
 
-    async setTreeTarget(studentId, monthKey, monthlyTarget) {
-      await GardenTree.updateOne({ studentId, monthKey, finalizedAt: null }, { $set: { monthlyTarget } });
+    async setTreeTarget(studentId, monthKey, monthlyTarget, backup) {
+      const tree = await this.findTree(studentId, monthKey);
+      if (!tree || tree.finalizedAt) return;
+      const prev = tree.grandfatherBackup && typeof tree.grandfatherBackup === 'object' ? tree.grandfatherBackup : {};
+      const grandfatherBackup = prev.monthlyTargetBefore != null
+        ? prev
+        : { ...prev, ...(backup || {}), monthlyTargetBefore: tree.monthlyTarget };
+      await GardenTree.updateOne(
+        { studentId, monthKey, finalizedAt: null },
+        { $set: { monthlyTarget, grandfatherBackup } }
+      );
     },
 
     async setTreeCareModel(studentId, monthKey, careModel, backup) {
@@ -155,15 +181,27 @@ function createMongoRepository() {
       await GardenTree.updateOne({ studentId, monthKey }, { $set });
     },
 
-    listTrees(studentId) {
-      return GardenTree.find({ studentId }).sort({ monthKey: 1 }).lean();
+    async listTrees(studentId) {
+      const rows = await GardenTree.find({ studentId }).sort({ monthKey: 1, createdAt: 1, _id: 1 }).lean();
+      const byMonth = new Map();
+      rows.forEach((row) => {
+        if (!byMonth.has(row.monthKey)) byMonth.set(row.monthKey, row);
+      });
+      return Array.from(byMonth.values());
     },
 
-    async sumGrowthPoints(studentId, monthKey) {
+    async sumGrowthPoints(studentId, monthKey, sequence = 1) {
       const rows = await CareAction.aggregate([
-        { $match: { studentId, monthKey } },
+        { $match: { studentId, monthKey, $or: [{ sequence }, { sequence: { $exists: false } }, { sequence: null }] } },
         { $group: { _id: null, n: { $sum: '$growthPoints' } } },
       ]);
+      if (sequence !== 1) {
+        const only = await CareAction.aggregate([
+          { $match: { studentId, monthKey, sequence } },
+          { $group: { _id: null, n: { $sum: '$growthPoints' } } },
+        ]);
+        return only.length ? Number(only[0].n) || 0 : 0;
+      }
       return rows.length ? Number(rows[0].n) || 0 : 0;
     },
 
@@ -171,8 +209,11 @@ function createMongoRepository() {
       return CareAction.findOne({ studentId, requestId }).lean();
     },
 
-    countFertilizerAtStage(studentId, monthKey, stageAt) {
-      return CareAction.countDocuments({ studentId, monthKey, action: 'fertilize', stageAt });
+    countFertilizerAtStage(studentId, monthKey, stageAt, sequence = 1) {
+      const seq = sequence === 1
+        ? { $or: [{ sequence: 1 }, { sequence: { $exists: false } }, { sequence: null }] }
+        : { sequence };
+      return CareAction.countDocuments({ studentId, monthKey, action: 'fertilize', stageAt, ...seq });
     },
 
     async insertCareAction(doc) {
@@ -247,6 +288,132 @@ function createMongoRepository() {
     },
 
     /** Lesson checks (tasks) the student opened this month: distinct level + lesson. */
+    findTreeById(id) {
+      if (!mongoose.Types.ObjectId.isValid(id)) return null;
+      return GardenTree.findById(id).lean();
+    },
+
+    findTreeBySequence(studentId, monthKey, sequence) {
+      return GardenTree.findOne({ studentId, monthKey, sequence }).lean();
+    },
+
+    listAllTrees(studentId) {
+      return GardenTree.find({ studentId }).sort({ monthKey: 1, sequence: 1, createdAt: 1 }).lean();
+    },
+
+    async completeTree(id, patch) {
+      await GardenTree.updateOne({ _id: id, completedAt: null }, { $set: patch });
+    },
+
+    async markTreeClaimed(id, patch) {
+      await GardenTree.updateOne({ _id: id }, { $set: patch });
+    },
+
+    countLedger(studentId, monthKey, sourceType) {
+      return EcoDropEntry.countDocuments({ studentId, monthKey, sourceType });
+    },
+
+    findClaim(studentId, treeId) {
+      return GardenRewardClaim.findOne({ studentId, treeId: String(treeId) }).lean();
+    },
+
+    listClaims(studentId) {
+      return GardenRewardClaim.find({ studentId }).lean();
+    },
+
+    async insertClaim(doc) {
+      try {
+        const created = await GardenRewardClaim.create(doc);
+        return created.toObject();
+      } catch (err) {
+        if (isDuplicateKey(err)) return null;
+        throw err;
+      }
+    },
+
+    async markReminder(treeId, now) {
+      await GardenRewardClaim.updateOne(
+        { treeId: String(treeId), reminderSentAt: null },
+        { $set: { reminderSentAt: now } }
+      );
+    },
+
+    async notify(studentId, { type, message }) {
+      const StudentNotification = require('../models/StudentNotification');
+      await StudentNotification.create({ studentId, type, message, importance: 'fyi' });
+    },
+
+    async grantLessonCredits({ studentId, claimId, credits, expiresAt, reason }) {
+      const n = Math.max(0, Math.floor(Number(credits) || 0));
+      const key = String(claimId || '');
+      if (!n || !key) return { granted: false, credits: 0 };
+      const { buildCreditLot } = require('../services/creditLots');
+      const student = await Student.findOne({ username: studentId });
+      if (!student) return { granted: false, credits: 0 };
+      if ((student.processedPaymentIds || []).includes(key)) return { granted: false, credits: n };
+      const lot = buildCreditLot({
+        planId: reason === 'badge_reward' ? 'badge_reward' : 'tree_reward',
+        planLabel: reason === 'badge_reward' ? 'Garden badge' : 'Tree reward',
+        credits: n,
+        purchasedAt: new Date(),
+        expiresAt,
+        paymentId: key,
+      });
+      const balanceAfter = Number(student.creditBalance || 0) + n;
+      const res = await Student.updateOne(
+        { _id: student._id, processedPaymentIds: { $ne: key } },
+        {
+          $inc: { creditBalance: n },
+          $push: {
+            processedPaymentIds: key,
+            creditLots: lot,
+            creditHistory: {
+              date: new Date(),
+              plan: lot.planLabel,
+              credits: n,
+              amountPaid: 0,
+              paymentId: key,
+              entryType: 'adjustment',
+              balanceAfter,
+            },
+          },
+        }
+      );
+      return { granted: (res.modifiedCount || 0) > 0, credits: n };
+    },
+
+    listBadges(studentId) {
+      return GardenStudentBadge.find({ studentId }).lean();
+    },
+
+    async insertBadge(doc) {
+      try {
+        await GardenStudentBadge.create(doc);
+        return true;
+      } catch (err) {
+        if (isDuplicateKey(err)) return false;
+        throw err;
+      }
+    },
+
+    listDecorations(studentId) {
+      return GardenDecoration.find({ studentId }).lean();
+    },
+
+    async insertDecoration(doc) {
+      try {
+        await GardenDecoration.create(doc);
+        return true;
+      } catch (err) {
+        if (isDuplicateKey(err)) return false;
+        throw err;
+      }
+    },
+
+    async deleteDecoration(studentId, itemKey) {
+      await GardenDecoration.deleteOne({ studentId, itemKey });
+    },
+
     async countMonthlyTasks(studentId, { start, end }) {
       const rows = await LessonCheckpointAttempt.aggregate([
         { $match: { studentId: String(studentId), createdAt: { $gte: start, $lt: end } } },
@@ -258,4 +425,4 @@ function createMongoRepository() {
   };
 }
 
-module.exports = { createMongoRepository, isDuplicateKey };
+module.exports = { createMongoRepository, ensureGardenIndexes, isDuplicateKey };

@@ -23,7 +23,8 @@ Placeholder SVGs. Swap the files, keep the names and viewBox.
 | `ambient-butterfly.svg` | Butterflies from Small Plant onward |
 | `ambient-bee.svg` | Bees from Medium Plant onward |
 | `ambient-bird.svg` | Birds from Large Tree onward |
-| `ambient-blossom.svg` | Extra fruit/blossoms at Fully Grown |
+| `ambient-blossom.svg` | Blossom at Fully Grown |
+| `ambient-fruit.svg` | Fruit at Fully Grown |
 
 The watering / fertilizer character uses the student's profile photo, or `/images/remo-green.png` if they have none.
 

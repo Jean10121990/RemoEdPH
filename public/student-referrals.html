@@ -6,16 +6,20 @@
   <script src="js/security-guard.js?v=4"></script>
   <script src="js/user-session.js"></script>
   <title>Refer & Earn - RemoEdPH</title>
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
+  <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
   <link rel="stylesheet" href="css/remoed-layers.css">
   <style>
     body { margin: 0; font-family: Nunito, "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
-    .remoed-content { padding: 24px; }
     .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
     h1 { margin: 0 0 8px; font-size: 1.6rem; }
     .hint { color: #475569; margin: 0 0 16px; }
     .link-row { display: flex; gap: 8px; flex-wrap: wrap; }
     input.link { flex: 1; min-width: 220px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; }
-    button, .share { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; background: #1CA7E7; color: #fff; text-decoration: none; display: inline-block; }
+    .remoed-content button, .remoed-content .share { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; background: #1CA7E7; color: #fff; text-decoration: none; display: inline-block; }
     .share { background: #0f172a; }
     .shares { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .stats { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -28,7 +32,8 @@
     #ref-toast { display: none; margin-top: 8px; color: #047857; font-weight: 700; }
   </style>
 </head>
-<body class="student-portal">
+<body class="student-portal page-student-referrals">
+  <div class="remoed-main">
   <div id="student-sidebar-root"></div>
   <div class="remoed-content">
     <div class="card">
@@ -59,6 +64,7 @@
       <h2>Referral badges</h2>
       <div id="ref-badges"></div>
     </div>
+  </div>
   </div>
   <script src="js/student-sidebar.js?v=ref-1"></script>
   <script>

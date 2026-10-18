@@ -73,7 +73,7 @@
     var c = (current && current.care) || {};
     return {
       water: (c.water && c.water.cost) || 1,
-      fertilize: (c.fertilize && c.fertilize.cost) || 3,
+      fertilize: (c.fertilize && c.fertilize.cost) || 2,
     };
   }
 
@@ -292,7 +292,9 @@
     html += '<img class="vg-cloud vg-cloud-1" src="/images/garden/ambient-cloud.svg" alt="">';
     html += '<img class="vg-cloud vg-cloud-2" src="/images/garden/ambient-cloud.svg" alt="">';
     html += '<img class="vg-cloud vg-cloud-3" src="/images/garden/ambient-cloud.svg" alt="">';
-    html += '<img class="vg-sun" src="/images/garden/ambient-sun.svg" alt="">';
+    if (live) {
+      html += '<img class="vg-sun" src="/images/garden/ambient-sun.svg" alt="">';
+    }
     if (amb.rainbow || opts.rainbowFlash) {
       html += '<img class="vg-rainbow' + (opts.rainbowFlash && !amb.rainbow ? ' is-flash' : '') + '" src="/images/garden/ambient-rainbow.svg" alt="">';
     }
@@ -309,9 +311,9 @@
     for (i = 0; i < birds; i++) {
       html += '<img class="vg-bug vg-bird vg-bird-' + (i + 1) + '" src="/images/garden/ambient-bird.svg" alt="">';
     }
-    if (tree.stage && tree.stage.key === 'fully-grown') {
+    if (amb.rainbow) {
       html += '<img class="vg-blossom vg-blossom-1" src="/images/garden/ambient-blossom.svg" alt="">';
-      html += '<img class="vg-blossom vg-blossom-2" src="/images/garden/ambient-blossom.svg" alt="">';
+      html += '<img class="vg-fruit" src="/images/garden/ambient-fruit.svg" alt="">';
     }
     layer.innerHTML = html;
     layer.classList.toggle('is-static', staticScene);
@@ -360,6 +362,23 @@
     $('vg-water-btn').setAttribute('aria-busy', inFlight ? 'true' : 'false');
     $('vg-fert-btn').setAttribute('aria-busy', inFlight ? 'true' : 'false');
     paintParents();
+    paintReward(tree);
+  }
+
+  function paintReward(tree) {
+    var claim = $('vg-claim');
+    var plant = $('vg-plant');
+    var note = $('vg-reward');
+    if (!claim || !plant) return;
+    var live = !!(current && current.tree && tree.monthKey === current.tree.monthKey && !tree.readOnly);
+    var done = !!(tree.completed || (live && (tree.progressPercent || 0) >= 100));
+    claim.hidden = !(live && done);
+    plant.hidden = !(live && done && (tree.sequence || 1) === 1);
+    if (note) {
+      var preview = live && done && current && current.rewardPreview ? current.rewardPreview.message : '';
+      note.hidden = !preview;
+      note.textContent = preview || '';
+    }
   }
 
   function bubbleText(tree, live) {
@@ -660,7 +679,7 @@
       isCurrent: true,
       readOnly: false,
       stage: before.stage,
-      growthPoints: (Number(before.growthPoints) || 0) + (action === 'fertilize' ? 2 : 1),
+      growthPoints: (Number(before.growthPoints) || 0) + (action === 'fertilize' ? ((current.care && current.care.fertilize && current.care.fertilize.growthPoints) || 3) : 1),
       monthlyTarget: before.monthlyTarget,
       nextStage: before.nextStage,
     };
@@ -733,8 +752,106 @@
   $('vg-prev').addEventListener('click', function () { step(-1); });
   $('vg-next').addEventListener('click', function () { step(1); });
   $('vg-skip').addEventListener('click', function () { if (skipFn) skipFn(); });
+  function claimReward() {
+    if (!current || !current.tree || !current.tree.id) return;
+    fetch('/api/garden/trees/' + encodeURIComponent(current.tree.id) + '/claim', {
+      method: 'POST',
+      headers: headers(),
+      credentials: 'include',
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (!body || !body.success) throw new Error((body && body.error) || 'Could not claim');
+        var line = body.message || 'Reward saved.';
+        if (body.expiresAt && body.grantedCredits) {
+          line += ' Use them by ' + new Date(body.expiresAt).toLocaleDateString() + '.';
+        }
+        if (body.newBadges && body.newBadges.length) {
+          line += ' New badge! ' + body.newBadges.map(function (b) { return b.name; }).join(', ');
+        }
+        $('vg-next-line').textContent = line;
+        announce(line);
+      })
+      .catch(function (err) {
+        $('vg-next-line').textContent = (err && err.message) || 'Could not claim';
+      });
+  }
+
+  function plantBonus() {
+    fetch('/api/garden/plant', { method: 'POST', headers: headers(), credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (!body || !body.success || !body.tree) throw new Error((body && body.error) || 'Could not plant');
+        current.tree = body.tree;
+        showTree(body.tree);
+      })
+      .catch(function (err) {
+        $('vg-next-line').textContent = (err && err.message) || 'Could not plant';
+      });
+  }
+
+  function openForest() {
+    var panel = $('vg-forest-panel');
+    fetch('/api/garden/forest', { headers: headers(), credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (!body || !body.success) throw new Error((body && body.error) || 'Could not load the forest');
+        var totals = body.totals || {};
+        $('vg-forest-totals').textContent = (totals.trees || 0) + ' trees · ' + (totals.badges || 0) + ' badges · ' + (totals.freeLessons || 0) + ' free lessons';
+        var grid = $('vg-forest-grid');
+        grid.textContent = '';
+        (body.trees || []).forEach(function (tree) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'vg-forest-tree' + (tree.perfectMonth ? ' is-perfect' : '');
+          var label = tree.label + ' · ' + tree.species;
+          if (tree.perfectMonth) label += ' · Golden';
+          else if (tree.completed) label += ' · Grown';
+          else if (tree.unfinished) label += ' · Unfinished';
+          btn.textContent = label;
+          btn.addEventListener('click', function () {
+            panel.hidden = true;
+            if (current && current.tree && tree.monthKey === current.tree.monthKey) showTree(current.tree);
+            else loadMonth(tree.monthKey);
+          });
+          grid.appendChild(btn);
+        });
+        if (!(body.trees || []).length) {
+          var empty = document.createElement('p');
+          empty.textContent = 'Your first tree is growing. Finish it to start a forest.';
+          grid.appendChild(empty);
+        }
+        var badges = $('vg-badge-grid');
+        badges.textContent = '';
+        (body.badges || []).forEach(function (badge) {
+          var card = document.createElement('p');
+          card.className = badge.earned ? 'vg-badge' : 'vg-badge is-locked';
+          card.textContent = badge.name + (badge.earned ? '' : ' — ' + badge.requirement + (badge.progress ? ' (' + badge.progress + ')' : ''));
+          badges.appendChild(card);
+        });
+        panel.hidden = false;
+      })
+      .catch(function (err) {
+        $('vg-next-line').textContent = (err && err.message) || 'Could not load the forest';
+      });
+  }
+
   $('vg-water-btn').addEventListener('click', function () { tend('water'); });
   $('vg-fert-btn').addEventListener('click', function () { tend('fertilize'); });
+  if ($('vg-claim')) $('vg-claim').addEventListener('click', claimReward);
+  if ($('vg-plant')) $('vg-plant').addEventListener('click', plantBonus);
+  if ($('vg-forest')) $('vg-forest').addEventListener('click', openForest);
+  if ($('vg-forest-close')) $('vg-forest-close').addEventListener('click', function () { $('vg-forest-panel').hidden = true; });
+  if ($('vg-pond')) $('vg-pond').addEventListener('click', function () {
+    fetch('/api/garden/decorate', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, headers()),
+      credentials: 'include',
+      body: JSON.stringify({ itemKey: 'pond', requestId: 'pond-' + Date.now().toString(36) }),
+    }).then(function (r) { return r.json(); }).then(function (body) {
+      $('vg-next-line').textContent = body && body.success ? 'Pond added.' : ((body && body.error) || 'Could not add a pond');
+    });
+  });
   $('vg-celebrate-ok').addEventListener('click', hideCelebrate);
   if ($('vg-mute')) {
     $('vg-mute').addEventListener('click', function () { setSoundOn(!soundOn()); });

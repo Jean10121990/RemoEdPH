@@ -16,7 +16,7 @@ const GARDEN_TIMEZONE = process.env.GARDEN_TIMEZONE || 'Asia/Manila';
 const GAME_REWARD_MODE = 'once-per-month';
 
 /** Used when the student has no lessons scheduled in the month (nothing to count). */
-const DEFAULT_MONTHLY_TARGET = 12;
+const DEFAULT_MONTHLY_TARGET = 22;
 
 /** Lowest stage first. minPercent is of this month’s care growthPoints / monthlyTarget. */
 const STAGES = [
@@ -30,16 +30,16 @@ const STAGES = [
 
 /** Monthly species, in rotation order. Consecutive months always differ. Assigned once at create. */
 const SPECIES = [
+  'Acacia',
+  'Narra',
   'Oak',
-  'Cherry Blossom',
-  'Pine',
+  'Mahogany',
   'Mango',
   'Banyan',
-  'Maple',
-  'Narra',
-  'Acacia',
-  'Mahogany',
   'Molave',
+  'Cherry Blossom',
+  'Pine',
+  'Maple',
 ];
 
 module.exports = {

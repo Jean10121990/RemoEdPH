@@ -39,8 +39,8 @@ function listen(app) {
 test('care costs come from care.config', () => {
   assert.equal(careConfig.ACTIONS.water.cost, 1);
   assert.equal(careConfig.ACTIONS.water.growthPoints, 1);
-  assert.equal(careConfig.ACTIONS.fertilize.cost, 3);
-  assert.equal(careConfig.ACTIONS.fertilize.growthPoints, 2);
+  assert.equal(careConfig.ACTIONS.fertilize.cost, 2);
+  assert.equal(careConfig.ACTIONS.fertilize.growthPoints, 3);
   assert.equal(careConfig.ACTIONS.fertilize.oncePerStage, true);
 });
 
@@ -68,21 +68,79 @@ test('water deducts 1 drop and adds 1 growth point', async () => {
   assert.equal(cur.tree.growthPoints, 1);
 });
 
-test('fertilizer costs 3 and adds 2, once per stage', async () => {
-  const { garden, care, ecoDrops } = setup();
+test('fertilizer costs 2 and adds 3, once per stage', async () => {
+  const { garden, care, ecoDrops } = setup({ lessons: 22 });
   const now = new Date('2026-10-15T02:00:00.000Z');
   await giveDrops(ecoDrops, 6, now);
   const first = await care.applyCare('mia', { action: 'fertilize', requestId: 'fert-once-01' }, now);
-  assert.equal(first.growthPoints, 2);
-  assert.equal(first.availableDrops, 3);
+  assert.equal(first.growthPoints, 3);
+  assert.equal(first.availableDrops, 4);
   await assert.rejects(
     () => care.applyCare('mia', { action: 'fertilize', requestId: 'fert-once-02' }, now),
     (err) => err instanceof GardenError && err.code === 'FERTILIZER_LIMIT'
   );
   await care.applyCare('mia', { action: 'water', requestId: 'water-after-fert' }, now);
   const after = await garden.getCurrent('mia', now);
-  assert.equal(after.availableDrops, 2);
-  assert.equal(after.tree.growthPoints, 3);
+  assert.equal(after.availableDrops, 3);
+  assert.equal(after.tree.growthPoints, 4);
+});
+
+test('water-only needs 22 drops, and five fertilizers plus water need 17, to finish a 22-lesson tree', async () => {
+  const now = new Date('2026-10-15T02:00:00.000Z');
+  const waterOnly = setup({ lessons: 22 });
+  await giveDrops(waterOnly.ecoDrops, 22, now);
+  for (let i = 0; i < 22; i++) {
+    await waterOnly.care.applyCare('mia', { action: 'water', requestId: 'water-22-' + String(i).padStart(2, '0') }, now);
+  }
+  const watered = await waterOnly.garden.getCurrent('mia', now);
+  assert.equal(watered.tree.progressPercent, 100);
+  assert.equal(watered.availableDrops, 0);
+  assert.equal(watered.tree.growthPoints, 22);
+
+  const mixed = setup({ lessons: 22 });
+  await giveDrops(mixed.ecoDrops, 17, now);
+  let n = 0;
+  while ((await mixed.garden.getCurrent('mia', now)).tree.progressPercent < 100) {
+    const cur = await mixed.garden.getCurrent('mia', now);
+    const stage = cur.tree.stage.index;
+    const ferts = mixed.repo.careActions().filter((c) => c.action === 'fertilize' && c.stageAt === stage).length;
+    const action = ferts === 0 ? 'fertilize' : 'water';
+    n += 1;
+    await mixed.care.applyCare('mia', { action, requestId: 'mix-care-' + String(n).padStart(2, '0') }, now);
+    assert.ok(n < 30);
+  }
+  const done = await mixed.garden.getCurrent('mia', now);
+  const fertCount = mixed.repo.careActions().filter((c) => c.action === 'fertilize').length;
+  assert.equal(fertCount, 5);
+  assert.equal(done.availableDrops, 0);
+  assert.equal(done.tree.growthPoints, 22);
+});
+
+test('a higher lesson target is saved with the old number backed up, and is refused when it would shrink the stage', async () => {
+  const now = new Date('2026-10-15T02:00:00.000Z');
+  const rising = setup({ lessons: 12 });
+  const created = await rising.garden.ensureCurrentMonthTree('mia', now);
+  rising.repo.setLessonCount(22);
+  const raised = await rising.garden.getCurrent('mia', now);
+  assert.equal(raised.tree.monthlyTarget, 22);
+  assert.equal(raised.tree.stage.key, 'seed');
+  const saved = rising.repo.trees().find((t) => t.monthKey === created.monthKey);
+  assert.equal(saved.grandfatherBackup.monthlyTargetBefore, 12);
+  const again = await rising.garden.getCurrent('mia', now);
+  assert.equal(again.tree.monthlyTarget, 22);
+  assert.equal(rising.repo.trees().find((t) => t.monthKey === created.monthKey).grandfatherBackup.monthlyTargetBefore, 12);
+
+  const kept = setup({ lessons: 12 });
+  await giveDrops(kept.ecoDrops, 6, now);
+  for (let i = 0; i < 6; i++) {
+    await kept.care.applyCare('mia', { action: 'water', requestId: 'keep-stage-' + i }, now);
+  }
+  const before = await kept.garden.getCurrent('mia', now);
+  assert.equal(before.tree.stage.key, 'small-plant');
+  kept.repo.setLessonCount(22);
+  const cur = await kept.garden.getCurrent('mia', now);
+  assert.equal(cur.tree.monthlyTarget, 12);
+  assert.equal(cur.tree.stage.key, 'small-plant');
 });
 
 test('duplicate requestId charges once', async () => {
@@ -214,9 +272,11 @@ test('growth-point stage boundaries and 100% clamp', () => {
 
 test('ambient set per stage matches config', () => {
   const config = require('../server/garden/garden.config');
-  assert.equal(config.STAGES[0].ambient.butterflies, 0);
-  assert.equal(config.STAGES[2].ambient.butterflies, 1);
-  assert.equal(config.STAGES[3].ambient.bees, 1);
-  assert.equal(config.STAGES[4].ambient.birds, 1);
-  assert.equal(config.STAGES[5].ambient.rainbow, true);
+  const row = (key) => config.STAGES.find((s) => s.key === key).ambient;
+  assert.deepEqual(row('seed'), { butterflies: 0, bees: 0, birds: 0, rainbow: false });
+  assert.deepEqual(row('sprout'), { butterflies: 0, bees: 0, birds: 0, rainbow: false });
+  assert.deepEqual(row('small-plant'), { butterflies: 1, bees: 0, birds: 0, rainbow: false });
+  assert.deepEqual(row('medium-plant'), { butterflies: 2, bees: 1, birds: 0, rainbow: false });
+  assert.deepEqual(row('large-tree'), { butterflies: 2, bees: 2, birds: 1, rainbow: false });
+  assert.deepEqual(row('fully-grown'), { butterflies: 3, bees: 2, birds: 2, rainbow: true });
 });

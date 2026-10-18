@@ -16,8 +16,9 @@ test('frontend renders the server species with no override or mock list', () => 
   assert.equal(/id="vg-species">\s*Oak/.test(gardenHtml), false);
 });
 
-test('Eco-Drops chip click only navigates and does not call garden writes', () => {
+test('Eco-Drops chip click only navigates and does nothing on the garden page', () => {
   assert.match(headerJs, /window\.location\.href\s*=\s*'student-virtual-garden\.html'/);
+  assert.match(headerJs, /student-virtual-garden\.html'\)\s*!==\s*-1\)\s*return/);
   assert.equal(/\/api\/garden/.test(headerJs), false);
   assert.equal(/seen-stage/.test(headerJs), false);
   assert.equal(/Math\.random\s*\(/.test(headerJs), false);
@@ -50,6 +51,12 @@ test('stage-up copy uses the server species, not a hardcoded name', () => {
 test('past-tree ambient uses the static class', () => {
   assert.match(gardenJs, /is-static/);
   assert.match(gardenJs, /renderAmbient\(tree,\s*\{\s*static:\s*!live/);
+  assert.match(gardenJs, /staticScene = !live \|\| reducedMotion\(\)/);
+  assert.match(gardenJs, /if \(live\) \{\s*html \+= '<img class="vg-sun"/);
+  assert.match(gardenJs, /flashRainbow\(after\)/);
+  assert.match(gardenJs, /ambient-fruit\.svg/);
+  assert.match(gardenJs, /AMBIENT_CAP_MOBILE = \{ butterflies: 2, bees: 1, birds: 1 \}/);
+  assert.match(gardenHtml, /id="vg-ambient" aria-hidden="true"/);
 });
 
 test('gallery, theme facts, mute, and parents extras stay frontend-only', () => {

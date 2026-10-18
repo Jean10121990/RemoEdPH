@@ -42,19 +42,23 @@ function safeAvatar(value) {
 /**
  * @param {{ garden, care, play, auth: Function[], isLocked?: (req) => boolean, clock?: () => Date }} deps
  */
-function createGardenRouter({ garden, care, auth, isLocked = () => false, clock = () => new Date() }) {
+function createGardenRouter({ garden, care, rewards, auth, isLocked = () => false, clock = () => new Date() }) {
   const router = express.Router();
   router.use(...auth);
 
   router.get(
     '/current',
     withStudent(async (req, res, studentId) => {
-      const data = await garden.getCurrent(studentId, clock());
+      const now = clock();
+      const data = await garden.getCurrent(studentId, now);
+      if (rewards && rewards.remindExpiring) await rewards.remindExpiring(studentId, now);
+      const rewardPreview = rewards && rewards.previewForTree ? await rewards.previewForTree(studentId, data.tree) : null;
       res.json({
         success: true,
         locked: !!isLocked(req),
         avatarUrl: safeAvatar(req.student && req.student.profilePicture),
         ...data,
+        rewardPreview,
       });
     }, 'Could not load the garden')
   );
@@ -84,6 +88,51 @@ function createGardenRouter({ garden, care, auth, isLocked = () => false, clock 
       );
       res.json({ success: true, ...result });
     }, 'Could not tend the tree')
+  );
+
+  router.get(
+    '/forest',
+    withStudent(async (req, res, studentId) => {
+      res.json({ success: true, ...(await rewards.forest(studentId)) });
+    }, 'Could not load your forest')
+  );
+
+  router.post(
+    '/plant',
+    withStudent(async (req, res, studentId) => {
+      res.json({ success: true, ...(await rewards.plantBonus(studentId, clock())) });
+    }, 'Could not plant a new tree')
+  );
+
+  router.post(
+    '/decorate',
+    withStudent(async (req, res, studentId) => {
+      const body = req.body || {};
+      const result = await rewards.buyDecoration(
+        studentId,
+        typeof body.itemKey === 'string' ? body.itemKey : '',
+        typeof body.requestId === 'string' ? body.requestId : '',
+        clock()
+      );
+      res.json({ success: true, ...result });
+    }, 'Could not add that decoration')
+  );
+
+  router.post(
+    '/trees/:treeId/claim',
+    withStudent(async (req, res, studentId) => {
+      res.json({ success: true, ...(await rewards.claim(studentId, String(req.params.treeId), clock())) });
+    }, 'Could not claim that tree')
+  );
+
+  router.get(
+    '/trees/:treeId',
+    withStudent(async (req, res, studentId) => {
+      const tree = await rewards.forest(studentId);
+      const row = (tree.trees || []).find((item) => item.id === String(req.params.treeId));
+      if (!row) return res.status(404).json({ success: false, error: 'That tree is not yours.', code: 'TREE_NOT_FOUND' });
+      res.json({ success: true, tree: row });
+    }, 'Could not load that tree')
   );
 
   router.get(
