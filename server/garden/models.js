@@ -87,6 +87,34 @@ const decorationSchema = new mongoose.Schema(
 );
 decorationSchema.index({ studentId: 1, itemKey: 1 }, { unique: true });
 
+const creditGrantSchema = new mongoose.Schema(
+  {
+    studentId: { type: String, required: true },
+    monthKey: { type: String, required: true },
+    source: { type: String, enum: ['tier1', 'tier2', 'streak', 'evergreen'], required: true },
+    credits: { type: Number, required: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { collection: 'garden_credit_grants', versionKey: false }
+);
+creditGrantSchema.index({ monthKey: 1, source: 1 });
+
+const gardenShareSchema = new mongoose.Schema(
+  {
+    shareId: { type: String, required: true },
+    studentId: { type: String, required: true },
+    type: { type: String, enum: ['badge', 'tree', 'forest'], required: true },
+    targetId: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    revokedAt: { type: Date, default: null },
+    viewCount: { type: Number, default: 0 },
+    audit: { type: [{ action: String, at: Date, by: String }], default: [] },
+  },
+  { collection: 'garden_shares', versionKey: false }
+);
+gardenShareSchema.index({ shareId: 1 }, { unique: true });
+gardenShareSchema.index({ studentId: 1, type: 1, targetId: 1 }, { unique: true });
+
 const careActionSchema = new mongoose.Schema(
   {
     studentId: { type: String, required: true },
@@ -115,6 +143,8 @@ const CareAction = mongoose.models.CareAction || mongoose.model('CareAction', ca
 const GardenRewardClaim = mongoose.models.GardenRewardClaim || mongoose.model('GardenRewardClaim', rewardClaimSchema);
 const GardenStudentBadge = mongoose.models.GardenStudentBadge || mongoose.model('GardenStudentBadge', gardenBadgeSchema);
 const GardenDecoration = mongoose.models.GardenDecoration || mongoose.model('GardenDecoration', decorationSchema);
+const GardenCreditGrant = mongoose.models.GardenCreditGrant || mongoose.model('GardenCreditGrant', creditGrantSchema);
+const GardenShare = mongoose.models.GardenShare || mongoose.model('GardenShare', gardenShareSchema);
 
 module.exports = {
   EcoDropEntry,
@@ -123,4 +153,6 @@ module.exports = {
   GardenRewardClaim,
   GardenStudentBadge,
   GardenDecoration,
+  GardenCreditGrant,
+  GardenShare,
 };

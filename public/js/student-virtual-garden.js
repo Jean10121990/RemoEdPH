@@ -43,7 +43,11 @@
   }
 
   function headers() {
-    return { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' };
+    return {
+      Authorization: 'Bearer ' + token(),
+      'Content-Type': 'application/json',
+      'X-Remoed-View': isParentsView() ? 'parent' : 'student',
+    };
   }
 
   function $(id) {
@@ -218,6 +222,7 @@
     if (!box) return;
     box.hidden = !isParentsView();
     if (!line || !current) return;
+    loadParentCards();
     var earned = totalEarned();
     var avail = available();
     var spent = Math.max(0, earned - avail);
@@ -348,7 +353,7 @@
     $('vg-water-btn').setAttribute('aria-label', 'Water the tree, costs ' + costs.water + ' Eco-Drop' + (costs.water === 1 ? '' : 's'));
     $('vg-fert-btn').setAttribute('aria-label', 'Fertilize the tree, costs ' + costs.fertilize + ' Eco-Drops');
 
-    var showActions = live && !grown && !tree.readOnly;
+    var showActions = live && !grown && !tree.readOnly && !isParentsView();
     $('vg-tend-actions').hidden = !showActions;
     $('vg-grown').hidden = !(live && grown);
     var needWater = showActions && bal < costs.water;
@@ -372,8 +377,8 @@
     if (!claim || !plant) return;
     var live = !!(current && current.tree && tree.monthKey === current.tree.monthKey && !tree.readOnly);
     var done = !!(tree.completed || (live && (tree.progressPercent || 0) >= 100));
-    claim.hidden = !(live && done);
-    plant.hidden = !(live && done && (tree.sequence || 1) === 1);
+    claim.hidden = !(live && done && !isParentsView());
+    plant.hidden = !(live && done && (tree.sequence || 1) === 1 && !isParentsView());
     if (note) {
       var preview = live && done && current && current.rewardPreview ? current.rewardPreview.message : '';
       note.hidden = !preview;
@@ -752,6 +757,169 @@
   $('vg-prev').addEventListener('click', function () { step(-1); });
   $('vg-next').addEventListener('click', function () { step(1); });
   $('vg-skip').addEventListener('click', function () { if (skipFn) skipFn(); });
+  function loadParentCards() {
+    var box = $('vg-parent-cards');
+    if (!box || !isParentsView()) return;
+    fetch('/api/garden/parent', { headers: headers(), credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        box.textContent = '';
+        if (!body || !body.success) return;
+        (body.cards || []).forEach(function (card) {
+          var el = document.createElement('section');
+          el.className = 'vg-parent-card';
+          var title = document.createElement('h3');
+          title.textContent = 'Free lessons earned by ' + card.childName + ' this month';
+          var big = document.createElement('strong');
+          big.textContent = String(card.freeLessonsThisMonth || 0);
+          el.appendChild(title);
+          el.appendChild(big);
+          if (card.zero) {
+            var zero = document.createElement('p');
+            zero.textContent = card.zeroMessage || 'No free lessons yet this month.';
+            el.appendChild(zero);
+          }
+          (card.breakdown || []).forEach(function (line) {
+            var p = document.createElement('p');
+            p.textContent = line.label + ': ' + line.credits;
+            el.appendChild(p);
+          });
+          if (card.tree) {
+            var progress = document.createElement('p');
+            progress.textContent = card.tree.text;
+            el.appendChild(progress);
+          }
+          if (card.eligibilityTip) {
+            var tip = document.createElement('p');
+            tip.textContent = card.eligibilityTip;
+            el.appendChild(tip);
+          }
+          var unused = document.createElement('p');
+          unused.textContent = (card.unusedCredits || 0) + ' unused free lessons'
+            + (card.nearestExpiry ? '. Nearest expiry ' + new Date(card.nearestExpiry).toLocaleDateString() : '');
+          el.appendChild(unused);
+          var book = document.createElement('a');
+          book.href = card.bookUrl || 'student-book.html';
+          book.textContent = 'Book a free lesson';
+          el.appendChild(book);
+          var life = card.lifetime || {};
+          var totals = document.createElement('p');
+          totals.textContent = (life.freeLessons || 0) + ' free lessons · ' + (life.trees || 0) + ' trees · ' + (life.badges || 0) + ' badges';
+          el.appendChild(totals);
+          var shareRow = document.createElement('p');
+          if (!card.sharingEnabled) shareRow.textContent = 'Ask your parent to turn on sharing';
+          var toggle = document.createElement('button');
+          toggle.type = 'button';
+          toggle.textContent = card.sharingEnabled ? 'Sharing on' : 'Turn on sharing';
+          toggle.addEventListener('click', function () {
+            fetch('/api/garden/parent/sharing', {
+              method: 'POST',
+              headers: headers(),
+              credentials: 'include',
+              body: JSON.stringify({
+                childUsername: card.childUsername,
+                sharingEnabled: !card.sharingEnabled,
+                shareDisplay: card.shareDisplay || 'first',
+              }),
+            }).then(function () { loadParentCards(); });
+          });
+          el.appendChild(shareRow);
+          el.appendChild(toggle);
+          box.appendChild(el);
+        });
+      })
+      .catch(function () {});
+  }
+
+  function openShare(type, targetId, text) {
+    fetch('/api/garden/shares', {
+      method: 'POST',
+      headers: headers(),
+      credentials: 'include',
+      body: JSON.stringify({ type: type, targetId: targetId }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (!body || !body.success) throw new Error((body && body.error) || 'Could not share');
+        var url = body.url;
+        var payload = { title: 'RemoEd', text: text, url: url };
+        if (navigator.share) {
+          navigator.share(payload).catch(function () { showShareFallback(url, text); });
+          return;
+        }
+        showShareFallback(url, text);
+      })
+      .catch(function (err) {
+        $('vg-next-line').textContent = (err && err.message) || 'Could not share';
+        announce($('vg-next-line').textContent);
+      });
+  }
+
+  function showShareFallback(url, text) {
+    var encoded = encodeURIComponent(url);
+    var full = encodeURIComponent(text + ' ' + url);
+    var note = 'Only the first name, badge, and month are shown.';
+    var links = [
+      ['Facebook', 'https://www.facebook.com/sharer/sharer.php?u=' + encoded],
+      ['Messenger', 'https://www.facebook.com/dialog/send?link=' + encoded + '&redirect_uri=' + encoded],
+      ['WhatsApp', 'https://wa.me/?text=' + full],
+      ['X', 'https://twitter.com/intent/tweet?text=' + full],
+    ];
+    var panel = document.createElement('div');
+    panel.className = 'vg-forest';
+    var card = document.createElement('div');
+    card.className = 'vg-forest-card';
+    card.setAttribute('role', 'dialog');
+    links.forEach(function (pair) {
+      var a = document.createElement('a');
+      a.href = pair[1];
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = pair[0];
+      card.appendChild(a);
+      card.appendChild(document.createTextNode(' '));
+    });
+    var copy = document.createElement('button');
+    copy.type = 'button';
+    copy.textContent = 'Copy link';
+    copy.addEventListener('click', function () {
+      if (navigator.clipboard) navigator.clipboard.writeText(url);
+      $('vg-next-line').textContent = 'Link copied';
+      announce('Link copied');
+    });
+    var download = document.createElement('a');
+    download.href = url + '/card.png?variant=square';
+    download.textContent = 'Download image';
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = 'Close';
+    close.addEventListener('click', function () { panel.remove(); });
+    var hint = document.createElement('p');
+    hint.className = 'vg-share-note';
+    hint.textContent = note;
+    card.appendChild(copy);
+    card.appendChild(download);
+    card.appendChild(hint);
+    card.appendChild(close);
+    panel.appendChild(card);
+    document.body.appendChild(panel);
+  }
+
+  function printCertificate(treeId) {
+    fetch('/api/garden/trees/' + encodeURIComponent(treeId) + '/certificate', { headers: headers(), credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (!body || !body.success || !body.html) throw new Error((body && body.error) || 'Could not open the certificate');
+        var win = window.open('', '_blank');
+        if (!win) return;
+        win.document.write(body.html);
+        win.document.close();
+      })
+      .catch(function (err) {
+        $('vg-next-line').textContent = (err && err.message) || 'Could not open the certificate';
+      });
+  }
+
   function claimReward() {
     if (!current || !current.tree || !current.tree.id) return;
     fetch('/api/garden/trees/' + encodeURIComponent(current.tree.id) + '/claim', {
@@ -809,6 +977,24 @@
           else if (tree.completed) label += ' · Grown';
           else if (tree.unfinished) label += ' · Unfinished';
           btn.textContent = label;
+          if (tree.completed) {
+            var share = document.createElement('button');
+            share.type = 'button';
+            share.textContent = 'Share';
+            share.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              openShare('tree', tree.id, 'I grew a ' + tree.species + ' tree on RemoEd by finishing my lessons! 🌳');
+            });
+            grid.appendChild(share);
+            var cert = document.createElement('button');
+            cert.type = 'button';
+            cert.textContent = 'Certificate';
+            cert.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              printCertificate(tree.id);
+            });
+            grid.appendChild(cert);
+          }
           btn.addEventListener('click', function () {
             panel.hidden = true;
             if (current && current.tree && tree.monthKey === current.tree.monthKey) showTree(current.tree);
@@ -827,6 +1013,15 @@
           var card = document.createElement('p');
           card.className = badge.earned ? 'vg-badge' : 'vg-badge is-locked';
           card.textContent = badge.name + (badge.earned ? '' : ' — ' + badge.requirement + (badge.progress ? ' (' + badge.progress + ')' : ''));
+          if (badge.earned) {
+            var shareBadge = document.createElement('button');
+            shareBadge.type = 'button';
+            shareBadge.textContent = 'Share';
+            shareBadge.addEventListener('click', function () {
+              openShare('badge', badge.key, 'I just earned the ' + badge.name + ' badge on RemoEd! 🌳');
+            });
+            card.appendChild(shareBadge);
+          }
           badges.appendChild(card);
         });
         panel.hidden = false;

@@ -9,6 +9,7 @@ const {
 } = require('./rewards.config');
 const math = require('./rewardMath');
 const domain = require('./domain');
+const { assertWritable } = require('./parentGuard');
 
 function seqOf(tree) {
   return tree && tree.sequence ? tree.sequence : 1;
@@ -61,6 +62,15 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
       });
       if (result && result.granted) {
         granted.push({ key: badge.key, credits: badge.credits, expiresAt });
+        if (repo.recordCreditGrant) {
+          const source = badge.key === 'evergreen' ? 'evergreen' : 'streak';
+          await repo.recordCreditGrant({
+            studentId,
+            monthKey: domain.monthKeyOf(now, zone),
+            source,
+            credits: badge.credits,
+          });
+        }
       }
     }
     return granted;
@@ -93,7 +103,8 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
     }));
   }
 
-  async function claim(studentId, treeId, now = new Date(), rngInt) {
+  async function claim(studentId, treeId, now = new Date(), rngInt, view) {
+    assertWritable(view);
     const tree = repo.findTreeById ? await repo.findTreeById(treeId) : null;
     if (!tree || tree.studentId !== studentId) {
       throw new GardenError(404, 'TREE_NOT_FOUND', 'That tree is not yours.');
@@ -148,13 +159,33 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
         expiresAt,
         reason: 'tree_reward',
       });
+      if (repo.recordCreditGrant && decision.tier) {
+        await repo.recordCreditGrant({
+          studentId,
+          monthKey: tree.monthKey,
+          source: decision.tier === 2 ? 'tier2' : 'tier1',
+          credits: decision.grantedCredits,
+        });
+      }
     }
     if (repo.markTreeClaimed) await repo.markTreeClaimed(tree._id, { claimedAt: now, perfectMonth });
     const newBadges = await evaluateBadges(studentId, { ...tree, perfectMonth, completedAt: tree.completedAt }, now);
+    if (repo.notify) {
+      const profile = repo.profile ? await repo.profile(studentId) : null;
+      const name = (profile && profile.firstName) || 'Your child';
+      const badgeNames = newBadges.map((badge) => badge.name).join(', ') || 'none new';
+      const exp = expiresAt ? expiresAt.toLocaleDateString('en-PH', { timeZone: zone }) : 'none';
+      await repo.notify(studentId, {
+        type: 'garden_tree_complete',
+        message: name + ' finished a ' + tree.species + ' tree. Lessons done: ' + lessonsDone
+          + '. Badges: ' + badgeNames + '. Free lessons: ' + decision.grantedCredits + '. Expiry: ' + exp + '.',
+      });
+    }
     return publicClaim(doc, { newBadges });
   }
 
-  async function plantBonus(studentId, now = new Date()) {
+  async function plantBonus(studentId, now = new Date(), view) {
+    assertWritable(view);
     const monthKey = domain.monthKeyOf(now, zone);
     const trees = repo.listAllTrees ? await repo.listAllTrees(studentId) : [];
     const mine = trees.filter((tree) => tree.monthKey === monthKey);
@@ -236,7 +267,8 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
     };
   }
 
-  async function buyDecoration(studentId, itemKey, requestId, now = new Date()) {
+  async function buyDecoration(studentId, itemKey, requestId, now = new Date(), view) {
+    assertWritable(view);
     const item = decorationByKey(itemKey);
     if (!item || !item.enabled) {
       throw new GardenError(400, 'UNKNOWN_DECORATION', 'That decoration is not available.');

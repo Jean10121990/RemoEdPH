@@ -7,8 +7,10 @@ const { createGardenService } = require('./gardenService');
 const { createCareService } = require('./careService');
 const { createEcoDropService } = require('./ecoDropService');
 const { createPlayService } = require('./playService');
-const { createGardenRouter, createPlayRouter } = require('./routes');
+const { createGardenRouter, createPlayRouter, createSharePageRouter, createGardenAdminRouter } = require('./routes');
 const { createRewardService } = require('./rewardService');
+const { createParentService } = require('./parentService');
+const { createShareService } = require('./shareService');
 
 let services = null;
 
@@ -20,10 +22,12 @@ function getServices() {
   ensureGardenIndexes().catch((err) => console.error('garden indexes', err && err.message));
   const garden = createGardenService({ repo });
   const rewards = createRewardService({ repo, garden });
+  const parent = createParentService({ repo, garden });
+  const shares = createShareService({ repo, parent, origin: process.env.APP_URL || 'https://remoedph.com' });
   const care = createCareService({ repo, garden });
   const ecoDropService = createEcoDropService({ repo, garden });
   const play = createPlayService({ ecoDrops: ecoDropService, secret: getJwtSecret() });
-  services = { repo, garden, care, ecoDropService, play, rewards };
+  services = { repo, garden, care, ecoDropService, play, rewards, parent, shares };
   return services;
 }
 
@@ -41,10 +45,24 @@ function buildRouters() {
   const { verifyToken, requireStudent } = require('../authMiddleware');
   const { isPaidSubscriber } = require('../services/freePlanAccess');
   const auth = [verifyToken, requireStudent];
-  const { garden, care, play, rewards } = getServices();
+  const { garden, care, play, rewards, parent, shares } = getServices();
+  const { verifyAdminApiAuth, requirePermission } = require('../authMiddleware');
   return {
-    gardenRouter: createGardenRouter({ garden, care, rewards, auth, isLocked: (req) => !isPaidSubscriber(req.student) }),
+    gardenRouter: createGardenRouter({
+      garden,
+      care,
+      rewards,
+      parent,
+      shares,
+      auth,
+      isLocked: (req) => !isPaidSubscriber(req.student),
+    }),
     playRouter: createPlayRouter({ play, auth }),
+    sharePageRouter: createSharePageRouter({ shares }),
+    gardenAdminRouter: createGardenAdminRouter({
+      parent,
+      auth: [verifyAdminApiAuth, requirePermission('nav:reports')],
+    }),
   };
 }
 

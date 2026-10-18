@@ -10,6 +10,8 @@ const {
   GardenRewardClaim,
   GardenStudentBadge,
   GardenDecoration,
+  GardenCreditGrant,
+  GardenShare,
 } = require('./models');
 
 function isDuplicateKey(err) {
@@ -412,6 +414,68 @@ function createMongoRepository() {
 
     async deleteDecoration(studentId, itemKey) {
       await GardenDecoration.deleteOne({ studentId, itemKey });
+    },
+
+    async profile(studentId) {
+      return Student.findOne({ username: studentId }).lean();
+    },
+
+    async listLinkedChildren(viewerId) {
+      const me = await Student.findOne({ username: viewerId }).lean();
+      if (!me) return [];
+      const email = String(me.parentEmail || '').trim();
+      if (!email) return [me];
+      const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return Student.find({ parentEmail: new RegExp('^' + escaped + '$', 'i') }).lean();
+    },
+
+    async setSharing(studentId, patch) {
+      await Student.updateOne({ username: studentId }, { $set: patch });
+    },
+
+    async recordCreditGrant(doc) {
+      await GardenCreditGrant.create(doc);
+    },
+
+    listCreditGrants(monthKey) {
+      return GardenCreditGrant.find(monthKey ? { monthKey } : {}).lean();
+    },
+
+    findShareByTarget(studentId, type, targetId) {
+      return GardenShare.findOne({ studentId, type, targetId }).lean();
+    },
+
+    findShareById(shareId) {
+      return GardenShare.findOne({ shareId }).lean();
+    },
+
+    async insertShare(doc) {
+      try {
+        const created = await GardenShare.create(doc);
+        return created.toObject();
+      } catch (err) {
+        if (isDuplicateKey(err)) return null;
+        throw err;
+      }
+    },
+
+    async clearRevoke(shareId) {
+      await GardenShare.updateOne({ shareId }, { $set: { revokedAt: null } });
+    },
+
+    async revokeShare(shareId, now, by) {
+      await GardenShare.updateOne(
+        { shareId },
+        { $set: { revokedAt: now }, $push: { audit: { action: 'revoke', at: now, by } } }
+      );
+    },
+
+    async bumpView(shareId) {
+      await GardenShare.updateOne({ shareId }, { $inc: { viewCount: 1 } });
+    },
+
+    async shareAudit() {
+      return null;
     },
 
     async countMonthlyTasks(studentId, { start, end }) {

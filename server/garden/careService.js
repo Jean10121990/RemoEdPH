@@ -4,6 +4,7 @@
 const domain = require('./domain');
 const { careAction } = require('./care.config');
 const { GardenError } = require('./errors');
+const { assertWritable } = require('./parentGuard');
 const { grandfatherCurrentTree } = require('./migrate');
 
 function validRequestId(id) {
@@ -32,7 +33,8 @@ function createCareService({ repo, garden }) {
     };
   }
 
-  async function applyCare(studentId, { action, requestId, monthKey } = {}, now = new Date()) {
+  async function applyCare(studentId, { action, requestId, monthKey, view } = {}, now = new Date()) {
+    assertWritable(view);
     const spec = careAction(action);
     if (!spec) {
       throw new GardenError(400, 'INVALID_ACTION', 'Choose Water or Fertilizer.');

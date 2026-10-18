@@ -42,7 +42,11 @@ function safeAvatar(value) {
 /**
  * @param {{ garden, care, play, auth: Function[], isLocked?: (req) => boolean, clock?: () => Date }} deps
  */
-function createGardenRouter({ garden, care, rewards, auth, isLocked = () => false, clock = () => new Date() }) {
+function viewOf(req) {
+  return String(req.get('x-remoed-view') || '');
+}
+
+function createGardenRouter({ garden, care, rewards, parent, shares, auth, isLocked = () => false, clock = () => new Date() }) {
   const router = express.Router();
   router.use(...auth);
 
@@ -83,6 +87,7 @@ function createGardenRouter({ garden, care, rewards, auth, isLocked = () => fals
           action: typeof body.action === 'string' ? body.action : '',
           requestId: typeof body.requestId === 'string' ? body.requestId : '',
           monthKey: typeof body.monthKey === 'string' ? body.monthKey : '',
+          view: viewOf(req),
         },
         clock()
       );
@@ -100,7 +105,7 @@ function createGardenRouter({ garden, care, rewards, auth, isLocked = () => fals
   router.post(
     '/plant',
     withStudent(async (req, res, studentId) => {
-      res.json({ success: true, ...(await rewards.plantBonus(studentId, clock())) });
+      res.json({ success: true, ...(await rewards.plantBonus(studentId, clock(), viewOf(req))) });
     }, 'Could not plant a new tree')
   );
 
@@ -112,7 +117,8 @@ function createGardenRouter({ garden, care, rewards, auth, isLocked = () => fals
         studentId,
         typeof body.itemKey === 'string' ? body.itemKey : '',
         typeof body.requestId === 'string' ? body.requestId : '',
-        clock()
+        clock(),
+        viewOf(req)
       );
       res.json({ success: true, ...result });
     }, 'Could not add that decoration')
@@ -121,7 +127,7 @@ function createGardenRouter({ garden, care, rewards, auth, isLocked = () => fals
   router.post(
     '/trees/:treeId/claim',
     withStudent(async (req, res, studentId) => {
-      res.json({ success: true, ...(await rewards.claim(studentId, String(req.params.treeId), clock())) });
+      res.json({ success: true, ...(await rewards.claim(studentId, String(req.params.treeId), clock(), null, viewOf(req))) });
     }, 'Could not claim that tree')
   );
 
@@ -133,6 +139,53 @@ function createGardenRouter({ garden, care, rewards, auth, isLocked = () => fals
       if (!row) return res.status(404).json({ success: false, error: 'That tree is not yours.', code: 'TREE_NOT_FOUND' });
       res.json({ success: true, tree: row });
     }, 'Could not load that tree')
+  );
+
+  router.get(
+    '/parent',
+    withStudent(async (req, res, studentId) => {
+      res.json({ success: true, ...(await parent.cards(studentId, clock())) });
+    }, 'Could not load the parent garden')
+  );
+
+  router.post(
+    '/parent/sharing',
+    withStudent(async (req, res, studentId) => {
+      const body = req.body || {};
+      const result = await parent.setSharing(studentId, String(body.childUsername || studentId), {
+        sharingEnabled: body.sharingEnabled,
+        shareDisplay: body.shareDisplay,
+      }, clock());
+      res.json({ success: true, ...result });
+    }, 'Could not update sharing')
+  );
+
+  router.get(
+    '/trees/:treeId/certificate',
+    withStudent(async (req, res, studentId) => {
+      res.json({ success: true, ...(await parent.certificate(studentId, String(req.params.treeId))) });
+    }, 'Could not load that certificate')
+  );
+
+  router.post(
+    '/shares',
+    withStudent(async (req, res, studentId) => {
+      const body = req.body || {};
+      const result = await shares.createShare(studentId, {
+        type: typeof body.type === 'string' ? body.type : '',
+        targetId: typeof body.targetId === 'string' ? body.targetId : '',
+        childUsername: typeof body.childUsername === 'string' ? body.childUsername : '',
+        view: viewOf(req),
+      }, clock());
+      res.json({ success: true, ...result });
+    }, 'Could not create a share link')
+  );
+
+  router.post(
+    '/shares/:shareId/revoke',
+    withStudent(async (req, res, studentId) => {
+      res.json({ success: true, ...(await shares.revoke(studentId, String(req.params.shareId), clock())) });
+    }, 'Could not stop sharing')
   );
 
   router.get(
@@ -173,4 +226,51 @@ function createPlayRouter({ play, auth, clock = () => new Date() }) {
   return router;
 }
 
-module.exports = { createGardenRouter, createPlayRouter, safeAvatar };
+function createSharePageRouter({ shares }) {
+  const router = express.Router();
+  router.get('/:shareId/card.png', async (req, res) => {
+    try {
+      const png = await shares.cardPng(String(req.params.shareId), String(req.query.variant || 'og'));
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.type('png').send(png);
+    } catch (err) {
+      sendError(res, err, 'Could not draw that card');
+    }
+  });
+  router.get('/:shareId', async (req, res) => {
+    try {
+      const ip = req.ip || '';
+      const pub = await shares.publicShare(String(req.params.shareId), ip);
+      res.set('X-Robots-Tag', 'noindex');
+      res.type('html').send(shares.pageHtml(pub.copy, pub.row.shareId));
+    } catch (err) {
+      if (err instanceof GardenError && err.status === 429) {
+        return res.status(429).type('html').send('<!DOCTYPE html><title>Slow down</title><p>Too many views. Try again in a minute.</p>');
+      }
+      return res.status(404).type('html').send('<!DOCTYPE html><meta name="robots" content="noindex"><title>Not found</title><p>That link is not available.</p>');
+    }
+  });
+  return router;
+}
+
+function createGardenAdminRouter({ parent, auth }) {
+  const router = express.Router();
+  router.use(...auth);
+  router.get('/credits', async (req, res) => {
+    try {
+      const monthKey = String(req.query.monthKey || '');
+      res.json({ success: true, ...(await parent.creditReport(monthKey)) });
+    } catch (err) {
+      sendError(res, err, 'Could not load the garden credit report');
+    }
+  });
+  return router;
+}
+
+module.exports = {
+  createGardenRouter,
+  createPlayRouter,
+  createSharePageRouter,
+  createGardenAdminRouter,
+  safeAvatar,
+};

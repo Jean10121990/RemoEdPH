@@ -20,6 +20,9 @@ function createMemoryRepo(seed = {}) {
   const decorations = [];
   const grants = [];
   const notices = [];
+  const creditGrants = [];
+  const shares = [];
+  const shareAudits = [];
   let lessonCount = seed.lessons != null ? seed.lessons : 8;
   let taskCount = seed.tasks != null ? seed.tasks : 0;
   let nextId = 1;
@@ -294,13 +297,21 @@ function createMemoryRepo(seed = {}) {
       notices.push({ studentId, ...note });
     },
 
-    async grantLessonCredits({ studentId, claimId, credits }) {
+    async grantLessonCredits({ studentId, claimId, credits, expiresAt }) {
       const n = Math.max(0, Math.floor(Number(credits) || 0));
       if (!n) return { granted: false, credits: 0 };
       if (grants.some((g) => g.claimId === String(claimId))) return { granted: false, credits: n };
       grants.push({ studentId, claimId: String(claimId), credits: n });
       const s = students.get(studentId);
-      if (s) s.lessonCredits = (s.lessonCredits || 0) + n;
+      if (s) {
+        s.lessonCredits = (s.lessonCredits || 0) + n;
+        s.creditLots = s.creditLots || [];
+        s.creditLots.push({
+          creditsRemaining: n,
+          expiresAt,
+          paymentId: String(claimId),
+        });
+      }
       return { granted: true, credits: n };
     },
 
@@ -331,6 +342,76 @@ function createMemoryRepo(seed = {}) {
       const i = decorations.findIndex((d) => d.studentId === studentId && d.itemKey === itemKey);
       if (i >= 0) decorations.splice(i, 1);
     },
+
+    profile(studentId) {
+      const s = students.get(studentId);
+      return s ? { ...s } : null;
+    },
+
+    async listLinkedChildren(viewerId) {
+      const me = students.get(viewerId);
+      if (!me) return [];
+      const email = String(me.parentEmail || '').trim().toLowerCase();
+      const rows = email
+        ? [...students.values()].filter((s) => String(s.parentEmail || '').trim().toLowerCase() === email)
+        : [me];
+      return rows.map((s) => ({ ...s, creditLots: (s.creditLots || []).map((lot) => ({ ...lot })) }));
+    },
+
+    async setSharing(studentId, patch) {
+      const s = students.get(studentId);
+      if (!s) return false;
+      Object.assign(s, patch);
+      return true;
+    },
+
+    async recordCreditGrant(doc) {
+      creditGrants.push({ ...doc });
+    },
+
+    async listCreditGrants(monthKey) {
+      return creditGrants.filter((row) => !monthKey || row.monthKey === monthKey).map((row) => ({ ...row }));
+    },
+
+    async findShareByTarget(studentId, type, targetId) {
+      const row = shares.find((s) => s.studentId === studentId && s.type === type && s.targetId === targetId);
+      return row ? { ...row } : null;
+    },
+
+    async findShareById(shareId) {
+      const row = shares.find((s) => s.shareId === shareId);
+      return row ? { ...row } : null;
+    },
+
+    async insertShare(doc) {
+      if (shares.some((s) => s.studentId === doc.studentId && s.type === doc.type && s.targetId === doc.targetId)) return null;
+      shares.push({ ...doc });
+      return { ...doc };
+    },
+
+    async clearRevoke(shareId) {
+      const row = shares.find((s) => s.shareId === shareId);
+      if (row) row.revokedAt = null;
+    },
+
+    async revokeShare(shareId, now, by) {
+      const row = shares.find((s) => s.shareId === shareId);
+      if (!row) return;
+      row.revokedAt = now;
+      row.audit = row.audit || [];
+      row.audit.push({ action: 'revoke', at: now, by });
+    },
+
+    async bumpView(shareId) {
+      const row = shares.find((s) => s.shareId === shareId);
+      if (row) row.viewCount = (row.viewCount || 0) + 1;
+    },
+
+    async shareAudit(doc) {
+      shareAudits.push({ ...doc });
+    },
+
+    shareAudits() { return shareAudits.slice(); },
 
     async countMonthlyLessons() { return lessonCount; },
     async countMonthlyTasks() { return taskCount; },

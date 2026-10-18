@@ -25,6 +25,9 @@ const studentSchema = new mongoose.Schema({
   lastName: { type: String, required: false },
   /** Class-facing name shown in live classroom instead of the legal name (child privacy). */
   nickname: { type: String, default: '' },
+  /** null = follow age rule (on at 13+). Parent toggle stores true or false. */
+  sharingEnabled: { type: Boolean },
+  shareDisplay: { type: String, enum: ['first', 'nickname', 'anonymous'], default: 'first' },
   gender: { type: String },
   birthday: { type: Date },
   age: { type: Number },

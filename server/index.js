@@ -605,9 +605,11 @@ app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
 {
-  const { gardenRouter, playRouter } = require('./garden').buildRouters();
+  const { gardenRouter, playRouter, sharePageRouter, gardenAdminRouter } = require('./garden').buildRouters();
   app.use('/api/garden', noStoreProtectedResponse, gardenRouter);
   app.use('/api/play-learn', noStoreProtectedResponse, playRouter);
+  app.use('/share', sharePageRouter);
+  app.use('/api/admin/garden-credits', noStoreProtectedResponse, gardenAdminRouter);
 }
 app.use('/api/leaderboard', noStoreProtectedResponse, require('./routes/leaderboard'));
 /**
