@@ -938,6 +938,10 @@
                     
                     <!-- Trophy Cabinet / Badges Tab -->
                     <div id="badges" class="tab-content">
+                        <div class="info-section" id="referral-badge-showcase" style="margin-bottom:16px;">
+                            <h4 class="info-section-title">Badges</h4>
+                            <div id="referral-badge-list">Loading badges…</div>
+                        </div>
                         <div class="sb-cabinet" id="sb-cabinet-root">
                             <div class="sb-cabinet-hero">
                                 <div>
@@ -989,6 +993,12 @@
                             </div>
                         </div>
                         
+                        <div class="info-section">
+                            <h4 class="info-section-title">Badge privacy</h4>
+                            <label class="form-label" for="show-badges-on-profile">
+                                <input type="checkbox" id="show-badges-on-profile" checked> Show badges on my profile
+                            </label>
+                        </div>
                         <div class="info-section" id="connected-accounts-section">
                             <h4 class="info-section-title">Connected accounts</h4>
                             <p class="profile-password-hint">Link Google or Facebook to sign in without a password. You must keep a password or at least one social login.</p>
@@ -2517,6 +2527,55 @@
       document.addEventListener('DOMContentLoaded', function () {
         if (window.RemoEdOAuthProfile) RemoEdOAuthProfile.mount({});
       });
+    </script>
+    <script>
+        (function loadReferralBadges() {
+            var token = '';
+            try { token = getStudentAuthToken(); } catch (e) { return; }
+            if (!token) return;
+            var list = document.getElementById('referral-badge-list');
+            var toggle = document.getElementById('show-badges-on-profile');
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+                });
+            }
+            fetch('/api/student/referrals', { headers: { Authorization: 'Bearer ' + token } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || !data.success || !list) return;
+                    if (toggle) toggle.checked = data.showBadgesOnProfile !== false;
+                    list.innerHTML = (data.badges || []).map(function (b) {
+                        var when = b.earnedAt ? new Date(b.earnedAt).toLocaleDateString() : '';
+                        var grey = b.earned ? '' : ' style="filter:grayscale(1);opacity:.55"';
+                        var meta = b.earned ? esc(when) : esc(b.progress) + '/' + esc(b.threshold) + ' referrals';
+                        var share = b.earned && b.shareUrl
+                            ? ' <button type="button" data-share="' + esc(b.shareUrl) + '">Share</button>'
+                            : '';
+                        return '<div' + grey + ' style="display:inline-block;margin:8px;text-align:center;width:120px;">' +
+                            '<img src="' + esc(b.image) + '" alt="" width="64" height="64"><div>' + esc(b.name) +
+                            '</div><div>' + meta + share + '</div></div>';
+                    }).join('');
+                    list.querySelectorAll('[data-share]').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var url = btn.getAttribute('data-share');
+                            var text = 'I earned a RemoEdPH badge.';
+                            if (navigator.share) navigator.share({ title: 'RemoEdPH badge', text: text, url: url }).catch(function () {});
+                            else window.open(url, '_blank', 'noopener');
+                        });
+                    });
+                })
+                .catch(function () {});
+            if (toggle) {
+                toggle.addEventListener('change', function () {
+                    fetch('/api/student/referrals/privacy', {
+                        method: 'POST',
+                        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ show: toggle.checked })
+                    }).catch(function () {});
+                });
+            }
+        })();
     </script>
 </body>
 </html> 

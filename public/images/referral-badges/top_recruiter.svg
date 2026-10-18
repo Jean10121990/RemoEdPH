@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <rect width="640" height="640" rx="48" fill="#FEF3C7"/>
+  <circle cx="320" cy="280" r="160" fill="#D97706"/>
+  <text x="320" y="310" text-anchor="middle" font-size="120" font-family="Arial,sans-serif" fill="#fff">10</text>
+  <text x="320" y="520" text-anchor="middle" font-size="42" font-family="Arial,sans-serif" fill="#0f172a">Top Recruiter</text>
+</svg>

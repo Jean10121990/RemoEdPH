@@ -203,6 +203,7 @@ async function buildAuthUrl(req, provider, query) {
     firstName: String(query.firstName || '').trim().slice(0, 80) || null,
     lastName: String(query.lastName || '').trim().slice(0, 80) || null,
     username: String(query.username || '').trim().slice(0, 40) || null,
+    referralCode: String(query.referralCode || '').trim().slice(0, 64) || null,
     linkUserId: String(query.linkUserId || '').trim() || null,
     returnTo: String(query.returnTo || '').trim().slice(0, 200) || null,
   };
@@ -421,6 +422,25 @@ async function createStudentFromOAuth(req, profile, state) {
     ],
   });
   await student.save();
+
+  const referralCode = String(state.referralCode || '').trim();
+  if (referralCode) {
+    try {
+      const { resolveReferralOwner, applyReferralFields, recordReferralSignup } = require('../utils/awardReferralCommission');
+      const owner = await resolveReferralOwner(referralCode);
+      if (owner) {
+        applyReferralFields(student, owner);
+        await student.save();
+        await recordReferralSignup(student);
+      } else {
+        const studentReferral = require('./studentReferralService');
+        const attached = await studentReferral.attachReferrer(student, referralCode);
+        if (attached) await student.save();
+      }
+    } catch (refErr) {
+      console.warn('Referral attach failed during OAuth register:', refErr.message);
+    }
+  }
 
   const now = new Date();
   const marketingOn = !!state.marketingConsent;

@@ -228,6 +228,11 @@ const studentSchema = new mongoose.Schema({
   referredByTeacherId: { type: String, default: null }, // legacy (teacher only)
   referredByOwnerType: { type: String, enum: ['teacher', 'admin', null], default: null },
   referredByOwnerId: { type: String, default: null }, // teacherId or admin username
+  /** Outbound student-to-student code. Not the inbound teacher/admin referralCode. */
+  shareCode: { type: String, unique: true, sparse: true },
+  referredByStudentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
+  showBadgesOnProfile: { type: Boolean, default: true },
+  pendingReferralWins: { type: [Number], default: [] },
   /**
    * In-app notification preferences (student).
    * quietHours* uses Asia/Manila wall-clock hours (0–23).

@@ -3061,4 +3061,40 @@ router.get('/progress-reports/:year/:quarter', verifyToken, requireStudent, asyn
   }
 });
 
+router.get('/referrals', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const svc = require('./services/studentReferralService');
+    const dashboard = await svc.getDashboard(req.student._id);
+    res.json({ success: true, ...dashboard });
+  } catch (error) {
+    console.error('GET /api/student/referrals:', error);
+    res.status(500).json({ success: false, error: 'Could not load referrals' });
+  }
+});
+
+router.post('/referrals/ack', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const svc = require('./services/studentReferralService');
+    const wins = await svc.takePendingWins(req.student._id);
+    res.json({ success: true, wins });
+  } catch (error) {
+    console.error('POST /api/student/referrals/ack:', error);
+    res.status(500).json({ success: false, error: 'Could not read referral rewards' });
+  }
+});
+
+router.post('/referrals/privacy', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const svc = require('./services/studentReferralService');
+    const show = await svc.setBadgePrivacy(
+      req.student._id,
+      req.body && req.body.show !== false && req.body.show !== 'false'
+    );
+    res.json({ success: true, showBadgesOnProfile: show });
+  } catch (error) {
+    console.error('POST /api/student/referrals/privacy:', error);
+    res.status(500).json({ success: false, error: 'Could not update badge privacy' });
+  }
+});
+
 module.exports = router; 

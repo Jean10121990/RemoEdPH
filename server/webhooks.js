@@ -14,6 +14,20 @@ const {
 const router = express.Router();
 
 
+async function awardStudentReferralFromPayment(student, opts) {
+  try {
+    const svc = require('./services/studentReferralService');
+    await svc.awardOnFirstPaidPlan({
+      student,
+      paymentId: opts && opts.paymentId,
+      amountPaid: opts && opts.amountPaid,
+      planId: opts && opts.plan,
+    });
+  } catch (err) {
+    console.warn('[PAYMONGO WEBHOOK] Student referral reward failed:', err.message);
+  }
+}
+
 async function markPaymongoWebhookEventProcessed(eventId, eventType) {
   const id = String(eventId || '').trim();
   if (!id) return;
@@ -226,6 +240,20 @@ async function handlePaymongoWebhook(req, res) {
     }
 
     if (eventType !== 'checkout_session.payment.paid') {
+      if (String(eventType || '').toLowerCase().includes('refund')) {
+        try {
+          const svc = require('./services/studentReferralService');
+          const pid = String(
+            ctx.paymentId ||
+              ctx.paymentIntentId ||
+              payload?.data?.attributes?.data?.id ||
+              ''
+          ).trim();
+          if (pid) await svc.reverseStudentReferralReward(pid);
+        } catch (refundErr) {
+          console.warn('[PAYMONGO WEBHOOK] Student referral refund reverse failed:', refundErr.message);
+        }
+      }
       console.log(
         'ℹ️ [PAYMONGO WEBHOOK] Not checkout_session.payment.paid — skipping DB logic. eventType=',
         eventType
@@ -367,6 +395,11 @@ async function handlePaymongoWebhook(req, res) {
             amountPaid: Number(pending.amount || 0) || 0,
             plan: planId || pending.plan || existing.subscriptionPlan || '',
           });
+          await awardStudentReferralFromPayment(existing, {
+            amountPaid: Number(pending.amount || 0) || 0,
+            plan: planId || pending.plan || existing.subscriptionPlan || '',
+            paymentId: String(paymongoPaymentId || checkoutSessionId || idempotencyKey || ''),
+          });
         } catch (refDupErr) {
           console.warn('[PAYMONGO WEBHOOK] Referral award on duplicate path failed:', refDupErr.message);
         }
@@ -392,6 +425,15 @@ async function handlePaymongoWebhook(req, res) {
         idempotencyKey,
         paymongoPaymentId,
       });
+      try {
+        await awardStudentReferralFromPayment(existing, {
+          amountPaid: Number(pending.amount || 0) || 0,
+          plan: planId || pending.plan || existing.subscriptionPlan || '',
+          paymentId: String(paymongoPaymentId || checkoutSessionId || idempotencyKey || ''),
+        });
+      } catch (refOkErr) {
+        console.warn('[PAYMONGO WEBHOOK] Student referral reward failed:', refOkErr.message);
+      }
       await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
       return sendAck({ processed: true, refill: true, creditsAdded: applyResult.creditsAdded });
     }
@@ -456,6 +498,10 @@ async function handlePaymongoWebhook(req, res) {
       if (pendingRef) {
         const owner = await resolveReferralOwner(pendingRef);
         if (owner) applyReferralFields(student, owner);
+        else {
+          const studentReferral = require('./services/studentReferralService');
+          await studentReferral.attachReferrer(student, pendingRef);
+        }
       }
     } catch (refAttachErr) {
       console.warn('[PAYMONGO WEBHOOK] Referral attach failed:', refAttachErr.message);
@@ -526,6 +572,11 @@ async function handlePaymongoWebhook(req, res) {
         await awardReferralCommissionOnPayment(student, {
           amountPaid,
           plan: student.subscriptionPlan || normalizedPlanId || pending.plan || '',
+        });
+        await awardStudentReferralFromPayment(student, {
+          amountPaid,
+          plan: student.subscriptionPlan || normalizedPlanId || pending.plan || '',
+          paymentId: String(paymongoPaymentId || checkoutSessionId || idempotencyKey || ''),
         });
       } catch (refAwardErr) {
         console.warn('[PAYMONGO WEBHOOK] Referral commission award failed:', refAwardErr.message);

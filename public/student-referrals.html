@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="js/security-guard.js?v=4"></script>
+  <script src="js/user-session.js"></script>
+  <title>Refer & Earn - RemoEdPH</title>
+  <link rel="stylesheet" href="css/remoed-layers.css">
+  <style>
+    body { margin: 0; font-family: Nunito, "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
+    .remoed-content { padding: 24px; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; }
+    .hint { color: #475569; margin: 0 0 16px; }
+    .link-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    input.link { flex: 1; min-width: 220px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; }
+    button, .share { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; background: #1CA7E7; color: #fff; text-decoration: none; display: inline-block; }
+    .share { background: #0f172a; }
+    .shares { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 140px; background: #f1f5f9; border-radius: 12px; padding: 12px; }
+    .stat b { display: block; font-size: 1.4rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; margin: 8px 8px 0 0; padding: 8px; border-radius: 12px; background: #f8fafc; }
+    .badge.locked { filter: grayscale(1); opacity: .55; }
+    #ref-toast { display: none; margin-top: 8px; color: #047857; font-weight: 700; }
+  </style>
+</head>
+<body class="student-portal">
+  <div id="student-sidebar-root"></div>
+  <div class="remoed-content">
+    <div class="card">
+      <h1>Refer & Earn</h1>
+      <p class="hint">Share your link. Each successful referral earns 1 to 5 free lessons.</p>
+      <div class="link-row">
+        <input class="link" id="ref-link" readonly value="">
+        <button type="button" id="ref-copy">Copy</button>
+      </div>
+      <p id="ref-toast">Link copied</p>
+      <div class="shares" id="ref-shares"></div>
+    </div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><b id="stat-signups">0</b>Signups</div>
+        <div class="stat"><b id="stat-purchases">0</b>Successful purchases</div>
+        <div class="stat"><b id="stat-lessons">0</b>Free lessons earned</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Your referrals</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Credits won</th></tr></thead>
+        <tbody id="ref-rows"><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Referral badges</h2>
+      <div id="ref-badges"></div>
+    </div>
+  </div>
+  <script src="js/student-sidebar.js?v=ref-1"></script>
+  <script>
+    (function () {
+      if (window.StudentSidebar) StudentSidebar.render('student-sidebar-root', 'referrals');
+      function token() {
+        try {
+          if (window.RemoedUserSession && RemoedUserSession.getUserToken) {
+            var t = RemoedUserSession.getUserToken();
+            if (t) return t;
+          }
+        } catch (e) {}
+        return localStorage.getItem('remoed_student_token') || sessionStorage.getItem('remoed_student_token') || '';
+      }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      var shareText = 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns 1 to 5 free lessons.';
+      function popup(url) { window.open(url, '_blank', 'noopener,width=640,height=640'); }
+      function paintShares(link) {
+        var msg = shareText + ' ' + link;
+        var box = document.getElementById('ref-shares');
+        var items = [
+          ['Facebook', 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link)],
+          ['X', 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(msg)],
+          ['WhatsApp', 'https://wa.me/?text=' + encodeURIComponent(msg)],
+          ['Messenger', 'https://www.facebook.com/dialog/send?link=' + encodeURIComponent(link) + '&redirect_uri=' + encodeURIComponent(link) + '&app_id=966242223397117'],
+          ['LinkedIn', 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(link)]
+        ];
+        box.innerHTML = items.map(function (item) {
+          return '<button type="button" class="share" data-url="' + esc(item[1]) + '">' + esc(item[0]) + '</button>';
+        }).join('');
+        if (navigator.share) {
+          var native = document.createElement('button');
+          native.type = 'button';
+          native.className = 'share';
+          native.textContent = 'Share';
+          native.addEventListener('click', function () {
+            navigator.share({ title: 'RemoEdPH', text: shareText, url: link }).catch(function () {});
+          });
+          box.appendChild(native);
+        }
+        box.querySelectorAll('[data-url]').forEach(function (btn) {
+          btn.addEventListener('click', function () { popup(btn.getAttribute('data-url')); });
+        });
+      }
+      document.getElementById('ref-copy').addEventListener('click', function () {
+        var value = document.getElementById('ref-link').value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(value).catch(function () {});
+        }
+        var note = document.getElementById('ref-toast');
+        note.style.display = 'block';
+        note.textContent = 'Link copied';
+      });
+      fetch('/api/student/referrals', { headers: { Authorization: 'Bearer ' + token() } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error('load');
+          shareText = data.shareText || shareText;
+          document.getElementById('ref-link').value = data.link || '';
+          paintShares(data.link || '');
+          document.getElementById('stat-signups').textContent = data.stats.signups;
+          document.getElementById('stat-purchases').textContent = data.stats.purchases;
+          document.getElementById('stat-lessons').textContent = data.stats.freeLessons;
+          var rows = data.referrals || [];
+          document.getElementById('ref-rows').innerHTML = rows.length
+            ? rows.map(function (row) {
+                return '<tr><td>' + esc(row.name) + '</td><td>' + esc(row.email) + '</td><td>' + esc(row.status) + '</td><td>' +
+                  (row.creditsWon == null ? '—' : esc(row.creditsWon)) + '</td></tr>';
+              }).join('')
+            : '<tr><td colspan="4">No referrals yet.</td></tr>';
+          document.getElementById('ref-badges').innerHTML = (data.badges || []).map(function (b) {
+            var locked = b.earned ? '' : ' locked';
+            var extra = b.earned
+              ? '<button type="button" class="share" data-share="' + esc(b.shareUrl) + '">Share</button>'
+              : '<span>' + esc(b.progress) + '/' + esc(b.threshold) + ' referrals</span>';
+            return '<div class="badge' + locked + '"><img src="' + esc(b.image) + '" alt="" width="48" height="48"><div><strong>' +
+              esc(b.name) + '</strong><div>' + extra + '</div></div></div>';
+          }).join('');
+          document.getElementById('ref-badges').querySelectorAll('[data-share]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var url = btn.getAttribute('data-share');
+              if (navigator.share) navigator.share({ url: url, title: 'RemoEdPH badge' }).catch(function () { popup(url); });
+              else popup(url);
+            });
+          });
+        })
+        .catch(function () {
+          document.getElementById('ref-rows').innerHTML = '<tr><td colspan="4">Sign in as a student to see referrals.</td></tr>';
+        });
+    })();
+  </script>
+</body>
+</html>

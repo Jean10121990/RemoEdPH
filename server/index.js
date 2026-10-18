@@ -901,6 +901,37 @@ function sendLandingHtml(req, res) {
 }
 app.get(['/', '/index.html'], sendLandingHtml);
 
+app.get('/signup', (req, res) => {
+  const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  res.redirect(302, '/student-register.html' + q);
+});
+
+app.get('/badges/:id', async (req, res) => {
+  try {
+    const svc = require('./services/studentReferralService');
+    const badge = await svc.publicBadgeById(req.params.id);
+    if (!badge) return res.status(404).type('html').send('<!DOCTYPE html><title>Badge</title><p>Badge not found.</p>');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.type('html').send(svc.renderBadgePage(badge));
+  } catch (err) {
+    console.error('GET /badges/:id', err);
+    res.status(500).type('html').send('<!DOCTYPE html><title>Badge</title><p>Could not load this badge.</p>');
+  }
+});
+
+app.get('/u/:username', async (req, res) => {
+  try {
+    const svc = require('./services/studentReferralService');
+    const profile = await svc.publicProfileBadges(req.params.username);
+    if (!profile) return res.status(404).type('html').send('<!DOCTYPE html><title>Profile</title><p>Profile not available.</p>');
+    res.set('Cache-Control', 'public, max-age=60');
+    res.type('html').send(svc.renderPublicProfile(profile));
+  } catch (err) {
+    console.error('GET /u/:username', err);
+    res.status(500).type('html').send('<!DOCTYPE html><title>Profile</title><p>Could not load this profile.</p>');
+  }
+});
+
 // Static files after core /api mounts so API paths are never shadowed by public files
 app.use(
   express.static(publicDir, {

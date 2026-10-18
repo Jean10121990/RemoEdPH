@@ -502,6 +502,15 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 - Assessment email **Claim Free Trial** link includes `trial` + `email`. Register page asks **student first name → last name → email** (then username/password). Prefill via query + `GET /api/public/assessment-trial/:token`. Trial links **do not expire**; the only hard block is **email already registered**. Stale/invalid tokens must not block first-time signup (`POST /api/auth/student-register` resolves unredeemed trial by email).
 - **Social sign-in (Google / Facebook):** see § Social sign-in below. Classes are live one-on-one video with real teachers. Login welcome copy must not call the product AI-powered.
 
+## Student referral rewards
+
+Student-to-student referrals are separate from teacher/admin `referralCode` commissions.
+
+- Outbound code is `Student.shareCode` (lazy, 8 characters). Inbound teacher/admin code stays `referralCode`. `referredByStudentId` is set once at signup and is not updated later.
+- `GET /signup?ref=` redirects to `student-register.html` and keeps the query. `public/js/referral-tracking.js` stores the first code for 30 days.
+- The PayMongo webhook rolls `crypto.randomInt(1, 6)` once per referred student (`referral_rewards.referredUserId` unique) and adds that many credits plus milestone badges in one transaction. Range lives in `server/config/studentReferral.js`.
+- Public pages: `GET /badges/:id`, `GET /u/:username`. Own profile always lists locked badges. The public profile hides badges when `showBadgesOnProfile` is false.
+
 ## Social sign-in (Google / Facebook)
 
 Server code flow. Do not switch to a client-only Google or Facebook token. Details also in [`SECURITY.md`](SECURITY.md) and [`SKILLS.md`](SKILLS.md) § Social sign-in.

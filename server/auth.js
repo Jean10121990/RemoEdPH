@@ -1121,6 +1121,10 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
         } = require('./utils/awardReferralCommission');
         const owner = await resolveReferralOwner(code);
         if (owner) applyReferralFields(student, owner);
+        else {
+          const studentReferral = require('./services/studentReferralService');
+          await studentReferral.attachReferrer(student, code);
+        }
       } catch (e) {
         // Don't fail registration if referral lookup fails
         console.warn('Referral lookup failed during student registration:', e.message);

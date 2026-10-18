@@ -29,6 +29,7 @@
         { id: 'messages', label: 'Messages', href: 'student-messages.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
         { id: 'journey', label: 'My Learning Journey', href: 'student-learning-journey.html', studentOnly: true, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 17l4-14 4 10 4-6 2 10"/><circle cx="8" cy="17" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="16" cy="11" r="2"/><circle cx="18" cy="17" r="2"/></svg>' },
         { id: 'garden', label: 'Virtual Garden', href: 'student-virtual-garden.html', studentOnly: true, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 22v-7"/><path d="M9 18h6"/><path d="M7 14c-2-3 1-7 5-9 4 2 7 6 5 9"/><path d="M12 7c1-3 4-4 4-4s0 3-2 5"/><path d="M12 7c-1-3-4-4-4-4s0 3 2 5"/></svg>' },
+        { id: 'referrals', label: 'Refer & Earn', href: 'student-referrals.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>' },
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
         { id: 'credits', label: 'My Credits', href: 'student-credits.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M7 14h4"/></svg>' },
@@ -584,11 +585,47 @@
         });
     }
 
+    function showReferralWinToast() {
+        if (global.__remoedReferralToast) return;
+        global.__remoedReferralToast = 1;
+        var token = '';
+        try {
+            token =
+                localStorage.getItem('remoed_student_token') ||
+                sessionStorage.getItem('remoed_student_token') ||
+                '';
+        } catch (e) {
+            return;
+        }
+        if (!token) return;
+        fetch('/api/student/referrals/ack', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: '{}',
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var wins = (data && data.wins) || [];
+                wins.forEach(function (n, i) {
+                    var el = document.createElement('div');
+                    el.setAttribute('role', 'status');
+                    el.textContent = 'You won ' + n + ' free lesson' + (Number(n) === 1 ? '' : 's') + '!';
+                    el.style.cssText =
+                        'position:fixed;right:24px;z-index:4000;background:#0f172a;color:#fff;padding:14px 18px;border-radius:12px;font-weight:700;box-shadow:0 8px 24px rgba(15,23,42,.25);';
+                    el.style.bottom = 24 + i * 64 + 'px';
+                    document.body.appendChild(el);
+                    setTimeout(function () { try { el.remove(); } catch (e2) {} }, 6000);
+                });
+            })
+            .catch(function () {});
+    }
+
     function render(containerIdOrElement, activePageId) {
         var container = typeof containerIdOrElement === 'string'
             ? document.getElementById(containerIdOrElement)
             : containerIdOrElement;
         if (!container) return;
+        showReferralWinToast();
 
         // Hard cleanup: remove floating chrome toggles so collapse matches teacher (width slide, not off-canvas).
         try {
