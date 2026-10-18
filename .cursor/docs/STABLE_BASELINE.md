@@ -508,7 +508,7 @@ Student-to-student referrals are separate from teacher/admin `referralCode` comm
 
 - Outbound code is `Student.shareCode` (lazy, 8 characters). Inbound teacher/admin code stays `referralCode`. `referredByStudentId` is set once at signup and is not updated later.
 - `GET /signup?ref=` redirects to `student-register.html` and keeps the query. `public/js/referral-tracking.js` stores the first code for 30 days.
-- The PayMongo webhook rolls `crypto.randomInt(1, 6)` once per referred student (`referral_rewards.referredUserId` unique) and adds that many credits plus milestone badges in one transaction. Range lives in `server/config/studentReferral.js`.
+- The PayMongo webhook grants a fixed `REFERRAL_REWARD_CREDITS` (3) once per referred student (`referral_rewards.referredUserId` unique) plus milestone badges in one transaction. The amount lives in `server/config/studentReferral.js`. Older rows may still store the previous 1–5 roll.
 - Public pages: `GET /badges/:id`, `GET /u/:username`. Own profile always lists locked badges. The public profile hides badges when `showBadgesOnProfile` is false.
 
 ## Social sign-in (Google / Facebook)

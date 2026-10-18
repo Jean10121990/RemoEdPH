@@ -1,4 +1,6 @@
-/** Student-to-student referral. Change the range here; the roll stays server-side. */
+/** Credits granted once, when a referred student buys their first paid plan. */
+const REFERRAL_REWARD_CREDITS = 3;
+/** Older rewards were a 1–5 roll. Keep that span so those rows can still be reversed. */
 const REFERRAL_REWARD_MIN = 1;
 const REFERRAL_REWARD_MAX = 5;
 
@@ -13,6 +15,7 @@ const REFERRAL_BADGES = [
 const PAID_PLAN_IDS = new Set(['spark', 'steady', 'scholar', 'summit']);
 
 module.exports = {
+  REFERRAL_REWARD_CREDITS,
   REFERRAL_REWARD_MIN,
   REFERRAL_REWARD_MAX,
   REFERRAL_BADGES,
