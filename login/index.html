@@ -24,6 +24,7 @@
         margin: 0;
         padding: 24px;
         min-height: 100vh;
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -35,9 +36,11 @@
           var(--bg);
       }
       .login-card {
-        width: min(980px, 100%);
+        width: min(1100px, 100%);
+        max-height: calc(100vh - 48px);
         display: grid;
-        grid-template-columns: 1.05fr 0.95fr;
+        grid-template-columns: 1fr 1fr;
+        align-items: stretch;
         background: var(--surface);
         border-radius: 22px;
         box-shadow: 0 20px 48px rgba(0, 100, 140, 0.12);
@@ -45,15 +48,19 @@
         overflow: hidden;
       }
       .panel {
-        padding: 44px 48px;
+        padding: 24px 36px;
+        min-width: 0;
       }
       .visual {
         background: linear-gradient(160deg, #008fc4 0%, #00aeef 48%, #007db0 100%);
         color: #f8fafc;
-        padding: 44px 40px;
+        padding: 40px;
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
         position: relative;
+        min-width: 0;
       }
       .visual::after {
         content: '';
@@ -69,26 +76,32 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 18px;
+        margin-bottom: 12px;
       }
       .brand img {
-        height: 44px;
+        height: 40px;
+        width: auto;
+        flex: none;
       }
       .brand-name {
         font-weight: 800;
         color: var(--primary-dark);
-        font-size: 1.4rem;
+        font-size: 1.25rem;
         letter-spacing: 0.02em;
+        line-height: 1.1;
       }
       .brand-subtitle {
-        font-size: 0.9rem;
+        margin-top: 2px;
+        font-size: 0.78rem;
         color: var(--muted);
+        line-height: 1.3;
       }
       .subtitle {
-        margin: 0 0 24px;
+        margin: 0 0 16px;
         color: var(--muted);
-        font-size: 0.98rem;
-        line-height: 1.55;
+        font-size: 0.92rem;
+        line-height: 1.3;
+        white-space: nowrap;
       }
       .field {
         margin-bottom: 16px;
@@ -98,17 +111,21 @@
         margin-bottom: 8px;
         font-weight: 700;
         color: var(--text);
-        font-size: 0.95rem;
+        font-size: 0.92rem;
       }
       input[type="text"],
       input[type="password"] {
         width: 100%;
+        min-height: 48px;
         border: 2px solid var(--stroke);
         border-radius: 12px;
-        padding: 12px 16px;
+        padding: 10px 16px;
         font-size: 1rem;
         background: #fff;
         box-sizing: border-box;
+      }
+      .login-card .remoed-pw-wrap {
+        min-height: 48px;
       }
       input[type="text"]:focus,
       input[type="password"]:focus {
@@ -116,13 +133,24 @@
         border-color: var(--primary);
         box-shadow: 0 0 0 4px rgba(0, 174, 239, 0.14);
       }
+      .auth-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 0 16px;
+        min-height: 44px;
+      }
       .forgot-inline {
-        display: inline-block;
-        margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        margin: 0;
         font-size: 0.88rem;
         font-weight: 600;
         color: var(--primary-dark);
         text-decoration: none;
+        white-space: nowrap;
       }
       .forgot-inline:hover {
         text-decoration: underline;
@@ -131,7 +159,8 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        margin: 0 0 18px;
+        margin: 0;
+        min-height: 44px;
         font-weight: 600;
         cursor: pointer;
         color: var(--text);
@@ -145,9 +174,10 @@
       }
       .btn {
         width: 100%;
-        border: 2px solid var(--accent);
+        min-height: 48px;
+        border: 2px solid transparent;
         border-radius: 999px;
-        padding: 12px 16px;
+        padding: 10px 16px;
         font-weight: 800;
         font-size: 1rem;
         color: #fff;
@@ -157,6 +187,13 @@
       }
       .btn:hover {
         box-shadow: 0 10px 24px rgba(0, 143, 196, 0.36);
+      }
+      .btn:focus {
+        outline: none;
+      }
+      .btn:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 3px;
       }
       .btn:disabled {
         opacity: 0.7;
@@ -172,19 +209,52 @@
         background: #fff1f2;
         color: #b91c1c;
       }
-      .links {
-        margin-top: 18px;
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
+      .signup-line {
+        margin: 16px 0 0;
+        text-align: center;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: var(--text);
       }
-      .links a {
+      .signup-line a {
         color: var(--primary-dark);
         font-weight: 700;
         text-decoration: none;
       }
-      .links a:hover {
+      .signup-line a:hover {
         text-decoration: underline;
+      }
+      .forgot-inline:focus-visible,
+      .signup-line a:focus-visible,
+      .login-card .remoed-oauth-btn:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .login-card .remoed-oauth {
+        margin: 16px 0 0;
+      }
+      .login-card .remoed-oauth-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 16px;
+      }
+      .login-card .remoed-oauth-title::before,
+      .login-card .remoed-oauth-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: currentColor;
+        opacity: 0.45;
+      }
+      .login-card .remoed-oauth-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .login-card .remoed-oauth-btn {
+        width: 100%;
+        min-height: 44px;
       }
       .visual h3 {
         margin: 0 0 12px;
@@ -197,15 +267,50 @@
         color: rgba(255, 255, 255, 0.92);
         line-height: 1.65;
       }
+      .features {
+        list-style: none;
+        margin: 20px 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .features li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        font-weight: 600;
+      }
+      .features svg {
+        width: 22px;
+        height: 22px;
+        flex: none;
+      }
       @media (max-width: 900px) {
         .login-card {
           grid-template-columns: 1fr;
+          max-height: none;
         }
         .visual {
           display: none;
         }
         .panel {
-          padding: 34px 24px;
+          padding: 28px 24px;
+        }
+        .subtitle {
+          white-space: normal;
+        }
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+        .panel {
+          padding: 20px;
+        }
+        .login-card .remoed-oauth-row {
+          grid-template-columns: 1fr;
         }
       }
     </style>
@@ -221,7 +326,7 @@
           </div>
         </div>
 
-        <p class="subtitle">Students and teachers can sign in here with email or username.</p>
+        <p class="subtitle">Sign in with your email or username.</p>
 
         <div id="login-error" class="status"></div>
 
@@ -233,29 +338,40 @@
           <div class="field">
             <label for="password">Password</label>
             <input id="password" name="password" type="password" placeholder="Enter your password" required autocomplete="current-password" />
+          </div>
+          <div class="auth-row">
+            <label class="remember-row" for="remember-me">
+              <input id="remember-me" type="checkbox" />
+              Remember me on this device
+            </label>
             <a class="forgot-inline" href="/forgot-password.html">Forgot password?</a>
           </div>
-          <label class="remember-row" for="remember-me">
-            <input id="remember-me" type="checkbox" />
-            Remember me on this device
-          </label>
           <button id="login-btn" type="submit" class="btn">Login</button>
         </form>
 
         <div class="remoed-oauth" id="remoed-oauth-login" hidden></div>
         <p class="oauth-note" id="oauth-login-note" style="display:none;font-size:0.85rem;color:#b45309;font-weight:600;margin-top:8px;"></p>
 
-        <div class="links">
-          <a href="/index.html">Back to Home</a>
-          <a href="/student-assessment.html">New student? Take the assessment</a>
-        </div>
+        <p class="signup-line">Don't have an account? <a href="/student-assessment.html">Sign up</a> · <a href="/index.html">Back to Home</a></p>
       </div>
 
       <div class="visual">
-        <div>
-          <h3>Welcome to RemoEdPH</h3>
-          <p>Your gateway to live one-on-one English classes with real teachers. Sign in to open your personalized dashboard.</p>
-        </div>
+        <h3>Welcome to RemoEdPH</h3>
+        <p>Your gateway to live one-on-one English classes with real teachers. Sign in to open your personalized dashboard.</p>
+        <ul class="features">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+            Live one-on-one classes
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Real, friendly teachers
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+            Personalized dashboard
+          </li>
+        </ul>
       </div>
     </div>
 
