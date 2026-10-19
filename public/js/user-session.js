@@ -318,7 +318,9 @@
     FREE_PLAN_SEQUENCE_DONE: 1,
     FREE_PLAN_LOCKED: 1,
     ALREADY_BOOKED: 1,
-    SLOT_NOT_AVAILABLE: 1
+    SLOT_NOT_AVAILABLE: 1,
+    WRONG_PIN: 1,
+    WRONG_ACCOUNT_PASSWORD: 1
   };
 
   async function isBusinessGateResponse(res) {

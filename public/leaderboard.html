@@ -6,7 +6,7 @@
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <script src="js/security-guard.js?v=lb-admin-3"></script>
-  <script src="js/user-session.js?v=lb-admin-3"></script>
+  <script src="js/user-session.js?v=wrong-pin-1"></script>
   <script src="js/admin-session.js?v=lb-admin-3"></script>
   <script>
     (function () {
@@ -466,7 +466,7 @@
       body.classList.remove('teacher-portal', 'admin-portal');
       root.id = 'student-sidebar-root';
       var ss = document.createElement('script');
-      ss.src = 'js/student-sidebar.js?v=parent-pin-reset-1';
+      ss.src = 'js/student-sidebar.js?v=parent-pin-wrong-1';
       ss.onload = function () {
         StudentSidebar.render('student-sidebar-root', 'leaderboard');
         var h = document.createElement('script');

@@ -319,7 +319,11 @@
                     openPinModal(kind === 'verify' ? 'setup' : 'verify');
                     return;
                 }
-                if (!res.ok || !res.j.success) throw new Error((res.j && res.j.message) || 'Could not check the PIN');
+                if (!res.ok || !res.j.success) {
+                    var text = (res.j && res.j.message) || 'Could not check the PIN';
+                    if (kind === 'verify' && res.j && res.j.code === 'WRONG_PIN') text = 'Wrong PIN';
+                    throw new Error(text);
+                }
                 try {
                     sessionStorage.setItem(UNLOCK_KEY, '1');
                     localStorage.setItem(MODE_KEY, 'parents');
@@ -329,6 +333,10 @@
             }).catch(function (err) {
                 save.disabled = false;
                 msg.textContent = err.message || 'Could not check the PIN';
+                if (msg.textContent === 'Wrong PIN' && card.pin) {
+                    card.pin.value = '';
+                    card.pin.focus();
+                }
             });
         });
         wrap.appendChild(card);

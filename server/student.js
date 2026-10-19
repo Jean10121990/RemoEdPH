@@ -234,7 +234,7 @@ router.post('/portal-mode/verify', verifyToken, requireStudent, async (req, res)
         fails: next,
         lockedUntil: next >= 5 ? now + 10 * 60 * 1000 : 0,
       });
-      return res.status(403).json({ success: false, message: 'That PIN is not correct.' });
+      return res.status(403).json({ success: false, code: 'WRONG_PIN', message: 'Wrong PIN' });
     }
     parentPinAttempts.delete(key);
     res.json({ success: true });
@@ -273,7 +273,7 @@ router.post('/portal-mode/pin/reset', verifyToken, requireStudent, async (req, r
         fails: next,
         lockedUntil: next >= 5 ? now + 10 * 60 * 1000 : 0,
       });
-      return res.status(403).json({ success: false, message: 'That password is not correct.' });
+      return res.status(403).json({ success: false, code: 'WRONG_ACCOUNT_PASSWORD', message: 'That password is not correct.' });
     }
     parentPinAttempts.delete(key);
     parentPinAttempts.delete(parentPinClientKey(req));
