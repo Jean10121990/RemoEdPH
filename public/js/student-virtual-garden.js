@@ -768,50 +768,130 @@
         (body.cards || []).forEach(function (card) {
           var el = document.createElement('section');
           el.className = 'vg-parent-card';
+          var life = card.lifetime || {};
+          var earned = card.freeLessonsThisMonth || 0;
+
+          var head = document.createElement('div');
+          head.className = 'vg-parent-card__head';
+          var eyebrow = document.createElement('p');
+          eyebrow.className = 'vg-parent-card__eyebrow';
+          eyebrow.textContent = 'Free lessons this month';
           var title = document.createElement('h3');
-          title.textContent = 'Free lessons earned by ' + card.childName + ' this month';
+          title.textContent = card.childName || 'Your child';
+          head.appendChild(eyebrow);
+          head.appendChild(title);
+          el.appendChild(head);
+
+          var hero = document.createElement('div');
+          hero.className = 'vg-parent-card__hero';
+          var count = document.createElement('div');
+          count.className = 'vg-parent-card__count';
           var big = document.createElement('strong');
-          big.textContent = String(card.freeLessonsThisMonth || 0);
-          el.appendChild(title);
-          el.appendChild(big);
-          if (card.zero) {
-            var zero = document.createElement('p');
-            zero.textContent = card.zeroMessage || 'No free lessons yet this month.';
-            el.appendChild(zero);
-          }
+          big.textContent = String(earned);
+          var countLabel = document.createElement('span');
+          countLabel.textContent = 'Earned';
+          count.appendChild(big);
+          count.appendChild(countLabel);
+          var status = document.createElement('p');
+          status.className = 'vg-parent-card__status';
+          status.textContent = card.zero
+            ? (card.zeroMessage || 'No free lessons yet this month.')
+            : earned + ' free ' + (earned === 1 ? 'lesson' : 'lessons') + ' earned';
+          var copy = document.createElement('div');
+          copy.className = 'vg-parent-card__copy';
+          copy.appendChild(status);
+          hero.appendChild(count);
+          hero.appendChild(copy);
+          el.appendChild(hero);
+
           (card.breakdown || []).forEach(function (line) {
             var p = document.createElement('p');
+            p.className = 'vg-parent-card__line';
             p.textContent = line.label + ': ' + line.credits;
             el.appendChild(p);
           });
+
           if (card.tree) {
-            var progress = document.createElement('p');
-            progress.textContent = card.tree.text;
-            el.appendChild(progress);
+            var tree = document.createElement('div');
+            tree.className = 'vg-parent-card__tree';
+            var label = document.createElement('div');
+            label.className = 'vg-parent-card__tree-label';
+            var name = document.createElement('span');
+            name.textContent = (card.tree.species || 'Tree') + (card.tree.stage ? ' · ' + card.tree.stage : '');
+            var ratio = document.createElement('span');
+            var done = Number(card.tree.lessonsDone) || 0;
+            var target = Number(card.tree.lessonsTarget) || 0;
+            ratio.textContent = target ? done + ' / ' + target : String(done);
+            label.appendChild(name);
+            label.appendChild(ratio);
+            var bar = document.createElement('div');
+            bar.className = 'vg-parent-card__bar';
+            bar.setAttribute('role', 'progressbar');
+            bar.setAttribute('aria-valuemin', '0');
+            bar.setAttribute('aria-valuemax', String(target || 0));
+            bar.setAttribute('aria-valuenow', String(done));
+            bar.setAttribute('aria-label', name.textContent + ' lessons');
+            var fill = document.createElement('span');
+            var pct = target > 0 ? Math.max(0, Math.min(100, Math.round((done / target) * 100))) : 0;
+            fill.style.width = pct + '%';
+            bar.appendChild(fill);
+            tree.appendChild(label);
+            tree.appendChild(bar);
+            if (card.eligibilityTip) {
+              var tip = document.createElement('p');
+              tip.className = 'vg-parent-card__tip';
+              var rawTip = String(card.eligibilityTip);
+              tip.textContent = rawTip.charAt(0).toUpperCase() + rawTip.slice(1);
+              tree.appendChild(tip);
+            }
+            copy.appendChild(tree);
           }
-          if (card.eligibilityTip) {
-            var tip = document.createElement('p');
-            tip.textContent = card.eligibilityTip;
-            el.appendChild(tip);
+
+          var stats = document.createElement('ul');
+          stats.className = 'vg-parent-card__stats';
+          [
+            [card.unusedCredits || 0, 'Unused'],
+            [life.freeLessons || 0, 'All time'],
+            [life.trees || 0, 'Trees'],
+            [life.badges || 0, 'Badges'],
+          ].forEach(function (pair) {
+            var li = document.createElement('li');
+            var n = document.createElement('b');
+            n.textContent = String(pair[0]);
+            var cap = document.createElement('span');
+            cap.textContent = pair[1];
+            li.appendChild(n);
+            li.appendChild(cap);
+            stats.appendChild(li);
+          });
+          el.appendChild(stats);
+
+          if (card.nearestExpiry) {
+            var expiry = document.createElement('p');
+            expiry.className = 'vg-parent-card__expiry';
+            expiry.textContent = 'Nearest unused lesson expires ' + new Date(card.nearestExpiry).toLocaleDateString();
+            el.appendChild(expiry);
           }
-          var unused = document.createElement('p');
-          unused.textContent = (card.unusedCredits || 0) + ' unused free lessons'
-            + (card.nearestExpiry ? '. Nearest expiry ' + new Date(card.nearestExpiry).toLocaleDateString() : '');
-          el.appendChild(unused);
+
+          var actions = document.createElement('div');
+          actions.className = 'vg-parent-card__actions';
           var book = document.createElement('a');
+          book.className = 'vg-parent-card__book';
           book.href = card.bookUrl || 'student-book.html';
-          book.textContent = 'Book a free lesson';
-          el.appendChild(book);
-          var life = card.lifetime || {};
-          var totals = document.createElement('p');
-          totals.textContent = (life.freeLessons || 0) + ' free lessons · ' + (life.trees || 0) + ' trees · ' + (life.badges || 0) + ' badges';
-          el.appendChild(totals);
-          var shareRow = document.createElement('p');
-          if (!card.sharingEnabled) shareRow.textContent = 'Ask your parent to turn on sharing';
+          var bookIcon = document.createElement('span');
+          bookIcon.setAttribute('data-lucide', 'book-open');
+          book.appendChild(bookIcon);
+          book.appendChild(document.createTextNode('Book a free lesson'));
           var toggle = document.createElement('button');
           toggle.type = 'button';
-          toggle.textContent = card.sharingEnabled ? 'Sharing on' : 'Turn on sharing';
+          toggle.className = 'vg-parent-card__share';
+          toggle.setAttribute('aria-pressed', card.sharingEnabled ? 'true' : 'false');
+          var shareIcon = document.createElement('span');
+          shareIcon.setAttribute('data-lucide', 'share-2');
+          toggle.appendChild(shareIcon);
+          toggle.appendChild(document.createTextNode(card.sharingEnabled ? 'Sharing on' : 'Turn on sharing'));
           toggle.addEventListener('click', function () {
+            toggle.disabled = true;
             fetch('/api/garden/parent/sharing', {
               method: 'POST',
               headers: headers(),
@@ -823,8 +903,16 @@
               }),
             }).then(function () { loadParentCards(); });
           });
-          el.appendChild(shareRow);
-          el.appendChild(toggle);
+          actions.appendChild(book);
+          actions.appendChild(toggle);
+          el.appendChild(actions);
+          if (!card.sharingEnabled) {
+            var hint = document.createElement('p');
+            hint.className = 'vg-parent-card__hint';
+            hint.textContent = 'Turn on sharing when you want a public card for this child.';
+            el.appendChild(hint);
+          }
+          if (window.RemoedLucide) RemoedLucide.fillAll(el);
           box.appendChild(el);
         });
       })

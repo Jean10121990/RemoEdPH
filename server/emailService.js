@@ -511,9 +511,9 @@ This is an automated message from RemoEdPH. Please do not reply.
                 <div class="value">${safeScore}</div>
               </div>
 
-              <p>Your child is eligible for <strong>one free trial class</strong>. Create an account with the same email you used for the assessment to claim it.</p>
+              <p>Your child is eligible for <strong>Free Trial Lessons</strong>. Create an account with the same email you used for the assessment to claim them.</p>
               <div style="text-align:center; margin: 22px 0;">
-                <a class="btn" href="${safeUrl}">Claim Free Trial Class</a>
+                <a class="btn" href="${safeUrl}">Claim Free Trial Lessons</a>
               </div>
 
               <p>If the button does not work, copy and paste this link into your browser:<br>
@@ -534,7 +534,7 @@ Thank you for completing the RemoEdPH English level assessment for ${subjectChil
 CEFR Level: ${cefrLevel || 'A1'}
 Score: ${score == null ? 0 : score}
 
-Your child is eligible for one free trial class. Create an account with the same email you used for the assessment:
+Your child is eligible for Free Trial Lessons. Create an account with the same email you used for the assessment:
 
 ${registerUrl || ''}
 
