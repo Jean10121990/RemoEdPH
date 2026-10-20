@@ -79,37 +79,65 @@ function esc(value) {
   }[c]));
 }
 
+function trialInviteFor(lead) {
+  const to = String(lead.parentEmail || '').trim();
+  const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').replace(/\/$/, '');
+  const registerUrl =
+    base +
+    '/student-register.html?trial=' +
+    encodeURIComponent(lead.token) +
+    '&email=' +
+    encodeURIComponent(to);
+  const child = String(lead.childName || 'your child').trim() || 'your child';
+  const subject = 'Sign up to claim your free trial lessons';
+  const shareText =
+    'Sign up to claim free trial lessons for ' + child + ' at no cost. Use the same email from the level assessment: ' + registerUrl;
+  const text =
+    'Hello,\n\n' +
+    'Sign up to claim free trial lessons for ' + child + ' at no cost. Use the same email you used for the level assessment:\n\n' +
+    registerUrl + '\n\n— RemoEdPH';
+  const html =
+    '<p>Hello,</p>' +
+    '<p>Sign up to claim <strong>free trial lessons</strong> for <strong>' + esc(child) + '</strong> at no cost. Use the same email you used for the level assessment.</p>' +
+    '<p><a href="' + esc(registerUrl) + '">Sign up and claim free trial lessons</a></p>' +
+    '<p>— RemoEdPH</p>';
+  return { to, child, subject, text, shareText, html, registerUrl };
+}
+
+async function loadUnregisteredLead(id) {
+  if (!mongoose.isValidObjectId(id)) return { error: 'Invalid lead.', status: 400 };
+  const lead = await AssessmentTrial.findById(id).select('parentEmail childName token redeemedByStudentId');
+  if (!lead || lead.redeemedByStudentId) return { error: 'This lead is already registered.', status: 404 };
+  if (!String(lead.parentEmail || '').trim()) return { error: 'This lead has no email.', status: 400 };
+  return { lead };
+}
+
+router.get('/:id/trial-invite', async (req, res) => {
+  try {
+    const loaded = await loadUnregisteredLead(req.params.id);
+    if (!loaded.lead) return res.status(loaded.status).json({ success: false, error: loaded.error });
+    const invite = trialInviteFor(loaded.lead);
+    res.json({
+      success: true,
+      to: invite.to,
+      childName: invite.child,
+      subject: invite.subject,
+      text: invite.text,
+      shareText: invite.shareText,
+      registerUrl: invite.registerUrl,
+    });
+  } catch (err) {
+    console.error('level-assessments trial preview:', err);
+    res.status(500).json({ success: false, error: 'Could not load the invitation.' });
+  }
+});
+
 router.post('/:id/trial-invite', async (req, res) => {
   try {
-    const id = req.params.id;
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ success: false, error: 'Invalid lead.' });
-    }
-    const lead = await AssessmentTrial.findById(id).select('parentEmail childName token redeemedByStudentId');
-    if (!lead || lead.redeemedByStudentId) {
-      return res.status(404).json({ success: false, error: 'This lead is already registered.' });
-    }
-    const to = String(lead.parentEmail || '').trim();
-    if (!to) return res.status(400).json({ success: false, error: 'This lead has no email.' });
-    const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').replace(/\/$/, '');
-    const registerUrl =
-      base +
-      '/student-register.html?trial=' +
-      encodeURIComponent(lead.token) +
-      '&email=' +
-      encodeURIComponent(to);
-    const child = String(lead.childName || 'your child').trim() || 'your child';
-    const subject = 'Sign up to claim your free trial lessons';
-    const text =
-      'Hello,\n\n' +
-      'Sign up to claim free trial lessons for ' + child + ' at no cost. Use the same email you used for the level assessment:\n\n' +
-      registerUrl + '\n\n— RemoEdPH';
-    const html =
-      '<p>Hello,</p>' +
-      '<p>Sign up to claim <strong>free trial lessons</strong> for <strong>' + esc(child) + '</strong> at no cost. Use the same email you used for the level assessment.</p>' +
-      '<p><a href="' + esc(registerUrl) + '">Sign up and claim free trial lessons</a></p>' +
-      '<p>— RemoEdPH</p>';
-    const result = await sendRawEmail(to, subject, html, text);
+    const loaded = await loadUnregisteredLead(req.params.id);
+    if (!loaded.lead) return res.status(loaded.status).json({ success: false, error: loaded.error });
+    const invite = trialInviteFor(loaded.lead);
+    const result = await sendRawEmail(invite.to, invite.subject, invite.html, invite.text);
     if (!result || !result.success) {
       return res.status(502).json({ success: false, error: 'Could not send the invitation.' });
     }

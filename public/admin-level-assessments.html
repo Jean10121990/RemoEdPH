@@ -15,8 +15,17 @@
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
     button { min-height: 40px; border: none; border-radius: 8px; background: #0A7FD4; color: #fff; font-weight: 700; padding: 0 14px; cursor: pointer; }
     button.side { min-height: 34px; font-size: 0.82rem; white-space: nowrap; }
+    button.ghost { background: #fff; color: #0A7FD4; border: 2px solid #0A7FD4; }
     button:disabled { opacity: 0.55; cursor: default; }
-    .err { color: #991b1b; }
+    .err { color: #991b1b; min-height: 1.2em; }
+    .preview { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20; }
+    .preview[hidden] { display: none; }
+    .sheet { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2); }
+    .sheet h2 { margin: 0 0 8px; font-size: 1.2rem; }
+    .mail { white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin: 8px 0; }
+    .link { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; }
+    .actions, .shares { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .shares button { background: #0f172a; }
   </style>
 </head>
 <body>
@@ -33,6 +42,30 @@
       </thead>
       <tbody id="rows"></tbody>
     </table>
+  </div>
+  <div class="preview" id="preview" hidden>
+    <div class="sheet" role="dialog" aria-labelledby="preview-title">
+      <h2 id="preview-title">Invitation preview</h2>
+      <p id="preview-to"></p>
+      <p id="preview-subject"></p>
+      <div class="mail" id="preview-text"></div>
+      <input class="link" id="preview-link" readonly>
+      <div class="actions">
+        <button type="button" id="copy-link">Copy link</button>
+        <button type="button" class="ghost" id="copy-message">Copy message</button>
+        <button type="button" id="preview-send">Send email</button>
+        <button type="button" class="ghost" id="preview-close">Close</button>
+      </div>
+      <div class="shares">
+        <button type="button" data-share="whatsapp">WhatsApp</button>
+        <button type="button" data-share="messenger">Messenger</button>
+        <button type="button" data-share="x">X</button>
+        <button type="button" data-share="tiktok">TikTok</button>
+        <button type="button" data-share="instagram">Instagram</button>
+        <button type="button" data-share="linkedin">LinkedIn</button>
+      </div>
+      <p class="err" id="preview-note"></p>
+    </div>
   </div>
   <script>
     (function () {
@@ -57,33 +90,115 @@
                 '<td>' + esc(lead.childName) + '</td><td>' + esc(lead.parentEmail) + '</td><td>' + esc(lead.phone) + '</td>' +
                 '<td>' + esc(lead.level) + '</td><td>' + esc(lead.score) + '</td><td>' + esc(when) + '</td>' +
                 '<td>' + (lead.registered ? 'Registered' : 'Not registered') + '</td>' +
-                '<td>' + (lead.registered ? '' : '<button type="button" class="side" data-invite="' + esc(lead.id) + '">Invite to sign up</button>') + '</td>';
+                '<td>' + (lead.registered ? '' : '<button type="button" class="side" data-preview="' + esc(lead.id) + '">Preview invite</button>') + '</td>';
               tb.appendChild(tr);
             });
           })
           .catch(function () { document.getElementById('err').textContent = 'Could not load leads.'; });
       }
+      var draft = null;
+      function copyText(value) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(value);
+        }
+        var area = document.createElement('textarea');
+        area.value = value;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+        return Promise.resolve();
+      }
+      function openShare(kind) {
+        if (!draft) return;
+        var text = draft.shareText || draft.text || '';
+        var url = draft.registerUrl || '';
+        var note = document.getElementById('preview-note');
+        if (kind === 'whatsapp') {
+          window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+          return;
+        }
+        if (kind === 'x') {
+          window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
+          return;
+        }
+        if (kind === 'linkedin') {
+          window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url), '_blank', 'noopener');
+          return;
+        }
+        var sites = {
+          messenger: 'https://www.messenger.com/',
+          tiktok: 'https://www.tiktok.com/',
+          instagram: 'https://www.instagram.com/'
+        };
+        copyText(text).then(function () {
+          note.textContent = 'Message copied. Paste it in the chat.';
+          window.open(sites[kind], '_blank', 'noopener');
+        });
+      }
+      function openPreview(id) {
+        var note = document.getElementById('preview-note');
+        note.textContent = '';
+        fetch('/api/admin/level-assessments/' + encodeURIComponent(id) + '/trial-invite', {
+          headers: { Authorization: 'Bearer ' + token() },
+          credentials: 'include'
+        }).then(function (r) { return r.json(); }).then(function (body) {
+          if (!body || !body.success) {
+            document.getElementById('err').textContent = (body && body.error) || 'Could not load the invitation.';
+            return;
+          }
+          draft = body;
+          document.getElementById('preview-to').textContent = 'To: ' + (body.to || '');
+          document.getElementById('preview-subject').textContent = 'Subject: ' + (body.subject || '');
+          document.getElementById('preview-text').textContent = body.text || '';
+          document.getElementById('preview-link').value = body.registerUrl || '';
+          document.getElementById('preview-send').setAttribute('data-id', id);
+          document.getElementById('preview').hidden = false;
+        }).catch(function () {
+          document.getElementById('err').textContent = 'Could not load the invitation.';
+        });
+      }
       document.getElementById('rows').addEventListener('click', function (ev) {
-        var btn = ev.target && ev.target.closest ? ev.target.closest('button[data-invite]') : null;
+        var btn = ev.target && ev.target.closest ? ev.target.closest('button[data-preview]') : null;
         if (!btn) return;
-        var id = btn.getAttribute('data-invite');
+        openPreview(btn.getAttribute('data-preview'));
+      });
+      document.getElementById('copy-link').addEventListener('click', function () {
+        if (!draft || !draft.registerUrl) return;
+        copyText(draft.registerUrl).then(function () {
+          document.getElementById('preview-note').textContent = 'Link copied.';
+        });
+      });
+      document.getElementById('copy-message').addEventListener('click', function () {
+        if (!draft) return;
+        copyText(draft.shareText || draft.text || '').then(function () {
+          document.getElementById('preview-note').textContent = 'Message copied.';
+        });
+      });
+      document.getElementById('preview').addEventListener('click', function (ev) {
+        var share = ev.target && ev.target.closest ? ev.target.closest('button[data-share]') : null;
+        if (share) openShare(share.getAttribute('data-share'));
+      });
+      document.getElementById('preview-close').addEventListener('click', function () {
+        document.getElementById('preview').hidden = true;
+      });
+      document.getElementById('preview-send').addEventListener('click', function () {
+        var btn = document.getElementById('preview-send');
+        var id = btn.getAttribute('data-id');
+        if (!id) return;
         btn.disabled = true;
         fetch('/api/admin/level-assessments/' + encodeURIComponent(id) + '/trial-invite', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
           credentials: 'include'
         }).then(function (r) { return r.json(); }).then(function (body) {
-          var err = document.getElementById('err');
-          if (body && body.success) {
-            btn.textContent = 'Sent';
-            err.textContent = 'Invitation sent. They can sign up and claim free trial lessons at no cost.';
-          } else {
-            btn.disabled = false;
-            err.textContent = (body && body.error) || 'Could not send.';
-          }
+          btn.disabled = false;
+          document.getElementById('preview-note').textContent = body && body.success
+            ? 'Email sent.'
+            : ((body && body.error) || 'Could not send.');
         }).catch(function () {
           btn.disabled = false;
-          document.getElementById('err').textContent = 'Could not send.';
+          document.getElementById('preview-note').textContent = 'Could not send.';
         });
       });
       document.getElementById('invite').addEventListener('click', function () {

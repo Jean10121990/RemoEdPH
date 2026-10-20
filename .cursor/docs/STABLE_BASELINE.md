@@ -486,7 +486,7 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 - Page: `public/admin-hr-documents.html` (HR Hub Documents; Super-Admin / HR).
 - Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
 - Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
-- HR Hub → Level Assessment shows **Invite to sign up** on each lead who is not registered. That button emails only the address stored on the assessment and links to `student-register.html` so they can claim free trial lessons at no cost. Registered rows have no button.
+- HR Hub → Level Assessment shows **Preview invite** on each lead who is not registered. The preview shows the mail, copies the signup link or the message, and opens WhatsApp, Messenger, X, TikTok, Instagram, or LinkedIn so the link can be sent by hand. Messenger, TikTok, and Instagram get the copied message because those apps do not accept a prefilled post from the browser. **Send email** still mails only the address stored on that assessment. Registered rows have no button.
 
 ## Student family / emergency (admin View Profile)
 
