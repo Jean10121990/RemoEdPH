@@ -311,9 +311,9 @@
       </div>
 
       <h1 class="login-title">Create your student account</h1>
-      <p class="subtitle">Register once, then book your 3 free lessons: How to Navigate the Student Portal, About RemoEd PH, and Welcome.</p>
+      <p class="subtitle">Register once, then claim your free trial lessons. Steps 1–3 are free.</p>
       <div class="trial-hint" id="assessment-trial-hint">
-        Use the same email you used on the assessment, then log in and book Lesson 1 of your 3 free lessons.
+        Use the same email you used on the assessment, then log in and claim your free trial lessons.
       </div>
       <div class="referral-chip" id="referral-chip"></div>
 
@@ -392,7 +392,7 @@
         <h3>Welcome to RemoEdPH</h3>
         <p>Live classes, games, and progress tracking — for young English learners in the Philippines and around the world.</p>
         <ul>
-          <li>Book your free Lesson 1 trial</li>
+          <li>Claim your free trial lessons</li>
           <li>Learn with certified teachers</li>
           <li>Track badges and progress</li>
         </ul>
@@ -670,10 +670,10 @@
         if (data.success) {
           if (data.assessmentTrialActivated) {
             errorDiv.textContent =
-              'Account created! You have 3 free lessons — How to Navigate the Student Portal, About RemoEd PH, and Welcome. Log in and book Lesson 1.';
+              'Account created! Log in and claim your free trial lessons. Steps 1–3 are free.';
           } else {
             errorDiv.textContent =
-              'Account created! Log in and book your 3 free lessons: How to Navigate the Student Portal, About RemoEd PH, and Welcome.';
+              'Account created! Log in and claim your free trial lessons.';
           }
           errorDiv.className = 'register-error register-success';
           errorDiv.style.display = 'block';
