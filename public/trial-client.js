@@ -43,20 +43,39 @@
     });
   }
 
+  function idOf(value) {
+    if (!value) return '';
+    if (typeof value === 'object') {
+      if (value.$oid) return idOf(value.$oid);
+      if (value._id) return idOf(value._id);
+      return '';
+    }
+    var text = String(value);
+    return /^[a-fA-F0-9]{24}$/.test(text) ? text : '';
+  }
+
+  function remember(id) {
+    trialId = idOf(id);
+    try {
+      if (trialId) sessionStorage.setItem('trialId', trialId);
+      else sessionStorage.removeItem('trialId');
+    } catch (e) {}
+    return trialId;
+  }
+
   var Trial = {
     start: function (childId, theme) {
       return api('POST', '/api/trials', { childId: childId, theme: theme }).then(function (d) {
-        trialId = d.trialId;
+        remember(d && d.trialId);
         startedAt = Date.now();
         results = {};
-        try { sessionStorage.setItem('trialId', trialId); } catch (e) {}
         return d;
       });
     },
 
     resume: function (id) {
-      trialId = id;
-      try { sessionStorage.setItem('trialId', trialId); } catch (e) {}
+      remember(id);
+      if (!trialId) return Promise.resolve({});
       return api('GET', '/api/trials/' + trialId).then(function (d) {
         results = {};
         return d;
@@ -75,16 +94,17 @@
     },
 
     save: function () {
-      if (!trialId) return Promise.resolve();
-      return api('POST', '/api/trials/' + trialId + '/progress', {
+      var id = trialId || 'current';
+      return api('POST', '/api/trials/' + id + '/progress', {
         words: Object.keys(results).map(function (k) { return results[k]; }),
         secondsSpent: Math.round((Date.now() - startedAt) / 1000),
       });
     },
 
     finish: function () {
+      var id = trialId || 'current';
       return Trial.save().then(function () {
-        return api('POST', '/api/trials/' + trialId + '/complete');
+        return api('POST', '/api/trials/' + id + '/complete');
       });
     },
   };

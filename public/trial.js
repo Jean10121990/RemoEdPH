@@ -165,17 +165,13 @@
     LABELS.forEach(function (label, i) {
       var b = document.createElement('button');
       b.type = 'button';
-      var done = i < step && (i <= 2 || paid);
+      var done = i < step;
       b.textContent = done ? '✓' : '★';
       b.title = label;
       b.setAttribute('aria-label', label);
       if (done) b.className = 'is-done';
       if (i === step) b.className = 'is-on';
-      if (i > 2 && !paid) b.className = (b.className + ' is-lock').trim();
-      b.addEventListener('click', function () {
-        if (i > 2 && !paid) return;
-        if (i <= 2 || paid) openStep(i);
-      });
+      b.addEventListener('click', function () { openStep(i); });
       bar.appendChild(b);
     });
   }
@@ -249,7 +245,7 @@
       cursor += 1;
       saveStep().then(function () {
         if (cursor < words.length) learn();
-        else showReport(false);
+        else openStep(3);
       });
     });
   }
@@ -421,12 +417,16 @@
           childName = profile.firstName || profile.nickname || 'friend';
           paid = !!(profile.freePlan && profile.freePlan.isFree === false);
         }
-        var saved = '';
-        try { saved = sessionStorage.getItem('trialId') || ''; } catch (e) {}
-        if (saved && window.Trial.resume) {
-          return window.Trial.resume(saved).then(function () { openStep(0); });
-        }
-        return pickTheme();
+        return fetch('/api/trials/mine', { headers: authHeaders(), credentials: 'include' })
+          .then(function (r) { return r.json(); })
+          .then(function (mine) {
+            var id = mine && mine.trial && mine.trial.trialId;
+            if (id && window.Trial.resume) {
+              return window.Trial.resume(id).then(function () { openStep(0); });
+            }
+            try { sessionStorage.removeItem('trialId'); } catch (e) {}
+            return pickTheme();
+          });
       })
       .catch(showError);
   }

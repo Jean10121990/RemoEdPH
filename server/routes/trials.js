@@ -25,12 +25,18 @@ function childNameOf(child) {
 }
 
 async function loadOwnTrial(req, res) {
-  if (!isId(req.params.id)) {
-    res.status(400).json({ error: 'Invalid trial id.' });
-    return null;
+  let trial = null;
+  if (isId(req.params.id)) {
+    trial = await TrialBooking.findById(req.params.id);
+    if (trial && String(trial.parentId) !== String(req.student._id)) {
+      res.status(404).json({ error: 'Trial not found.' });
+      return null;
+    }
   }
-  const trial = await TrialBooking.findById(req.params.id);
-  if (!trial || String(trial.parentId) !== String(req.student._id)) {
+  if (!trial) {
+    trial = await TrialBooking.findOne({ parentId: req.student._id });
+  }
+  if (!trial) {
     res.status(404).json({ error: 'Trial not found.' });
     return null;
   }
@@ -92,9 +98,13 @@ router.post('/', requireLogin, async (req, res) => {
       theme: ['fruits', 'animals', 'snacks'].includes(theme) ? theme : 'fruits',
       expiresAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
     });
-    res.status(201).json({ trialId: trial._id, expiresAt: trial.expiresAt });
+    res.status(201).json({ trialId: String(trial._id), expiresAt: trial.expiresAt });
   } catch (err) {
     if (err && err.code === 11000) {
+      const existing = await TrialBooking.findOne({ parentId: req.student._id });
+      if (existing) {
+        return res.status(200).json({ trialId: String(existing._id), expiresAt: existing.expiresAt });
+      }
       return res.status(409).json({ error: 'This child already used the free trial.' });
     }
     console.error(err);
