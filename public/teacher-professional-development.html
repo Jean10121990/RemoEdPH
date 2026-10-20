@@ -60,7 +60,7 @@
 <body class="page-teacher-professional-development teacher-portal">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=app-shell-12"></script>
+        <script src="js/teacher-sidebar.js?v=app-shell-13"></script>
         <script src="js/teacher-page-header.js?v=mark-all-2"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
@@ -285,11 +285,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Free Trial Teacher</strong> (free trial classes; flat rate per 25-min class, no credential add-ons)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱90 (₱45 / 25 min)</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 1: Newbie Teacher</strong> (4-yr Grad No EXP OR 2-yrs ESL/ESL Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 2: Junior Teacher</strong> (4-yr Grad (English Major))</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 3: Senior Teacher and Trainer</strong> (4-yr Grad and atleast 3 yrs ESL/Teaching/BPO Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
-                                    <tr><td style="padding:10px 12px;"><strong>Tier 4: Head Teacher and Teaching Quality</strong> (4-yr Grad with at least 5 yrs EXP + LET)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱330</td></tr>
+                                    <tr style="background:#eff6ff; border-bottom:1px solid #dbeafe;"><td style="padding:10px 12px;"><strong>Tier 1: Newbie Teacher</strong> (4-yr Grad No EXP OR 2-yrs ESL/ESL Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
+                                    <tr style="background:#f0fdf4; border-bottom:1px solid #bbf7d0;"><td style="padding:10px 12px;"><strong>Tier 2: Junior Teacher</strong> (4-yr Grad (English Major))</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
+                                    <tr style="background:#fffbeb; border-bottom:1px solid #fde68a;"><td style="padding:10px 12px;"><strong>Tier 3: Senior Teacher and Trainer</strong> (4-yr Grad and atleast 3 yrs ESL/Teaching/BPO Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
+                                    <tr style="background:#f5f3ff;"><td style="padding:10px 12px;"><strong>Tier 4: Head Teacher and Teaching Quality</strong> (4-yr Grad with at least 5 yrs EXP + LET)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱330</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -297,11 +296,10 @@
                         <div style="margin-bottom:14px;">
                             <label for="career-payout-tier-base" style="display:block; font-weight:600; color:#334155; font-size:0.88rem; margin-bottom:6px;">Your tier (base pay)</label>
                             <select id="career-payout-tier-base" class="form-input" style="max-width:100%; opacity:0.92;" disabled aria-label="Professional tier base hourly pay (set by admin)">
-                                <option value="83">Free Trial — ₱45 per 25-min class (₱90/hr) — Free Trial Teacher</option>
-                                <option value="180">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
-                                <option value="230">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
-                                <option value="280">Tier 3 — ₱280/hr — Senior Teacher and Trainer (4-yr Grad)</option>
-                                <option value="330">Tier 4 — ₱330/hr — Head Teacher and Teaching Quality (4-yr Grad with at least 2 yrs EXP + LET)</option>
+                                <option value="180" style="background:#eff6ff;">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
+                                <option value="230" style="background:#f0fdf4;">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
+                                <option value="280" style="background:#fffbeb;">Tier 3 — ₱280/hr — Senior Teacher and Trainer (4-yr Grad)</option>
+                                <option value="330" style="background:#f5f3ff;">Tier 4 — ₱330/hr — Head Teacher and Teaching Quality (4-yr Grad with at least 2 yrs EXP + LET)</option>
                             </select>
                         </div>
 
@@ -581,7 +579,7 @@
             await RemoedTeacherPayout.ensureInitialized();
             const s = RemoedTeacherPayout.load() || RemoedTeacherPayout.defaultSettings();
             const sel = document.getElementById('career-payout-tier-base');
-            if (sel) sel.value = String(s.tierBase);
+            if (sel && sel.querySelector('option[value="' + s.tierBase + '"]')) sel.value = String(s.tierBase);
             const c1 = document.getElementById('career-payout-cred-1');
             const c2 = document.getElementById('career-payout-cred-2');
             const c3 = document.getElementById('career-payout-cred-3');
@@ -605,7 +603,7 @@
 
         function careerPayoutUpdateDisplays() {
             if (typeof RemoedTeacherPayout === 'undefined') return;
-            const s = RemoedTeacherPayout.normalize(careerPayoutReadForm());
+            const s = getPayoutSettingsForGrowth();
             const o = RemoedTeacherPayout.compute(s);
             const per25 = o.ratePer25;
             const elH = document.getElementById('career-payout-display-hourly');
