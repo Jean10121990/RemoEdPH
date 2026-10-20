@@ -234,15 +234,19 @@
     var eyeLine = (leftEye.y + rightEye.y) / 2;
     var noseSpan = pointDist(nose, leftEye);
     if (noseSpan < 0.02) noseSpan = 0.08;
-    var tips = [lm[19], lm[20]].filter(Boolean);
+    var shoulder = lm[11] && lm[12] ? pointDist(lm[11], lm[12]) : noseSpan * 3;
+    if (shoulder < 0.05) shoulder = 0.2;
+    var reach = Math.max(noseSpan * 1.45, shoulder * 0.28);
+    var tips = [lm[15], lm[16], lm[17], lm[18], lm[19], lm[20], lm[21], lm[22]].filter(Boolean);
     var i;
     for (i = 0; i < tips.length; i++) {
       var tip = tips[i];
-      if (tip.y < eyeLine) continue;
+      if (tip.y < eyeLine - noseSpan * 0.35) continue;
       var toNose = pointDist(tip, nose);
-      if (toNose < noseSpan * 0.8 && toNose < pointDist(tip, leftEye) && toNose < pointDist(tip, rightEye)) {
-        return true;
-      }
+      if (toNose > reach) continue;
+      var toEyes = Math.min(pointDist(tip, leftEye), pointDist(tip, rightEye));
+      if (tip.y < eyeLine && toNose >= toEyes) continue;
+      return true;
     }
     return false;
   }
@@ -293,7 +297,15 @@
         var result = null;
         try { result = pose.detectForVideo(video, performance.now()); } catch (e) {}
         var lm = result && result.landmarks && result.landmarks[0];
-        if (lm && lm[0] && lm[15] && lm[16] && lm[11] && lm[12]) {
+        if (lm && lm[0] && cmd === 'Touch your nose') {
+          if (fingerOnNose(lm)) {
+            noseHits += 1;
+            if ($('heard')) $('heard').textContent = 'I see your hand. Hold it on your nose.';
+            if (noseHits >= 3) pass();
+          } else if (noseHits > 0) {
+            noseHits -= 1;
+          }
+        } else if (lm && lm[0] && lm[15] && lm[16] && lm[11] && lm[12]) {
           var shoulder = pointDist(lm[11], lm[12]) || 0.2;
           if (cmd === 'Clap') {
             var hands = pointDist(lm[15], lm[16]);
@@ -304,13 +316,6 @@
             seen += 1;
             if (seen < 10) baselineHip = hip;
             else if (baselineHip != null && baselineHip - hip > 0.06) pass();
-          } else if (cmd === 'Touch your nose') {
-            if (fingerOnNose(lm)) {
-              noseHits += 1;
-              if (noseHits >= 6) pass();
-            } else {
-              noseHits = 0;
-            }
           }
         }
       }
