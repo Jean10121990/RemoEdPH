@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Free lesson - RemoEdPH</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png">
+  <style>
+    :root { --blue:#0A7FD4; --green:#1FA324; --yellow:#FFE82E; --ink:#0f172a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Trebuchet MS", "Segoe UI", sans-serif; background:#e0f2fe; color:var(--ink); }
+    .wrap { max-width:720px; margin:0 auto; padding:16px; }
+    h1 { font-size:1.4rem; margin:0 0 8px; }
+    .bar { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin:12px 0; }
+    .bar button { min-height:44px; border-radius:12px; border:2px solid #bae6fd; background:#fff; font-weight:800; font-size:0.72rem; }
+    .bar button.is-on { background:var(--blue); color:#fff; border-color:var(--blue); }
+    .bar button.is-lock { opacity:0.45; }
+    .stage { background:#fff; border-radius:24px; padding:16px; min-height:320px; }
+    .tap { min-height:80px; min-width:80px; border:none; border-radius:20px; background:var(--yellow); font-weight:800; font-size:1.1rem; margin:6px; cursor:pointer; }
+    .tap.green { background:var(--green); color:#fff; }
+    .tap.blue { background:var(--blue); color:#fff; }
+    .big { font-size:4rem; line-height:1; }
+    .row { display:flex; flex-wrap:wrap; gap:8px; }
+    .note { color:#334155; font-weight:700; }
+    .lock-note { background:#f8fafc; border-radius:16px; padding:12px; }
+    a.plan { display:inline-flex; align-items:center; justify-content:center; min-height:80px; padding:0 18px; border-radius:20px; background:var(--blue); color:#fff; font-weight:800; text-decoration:none; }
+    button:disabled, a.disabled { opacity:0.45; pointer-events:none; }
+    video { width:100%; max-height:180px; background:#0f172a; border-radius:16px; }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation:none !important; transition:none !important; }
+    }
+    .pulse { outline:4px solid var(--green); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Free lesson</h1>
+    <div class="bar" id="bar"></div>
+    <p class="note" id="msg"></p>
+    <div class="stage" id="stage"></div>
+  </div>
+  <script src="trial-client.js?v=trial-1"></script>
+  <script src="trial.js?v=trial-1"></script>
+</body>
+</html>

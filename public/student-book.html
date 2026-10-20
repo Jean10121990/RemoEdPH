@@ -1298,7 +1298,29 @@
             StudentSidebar.render('student-sidebar-root', 'book');
             StudentPageHeader.render('book');
         </script>
-        <div class="remoed-content">
+            <div class="remoed-content">
+            <div id="start-free-lesson" hidden style="margin:0 0 12px;">
+                <a href="trial.html" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 16px;border-radius:999px;background:#0A7FD4;color:#fff;font-weight:800;text-decoration:none;">Start free lesson</a>
+            </div>
+            <script>
+            (function () {
+                var box = document.getElementById('start-free-lesson');
+                var token = '';
+                try { token = localStorage.getItem('remoed_student_token') || sessionStorage.getItem('remoed_student_token') || ''; } catch (e) {}
+                if (!box || !token) return;
+                var headers = { Authorization: 'Bearer ' + token };
+                Promise.all([
+                    fetch('/api/student/profile', { headers: headers, credentials: 'include' }).then(function (r) { return r.json(); }),
+                    fetch('/api/trials/mine', { headers: headers, credentials: 'include' }).then(function (r) { return r.json(); })
+                ]).then(function (pair) {
+                    var profile = pair[0] && pair[0].profile;
+                    var paid = profile && profile.freePlan && profile.freePlan.isFree === false;
+                    var trial = pair[1] && pair[1].trial;
+                    if (paid || (trial && trial.status === 'completed')) return;
+                    box.hidden = false;
+                }).catch(function () {});
+            })();
+            </script>
             <div class="book-view-tabs" role="tablist" aria-label="Book a Class">
                 <button type="button" class="book-view-tab is-active" id="book-tab-schedule" role="tab" aria-selected="true" aria-controls="book-schedule-panel">Schedule</button>
                 <button type="button" class="book-view-tab" id="book-tab-syllabus" role="tab" aria-selected="false" aria-controls="book-syllabus-panel">Syllabus</button>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="js/security-guard.js?v=2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/admin-standalone-redirect.js"></script>
+  <script src="js/admin-embed-init.js"></script>
+  <script src="js/admin-session.js"></script>
+  <title>Level Assessment - RemoEdPH</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; background: #f6fbff; }
+    .box { padding: 16px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+    button { min-height: 40px; border: none; border-radius: 8px; background: #0A7FD4; color: #fff; font-weight: 700; padding: 0 14px; cursor: pointer; }
+    .err { color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Level Assessment</h1>
+    <p>Leads who finished the free level assessment, including people who have not registered.</p>
+    <button type="button" id="invite">Send subscription invite</button>
+    <p class="err" id="err"></p>
+    <table>
+      <thead>
+        <tr>
+          <th></th><th>Child</th><th>Email</th><th>Phone</th><th>Level</th><th>Score</th><th>Date</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <script>
+    (function () {
+      function token() {
+        return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken && RemoedAdminSession.getAuthToken()) || localStorage.getItem('remoed_admin_token') || '';
+      }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+        });
+      }
+      function load() {
+        fetch('/api/admin/level-assessments', { headers: { Authorization: 'Bearer ' + token() }, credentials: 'include' })
+          .then(function (r) { return r.json(); })
+          .then(function (body) {
+            var tb = document.getElementById('rows');
+            tb.textContent = '';
+            (body.leads || []).forEach(function (lead) {
+              var tr = document.createElement('tr');
+              var when = lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '';
+              tr.innerHTML = '<td>' + (lead.registered ? '' : '<input type="checkbox" data-id="' + esc(lead.id) + '">') + '</td>' +
+                '<td>' + esc(lead.childName) + '</td><td>' + esc(lead.parentEmail) + '</td><td>' + esc(lead.phone) + '</td>' +
+                '<td>' + esc(lead.level) + '</td><td>' + esc(lead.score) + '</td><td>' + esc(when) + '</td>' +
+                '<td>' + (lead.registered ? 'Registered' : 'Not registered') + '</td>';
+              tb.appendChild(tr);
+            });
+          })
+          .catch(function () { document.getElementById('err').textContent = 'Could not load leads.'; });
+      }
+      document.getElementById('invite').addEventListener('click', function () {
+        var ids = Array.prototype.map.call(document.querySelectorAll('input[data-id]:checked'), function (el) { return el.getAttribute('data-id'); });
+        fetch('/api/admin/level-assessments/invite', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ids: ids })
+        }).then(function (r) { return r.json(); }).then(function (body) {
+          document.getElementById('err').textContent = body && body.success ? ('Sent ' + body.sent + ' invite(s).') : ((body && body.error) || 'Could not send.');
+        });
+      });
+      load();
+    })();
+  </script>
+</body>
+</html>

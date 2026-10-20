@@ -141,7 +141,7 @@ router.get('/test', (req, res) => {
 });
 
 // Book a class (student portal). Same handler as POST /api/teacher/book-class.
-router.post('/book-class', verifyToken, requireStudent, studentController.bookSlot);
+router.post('/book-class', verifyToken, requireStudent, require('./middleware/requirePlan'), studentController.bookSlot);
 
 // Test route to verify cancel-booking route exists
 router.get('/test-cancel-route', (req, res) => {
@@ -2005,9 +2005,21 @@ router.post('/send-assessment-email', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
+    const assessmentAnswers = Array.isArray(req.body && req.body.assessmentAnswers)
+      ? req.body.assessmentAnswers.slice(0, 10).map((n) => Number(n)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 20)
+      : [];
+
     const existingTrial = await AssessmentTrial.findOne({ parentEmail: toEmail })
       .sort({ createdAt: -1 });
     if (existingTrial) {
+      if (!existingTrial.redeemedByStudentId && assessmentAnswers.length) {
+        existingTrial.assessmentAnswers = assessmentAnswers;
+        if (finalCefrLevel) existingTrial.cefrLevel = finalCefrLevel;
+        if (finalScore != null) existingTrial.score = Number(finalScore) || 0;
+        if (contactNumber) existingTrial.contactNumber = String(contactNumber).trim();
+        if (childName) existingTrial.childName = childName;
+        await existingTrial.save();
+      }
       const redeemed = !!existingTrial.redeemedByStudentId;
       return res.status(409).json({
         success: false,
@@ -2029,6 +2041,7 @@ router.post('/send-assessment-email', async (req, res) => {
       contactNumber: String(contactNumber || '').trim(),
       cefrLevel: finalCefrLevel || '',
       score: Number(finalScore) || 0,
+      assessmentAnswers,
     });
 
     const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');

@@ -604,6 +604,7 @@ app.use('/api/teacher/training', noStoreProtectedResponse, teacherTrainingRoutes
 app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
+app.use('/api/trials', noStoreProtectedResponse, require('./routes/trials'));
 {
   const { gardenRouter, playRouter, sharePageRouter, gardenAdminRouter } = require('./garden').buildRouters();
   app.use('/api/garden', noStoreProtectedResponse, gardenRouter);
@@ -670,6 +671,7 @@ adminApiCombined.use('/training', adminTrainingRoutes);
 adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
 adminApiCombined.use(require('./adminRbacRoutes'));
 adminApiCombined.use(require('./classroomSosRoutes').adminSosRouter);
+adminApiCombined.use('/level-assessments', require('./routes/levelAssessments'));
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);

@@ -78,9 +78,21 @@ function isPaidSubscriber(student) {
     if (mode === 'free') return false;
   }
   const lots = Array.isArray(student.creditLots) ? student.creditLots : [];
+  const freeLotIds = {
+    free: 1,
+    welcome: 1,
+    trial: 1,
+    'free-trial': 1,
+    free_trial: 1,
+    assessment: 1,
+    'assessment-trial': 1,
+  };
   const paidLot = lots.some((lot) => {
-    const id = String((lot && lot.planId) || '').toLowerCase();
-    return PAID_PLAN_IDS.indexOf(id) !== -1 && Number(lot.creditsRemaining) > 0;
+    if (!lot || Number(lot.creditsRemaining) <= 0) return false;
+    const id = String(lot.planId || '').toLowerCase();
+    if (!id || freeLotIds[id]) return false;
+    if (PAID_PLAN_IDS.indexOf(id) !== -1) return true;
+    return !!lot.paymentId;
   });
   if (paidLot) return true;
   return (

@@ -1783,7 +1783,7 @@ router.get('/available-teachers', async (req, res) => {
 });
 
 // Book a class — isolated in studentController → services/studentBookSlotService
-router.post('/book-class', verifyToken, requireStudent, studentController.bookSlot);
+router.post('/book-class', verifyToken, requireStudent, require('./middleware/requirePlan'), studentController.bookSlot);
 
 // Cancel a slot - Protected: Only authenticated teachers can cancel their own slots
 router.post('/cancel-slot', verifyToken, requireTeacher, requireOwnTeacherData, logAccess, async (req, res) => {

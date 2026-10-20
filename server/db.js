@@ -130,6 +130,12 @@ async function connectWithUri(label, uri) {
   }
 
   await dropLegacyAdminIndexes();
+  try {
+    const TrialBooking = require('./models/TrialBooking');
+    await TrialBooking.syncIndexes();
+  } catch (err) {
+    console.warn('TrialBooking indexes:', err && err.message);
+  }
   return true;
 }
 

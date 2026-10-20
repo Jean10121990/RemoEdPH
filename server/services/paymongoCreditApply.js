@@ -270,6 +270,16 @@ async function applyExistingStudentPurchase({
     console.warn('[paymongoCreditApply] Referral commission award failed:', refErr.message);
   }
 
+  try {
+    const TrialBooking = require('../models/TrialBooking');
+    await TrialBooking.updateMany(
+      { parentId: student._id, status: 'completed' },
+      { $set: { convertedToPlan: true } }
+    );
+  } catch (trialErr) {
+    console.warn('[paymongoCreditApply] trial convert flag failed:', trialErr.message);
+  }
+
   const availableBalance = balanceAfterPurchase;
 
   try {

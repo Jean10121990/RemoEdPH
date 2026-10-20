@@ -432,41 +432,6 @@
                 options: ["Square", "Triangle", "Circle", "Rectangle"],
                 correct: 2,
                 image: null
-            },
-            {
-                id: 11,
-                question: "How do you greet someone?",
-                options: ["Hello!", "Goodbye!", "Sorry!", "Please!"],
-                correct: 0,
-                image: null
-            },
-            {
-                id: 12,
-                question: "What do you wear on your feet?",
-                options: ["Hat", "Shoes", "Gloves", "Shirt"],
-                correct: 1,
-                image: null
-            },
-            {
-                id: 13,
-                question: "Complete: 'She ___ playing.'",
-                options: ["am", "is", "are", "be"],
-                correct: 1,
-                image: null
-            },
-            {
-                id: 14,
-                question: "What do you drink when you're thirsty?",
-                options: ["Food", "Water", "Toys", "Books"],
-                correct: 1,
-                image: null
-            },
-            {
-                id: 15,
-                question: "Which word rhymes with 'cat'?",
-                options: ["Dog", "Hat", "Bird", "Fish"],
-                correct: 1,
-                image: null
             }
         ];
 
@@ -892,7 +857,8 @@
                         parentEmail: guestAssessmentData.parentEmail,
                         contactNumber: guestAssessmentData.contactNumber,
                         cefrLevel: level,
-                        score: score
+                        score: score,
+                        assessmentAnswers: answers.slice(0, 10)
                     })
                 });
                 const emailResult = await emailResponse.json().catch(function () { return {}; });
