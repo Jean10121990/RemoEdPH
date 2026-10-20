@@ -227,6 +227,27 @@
     });
   }
 
+  function fingerOnNose(lm) {
+    var nose = lm[0];
+    var leftEye = lm[2];
+    var rightEye = lm[5];
+    if (!nose || !leftEye || !rightEye) return false;
+    var eyeLine = (leftEye.y + rightEye.y) / 2;
+    var noseSpan = pointDist(nose, leftEye);
+    if (noseSpan < 0.02) noseSpan = 0.08;
+    var tips = [lm[19], lm[20]].filter(Boolean);
+    var i;
+    for (i = 0; i < tips.length; i++) {
+      var tip = tips[i];
+      if (tip.y < eyeLine) continue;
+      var toNose = pointDist(tip, nose);
+      if (toNose < noseSpan * 0.8 && toNose < pointDist(tip, leftEye) && toNose < pointDist(tip, rightEye)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function pointDist(a, b) {
     var dx = a.x - b.x;
     var dy = a.y - b.y;
@@ -243,6 +264,7 @@
     var seen = 0;
     var baselineHip = null;
     var handsApart = false;
+    var noseHits = 0;
     speak('Simon says ' + cmd);
     stage('<p>Simon says</p><p class="big">' + cmd + '</p><video id="cam" class="cam" autoplay playsinline muted></video><p class="heard" id="heard">Starting the camera…</p><button type="button" class="tap blue" id="done">Try the camera</button>');
     var video = $('cam');
@@ -283,8 +305,13 @@
             seen += 1;
             if (seen < 10) baselineHip = hip;
             else if (baselineHip != null && baselineHip - hip > 0.06) pass();
-          } else if (pointDist(lm[15], lm[0]) < shoulder * 0.55 || pointDist(lm[16], lm[0]) < shoulder * 0.55) {
-            pass();
+          } else if (cmd === 'Touch your nose') {
+            if (fingerOnNose(lm)) {
+              noseHits += 1;
+              if (noseHits >= 6) pass();
+            } else {
+              noseHits = 0;
+            }
           }
         }
       }
@@ -565,7 +592,7 @@
 
   function goodbye() {
     scene('bye');
-    stage('<div class="cert"><p>You did it!</p><p class="big wave">' + colorful(childName) + '</p><p class="stickers"><span>⭐</span><span>⭐</span><span>⭐</span></p><video controls poster="" aria-label="Teacher greeting"><p>Teacher greeting</p></video></div>');
+    stage('<div class="cert"><p>You did it!</p><p class="big wave">' + colorful(childName) + '</p><p class="stickers"><span>⭐</span><span>⭐</span><span>⭐</span></p></div>');
     celebrate();
     window.Trial.finish().then(function (data) {
       report = data.report;
@@ -613,7 +640,7 @@
           .then(function (mine) {
             var id = mine && mine.trial && mine.trial.trialId;
             if (id && window.Trial.resume) {
-              return window.Trial.resume(id).then(function () { openStep(0); });
+              return window.Trial.resume(id).then(function () { pickTheme(); });
             }
             try { sessionStorage.removeItem('trialId'); } catch (e) {}
             return pickTheme();

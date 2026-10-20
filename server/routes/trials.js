@@ -103,6 +103,11 @@ router.post('/', requireLogin, async (req, res) => {
     if (err && err.code === 11000) {
       const existing = await TrialBooking.findOne({ parentId: req.student._id });
       if (existing) {
+        const nextTheme = ['fruits', 'animals', 'snacks'].includes(theme) ? theme : existing.theme;
+        if (nextTheme && nextTheme !== existing.theme) {
+          existing.theme = nextTheme;
+          await existing.save();
+        }
         return res.status(200).json({ trialId: String(existing._id), expiresAt: existing.expiresAt });
       }
       return res.status(409).json({ error: 'This child already used the free trial.' });
