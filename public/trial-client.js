@@ -22,7 +22,7 @@
     }
   }
 
-  function api(method, url, body) {
+  function api(method, url, body, attempt) {
     var headers = { 'Content-Type': 'application/json' };
     var bearer = token();
     if (bearer) headers.Authorization = 'Bearer ' + bearer;
@@ -34,13 +34,26 @@
     }).then(function (r) {
       return r.json().then(function (data) {
         if (!r.ok) {
+          if (r.status >= 500 && attempt !== 1) return api(method, url, body, 1);
           var e = new Error((data && data.error) || 'Something went wrong');
           e.status = r.status;
           throw e;
         }
         return data;
+      }, function () {
+        if (r.status >= 500 && attempt !== 1) return api(method, url, body, 1);
+        var e = new Error('Something went wrong');
+        e.status = r.status;
+        throw e;
       });
     });
+  }
+
+  function payload() {
+    return {
+      words: Object.keys(results).map(function (k) { return results[k]; }),
+      secondsSpent: Math.round((Date.now() - startedAt) / 1000),
+    };
   }
 
   function idOf(value) {
@@ -65,7 +78,9 @@
 
   var Trial = {
     start: function (childId, theme) {
-      return api('POST', '/api/trials', { childId: childId, theme: theme }).then(function (d) {
+      var body = { theme: theme };
+      if (childId) body.childId = childId;
+      return api('POST', '/api/trials', body).then(function (d) {
         remember(d && d.trialId);
         startedAt = Date.now();
         results = {};
@@ -95,16 +110,16 @@
 
     save: function () {
       var id = trialId || 'current';
-      return api('POST', '/api/trials/' + id + '/progress', {
-        words: Object.keys(results).map(function (k) { return results[k]; }),
-        secondsSpent: Math.round((Date.now() - startedAt) / 1000),
-      });
+      return api('POST', '/api/trials/' + id + '/progress', payload());
     },
 
     finish: function () {
       var id = trialId || 'current';
-      return Trial.save().then(function () {
-        return api('POST', '/api/trials/' + id + '/complete');
+      var body = payload();
+      return api('POST', '/api/trials/' + id + '/progress', body).then(function () {
+        return api('POST', '/api/trials/' + id + '/complete', body);
+      }, function () {
+        return api('POST', '/api/trials/' + id + '/complete', body);
       });
     },
   };

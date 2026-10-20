@@ -486,6 +486,7 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 - Page: `public/admin-hr-documents.html` (HR Hub Documents; Super-Admin / HR).
 - Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
 - Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
+- HR Hub → Level Assessment shows **Invite to sign up** on each lead who is not registered. That button emails only the address stored on the assessment and links to `student-register.html` so they can claim free trial lessons at no cost. Registered rows have no button.
 
 ## Student family / emergency (admin View Profile)
 
@@ -639,6 +640,16 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 - `scripts/import-free-trial-lessons.js` is retired. Do not re-import the old Hello / Letter decks. `scripts/replace-free-trial-lessons.js` replaces the catalog only when it is not already these 3 titles. A second run must leave uploaded files in place.
 - Do **not** add it to `CURRICULUM_LEVELS`, `Booking.studentLevel`, or `normalizeCurriculumLevel` — those drive student leveling, credits and the leaderboard.
 
+## Interactive free trial lesson
+
+This is the teacherless lesson on `public/trial.html`. It is not the 3 Pre-Level live classes above. One Student account is the parent and the child. One `TrialBooking` per student (`childId` unique).
+
+- **Claim:** Kids mode and Parents mode both show **Claim free trial lessons** and open `trial.html`. A live class still needs `creditBalance` greater than 0. On the parent report, **Choose a plan** opens `/student-credits.html` and **Book a class** opens `/student-book.html`. Kids mode keeps the credits page open so that link is not sent back to the dashboard.
+- **Themes:** fruits, animals, snacks. The picker shows every time, including when a trial already exists. Picking one calls `POST /api/trials`. A second start reopens the same trial: the theme is saved, previous answers are cleared, status returns to `ready`, and a passed `expiresAt` is renewed for 7 days.
+- **Steps:** Welcome, Simon, Learn, Play, Say it, Check, Bye. Each step saves with `POST /api/trials/:id/progress`. The id may be `current` or any non-ObjectId; the server loads that student’s trial. Bye calls `POST /api/trials/:id/complete` with the same words, so the parent report is stored even if the progress call failed. A finished or expired trial still accepts those saves. These routes answer with their own error text. They must not fall through to the generic “Internal server error”.
+- **Play:** Fruits and snacks drag onto the mouth. Animals drag home. A click does not feed. Say-it advances only when the microphone hears the word. Simon uses the camera. The goodbye card is the name and three stars, with no video.
+- **Files:** `public/trial.js`, `public/trial-client.js`, `server/routes/trials.js`, `server/models/TrialBooking.js`. Teacher Lessons Library labels Pre-Level **Demo Free Trial Lesson** (the stored value stays `Pre-Level`).
+
 ## Ops notes (out of code scope)
 
 - Atlas M0 storage % may stay high after deletes; Flex upgrade / MongoDB for Startups credits are billing ops.
@@ -761,3 +772,10 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Admin email column | HR Hub → Admins lists Username (password login) and Email (Google address). Editing the email does not change the username or password. |
 | Login copy | Welcome text is live one-on-one classes with real teachers. Do not put “AI-powered” back on the login page. |
 | Test student | Settings test-plan list is `plflores3303@gmail.com` only. |
+
+## Baseline updates — 2026-10-20
+
+| Area | What shipped |
+|------|----------------|
+| Interactive trial | Claim free trial lessons opens `trial.html` in Kids and Parents mode. Fruits, animals, and snacks all save on the one trial per student. Later steps save progress and the parent report on that same trial, including when it was already started, finished, or expired. The goodbye card has no video. See § Interactive free trial lesson. |
+| Live booking | Booking a live class requires `creditBalance` greater than 0. `requirePaidPlan` returns 402 `INSUFFICIENT_CREDITS` when the student is not a paid subscriber. |

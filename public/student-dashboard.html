@@ -891,7 +891,7 @@
                         <p class="dash-next-class__meta" id="dash-next-meta">Book a live English class to get started.</p>
                     </div>
                     <div class="dash-next-class__actions" id="dash-next-actions">
-                        <a class="dash-btn dash-btn--primary" href="student-book.html">Book a Class</a>
+                        <a class="dash-btn dash-btn--primary" href="/student-book.html">Book a Class</a>
                         <a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>
                     </div>
                 </div>
@@ -2044,17 +2044,12 @@
 
       if (!classes || !classes.length) {
         titleEl.textContent = 'No class scheduled';
-        if (window.__studentHasFreeTrial) {
-          metaEl.textContent = 'Claim your free trial lessons. Steps 1–3 are free.';
-          actionsEl.innerHTML =
-            '<a class="dash-btn dash-btn--primary" href="trial.html">Claim free trial lessons</a>' +
-            '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
-        } else {
-          metaEl.textContent = 'Book a live English class to get started.';
-          actionsEl.innerHTML =
-            '<a class="dash-btn dash-btn--primary" href="student-book.html">Book a Class</a>' +
-            '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
-        }
+        metaEl.textContent = window.__studentHasFreeTrial
+          ? 'Claim your free trial lessons, or book a live class when you have credits.'
+          : 'Book a live English class to get started.';
+        actionsEl.innerHTML =
+          '<a class="dash-btn dash-btn--primary" href="/student-book.html">Book a Class</a>' +
+          '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
         return;
       }
 

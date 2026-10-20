@@ -6,6 +6,7 @@ const { verifyToken, requireStudent } = require('../authMiddleware');
 
 const router = express.Router();
 const TRIAL_DAYS = 7;
+const THEMES = ['fruits', 'animals', 'snacks'];
 
 function requireLogin(req, res, next) {
   verifyToken(req, res, function () {
@@ -24,45 +25,104 @@ function childNameOf(child) {
   return String(child.firstName || child.nickname || child.username || '').trim();
 }
 
-async function loadOwnTrial(req, res) {
-  let trial = null;
-  if (isId(req.params.id)) {
-    trial = await TrialBooking.findById(req.params.id);
-    if (trial && String(trial.parentId) !== String(req.student._id)) {
-      res.status(404).json({ error: 'Trial not found.' });
-      return null;
-    }
+function themeOf(value, fallback) {
+  return THEMES.includes(value) ? value : (fallback || 'fruits');
+}
+
+function freshExpiry() {
+  return new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+}
+
+function isExpired(trial) {
+  if (!trial) return false;
+  if (trial.status === 'expired') return true;
+  return !!(trial.expiresAt && trial.expiresAt < new Date() && trial.status !== 'completed');
+}
+
+function cleanWords(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const row of list) {
+    if (!row || typeof row.word !== 'string') continue;
+    const word = row.word.replace(/[^\w\s'-]/g, '').trim().slice(0, 40);
+    if (!word) continue;
+    const attempts = parseInt(row.attempts, 10);
+    out.push({
+      word,
+      attempts: Math.min(Math.max(Number.isFinite(attempts) ? attempts : 0, 0), 50),
+      correctFirstTry: !!row.correctFirstTry,
+      spokeIt: !!row.spokeIt,
+    });
+    if (out.length >= 10) break;
   }
-  if (!trial) {
-    trial = await TrialBooking.findOne({ parentId: req.student._id });
-  }
-  if (!trial) {
-    res.status(404).json({ error: 'Trial not found.' });
-    return null;
-  }
-  if (trial.status !== 'completed' && trial.expiresAt < new Date()) {
-    trial.status = 'expired';
-    await trial.save();
-  }
-  if (trial.status === 'expired') {
-    res.status(410).json({ error: 'This trial has expired.' });
-    return null;
-  }
-  return trial;
+  return out;
+}
+
+function cleanSeconds(value) {
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, 3600);
 }
 
 function buildReport(trial, child) {
-  const total = trial.words.length;
-  const firstTry = trial.words.filter((w) => w.correctFirstTry).length;
-  const spoke = trial.words.filter((w) => w.spokeIt).length;
+  const words = Array.isArray(trial && trial.words) ? trial.words : [];
+  const seconds = Number(trial && trial.secondsSpent) || 0;
   return {
     childName: childNameOf(child),
-    wordsLearned: total,
-    correctFirstTry: firstTry,
-    spokeCount: spoke,
-    needsPractice: trial.words.filter((w) => !w.correctFirstTry).map((w) => w.word),
-    minutes: Math.round(trial.secondsSpent / 60),
+    wordsLearned: words.length,
+    correctFirstTry: words.filter((w) => w && w.correctFirstTry).length,
+    spokeCount: words.filter((w) => w && w.spokeIt).length,
+    needsPractice: words.filter((w) => w && w.word && !w.correctFirstTry).map((w) => w.word),
+    minutes: Math.round(seconds / 60),
   };
+}
+
+async function persist(trial) {
+  try {
+    await trial.save();
+    return trial;
+  } catch (err) {
+    if (!err || err.name !== 'VersionError' || !trial._id) throw err;
+    const fresh = await TrialBooking.findById(trial._id);
+    if (!fresh) throw err;
+    fresh.theme = trial.theme;
+    fresh.words = trial.words;
+    fresh.secondsSpent = trial.secondsSpent;
+    fresh.status = trial.status;
+    fresh.startedAt = trial.startedAt;
+    fresh.completedAt = trial.completedAt;
+    fresh.expiresAt = trial.expiresAt;
+    await fresh.save();
+    return fresh;
+  }
+}
+
+function reopen(trial, theme) {
+  trial.theme = themeOf(theme, trial.theme);
+  trial.words = [];
+  trial.secondsSpent = 0;
+  trial.status = 'ready';
+  trial.startedAt = null;
+  trial.completedAt = null;
+  if (!trial.expiresAt || trial.expiresAt < new Date()) trial.expiresAt = freshExpiry();
+}
+
+function keepAlive(trial) {
+  if (isExpired(trial) || !trial.expiresAt) {
+    trial.expiresAt = freshExpiry();
+    if (trial.status === 'expired') trial.status = 'ready';
+  }
+}
+
+async function loadOwnTrial(req) {
+  let trial = null;
+  if (isId(req.params.id)) {
+    trial = await TrialBooking.findById(req.params.id);
+    if (trial && String(trial.parentId) !== String(req.student._id)) return { missing: true };
+  }
+  if (!trial) trial = await TrialBooking.findOne({ parentId: req.student._id });
+  if (!trial) return { missing: true };
+  return { trial };
 }
 
 router.get('/mine', requireLogin, async (req, res) => {
@@ -82,8 +142,10 @@ router.get('/mine', requireLogin, async (req, res) => {
 });
 
 router.post('/', requireLogin, async (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const childId = body.childId;
+  const theme = themeOf(body.theme);
   try {
-    const { childId, theme } = req.body || {};
     if (!phoneOnFile(req.student)) {
       return res.status(403).json({ error: 'Please verify your phone number first.' });
     }
@@ -95,22 +157,22 @@ router.post('/', requireLogin, async (req, res) => {
     const trial = await TrialBooking.create({
       parentId: req.student._id,
       childId: req.student._id,
-      theme: ['fruits', 'animals', 'snacks'].includes(theme) ? theme : 'fruits',
-      expiresAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+      theme: theme,
+      expiresAt: freshExpiry(),
     });
     res.status(201).json({ trialId: String(trial._id), expiresAt: trial.expiresAt });
   } catch (err) {
     if (err && err.code === 11000) {
-      const existing = await TrialBooking.findOne({ parentId: req.student._id });
-      if (existing) {
-        const nextTheme = ['fruits', 'animals', 'snacks'].includes(theme) ? theme : existing.theme;
-        if (nextTheme && nextTheme !== existing.theme) {
-          existing.theme = nextTheme;
-          await existing.save();
-        }
-        return res.status(200).json({ trialId: String(existing._id), expiresAt: existing.expiresAt });
+      try {
+        const existing = await TrialBooking.findOne({ parentId: req.student._id });
+        if (!existing) return res.status(409).json({ error: 'This child already used the free trial.' });
+        reopen(existing, theme);
+        const saved = await persist(existing);
+        return res.status(200).json({ trialId: String(saved._id), expiresAt: saved.expiresAt });
+      } catch (saveErr) {
+        console.error(saveErr);
+        return res.status(500).json({ error: 'Could not start the trial.' });
       }
-      return res.status(409).json({ error: 'This child already used the free trial.' });
     }
     console.error(err);
     res.status(500).json({ error: 'Could not start the trial.' });
@@ -119,24 +181,18 @@ router.post('/', requireLogin, async (req, res) => {
 
 router.post('/:id/progress', requireLogin, async (req, res) => {
   try {
-    const trial = await loadOwnTrial(req, res);
-    if (!trial) return;
-
-    const incoming = Array.isArray(req.body.words) ? req.body.words.slice(0, 10) : [];
-    trial.words = incoming
-      .filter((w) => w && typeof w.word === 'string')
-      .map((w) => ({
-        word: w.word.slice(0, 40),
-        attempts: Math.min(Math.max(parseInt(w.attempts, 10) || 0, 0), 50),
-        correctFirstTry: !!w.correctFirstTry,
-        spokeIt: !!w.spokeIt,
-      }));
-    trial.secondsSpent = Math.min(Math.max(parseInt(req.body.secondsSpent, 10) || 0, 0), 3600);
-    if (trial.status === 'ready') {
+    const loaded = await loadOwnTrial(req);
+    if (!loaded.trial) return res.status(404).json({ error: 'Trial not found.' });
+    const trial = loaded.trial;
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    keepAlive(trial);
+    trial.words = cleanWords(body.words);
+    trial.secondsSpent = cleanSeconds(body.secondsSpent);
+    if (trial.status === 'ready' || trial.status === 'expired') {
       trial.status = 'started';
-      trial.startedAt = new Date();
+      trial.startedAt = trial.startedAt || new Date();
     }
-    await trial.save();
+    await persist(trial);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -146,14 +202,26 @@ router.post('/:id/progress', requireLogin, async (req, res) => {
 
 router.post('/:id/complete', requireLogin, async (req, res) => {
   try {
-    const trial = await loadOwnTrial(req, res);
-    if (!trial) return;
+    const loaded = await loadOwnTrial(req);
+    if (!loaded.trial) return res.status(404).json({ error: 'Trial not found.' });
+    let trial = loaded.trial;
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (Array.isArray(body.words)) {
+      trial.words = cleanWords(body.words);
+      trial.secondsSpent = cleanSeconds(body.secondsSpent);
+    }
+    keepAlive(trial);
     if (trial.status !== 'completed') {
       trial.status = 'completed';
       trial.completedAt = new Date();
-      await trial.save();
     }
-    const child = await Student.findById(trial.childId).select('firstName nickname username');
+    trial = await persist(trial);
+    let child = null;
+    try {
+      child = await Student.findById(trial.childId).select('firstName nickname username');
+    } catch (lookupErr) {
+      console.error(lookupErr);
+    }
     res.json({ report: buildReport(trial, child) });
   } catch (err) {
     console.error(err);
@@ -163,9 +231,15 @@ router.post('/:id/complete', requireLogin, async (req, res) => {
 
 router.get('/:id', requireLogin, async (req, res) => {
   try {
-    const trial = await loadOwnTrial(req, res);
-    if (!trial) return;
-    const child = await Student.findById(trial.childId).select('firstName nickname username');
+    const loaded = await loadOwnTrial(req);
+    if (!loaded.trial) return res.status(404).json({ error: 'Trial not found.' });
+    const trial = loaded.trial;
+    let child = null;
+    try {
+      child = await Student.findById(trial.childId).select('firstName nickname username');
+    } catch (lookupErr) {
+      console.error(lookupErr);
+    }
     res.json({
       status: trial.status,
       theme: trial.theme,
@@ -176,6 +250,12 @@ router.get('/:id', requireLogin, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Could not load the trial.' });
   }
+});
+
+router.use((err, req, res, next) => {
+  console.error(err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Could not save the trial.' });
 });
 
 module.exports = router;

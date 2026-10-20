@@ -69,4 +69,55 @@ router.post('/invite', async (req, res) => {
   }
 });
 
+function esc(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[c]));
+}
+
+router.post('/:id/trial-invite', async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid lead.' });
+    }
+    const lead = await AssessmentTrial.findById(id).select('parentEmail childName token redeemedByStudentId');
+    if (!lead || lead.redeemedByStudentId) {
+      return res.status(404).json({ success: false, error: 'This lead is already registered.' });
+    }
+    const to = String(lead.parentEmail || '').trim();
+    if (!to) return res.status(400).json({ success: false, error: 'This lead has no email.' });
+    const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').replace(/\/$/, '');
+    const registerUrl =
+      base +
+      '/student-register.html?trial=' +
+      encodeURIComponent(lead.token) +
+      '&email=' +
+      encodeURIComponent(to);
+    const child = String(lead.childName || 'your child').trim() || 'your child';
+    const subject = 'Sign up to claim your free trial lessons';
+    const text =
+      'Hello,\n\n' +
+      'Sign up to claim free trial lessons for ' + child + ' at no cost. Use the same email you used for the level assessment:\n\n' +
+      registerUrl + '\n\n— RemoEdPH';
+    const html =
+      '<p>Hello,</p>' +
+      '<p>Sign up to claim <strong>free trial lessons</strong> for <strong>' + esc(child) + '</strong> at no cost. Use the same email you used for the level assessment.</p>' +
+      '<p><a href="' + esc(registerUrl) + '">Sign up and claim free trial lessons</a></p>' +
+      '<p>— RemoEdPH</p>';
+    const result = await sendRawEmail(to, subject, html, text);
+    if (!result || !result.success) {
+      return res.status(502).json({ success: false, error: 'Could not send the invitation.' });
+    }
+    res.json({ success: true, sent: 1 });
+  } catch (err) {
+    console.error('level-assessments trial invite:', err);
+    res.status(500).json({ success: false, error: 'Could not send the invitation.' });
+  }
+});
+
 module.exports = router;

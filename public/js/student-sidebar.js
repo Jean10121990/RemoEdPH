@@ -49,6 +49,7 @@
         'student-dashboard.html': 1,
         'student-class-table.html': 1,
         'student-book.html': 1,
+        'student-credits.html': 1,
         'student-games-activities.html': 1,
         'student-videos.html': 1,
         'student-learning-journey.html': 1,

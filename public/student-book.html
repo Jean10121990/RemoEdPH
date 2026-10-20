@@ -1578,7 +1578,7 @@
         const userType = localStorage.getItem('userType');
         const token = getStudentAuthToken();
 
-        if (userType !== 'student') {
+        if (userType && userType !== 'student') {
             alert('Access denied. This page is for students only.');
             window.location.replace('/login/');
         }

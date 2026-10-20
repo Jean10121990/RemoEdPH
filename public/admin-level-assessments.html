@@ -14,6 +14,8 @@
     table { width: 100%; border-collapse: collapse; background: #fff; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
     button { min-height: 40px; border: none; border-radius: 8px; background: #0A7FD4; color: #fff; font-weight: 700; padding: 0 14px; cursor: pointer; }
+    button.side { min-height: 34px; font-size: 0.82rem; white-space: nowrap; }
+    button:disabled { opacity: 0.55; cursor: default; }
     .err { color: #991b1b; }
   </style>
 </head>
@@ -26,7 +28,7 @@
     <table>
       <thead>
         <tr>
-          <th></th><th>Child</th><th>Email</th><th>Phone</th><th>Level</th><th>Score</th><th>Date</th><th>Status</th>
+          <th></th><th>Child</th><th>Email</th><th>Phone</th><th>Level</th><th>Score</th><th>Date</th><th>Status</th><th></th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -54,12 +56,36 @@
               tr.innerHTML = '<td>' + (lead.registered ? '' : '<input type="checkbox" data-id="' + esc(lead.id) + '">') + '</td>' +
                 '<td>' + esc(lead.childName) + '</td><td>' + esc(lead.parentEmail) + '</td><td>' + esc(lead.phone) + '</td>' +
                 '<td>' + esc(lead.level) + '</td><td>' + esc(lead.score) + '</td><td>' + esc(when) + '</td>' +
-                '<td>' + (lead.registered ? 'Registered' : 'Not registered') + '</td>';
+                '<td>' + (lead.registered ? 'Registered' : 'Not registered') + '</td>' +
+                '<td>' + (lead.registered ? '' : '<button type="button" class="side" data-invite="' + esc(lead.id) + '">Invite to sign up</button>') + '</td>';
               tb.appendChild(tr);
             });
           })
           .catch(function () { document.getElementById('err').textContent = 'Could not load leads.'; });
       }
+      document.getElementById('rows').addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('button[data-invite]') : null;
+        if (!btn) return;
+        var id = btn.getAttribute('data-invite');
+        btn.disabled = true;
+        fetch('/api/admin/level-assessments/' + encodeURIComponent(id) + '/trial-invite', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+          credentials: 'include'
+        }).then(function (r) { return r.json(); }).then(function (body) {
+          var err = document.getElementById('err');
+          if (body && body.success) {
+            btn.textContent = 'Sent';
+            err.textContent = 'Invitation sent. They can sign up and claim free trial lessons at no cost.';
+          } else {
+            btn.disabled = false;
+            err.textContent = (body && body.error) || 'Could not send.';
+          }
+        }).catch(function () {
+          btn.disabled = false;
+          document.getElementById('err').textContent = 'Could not send.';
+        });
+      });
       document.getElementById('invite').addEventListener('click', function () {
         var ids = Array.prototype.map.call(document.querySelectorAll('input[data-id]:checked'), function (el) { return el.getAttribute('data-id'); });
         fetch('/api/admin/level-assessments/invite', {

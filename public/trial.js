@@ -156,11 +156,8 @@
     var status = err && err.status;
     var text = (err && err.message) || 'Something went wrong';
     if (status === 409) text = 'This child already used the free trial.';
-    if (status === 410) text = 'This trial has expired.';
-    $('msg').textContent = text;
-    if (status === 409 || status === 410) {
-      $('stage').innerHTML = '<p>' + text + '</p><p><a class="plan" href="index.html#plans">Choose a plan</a></p>';
-    }
+    var note = $('msg');
+    if (note) note.textContent = text;
   }
 
   function paintBar() {
@@ -192,6 +189,8 @@
   }
 
   function openStep(n) {
+    var note = $('msg');
+    if (note) note.textContent = '';
     listenGen += 1;
     stopCam();
     stopCam = function () {};
@@ -613,12 +612,16 @@
         '<div class="tile">Minutes<b>' + (report.minutes || 0) + '</b></div>' +
         '</div>' +
         '<p>Needs practice: ' + practice + '</p>' +
-        '<div class="row"><a class="plan" id="plans" href="student-credits.html">Choose a plan</a>' +
-        '<a class="plan" id="book" href="student-book.html">Book a class</a></div>' +
+        '<div class="row"><a class="plan" id="plans" href="/student-credits.html">Choose a plan</a>' +
+        '<a class="plan" id="book" href="/student-book.html">Book a class</a></div>' +
         (paid && !afterPaid ? '<button type="button" class="tap green" id="more">Continue the lesson</button>' : '')
       );
       var more = $('more');
       if (more) more.addEventListener('click', function () { openStep(3); });
+      var plans = $('plans');
+      var book = $('book');
+      if (plans) plans.addEventListener('click', function () { window.location.href = '/student-credits.html'; });
+      if (book) book.addEventListener('click', function () { window.location.href = '/student-book.html'; });
     }).catch(showError);
   }
 
