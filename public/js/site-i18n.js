@@ -205,13 +205,53 @@
     },
   };
 
+  var LANG_OPTIONS = [
+    ["en", "English"],
+    ["tl", "Filipino"],
+    ["zh-CN", "中文"],
+    ["zh-TW", "繁體中文"],
+    ["ja", "日本語"],
+    ["ko", "한국어"],
+    ["es", "Español"],
+    ["pt", "Português"],
+    ["fr", "Français"],
+    ["de", "Deutsch"],
+    ["ar", "العربية"],
+    ["hi", "हिन्दी"],
+    ["id", "Bahasa Indonesia"],
+    ["ms", "Bahasa Melayu"],
+    ["vi", "Tiếng Việt"],
+    ["th", "ไทย"],
+    ["ru", "Русский"],
+    ["tr", "Türkçe"],
+    ["it", "Italiano"],
+  ];
+
   var currentLang = "en";
 
+  function optionCode(code) {
+    var raw = String(code || "").trim();
+    var lower = raw.toLowerCase();
+    var i;
+    for (i = 0; i < LANG_OPTIONS.length; i++) {
+      if (LANG_OPTIONS[i][0].toLowerCase() === lower) return LANG_OPTIONS[i][0];
+    }
+    var base = lower.split("-")[0];
+    if (base === "zh") return lower.indexOf("tw") !== -1 || lower.indexOf("hant") !== -1 || lower.indexOf("hk") !== -1 ? "zh-TW" : "zh-CN";
+    if (base === "fil") return "tl";
+    for (i = 0; i < LANG_OPTIONS.length; i++) {
+      if (LANG_OPTIONS[i][0].toLowerCase().split("-")[0] === base) return LANG_OPTIONS[i][0];
+    }
+    return "en";
+  }
+
   function normalizeLang(code) {
-    if (!code) return "en";
-    var base = String(code).toLowerCase().split("-")[0];
-    if (base === "zh" || base === "ja" || base === "ko" || base === "en")
-      return base;
+    return optionCode(code);
+  }
+
+  function packLang(code) {
+    var base = optionCode(code).toLowerCase().split("-")[0];
+    if (base === "zh" || base === "ja" || base === "ko" || base === "en") return base;
     return "en";
   }
 
@@ -226,7 +266,7 @@
   }
 
   function t(lang, key) {
-    var L = normalizeLang(lang);
+    var L = packLang(lang);
     var pack = STRINGS[L] || STRINGS.en;
     if (pack[key] != null) return pack[key];
     return STRINGS.en[key] != null ? STRINGS.en[key] : key;
@@ -236,6 +276,7 @@
     var L = normalizeLang(lang);
     currentLang = L;
     document.documentElement.lang = L;
+    document.documentElement.dir = L === "ar" ? "rtl" : "ltr";
     document.querySelectorAll("[data-i18n]").forEach(function (el) {
       var key = el.getAttribute("data-i18n");
       if (!key) return;
@@ -268,11 +309,9 @@
       if (sel.dataset.i18nMounted) return;
       sel.dataset.i18nMounted = "1";
       sel.setAttribute("aria-label", t(currentLang, "lang_label"));
-      sel.innerHTML =
-        '<option value="en">English</option>' +
-        '<option value="zh">中文</option>' +
-        '<option value="ja">日本語</option>' +
-        '<option value="ko">한국어</option>';
+      sel.innerHTML = LANG_OPTIONS.map(function (pair) {
+        return '<option value="' + pair[0] + '">' + pair[1] + "</option>";
+      }).join("");
       sel.value = currentLang;
   sel.addEventListener("change", function () {
         setLang(sel.value);

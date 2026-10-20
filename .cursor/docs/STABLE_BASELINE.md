@@ -345,6 +345,8 @@ Product copy and layout on `public/index.html` after the hero. Style in `public/
 5. **Our Vision / Our Mission** (`#vision-mission`, `#our-vision`, `#our-mission`).
 6. Then existing `#benefits`, `#our-teachers`, `#assessment`, `#plans`.
 
+The navbar language menu (`public/js/site-i18n.js`) follows the visitor’s browser language on the first visit and remembers a later choice in `i18nextLng`. English stays as written. Any other language translates the landing page. The menu includes Filipino, Chinese, Japanese, Korean, Spanish, Portuguese, French, German, Arabic, Hindi, Indonesian, Malay, Vietnamese, Thai, Russian, Turkish, and Italian. Do not remove the menu or lock the page to English.
+
 ### Icons, not cropped comps
 
 Pillars and HEART use brand icon circles (same family as Foundational Principles / Why Learn cards). **Do not** reintroduce cropped mockup PNGs or a `public/images/culture/` photo set — those looked soft and blurry on the live page. Do not paste the full design-comp images as section backgrounds (duplicates titles and breaks a11y).
@@ -487,6 +489,7 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 - Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
 - Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
 - HR Hub → Level Assessment shows **Preview invite** on each lead who is not registered. The preview shows the mail, copies the signup link or the message, and opens WhatsApp, Messenger, X, TikTok, Instagram, or LinkedIn so the link can be sent by hand. Messenger, TikTok, and Instagram get the copied message because those apps do not accept a prefilled post from the browser. **Send email** still mails only the address stored on that assessment. Registered rows have no button.
+- **Level assessment invite** on that same page previews a message that opens the free level assessment (`/index.html#assessment`) so a parent can learn the child’s English level. Copy, the same social buttons, and **Send email** (the address typed in the preview) use that message. The link is the same for every invite.
 
 ## Student family / emergency (admin View Profile)
 

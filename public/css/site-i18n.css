@@ -41,6 +41,18 @@
   flex-shrink: 0;
 }
 
+.goog-te-banner-frame,
+.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+iframe.skiptranslate {
+  display: none !important;
+}
+
+body.page-index {
+  top: 0 !important;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

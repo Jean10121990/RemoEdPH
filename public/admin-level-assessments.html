@@ -32,6 +32,7 @@
   <div class="box">
     <h1>Level Assessment</h1>
     <p>Leads who finished the free level assessment, including people who have not registered.</p>
+    <button type="button" id="level-invite">Level assessment invite</button>
     <button type="button" id="invite">Send subscription invite</button>
     <p class="err" id="err"></p>
     <table>
@@ -47,6 +48,7 @@
     <div class="sheet" role="dialog" aria-labelledby="preview-title">
       <h2 id="preview-title">Invitation preview</h2>
       <p id="preview-to"></p>
+      <p id="preview-email-row"><label for="preview-email">Email</label><br><input class="link" id="preview-email" type="email" autocomplete="email" placeholder="parent@email.com"></p>
       <p id="preview-subject"></p>
       <div class="mail" id="preview-text"></div>
       <input class="link" id="preview-link" readonly>
@@ -112,7 +114,7 @@
       function openShare(kind) {
         if (!draft) return;
         var text = draft.shareText || draft.text || '';
-        var url = draft.registerUrl || '';
+        var url = draft.link || draft.registerUrl || draft.assessmentUrl || '';
         var note = document.getElementById('preview-note');
         if (kind === 'whatsapp') {
           window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
@@ -148,6 +150,10 @@
             return;
           }
           draft = body;
+          draft.kind = 'signup';
+          draft.link = body.registerUrl || '';
+          document.getElementById('preview-title').textContent = 'Signup invitation';
+          document.getElementById('preview-email-row').hidden = true;
           document.getElementById('preview-to').textContent = 'To: ' + (body.to || '');
           document.getElementById('preview-subject').textContent = 'Subject: ' + (body.subject || '');
           document.getElementById('preview-text').textContent = body.text || '';
@@ -164,8 +170,8 @@
         openPreview(btn.getAttribute('data-preview'));
       });
       document.getElementById('copy-link').addEventListener('click', function () {
-        if (!draft || !draft.registerUrl) return;
-        copyText(draft.registerUrl).then(function () {
+        if (!draft || !(draft.link || draft.registerUrl || draft.assessmentUrl)) return;
+        copyText(draft.link || draft.registerUrl || draft.assessmentUrl || '').then(function () {
           document.getElementById('preview-note').textContent = 'Link copied.';
         });
       });
@@ -185,12 +191,18 @@
       document.getElementById('preview-send').addEventListener('click', function () {
         var btn = document.getElementById('preview-send');
         var id = btn.getAttribute('data-id');
-        if (!id) return;
+        var level = draft && draft.kind === 'level';
+        if (!level && !id) return;
+        var email = level ? document.getElementById('preview-email').value : '';
         btn.disabled = true;
-        fetch('/api/admin/level-assessments/' + encodeURIComponent(id) + '/trial-invite', {
+        var url = level
+          ? '/api/admin/level-assessments/proficiency-invite'
+          : '/api/admin/level-assessments/' + encodeURIComponent(id) + '/trial-invite';
+        fetch(url, {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
-          credentials: 'include'
+          credentials: 'include',
+          body: JSON.stringify(level ? { email: email } : {})
         }).then(function (r) { return r.json(); }).then(function (body) {
           btn.disabled = false;
           document.getElementById('preview-note').textContent = body && body.success
@@ -199,6 +211,33 @@
         }).catch(function () {
           btn.disabled = false;
           document.getElementById('preview-note').textContent = 'Could not send.';
+        });
+      });
+      document.getElementById('level-invite').addEventListener('click', function () {
+        var note = document.getElementById('preview-note');
+        note.textContent = '';
+        fetch('/api/admin/level-assessments/proficiency-invite', {
+          headers: { Authorization: 'Bearer ' + token() },
+          credentials: 'include'
+        }).then(function (r) { return r.json(); }).then(function (body) {
+          if (!body || !body.success) {
+            document.getElementById('err').textContent = (body && body.error) || 'Could not load the invitation.';
+            return;
+          }
+          draft = body;
+          draft.kind = 'level';
+          draft.link = body.assessmentUrl || '';
+          document.getElementById('preview-title').textContent = 'Level assessment invite';
+          document.getElementById('preview-to').textContent = 'Invite a parent to learn their child\'s English level.';
+          document.getElementById('preview-email-row').hidden = false;
+          document.getElementById('preview-email').value = '';
+          document.getElementById('preview-subject').textContent = 'Subject: ' + (body.subject || '');
+          document.getElementById('preview-text').textContent = body.text || '';
+          document.getElementById('preview-link').value = body.assessmentUrl || '';
+          document.getElementById('preview-send').removeAttribute('data-id');
+          document.getElementById('preview').hidden = false;
+        }).catch(function () {
+          document.getElementById('err').textContent = 'Could not load the invitation.';
         });
       });
       document.getElementById('invite').addEventListener('click', function () {

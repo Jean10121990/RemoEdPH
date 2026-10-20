@@ -69,6 +69,57 @@ router.post('/invite', async (req, res) => {
   }
 });
 
+function cleanEmail(value) {
+  const email = String(value || '').trim().toLowerCase().slice(0, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return '';
+  return email;
+}
+
+function proficiencyInvite() {
+  const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').replace(/\/$/, '');
+  const assessmentUrl = base + '/index.html#assessment';
+  const subject = "Find your child's English level";
+  const shareText =
+    "Take the free RemoEdPH level assessment and learn your child's English proficiency level: " + assessmentUrl;
+  const text =
+    'Hello,\n\n' +
+    "Take the free RemoEdPH level assessment to learn your child's English proficiency level. It is short and costs nothing.\n\n" +
+    assessmentUrl + '\n\n— RemoEdPH';
+  const html =
+    '<p>Hello,</p>' +
+    "<p>Take the free RemoEdPH level assessment to learn your child's <strong>English proficiency level</strong>. It is short and costs nothing.</p>" +
+    '<p><a href="' + esc(assessmentUrl) + '">Start the level assessment</a></p>' +
+    '<p>— RemoEdPH</p>';
+  return { subject, text, shareText, html, assessmentUrl };
+}
+
+router.get('/proficiency-invite', (req, res) => {
+  const invite = proficiencyInvite();
+  res.json({
+    success: true,
+    subject: invite.subject,
+    text: invite.text,
+    shareText: invite.shareText,
+    assessmentUrl: invite.assessmentUrl,
+  });
+});
+
+router.post('/proficiency-invite', async (req, res) => {
+  try {
+    const to = cleanEmail(req.body && req.body.email);
+    if (!to) return res.status(400).json({ success: false, error: 'Enter an email address.' });
+    const invite = proficiencyInvite();
+    const result = await sendRawEmail(to, invite.subject, invite.html, invite.text);
+    if (!result || !result.success) {
+      return res.status(502).json({ success: false, error: 'Could not send the invitation.' });
+    }
+    res.json({ success: true, sent: 1 });
+  } catch (err) {
+    console.error('level-assessments proficiency invite:', err);
+    res.status(500).json({ success: false, error: 'Could not send the invitation.' });
+  }
+});
+
 function esc(value) {
   return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;',

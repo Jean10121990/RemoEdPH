@@ -1165,7 +1165,45 @@
           }
         });
     </script>
-    <script src="/js/site-i18n.js?v=nav-teachers-1"></script>
+    <script src="/js/site-i18n.js?v=landing-lang-1"></script>
+    <script>
+      (function () {
+        function writeCookie(lang) {
+          var host = location.hostname;
+          var expired = "Thu, 01 Jan 1970 00:00:00 GMT";
+          var clear = ["path=/", "path=/;domain=" + host];
+          if (host.indexOf(".") !== -1) clear.push("path=/;domain=." + host);
+          clear.forEach(function (part) {
+            document.cookie = "googtrans=;expires=" + expired + ";" + part;
+          });
+          if (!lang || lang === "en") return;
+          var value = "/en/" + lang;
+          document.cookie = "googtrans=" + value + ";path=/";
+          document.cookie = "googtrans=" + value + ";path=/;domain=" + host;
+          if (host.indexOf(".") !== -1) {
+            document.cookie = "googtrans=" + value + ";path=/;domain=." + host;
+          }
+        }
+        var lang = window.SiteI18n && SiteI18n.getLang ? SiteI18n.getLang() : "en";
+        writeCookie(lang);
+        window.addEventListener("sitei18n:languagechanged", function (ev) {
+          writeCookie(ev.detail && ev.detail.lang);
+          location.reload();
+        });
+        if (lang && lang !== "en") {
+          window.googleTranslateElementInit = function () {
+            new google.translate.TranslateElement({ pageLanguage: "en", autoDisplay: false }, "google_translate_element");
+          };
+          var holder = document.createElement("div");
+          holder.id = "google_translate_element";
+          holder.className = "visually-hidden";
+          document.body.appendChild(holder);
+          var script = document.createElement("script");
+          script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+          document.body.appendChild(script);
+        }
+      })();
+    </script>
     <script>
       SiteI18n.init();
       (function () {
