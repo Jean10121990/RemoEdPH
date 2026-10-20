@@ -230,8 +230,7 @@
                     <div id="teacher-payout-fields" style="margin-bottom: 15px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
                         <div style="font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.95rem;">Payout tier (base pay)</div>
                         <label for="admin-payout-tier-base" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 0.88rem;">Professional tier</label>
-                        <select id="admin-payout-tier-base" name="payoutTierBase" onchange="adminTeacherRatePreviewUpdate()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
-                            <option value="83">Free Trial — ₱45 per 25-min class (₱90/hr) — Free Trial Teacher (no credential add-ons)</option>
+                        <select id="admin-payout-tier-base" name="payoutTierBase" onchange="this.dataset.tierTouched='1'; adminTeacherRatePreviewUpdate()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
                             <option value="180">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
                             <option value="230">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
                             <option value="280">Tier 3 — ₱280/hr — Senior Teacher and Trainer (4-yr Grad)</option>
@@ -349,9 +348,12 @@
             var tier = tierEl ? parseInt(tierEl.value, 10) : 180;
             if (![83, 180, 230, 280, 330].includes(tier)) tier = 180;
             var line = document.getElementById('admin-teacher-rate-preview-line');
+            if (tierEl && tierEl.dataset.savedTier === '83' && tierEl.dataset.tierTouched !== '1') {
+                if (line) line.textContent = 'Total hourly: ₱90 · Per 25-min class: ₱45 (no add-ons)';
+                return;
+            }
             if (tier === 83) {
-                // Free Trial tier: flat ₱45 per 25-min class (₱90/hr), credential add-ons do not apply.
-                if (line) line.textContent = 'Total hourly: ₱90 · Per 25-min class: ₱45 (Free Trial, no add-ons)';
+                if (line) line.textContent = 'Total hourly: ₱90 · Per 25-min class: ₱45 (no add-ons)';
                 return;
             }
             var n = 0;
@@ -771,7 +773,11 @@
             
             if (userType === 'teacher') {
                 var tierEl = document.getElementById('admin-payout-tier-base');
-                if (tierEl) tierEl.value = '180';
+                if (tierEl) {
+                    tierEl.value = '180';
+                    tierEl.dataset.savedTier = '';
+                    tierEl.dataset.tierTouched = '';
+                }
                 var a1 = document.getElementById('admin-payout-cred-1');
                 var a2 = document.getElementById('admin-payout-cred-2');
                 var a3 = document.getElementById('admin-payout-cred-3');
@@ -826,7 +832,11 @@
                     document.getElementById('lastName').value = user.lastName || '';
                     var tb = user.payoutTierBase != null ? String(user.payoutTierBase) : '180';
                     var tierSel = document.getElementById('admin-payout-tier-base');
-                    if (tierSel) tierSel.value = ['83', '180', '230', '280', '330'].indexOf(tb) >= 0 ? tb : '180';
+                    if (tierSel) {
+                        tierSel.dataset.savedTier = tb;
+                        tierSel.dataset.tierTouched = '';
+                        tierSel.value = ['180', '230', '280', '330'].indexOf(tb) >= 0 ? tb : '180';
+                    }
                     var u1 = document.getElementById('admin-payout-cred-1');
                     var u2 = document.getElementById('admin-payout-cred-2');
                     var u3 = document.getElementById('admin-payout-cred-3');
@@ -944,7 +954,9 @@
             }
             if (userData.userType === 'teacher') {
                 var tierEl = document.getElementById('admin-payout-tier-base');
-                userData.payoutTierBase = tierEl ? tierEl.value : '180';
+                userData.payoutTierBase = tierEl && tierEl.dataset.savedTier === '83' && tierEl.dataset.tierTouched !== '1'
+                    ? '83'
+                    : (tierEl ? tierEl.value : '180');
                 userData.payoutCred1 = !!(document.getElementById('admin-payout-cred-1') && document.getElementById('admin-payout-cred-1').checked);
                 userData.payoutCred2 = !!(document.getElementById('admin-payout-cred-2') && document.getElementById('admin-payout-cred-2').checked);
                 userData.payoutCred3 = !!(document.getElementById('admin-payout-cred-3') && document.getElementById('admin-payout-cred-3').checked);
