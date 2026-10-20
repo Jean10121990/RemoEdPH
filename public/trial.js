@@ -572,8 +572,11 @@
     words.forEach(function (item) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'tap';
-      b.textContent = item[1];
+      b.className = 'tap choice';
+      var pic = document.createElement('span');
+      pic.className = 'emoji';
+      pic.textContent = item[1];
+      b.appendChild(pic);
       b.addEventListener('click', function () {
         var ok = item[0] === pair[0];
         window.Trial.recordAnswer(pair[0], ok);
