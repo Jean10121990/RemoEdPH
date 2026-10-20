@@ -32,15 +32,15 @@
     @keyframes drift { from { transform:translateX(0); } to { transform:translateX(110vw); } }
     .top { position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
     .top img { height:44px; width:auto; }
-    #sound { min-width:80px; min-height:80px; border:3px solid var(--navy); border-radius:999px; background:#fff; box-shadow:0 4px 0 var(--navy); font-family:"Baloo 2",sans-serif; font-weight:800; cursor:pointer; }
-    .wrap { position:relative; z-index:1; max-width:900px; margin:0 auto; padding:8px 16px 32px; }
+    #sound { min-width:64px; min-height:48px; border:3px solid var(--navy); border-radius:999px; background:#fff; box-shadow:0 4px 0 var(--navy); font-family:"Baloo 2",sans-serif; font-weight:800; cursor:pointer; }
+    .wrap { position:relative; z-index:1; max-width:820px; margin:0 auto; padding:4px 16px 20px; }
     .lesson {
-      display:grid; grid-template-columns:160px 1fr; gap:16px; align-items:start;
-      background:#fff; border:4px solid var(--navy); border-radius:36px;
-      box-shadow:0 6px 0 var(--navy); padding:24px; min-height:calc(100vh - 96px);
+      display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:center;
+      background:#fff; border:4px solid var(--navy); border-radius:28px;
+      box-shadow:0 6px 0 var(--navy); padding:14px 16px 10px;
     }
     .cast { position:relative; }
-    .cast img { width:140px; height:auto; }
+    .cast img { width:108px; height:auto; }
     .mascot { display:block; animation:bob 2.4s ease-in-out infinite; }
     .mascot.is-talking { animation:wiggle .35s ease-in-out infinite; }
     .mascot.is-jump { animation:jump .45s ease; }
@@ -66,10 +66,10 @@
     .bar button.is-on { width:68px; height:68px; background:var(--blue); color:#fff; border-color:var(--navy); box-shadow:0 4px 0 var(--navy); animation:pulse 1.2s ease-in-out infinite; }
     .bar button.is-lock { opacity:.55; }
     @keyframes pulse { 50% { transform:scale(1.08); } }
-    .stage { background:transparent; border-radius:24px; padding:8px 4px 16px; min-height:280px; text-align:center; }
+    .stage { background:transparent; border-radius:24px; padding:0 0 8px; min-height:0; text-align:center; }
     .stage.is-in { animation:slide .3s ease; }
     @keyframes slide { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
-    .note { min-height:1.2em; text-align:center; color:var(--navy); }
+    .note { min-height:0; margin:2px 0 0; text-align:center; color:var(--navy); }
     h1,h2,.big,.tap,button,.plan { font-family:"Baloo 2","Trebuchet MS",sans-serif; font-weight:800; }
     .big { font-size:clamp(2.4rem,8vw,4.2rem); line-height:1.05; margin:8px 0; }
     .wave span { display:inline-block; animation:wave .6s ease both; }
@@ -86,12 +86,22 @@
     .tap.mood { display:flex; flex-direction:column; align-items:center; justify-content:center; width:140px; min-height:140px; border-radius:28px; background:#fff; }
     .tap.mood .emoji { font-size:64px; line-height:1; }
     .tap.mood.is-picked { background:var(--yellow); box-shadow:0 0 0 6px var(--yellow), 0 6px 0 var(--navy); animation:jump .4s ease; }
-    .tap.bubble { border-radius:50%; animation:bob 2.2s ease-in-out infinite; }
+    .tap.bubble, .tap.food { display:flex; flex-direction:column; align-items:center; justify-content:center; width:108px; height:108px; border-radius:50%; padding:6px; }
+    .tap.bubble { animation:bob 2.2s ease-in-out infinite; }
+    .tap.food { cursor:grab; touch-action:none; }
+    .tap .emoji { font-size:40px; line-height:1; }
+    .tap .word { font-size:16px; line-height:1.1; }
+    .tap.dragging { position:fixed; z-index:20; margin:0; pointer-events:none; opacity:.9; }
+    .heard { margin:4px 0 8px; font-size:18px; }
     .tap.bubble.pop { animation:pop .25s ease forwards; }
     @keyframes pop { to { transform:scale(1.4); opacity:0; } }
     .monster { width:160px; height:120px; margin:0 auto 8px; background:var(--green); border:4px solid var(--navy); border-radius:80px 80px 40px 40px; position:relative; }
     .monster .mouth { position:absolute; left:40px; right:40px; bottom:18px; height:16px; background:var(--navy); border-radius:0 0 20px 20px; transition:height .2s; }
     .monster.is-open .mouth, .monster.is-chomp .mouth { height:48px; background:#1B2447; }
+    .home { width:150px; height:110px; margin:8px auto; background:#0A7FD4; border:4px solid var(--navy); border-radius:8px; position:relative; }
+    .home:before { content:""; position:absolute; left:8px; right:8px; top:-34px; height:36px; background:#FF5C8A; border:4px solid var(--navy); clip-path:polygon(50% 0, 100% 100%, 0 100%); }
+    .home.is-open { background:#FFE82E; }
+    .cam { width:min(100%, 280px); height:160px; object-fit:cover; border:4px solid var(--navy); border-radius:20px; background:#0f172a; transform:scaleX(-1); }
     .lock-note { background:#f8fafc; border-radius:16px; padding:12px; }
     a.plan { display:inline-flex; align-items:center; justify-content:center; min-height:80px; padding:0 18px; border-radius:999px; border:4px solid var(--navy); background:var(--blue); color:#fff; text-decoration:none; box-shadow:0 6px 0 var(--navy); }
     button:disabled, a.disabled { opacity:.45; pointer-events:none; }
@@ -121,7 +131,7 @@
     @keyframes fly { to { transform:translate(var(--dx), var(--dy)) scale(.4); opacity:.2; } }
     :focus-visible { outline:3px solid var(--blue); outline-offset:3px; }
     @media (max-width:700px) {
-      .lesson { grid-template-columns:1fr; min-height:auto; }
+      .lesson { grid-template-columns:1fr; }
       .cast { display:flex; justify-content:center; }
       .cast img { width:110px; }
       .bar button, .bar button.is-on { width:40px; height:40px; font-size:16px; }
@@ -162,7 +172,7 @@
   </main>
   <div class="toast" id="toast" role="status"></div>
   <div class="confetti" id="confetti" aria-hidden="true"></div>
-  <script src="trial-client.js?v=trial-all-7"></script>
-  <script src="trial.js?v=trial-all-7"></script>
+  <script src="trial-client.js?v=trial-cam-1"></script>
+  <script src="trial.js?v=trial-cam-1"></script>
 </body>
 </html>

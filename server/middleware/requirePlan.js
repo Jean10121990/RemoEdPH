@@ -4,8 +4,9 @@ module.exports = function requirePaidPlan(req, res, next) {
   const student = req.student || null;
   if (!isPaidSubscriber(student)) {
     return res.status(402).json({
-      error: 'A paid plan is needed to book a live lesson.',
-      next: '/plans',
+      error: 'You need credits to book a live class.',
+      code: 'INSUFFICIENT_CREDITS',
+      next: '/student-credits.html',
     });
   }
   next();

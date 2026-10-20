@@ -144,7 +144,7 @@ async function runBookSlot(req, res) {
     const { isPaidSubscriber, assertFreePlanLesson } = require('./freePlanAccess');
     const paidBooking = isPaidSubscriber(student);
     const freePlanBooking = !paidBooking;
-    if (paidBooking && availableCredits <= 0) {
+    if (availableCredits <= 0) {
       const expired =
         String(student.subscriptionStatus || '') === 'expired' ||
         (expiryResult && expiryResult.applied);

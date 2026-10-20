@@ -1340,16 +1340,12 @@
                     var profile = pair[0] && pair[0].profile;
                     var paid = profile && profile.freePlan && profile.freePlan.isFree === false;
                     var trial = pair[1] && pair[1].trial;
-                    var tabs = document.querySelector('.book-view-tabs');
-                    var sched = document.getElementById('book-schedule-panel');
-                    var syl = document.getElementById('book-syllabus-panel');
                     if (paid) return;
-                    if (tabs) tabs.hidden = true;
-                    if (sched) sched.hidden = true;
-                    if (syl) syl.hidden = true;
+                    var credits = Number(profile.creditBalance || profile.credits || 0);
+                    if (credits > 0) return;
                     box.hidden = false;
                     if (trial && trial.status === 'completed') {
-                        box.innerHTML = '<p style="margin:0 0 12px;font-weight:800;">Live classes are for a paid plan.</p><a href="index.html#plans" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 16px;border-radius:999px;background:#0A7FD4;color:#fff;font-weight:800;text-decoration:none;">Choose a plan</a>';
+                        box.innerHTML = '<p style="margin:0 0 12px;font-weight:800;">You need credits before a live class can be booked.</p><a href="student-credits.html" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 16px;border-radius:999px;background:#0A7FD4;color:#fff;font-weight:800;text-decoration:none;">Choose a plan</a>';
                     }
                 }).catch(function () {});
             })();
@@ -3605,6 +3601,13 @@
                 if (!response.ok) {
                     const errorMsg = result.error || result.message || 'Booking failed';
                     const errorDetails = result.details || {};
+
+                    if (result.code === 'INSUFFICIENT_CREDITS' || result.code === 'CREDITS_EXPIRED' || response.status === 402) {
+                        showMessage((result.error || 'You need credits to book a live class.') + ' Choose a plan on the Credits page.', 'error');
+                        bookBtn.disabled = false;
+                        bookBtnText.textContent = 'Book Class';
+                        return;
+                    }
 
                     if (result.code === 'CONSENT_REQUIRED') {
                         showMessage(errorMsg, 'error');

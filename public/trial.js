@@ -9,6 +9,9 @@
   var LABELS = ['Welcome', 'Simon', 'Learn', 'Play', 'Say it', 'Check', 'Bye'];
   var SIMON = ['Clap', 'Jump', 'Touch your nose'];
   var step = 0;
+  var listenGen = 0;
+  var stopCam = function () {};
+  var teacherVoice = null;
   var paid = false;
   var childName = 'friend';
   var theme = 'fruits';
@@ -52,8 +55,9 @@
     }
     var u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-US';
-    u.rate = 0.8;
-    u.pitch = 1.15;
+    u.rate = 0.92;
+    u.pitch = 1.2;
+    if (teacherVoice) u.voice = teacherVoice;
     u.onend = function () { if (mascot) mascot.classList.remove('is-talking'); };
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
@@ -188,6 +192,9 @@
   }
 
   function openStep(n) {
+    listenGen += 1;
+    stopCam();
+    stopCam = function () {};
     step = n;
     cursor = 0;
     misses = 0;
@@ -220,18 +227,110 @@
     });
   }
 
+  function pointDist(a, b) {
+    var dx = a.x - b.x;
+    var dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   function simon() {
     var cmd = SIMON[cursor];
+    var gen = listenGen;
+    var passed = false;
+    var pose = null;
+    var stream = null;
+    var timer = 0;
+    var seen = 0;
+    var baselineHip = null;
+    var handsApart = false;
     speak('Simon says ' + cmd);
-    stage('<p>Simon says</p><p class="big">' + cmd + '</p><button type="button" class="tap green" id="done">Done!</button>');
-    $('done').addEventListener('click', function () {
+    stage('<p>Simon says</p><p class="big">' + cmd + '</p><video id="cam" class="cam" autoplay playsinline muted></video><p class="heard" id="heard">Starting the camera…</p><button type="button" class="tap blue" id="done">Try the camera</button>');
+    var video = $('cam');
+    function finishCam() {
+      if (timer) cancelAnimationFrame(timer);
+      timer = 0;
+      if (stream) stream.getTracks().forEach(function (track) { track.stop(); });
+      stream = null;
+    }
+    stopCam = finishCam;
+    function pass() {
+      if (passed || gen !== listenGen) return;
+      passed = true;
+      finishCam();
       window.Trial.recordAnswer(cmd, true);
+      celebrate();
       cursor += 1;
       saveStep().then(function () {
+        if (gen !== listenGen) return;
         if (cursor < SIMON.length) simon();
         else openStep(2);
       });
-    });
+    }
+    function watch() {
+      if (passed || gen !== listenGen) return;
+      if (pose && video && video.readyState >= 2) {
+        var result = null;
+        try { result = pose.detectForVideo(video, performance.now()); } catch (e) {}
+        var lm = result && result.landmarks && result.landmarks[0];
+        if (lm && lm[0] && lm[15] && lm[16] && lm[11] && lm[12]) {
+          var shoulder = pointDist(lm[11], lm[12]) || 0.2;
+          if (cmd === 'Clap') {
+            var hands = pointDist(lm[15], lm[16]);
+            if (hands > shoulder * 0.9) handsApart = true;
+            if (handsApart && hands < shoulder * 0.45) pass();
+          } else if (cmd === 'Jump' && lm[23] && lm[24]) {
+            var hip = (lm[23].y + lm[24].y) / 2;
+            seen += 1;
+            if (seen < 10) baselineHip = hip;
+            else if (baselineHip != null && baselineHip - hip > 0.06) pass();
+          } else if (pointDist(lm[15], lm[0]) < shoulder * 0.55 || pointDist(lm[16], lm[0]) < shoulder * 0.55) {
+            pass();
+          }
+        }
+      }
+      timer = requestAnimationFrame(watch);
+    }
+    function startCam() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if ($('heard')) $('heard').textContent = 'This browser needs a camera.';
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }).then(function (next) {
+        if (gen !== listenGen) {
+          next.getTracks().forEach(function (track) { track.stop(); });
+          return;
+        }
+        finishCam();
+        stream = next;
+        stopCam = finishCam;
+        video.srcObject = next;
+        return video.play().then(function () {
+          return import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
+        });
+      }).then(function (vision) {
+        if (!vision || gen !== listenGen) return null;
+        return vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm').then(function (files) {
+          return vision.PoseLandmarker.createFromOptions(files, {
+            baseOptions: {
+              modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+              delegate: 'CPU'
+            },
+            runningMode: 'VIDEO',
+            numPoses: 1
+          });
+        });
+      }).then(function (landmarker) {
+        if (!landmarker || gen !== listenGen) return;
+        pose = landmarker;
+        if ($('heard')) $('heard').textContent = 'Camera on. ' + cmd + '!';
+        watch();
+      }).catch(function () {
+        if (gen !== listenGen) return;
+        if ($('heard')) $('heard').textContent = 'Allow the camera so we can see you ' + cmd.toLowerCase() + '.';
+      });
+    }
+    $('done').addEventListener('click', startCam);
+    startCam();
   }
 
   function learn() {
@@ -256,82 +355,183 @@
     return html;
   }
 
+  function advancePlay() {
+    cursor += 1;
+    if (cursor >= words.length && phase === 'bubbles') {
+      cursor = 0;
+      phase = 'feed';
+      saveStep().then(play);
+      return;
+    }
+    if (cursor >= words.length) {
+      saveStep().then(function () { openStep(4); });
+      return;
+    }
+    saveStep().then(play);
+  }
+
+  function markTry(pair, item, node, mouth) {
+    var ok = item[0] === pair[0];
+    window.Trial.recordAnswer(pair[0], ok);
+    if (!ok) {
+      misses += 1;
+      miss(node);
+      $('msg').textContent = 'Try again';
+      if (misses >= 2) {
+        var nodes = $('opts').querySelectorAll('button');
+        nodes.forEach(function (el) {
+          if (el.dataset.word === pair[0]) el.classList.add('pulse');
+        });
+      }
+      return;
+    }
+    misses = 0;
+    $('msg').textContent = '';
+    if (phase === 'bubbles') node.classList.add('pop');
+    if (mouth) mouth.classList.add('is-chomp');
+    celebrate();
+    advancePlay();
+  }
+
+  function dragFood(node, item, pair, mouth) {
+    node.addEventListener('pointerdown', function (ev) {
+      if (ev.button !== undefined && ev.button !== 0) return;
+      ev.preventDefault();
+      var ghost = node.cloneNode(true);
+      ghost.classList.add('dragging');
+      ghost.style.left = (ev.clientX - 54) + 'px';
+      ghost.style.top = (ev.clientY - 54) + 'px';
+      document.body.appendChild(ghost);
+      function move(e) {
+        ghost.style.left = (e.clientX - 54) + 'px';
+        ghost.style.top = (e.clientY - 54) + 'px';
+        if (!mouth) return;
+        var box = mouth.getBoundingClientRect();
+        var near = e.clientX > box.left - 36 && e.clientX < box.right + 36 && e.clientY > box.top - 36 && e.clientY < box.bottom + 48;
+        mouth.classList.toggle('is-open', near);
+      }
+      function up(e) {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        ghost.remove();
+        if (mouth) mouth.classList.remove('is-open');
+        if (!mouth) return;
+        var box = mouth.getBoundingClientRect();
+        var hit = e.clientX >= box.left - 28 && e.clientX <= box.right + 28 && e.clientY >= box.top - 28 && e.clientY <= box.bottom + 40;
+        if (!hit) return;
+        markTry(pair, item, node, mouth);
+      }
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+    });
+  }
+
   function play() {
     var pair = words[cursor];
-    var title = phase === 'bubbles' ? 'Pop the bubble that says ' + pair[0] : 'Feed the food that is ' + pair[0];
+    var feeding = phase === 'feed';
+    var pets = theme === 'animals';
+    var title = !feeding ? 'Pop the ' + pair[0] : (pets ? 'Take the ' + pair[0] + ' home' : 'Drag the ' + pair[0] + ' to the mouth');
     speak(title);
-    var monster = phase === 'feed' ? '<div class="monster" id="monster" aria-hidden="true"><span class="mouth"></span></div>' : '';
+    var monster = '';
+    if (feeding && pets) monster = '<div class="home" id="monster" aria-label="Home"></div>';
+    else if (feeding) monster = '<div class="monster" id="monster" aria-hidden="true"><span class="mouth"></span></div>';
     stage('<p>' + title + '</p>' + monster + '<div class="row" id="opts"></div>');
     var mouth = $('monster');
     words.forEach(function (item) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'tap ' + (phase === 'bubbles' ? 'bubble' : 'food');
-      b.textContent = item[1];
+      b.className = 'tap ' + (feeding ? 'food' : 'bubble');
+      b.innerHTML = '<span class="emoji">' + item[1] + '</span><span class="word">' + item[0] + '</span>';
       b.dataset.word = item[0];
-      b.draggable = true;
-      b.addEventListener('dragstart', function () { if (mouth) mouth.classList.add('is-open'); });
-      b.addEventListener('dragend', function () { if (mouth) mouth.classList.remove('is-open'); });
-      b.addEventListener('click', function () {
-        var ok = item[0] === pair[0];
-        window.Trial.recordAnswer(pair[0], ok);
-        if (!ok) {
-          misses += 1;
-          miss(b);
-          $('msg').textContent = 'Try again';
-          if (misses >= 2) {
-            var nodes = $('opts').querySelectorAll('button');
-            nodes.forEach(function (node) {
-              if (node.dataset.word === pair[0]) node.classList.add('pulse');
-            });
-          }
-          return;
-        }
-        misses = 0;
-        $('msg').textContent = '';
-        if (phase === 'bubbles') b.classList.add('pop');
-        if (mouth) mouth.classList.add('is-chomp');
-        celebrate();
-        cursor += 1;
-        if (cursor >= words.length && phase === 'bubbles') {
-          cursor = 0;
-          phase = 'feed';
-          saveStep().then(play);
-          return;
-        }
-        if (cursor >= words.length) {
-          saveStep().then(function () { openStep(4); });
-          return;
-        }
-        saveStep().then(play);
-      });
+      if (feeding) dragFood(b, item, pair, mouth);
+      else b.addEventListener('click', function () { markTry(pair, item, b, null); });
       $('opts').appendChild(b);
     });
   }
 
+  function saidWord(transcript, word) {
+    var heard = String(transcript || '').toLowerCase();
+    var want = String(word || '').toLowerCase();
+    if (!want || heard.indexOf(want) === -1) {
+      return heard.split(/[^a-z]+/).indexOf(want) !== -1;
+    }
+    return true;
+  }
+
   function sayIt() {
     var pair = words[cursor];
+    var passed = false;
+    var gen = listenGen;
     speak('Say ' + pair[0]);
-    stage('<p class="big">' + pair[1] + '</p><p>Say ' + pair[0] + '</p><button type="button" class="tap green" id="said">I said it!</button>');
+    stage('<p class="big">' + pair[1] + '</p><p>Say ' + pair[0] + '</p><p class="heard" id="heard">Listening…</p><button type="button" class="tap green" id="said">Listen</button>');
     var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (Rec) {
-      try {
-        var rec = new Rec();
-        rec.lang = 'en-US';
-        rec.onresult = function () { doneSpoke(); };
-        rec.onerror = function () {};
-        rec.start();
-      } catch (e) {}
+    var rec = null;
+    function stopRec() {
+      if (!rec) return;
+      try { rec.onend = function () {}; rec.stop(); } catch (e) {}
     }
-    function doneSpoke() {
+    function wrong(text) {
+      if (gen !== listenGen) return;
+      $('msg').textContent = 'Try again';
+      var heard = $('heard');
+      if (heard) heard.textContent = text ? ('I heard “' + text + '”. Say ' + pair[0] + '.') : ('Say ' + pair[0] + '.');
+      miss($('said'));
+    }
+    function accept() {
+      if (passed || gen !== listenGen) return;
+      passed = true;
+      stopRec();
       window.Trial.recordSpoke(pair[0]);
+      celebrate();
       cursor += 1;
       saveStep().then(function () {
         if (cursor < words.length) sayIt();
         else openStep(5);
       });
     }
-    $('said').addEventListener('click', doneSpoke);
+    function listen() {
+      if (passed) return;
+      if (!Rec) {
+        var heard = $('heard');
+        if (heard) heard.textContent = 'Use Chrome so we can hear “' + pair[0] + '”.';
+        return;
+      }
+      try {
+        stopRec();
+        rec = new Rec();
+        rec.lang = 'en-US';
+        rec.interimResults = false;
+        rec.maxAlternatives = 5;
+        rec.onresult = function (ev) {
+          var last = '';
+          var i, j;
+          for (i = 0; i < ev.results.length; i++) {
+            for (j = 0; j < ev.results[i].length; j++) {
+              last = ev.results[i][j].transcript || '';
+              if (saidWord(last, pair[0])) { accept(); return; }
+            }
+          }
+          wrong(last);
+        };
+        rec.onnomatch = function () { wrong(''); };
+        rec.onerror = function (ev) {
+          if (ev && ev.error === 'no-speech') return;
+          wrong('');
+        };
+        rec.onend = function () {
+          if (!passed && gen === listenGen) {
+            try { rec.start(); } catch (e) {}
+          }
+        };
+        rec.start();
+        var line = $('heard');
+        if (line) line.textContent = 'Listening… say ' + pair[0];
+      } catch (e) {
+        wrong('');
+      }
+    }
+    $('said').addEventListener('click', listen);
+    listen();
   }
 
   function check() {
@@ -386,19 +586,10 @@
         '<div class="tile">Minutes<b>' + (report.minutes || 0) + '</b></div>' +
         '</div>' +
         '<p>Needs practice: ' + practice + '</p>' +
-        '<div class="gate-card"><label>Type the number 7 to choose a plan <input id="gate" inputmode="numeric" maxlength="1"></label>' +
-        '<div class="row"><button type="button" class="tap blue" id="plans">Choose a plan</button>' +
-        '<a class="plan' + (paid ? '' : ' disabled') + '" id="book" href="student-book.html">Book your first live lesson</a></div></div>' +
+        '<div class="row"><a class="plan" id="plans" href="student-credits.html">Choose a plan</a>' +
+        '<a class="plan" id="book" href="student-book.html">Book a class</a></div>' +
         (paid && !afterPaid ? '<button type="button" class="tap green" id="more">Continue the lesson</button>' : '')
       );
-      if (!paid) $('book').setAttribute('aria-disabled', 'true');
-      $('plans').addEventListener('click', function () {
-        if ($('gate').value.trim() !== '7') {
-          $('msg').textContent = 'Ask a parent to type 7.';
-          return;
-        }
-        window.location.href = 'index.html#plans';
-      });
       var more = $('more');
       if (more) more.addEventListener('click', function () { openStep(3); });
     }).catch(showError);
@@ -461,6 +652,22 @@
       if (!audioOn && window.speechSynthesis) window.speechSynthesis.cancel();
       paintSound();
     });
+  }
+
+  function chooseTeacherVoice() {
+    if (!window.speechSynthesis) return;
+    var list = window.speechSynthesis.getVoices() || [];
+    var en = list.filter(function (voice) { return /^en/i.test(voice.lang || ''); });
+    var warm = /female|woman|aria|jenny|sonia|libby|samantha|victoria|zira|susan|karen|moira|fiona|linda|hazel/i;
+    var male = /male|david|mark|guy|daniel|george|rishi/i;
+    teacherVoice = en.filter(function (voice) { return warm.test(voice.name) && !male.test(voice.name); })[0]
+      || en.filter(function (voice) { return !male.test(voice.name); })[0]
+      || en[0]
+      || null;
+  }
+  if (window.speechSynthesis) {
+    chooseTeacherVoice();
+    window.speechSynthesis.addEventListener('voiceschanged', chooseTeacherVoice);
   }
 
   paintBar();
