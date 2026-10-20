@@ -127,7 +127,6 @@
             'body.student-kids-mode #dash-journey-bar-wrap,' +
             'body.student-kids-mode #welcome-trial-toast,' +
             'body.student-kids-mode #subscription-paywall-overlay,' +
-            'body.student-kids-mode #free-lesson-cta,' +
             'body.student-kids-mode #free-plan-upgrade,' +
             'body.student-kids-mode #trial-completed-banner,' +
             'body.student-kids-mode #credits-expiry-banner,' +
@@ -461,18 +460,21 @@
     }
 
     function getBookNavSpec() {
-        if (global.RemoedStudentPortalMode && global.RemoedStudentPortalMode.isKids()) {
-            return { label: 'Book a Class', href: 'student-book.html' };
-        }
         try {
             var raw = localStorage.getItem('studentFreePlan');
             if (raw) {
                 var plan = JSON.parse(raw);
-                if (plan && plan.isFree === true && plan.sequenceDone === true) {
-                    return { label: 'Subscribe to Book', href: 'student-credits.html' };
+                if (plan && plan.isFree === true) {
+                    if (plan.sequenceDone === true) {
+                        return { label: 'Subscribe to Book', href: 'student-credits.html' };
+                    }
+                    return { label: 'Claim free trial lessons', href: 'trial.html' };
                 }
             }
         } catch (e) {}
+        if (global.RemoedStudentPortalMode && global.RemoedStudentPortalMode.isKids()) {
+            return { label: 'Book a Class', href: 'student-book.html' };
+        }
         return { label: 'Book Class', href: 'student-book.html' };
     }
 

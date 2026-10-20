@@ -1292,7 +1292,7 @@
 <body class="student-portal page-student-book">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=parent-pin-wrong-1"></script>
+        <script src="js/student-sidebar.js?v=claim-both-modes-1"></script>
         <script src="js/student-page-header.js?v=garden-v3-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'book');
@@ -1316,8 +1316,21 @@
             <script>
             (function () {
                 var box = document.getElementById('start-free-lesson');
-                var token = '';
-                try { token = localStorage.getItem('remoed_student_token') || sessionStorage.getItem('remoed_student_token') || ''; } catch (e) {}
+                function bearer() {
+                    try {
+                        var keys = ['remoed_student_token', 'remoed_student_auth', 'remoed_user_token', 'token'];
+                        var stores = [localStorage, sessionStorage];
+                        var i, j, v;
+                        for (i = 0; i < stores.length; i++) {
+                            for (j = 0; j < keys.length; j++) {
+                                v = stores[i].getItem(keys[j]);
+                                if (v) return v;
+                            }
+                        }
+                    } catch (e) {}
+                    return '';
+                }
+                var token = bearer();
                 if (!box || !token) return;
                 var headers = { Authorization: 'Bearer ' + token };
                 Promise.all([
@@ -1327,8 +1340,17 @@
                     var profile = pair[0] && pair[0].profile;
                     var paid = profile && profile.freePlan && profile.freePlan.isFree === false;
                     var trial = pair[1] && pair[1].trial;
-                    if (paid || (trial && trial.status === 'completed')) return;
+                    var tabs = document.querySelector('.book-view-tabs');
+                    var sched = document.getElementById('book-schedule-panel');
+                    var syl = document.getElementById('book-syllabus-panel');
+                    if (paid) return;
+                    if (tabs) tabs.hidden = true;
+                    if (sched) sched.hidden = true;
+                    if (syl) syl.hidden = true;
                     box.hidden = false;
+                    if (trial && trial.status === 'completed') {
+                        box.innerHTML = '<p style="margin:0 0 12px;font-weight:800;">Live classes are for a paid plan.</p><a href="index.html#plans" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 16px;border-radius:999px;background:#0A7FD4;color:#fff;font-weight:800;text-decoration:none;">Choose a plan</a>';
+                    }
                 }).catch(function () {});
             })();
             </script>

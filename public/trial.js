@@ -20,20 +20,128 @@
 
   function $(id) { return document.getElementById(id); }
 
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var audioOn = true;
+  try { if (sessionStorage.getItem('trialSound') === '0') audioOn = false; } catch (e) {}
+
+  function token() {
+    try {
+      var keys = ['remoed_student_token', 'remoed_student_auth', 'remoed_user_token', 'token'];
+      var stores = [localStorage, sessionStorage];
+      var i, j, v;
+      for (i = 0; i < stores.length; i++) {
+        for (j = 0; j < keys.length; j++) {
+          v = stores[i].getItem(keys[j]);
+          if (v) return v;
+        }
+      }
+      return '';
+    } catch (e) { return ''; }
+  }
+
+  function scene(name) { document.body.setAttribute('data-scene', name); }
+
   function speak(text) {
-    if (!window.speechSynthesis) return;
+    var bubble = $('bubble');
+    if (bubble) bubble.textContent = text;
+    var mascot = $('mascot');
+    if (mascot) mascot.classList.add('is-talking');
+    if (!window.speechSynthesis || !audioOn) {
+      if (mascot) setTimeout(function () { mascot.classList.remove('is-talking'); }, 600);
+      return;
+    }
     var u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-US';
     u.rate = 0.8;
     u.pitch = 1.15;
+    u.onend = function () { if (mascot) mascot.classList.remove('is-talking'); };
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   }
 
-  function token() {
+  function beep(ok) {
+    if (!audioOn || reduce) return;
     try {
-      return localStorage.getItem('remoed_student_token') || sessionStorage.getItem('remoed_student_token') || '';
-    } catch (e) { return ''; }
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = beep.ctx || (beep.ctx = new Ctx());
+      var o = ctx.createOscillator();
+      var g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = ok ? 640 : 200;
+      g.gain.value = 0.06;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      o.frequency.linearRampToValueAtTime(ok ? 880 : 160, ctx.currentTime + 0.12);
+      g.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+      o.stop(ctx.currentTime + 0.22);
+    } catch (e) {}
+  }
+
+  function celebrate() {
+    beep(true);
+    var mascot = $('mascot');
+    if (mascot) {
+      mascot.classList.remove('is-jump');
+      void mascot.offsetWidth;
+      mascot.classList.add('is-jump');
+    }
+    var toast = $('toast');
+    if (toast) {
+      toast.textContent = 'Great job!';
+      toast.classList.remove('show');
+      void toast.offsetWidth;
+      toast.classList.add('show');
+    }
+    if (reduce) return;
+    var box = $('confetti');
+    if (box) {
+      box.textContent = '';
+      var colors = ['#0A7FD4', '#1FA324', '#FFE82E', '#FF5C8A'];
+      for (var i = 0; i < 14; i++) {
+        var bit = document.createElement('i');
+        bit.style.left = (Math.random() * 100) + '%';
+        bit.style.background = colors[i % 4];
+        bit.style.animationDelay = (Math.random() * 0.2) + 's';
+        box.appendChild(bit);
+      }
+    }
+    var star = document.createElement('div');
+    star.className = 'flyer';
+    star.textContent = '⭐';
+    star.style.left = '50%';
+    star.style.top = '55%';
+    var target = document.querySelector('.bar button.is-on');
+    var dx = 0;
+    var dy = -180;
+    if (target && target.getBoundingClientRect) {
+      var r = target.getBoundingClientRect();
+      dx = r.left - window.innerWidth / 2;
+      dy = r.top - window.innerHeight * 0.55;
+    }
+    star.style.setProperty('--dx', dx + 'px');
+    star.style.setProperty('--dy', dy + 'px');
+    document.body.appendChild(star);
+    setTimeout(function () { star.remove(); }, 700);
+  }
+
+  function miss(node) {
+    beep(false);
+    if (node) {
+      node.classList.remove('wobble');
+      void node.offsetWidth;
+      node.classList.add('wobble');
+    }
+  }
+
+  function colorful(text) {
+    var colors = ['#0A7FD4', '#1FA324', '#FFE82E', '#FF5C8A', '#1B2447'];
+    return String(text).split('').map(function (ch, i) {
+      var safe = ch.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      if (ch === ' ') return ' ';
+      return '<span style="color:' + colors[i % colors.length] + ';animation-delay:' + (i * 40) + 'ms">' + safe + '</span>';
+    }).join('');
   }
 
   function authHeaders() {
@@ -57,9 +165,11 @@
     LABELS.forEach(function (label, i) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.textContent = String(i + 1);
+      var done = i < step && (i <= 2 || paid);
+      b.textContent = done ? '✓' : '★';
       b.title = label;
       b.setAttribute('aria-label', label);
+      if (done) b.className = 'is-done';
       if (i === step) b.className = 'is-on';
       if (i > 2 && !paid) b.className = (b.className + ' is-lock').trim();
       b.addEventListener('click', function () {
@@ -70,7 +180,12 @@
     });
   }
 
-  function stage(html) { $('stage').innerHTML = html; }
+  function stage(html) {
+    var el = $('stage');
+    el.innerHTML = html;
+    el.classList.remove('is-in');
+    if (!reduce) requestAnimationFrame(function () { el.classList.add('is-in'); });
+  }
 
   function saveStep() {
     return window.Trial.save().catch(showError);
@@ -81,6 +196,7 @@
     cursor = 0;
     misses = 0;
     phase = 'bubbles';
+    scene(n === 6 ? 'bye' : 'hello');
     paintBar();
     if (n === 0) return welcome();
     if (n === 1) return simon();
@@ -92,14 +208,16 @@
   }
 
   function welcome() {
-    speak('Hi, ' + childName + '!');
-    stage('<p class="big">Hi, ' + childName + '!</p><p>How do you feel?</p><div class="row" id="moods"></div>');
+    speak('Hi, ' + childName + '! How do you feel?');
+    stage('<p class="big wave">' + colorful('Hi, ' + childName + '!') + '</p><p>How do you feel?</p><div class="row" id="moods"></div>');
     [['Happy', '😊'], ['Sleepy', '😴'], ['Excited', '🤩']].forEach(function (pair) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'tap';
-      b.textContent = pair[1] + ' ' + pair[0];
+      b.className = 'tap mood';
+      b.innerHTML = '<span class="emoji">' + pair[1] + '</span><span>' + pair[0] + '</span>';
       b.addEventListener('click', function () {
+        b.classList.add('is-picked');
+        celebrate();
         saveStep().then(function () { openStep(1); });
       });
       $('moods').appendChild(b);
@@ -146,18 +264,24 @@
     var pair = words[cursor];
     var title = phase === 'bubbles' ? 'Pop the bubble that says ' + pair[0] : 'Feed the food that is ' + pair[0];
     speak(title);
-    stage('<p>' + title + '</p><div class="row" id="opts"></div>');
+    var monster = phase === 'feed' ? '<div class="monster" id="monster" aria-hidden="true"><span class="mouth"></span></div>' : '';
+    stage('<p>' + title + '</p>' + monster + '<div class="row" id="opts"></div>');
+    var mouth = $('monster');
     words.forEach(function (item) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'tap';
+      b.className = 'tap ' + (phase === 'bubbles' ? 'bubble' : 'food');
       b.textContent = item[1];
       b.dataset.word = item[0];
+      b.draggable = true;
+      b.addEventListener('dragstart', function () { if (mouth) mouth.classList.add('is-open'); });
+      b.addEventListener('dragend', function () { if (mouth) mouth.classList.remove('is-open'); });
       b.addEventListener('click', function () {
         var ok = item[0] === pair[0];
         window.Trial.recordAnswer(pair[0], ok);
         if (!ok) {
           misses += 1;
+          miss(b);
           $('msg').textContent = 'Try again';
           if (misses >= 2) {
             var nodes = $('opts').querySelectorAll('button');
@@ -169,6 +293,9 @@
         }
         misses = 0;
         $('msg').textContent = '';
+        if (phase === 'bubbles') b.classList.add('pop');
+        if (mouth) mouth.classList.add('is-chomp');
+        celebrate();
         cursor += 1;
         if (cursor >= words.length && phase === 'bubbles') {
           cursor = 0;
@@ -224,10 +351,12 @@
         var ok = item[0] === pair[0];
         window.Trial.recordAnswer(pair[0], ok);
         if (!ok) {
+          miss(b);
           $('msg').textContent = 'Try again';
           return;
         }
         $('msg').textContent = '';
+        celebrate();
         cursor += 1;
         saveStep().then(function () {
           if (cursor < words.length) check();
@@ -239,7 +368,9 @@
   }
 
   function goodbye() {
-    stage('<p>You did it, ' + childName + '!</p><p>Stickers: ⭐⭐⭐</p><video controls poster="" aria-label="Teacher greeting"><p>Teacher greeting</p></video>');
+    scene('bye');
+    stage('<div class="cert"><p>You did it!</p><p class="big wave">' + colorful(childName) + '</p><p class="stickers"><span>⭐</span><span>⭐</span><span>⭐</span></p><video controls poster="" aria-label="Teacher greeting"><p>Teacher greeting</p></video></div>');
+    celebrate();
     window.Trial.finish().then(function (data) {
       report = data.report;
       showReport(true);
@@ -249,16 +380,19 @@
   function showReport(afterPaid) {
     window.Trial.finish().then(function (data) {
       report = data.report || report || {};
+      scene('report');
       var practice = (report.needsPractice || []).join(', ') || 'None';
       stage(
         '<h2>Parent report</h2>' +
-        '<p>Words learned: ' + (report.wordsLearned || 0) + '</p>' +
-        '<p>Correct on first try: ' + (report.correctFirstTry || 0) + '</p>' +
+        '<div class="tiles">' +
+        '<div class="tile">Words learned<b>' + (report.wordsLearned || 0) + '</b></div>' +
+        '<div class="tile">First try<b>' + (report.correctFirstTry || 0) + '</b></div>' +
+        '<div class="tile">Minutes<b>' + (report.minutes || 0) + '</b></div>' +
+        '</div>' +
         '<p>Needs practice: ' + practice + '</p>' +
-        '<p>Minutes: ' + (report.minutes || 0) + '</p>' +
-        '<label>Type the number 7 to choose a plan <input id="gate" inputmode="numeric" maxlength="1" style="min-height:48px;font-size:1.2rem;width:64px"></label>' +
+        '<div class="gate-card"><label>Type the number 7 to choose a plan <input id="gate" inputmode="numeric" maxlength="1"></label>' +
         '<div class="row"><button type="button" class="tap blue" id="plans">Choose a plan</button>' +
-        '<a class="plan' + (paid ? '' : ' disabled') + '" id="book" href="student-book.html">Book your first live lesson</a></div>' +
+        '<a class="plan' + (paid ? '' : ' disabled') + '" id="book" href="student-book.html">Book your first live lesson</a></div></div>' +
         (paid && !afterPaid ? '<button type="button" class="tap green" id="more">Continue the lesson</button>' : '')
       );
       if (!paid) $('book').setAttribute('aria-disabled', 'true');
@@ -312,6 +446,21 @@
       $('themes').appendChild(b);
     });
     paintBar();
+  }
+
+  var soundBtn = $('sound');
+  if (soundBtn) {
+    function paintSound() {
+      soundBtn.textContent = audioOn ? 'Sound on' : 'Sound off';
+      soundBtn.setAttribute('aria-label', audioOn ? 'Sound on' : 'Sound off');
+    }
+    paintSound();
+    soundBtn.addEventListener('click', function () {
+      audioOn = !audioOn;
+      try { sessionStorage.setItem('trialSound', audioOn ? '1' : '0'); } catch (e) {}
+      if (!audioOn && window.speechSynthesis) window.speechSynthesis.cancel();
+      paintSound();
+    });
   }
 
   paintBar();

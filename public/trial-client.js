@@ -7,11 +7,16 @@
 
   function token() {
     try {
-      return (
-        localStorage.getItem('remoed_student_token') ||
-        sessionStorage.getItem('remoed_student_token') ||
-        ''
-      );
+      var keys = ['remoed_student_token', 'remoed_student_auth', 'remoed_user_token', 'token'];
+      var stores = [localStorage, sessionStorage];
+      var i, j, v;
+      for (i = 0; i < stores.length; i++) {
+        for (j = 0; j < keys.length; j++) {
+          v = stores[i].getItem(keys[j]);
+          if (v) return v;
+        }
+      }
+      return '';
     } catch (e) {
       return '';
     }

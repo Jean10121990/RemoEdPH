@@ -776,7 +776,7 @@
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
         <script src="js/student-eco-drops.js?v=garden-v3-1"></script>
-        <script src="js/student-sidebar.js?v=parent-pin-wrong-1"></script>
+        <script src="js/student-sidebar.js?v=claim-both-modes-1"></script>
         <script src="js/student-page-header.js?v=garden-v3-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
@@ -1086,9 +1086,7 @@
                     return;
                 }
                 var token = '';
-                try {
-                    token = localStorage.getItem('remoed_student_token') || sessionStorage.getItem('remoed_student_token') || '';
-                } catch (_e2) {}
+                try { token = getStudentAuthToken(); } catch (_e2) {}
                 if (!token) return;
                 fetch('/api/trials/mine', {
                     headers: { Authorization: 'Bearer ' + token },

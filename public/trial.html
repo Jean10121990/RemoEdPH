@@ -5,41 +5,164 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Free trial lessons - RemoEdPH</title>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Nunito:wght@700&display=swap" rel="stylesheet">
   <style>
-    :root { --blue:#0A7FD4; --green:#1FA324; --yellow:#FFE82E; --ink:#0f172a; }
+    :root { --blue:#0A7FD4; --green:#1FA324; --yellow:#FFE82E; --pink:#FF5C8A; --navy:#1B2447; --ink:#1B2447; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family:"Trebuchet MS", "Segoe UI", sans-serif; background:#e0f2fe; color:var(--ink); }
-    .wrap { max-width:720px; margin:0 auto; padding:16px; }
-    h1 { font-size:1.4rem; margin:0 0 8px; }
-    .bar { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin:12px 0; }
-    .bar button { min-height:44px; border-radius:12px; border:2px solid #bae6fd; background:#fff; font-weight:800; font-size:0.72rem; }
-    .bar button.is-on { background:var(--blue); color:#fff; border-color:var(--blue); }
-    .bar button.is-lock { opacity:0.45; }
-    .stage { background:#fff; border-radius:24px; padding:16px; min-height:320px; }
-    .tap { min-height:80px; min-width:80px; border:none; border-radius:20px; background:var(--yellow); font-weight:800; font-size:1.1rem; margin:6px; cursor:pointer; }
+    html, body { margin:0; overflow-x:hidden; }
+    body {
+      min-height:100vh; color:var(--ink);
+      font-family:"Nunito","Trebuchet MS","Segoe UI",sans-serif; font-weight:700; font-size:20px;
+      background:linear-gradient(#7ec8f8 0%, #c5ecff 42%, #b6e39a 42%, #7dce63 100%);
+    }
+    .sky { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .cloud { position:absolute; background:#fff; border-radius:40px; opacity:.85; height:36px; }
+    .cloud:before, .cloud:after { content:""; position:absolute; background:#fff; border-radius:50%; }
+    .cloud:before { width:40px; height:40px; top:-18px; left:16px; }
+    .cloud:after { width:56px; height:56px; top:-28px; left:42px; }
+    .c1 { width:120px; top:8%; left:-10%; animation:drift 36s linear infinite; }
+    .c2 { width:90px; top:18%; left:20%; animation:drift 48s linear infinite; }
+    .c3 { width:140px; top:6%; left:55%; animation:drift 42s linear infinite; }
+    .hill { position:absolute; left:-10%; right:-10%; bottom:-20px; height:140px; background:#5cbf4a; border-radius:50% 50% 0 0; }
+    .hill.b { bottom:20px; height:90px; background:#7dce63; left:20%; right:-20%; }
+    .flower { position:absolute; bottom:36px; width:14px; height:14px; border-radius:50%; background:var(--pink); box-shadow:16px -10px 0 var(--yellow), -14px -6px 0 var(--blue); }
+    .flower:after { content:""; position:absolute; left:5px; top:12px; width:4px; height:22px; background:#1FA324; }
+    @keyframes drift { from { transform:translateX(0); } to { transform:translateX(110vw); } }
+    .top { position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+    .top img { height:44px; width:auto; }
+    #sound { min-width:80px; min-height:80px; border:3px solid var(--navy); border-radius:999px; background:#fff; box-shadow:0 4px 0 var(--navy); font-family:"Baloo 2",sans-serif; font-weight:800; cursor:pointer; }
+    .wrap { position:relative; z-index:1; max-width:900px; margin:0 auto; padding:8px 16px 32px; }
+    .lesson {
+      display:grid; grid-template-columns:160px 1fr; gap:16px; align-items:start;
+      background:#fff; border:4px solid var(--navy); border-radius:36px;
+      box-shadow:0 6px 0 var(--navy); padding:24px; min-height:calc(100vh - 96px);
+    }
+    .cast { position:relative; }
+    .cast img { width:140px; height:auto; }
+    .mascot { display:block; animation:bob 2.4s ease-in-out infinite; }
+    .mascot.is-talking { animation:wiggle .35s ease-in-out infinite; }
+    .mascot.is-jump { animation:jump .45s ease; }
+    .friend, .teacher { display:none; }
+    body[data-scene="bye"] .mascot, body[data-scene="report"] .mascot { display:none; }
+    body[data-scene="bye"] .friend { display:block; animation:bob 2s ease-in-out infinite; }
+    body[data-scene="report"] .teacher { display:block; }
+    @keyframes bob { 50% { transform:translateY(-8px); } }
+    @keyframes wiggle { 50% { transform:rotate(-4deg) translateY(-4px); } }
+    @keyframes jump { 40% { transform:translateY(-18px); } 100% { transform:translateY(0); } }
+    .bubble {
+      background:#fff; border:3px solid var(--navy); border-radius:20px; padding:10px 14px;
+      box-shadow:0 4px 0 var(--navy); min-height:52px; margin:0 0 12px;
+    }
+    .bar { display:flex; align-items:center; justify-content:space-between; gap:0; margin:8px 0 16px; position:relative; }
+    .bar:before { content:""; position:absolute; left:8%; right:8%; top:50%; border-top:4px dotted #c5cbe0; z-index:0; }
+    .bar button {
+      position:relative; z-index:1; width:56px; height:56px; min-height:56px; padding:0;
+      border-radius:50%; border:3px solid #9aa3c0; background:#eef1f8; color:#9aa3c0;
+      font-family:"Baloo 2",sans-serif; font-weight:800; font-size:22px; cursor:pointer;
+    }
+    .bar button.is-done { background:var(--yellow); color:var(--navy); border-color:var(--navy); box-shadow:0 4px 0 var(--navy); }
+    .bar button.is-on { width:68px; height:68px; background:var(--blue); color:#fff; border-color:var(--navy); box-shadow:0 4px 0 var(--navy); animation:pulse 1.2s ease-in-out infinite; }
+    .bar button.is-lock { opacity:.55; }
+    @keyframes pulse { 50% { transform:scale(1.08); } }
+    .stage { background:transparent; border-radius:24px; padding:8px 4px 16px; min-height:280px; text-align:center; }
+    .stage.is-in { animation:slide .3s ease; }
+    @keyframes slide { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    .note { min-height:1.2em; text-align:center; color:var(--navy); }
+    h1,h2,.big,.tap,button,.plan { font-family:"Baloo 2","Trebuchet MS",sans-serif; font-weight:800; }
+    .big { font-size:clamp(2.4rem,8vw,4.2rem); line-height:1.05; margin:8px 0; }
+    .wave span { display:inline-block; animation:wave .6s ease both; }
+    @keyframes wave { from { transform:translateY(10px); opacity:0; } to { transform:none; opacity:1; } }
+    .row { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
+    .tap {
+      min-height:80px; min-width:80px; border:4px solid var(--navy); border-radius:999px;
+      background:var(--yellow); color:var(--navy); font-size:22px; margin:6px; padding:8px 18px;
+      box-shadow:0 6px 0 var(--navy); cursor:pointer;
+    }
+    .tap:active { transform:translateY(4px); box-shadow:0 2px 0 var(--navy); }
     .tap.green { background:var(--green); color:#fff; }
     .tap.blue { background:var(--blue); color:#fff; }
-    .big { font-size:4rem; line-height:1; }
-    .row { display:flex; flex-wrap:wrap; gap:8px; }
-    .note { color:#334155; font-weight:700; }
+    .tap.mood { display:flex; flex-direction:column; align-items:center; justify-content:center; width:140px; min-height:140px; border-radius:28px; background:#fff; }
+    .tap.mood .emoji { font-size:64px; line-height:1; }
+    .tap.mood.is-picked { background:var(--yellow); box-shadow:0 0 0 6px var(--yellow), 0 6px 0 var(--navy); animation:jump .4s ease; }
+    .tap.bubble { border-radius:50%; animation:bob 2.2s ease-in-out infinite; }
+    .tap.bubble.pop { animation:pop .25s ease forwards; }
+    @keyframes pop { to { transform:scale(1.4); opacity:0; } }
+    .monster { width:160px; height:120px; margin:0 auto 8px; background:var(--green); border:4px solid var(--navy); border-radius:80px 80px 40px 40px; position:relative; }
+    .monster .mouth { position:absolute; left:40px; right:40px; bottom:18px; height:16px; background:var(--navy); border-radius:0 0 20px 20px; transition:height .2s; }
+    .monster.is-open .mouth, .monster.is-chomp .mouth { height:48px; background:#1B2447; }
     .lock-note { background:#f8fafc; border-radius:16px; padding:12px; }
-    a.plan { display:inline-flex; align-items:center; justify-content:center; min-height:80px; padding:0 18px; border-radius:20px; background:var(--blue); color:#fff; font-weight:800; text-decoration:none; }
-    button:disabled, a.disabled { opacity:0.45; pointer-events:none; }
+    a.plan { display:inline-flex; align-items:center; justify-content:center; min-height:80px; padding:0 18px; border-radius:999px; border:4px solid var(--navy); background:var(--blue); color:#fff; text-decoration:none; box-shadow:0 6px 0 var(--navy); }
+    button:disabled, a.disabled { opacity:.45; pointer-events:none; }
     video { width:100%; max-height:180px; background:#0f172a; border-radius:16px; }
-    @media (prefers-reduced-motion: reduce) {
-      * { animation:none !important; transition:none !important; }
-    }
     .pulse { outline:4px solid var(--green); }
+    .wobble { animation:wob .35s ease; }
+    @keyframes wob { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+    .cert { border:10px solid var(--yellow); border-radius:28px; padding:16px; background:#fffdf2; }
+    .cheers { display:flex; justify-content:center; gap:12px; }
+    .cheers img { width:100px; height:auto; }
+    .stickers span { display:inline-block; font-size:40px; animation:drop .4s ease both; }
+    .stickers span:nth-child(2) { animation-delay:.15s; }
+    .stickers span:nth-child(3) { animation-delay:.3s; }
+    @keyframes drop { from { transform:translateY(-20px); opacity:0; } to { transform:none; opacity:1; } }
+    .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+    .tile { background:#f4f7ff; border:3px solid var(--navy); border-radius:20px; padding:12px; }
+    .tile b { display:block; font-size:32px; font-family:"Baloo 2",sans-serif; }
+    .gate-card { margin-top:12px; padding:16px; border:3px solid var(--navy); border-radius:24px; background:#fff; box-shadow:0 6px 0 var(--navy); }
+    #gate { min-height:64px; font-size:28px; width:80px; text-align:center; border:3px solid var(--navy); border-radius:16px; }
+    .toast { position:fixed; left:50%; top:18%; transform:translateX(-50%) scale(.8); background:var(--yellow); color:var(--navy); border:3px solid var(--navy); border-radius:999px; padding:10px 18px; font-family:"Baloo 2",sans-serif; font-weight:800; font-size:24px; opacity:0; pointer-events:none; z-index:5; box-shadow:0 6px 0 var(--navy); }
+    .toast.show { animation:toast .9s ease; }
+    @keyframes toast { 30% { opacity:1; transform:translateX(-50%) scale(1); } 100% { opacity:0; } }
+    .confetti { position:fixed; inset:0; pointer-events:none; z-index:4; overflow:hidden; }
+    .confetti i { position:absolute; top:-12px; width:10px; height:14px; border-radius:2px; animation:fall .9s linear forwards; }
+    @keyframes fall { to { transform:translateY(100vh) rotate(180deg); opacity:.2; } }
+    .flyer { position:fixed; z-index:6; font-size:28px; pointer-events:none; animation:fly .6s ease forwards; }
+    @keyframes fly { to { transform:translate(var(--dx), var(--dy)) scale(.4); opacity:.2; } }
+    :focus-visible { outline:3px solid var(--blue); outline-offset:3px; }
+    @media (max-width:700px) {
+      .lesson { grid-template-columns:1fr; min-height:auto; }
+      .cast { display:flex; justify-content:center; }
+      .cast img { width:110px; }
+      .bar button, .bar button.is-on { width:40px; height:40px; font-size:16px; }
+      .tiles { grid-template-columns:1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, .mascot, .cloud, .tap.bubble, .stage.is-in, .wave span, .stickers span { animation:none !important; transition:none !important; }
+    }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <h1>Free trial lessons</h1>
-    <div class="bar" id="bar"></div>
-    <p class="note" id="msg"></p>
-    <div class="stage" id="stage"></div>
+<body data-scene="hello">
+  <div class="sky" aria-hidden="true">
+    <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+    <div class="hill b"></div><div class="hill"></div>
+    <div class="flower" style="left:8%"></div>
+    <div class="flower" style="left:46%;background:#FFE82E"></div>
+    <div class="flower" style="right:10%"></div>
   </div>
-  <script src="trial-client.js?v=trial-1"></script>
-  <script src="trial.js?v=trial-1"></script>
+  <header class="top">
+    <img id="logo" src="images/logo.png" alt="RemoEdPH" width="120" height="44" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='images/remoed-logo-new.png';}else{this.outerHTML='<strong style=&quot;font-family:Baloo 2,sans-serif;font-size:28px&quot;>RemoEdPH</strong>';}">
+    <button type="button" id="sound" aria-label="Sound on">Sound on</button>
+  </header>
+  <main class="wrap">
+    <div class="lesson">
+      <div class="cast">
+        <img id="mascot" class="mascot" src="images/mascot.png" alt="" width="140" height="160" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='images/remo-green.png';}else{this.hidden=true;}">
+        <img class="friend" src="images/boy.png" alt="" width="100" height="120" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='images/ed-boy.png';}else{this.hidden=true;}">
+        <img class="friend" src="images/girl.png" alt="" width="100" height="120" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='images/sophia-peeking.png';}else{this.hidden=true;}">
+        <img class="teacher" src="images/teacher.png" alt="" width="140" height="160" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='images/grace-teacher.png';}else{this.hidden=true;}">
+      </div>
+      <div>
+        <p class="bubble" id="bubble">Let’s learn!</p>
+        <div class="bar" id="bar"></div>
+        <p class="note" id="msg"></p>
+        <div class="stage" id="stage"></div>
+      </div>
+    </div>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
+  <script src="trial-client.js?v=trial-play-1"></script>
+  <script src="trial.js?v=trial-play-1"></script>
 </body>
 </html>
