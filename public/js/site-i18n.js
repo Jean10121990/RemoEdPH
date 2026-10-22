@@ -58,7 +58,9 @@
         "You have taken the assessment. Register now to create your account and claim your free trial.",
       assessment_already_taken:
         "Assessment already taken. Please check your email for your results and registration link.",
-      assessment_title: "Free Level Assessment",
+      assessment_title: "Find Your Child's Ideal English Level in 2 Minutes",
+      assessment_sub: "100% Free • No Credit Card Required • Instant Results",
+      assessment_cta: "Start Quick 5-Question Quiz",
     },
     zh: {
       login_title: "学生登录",

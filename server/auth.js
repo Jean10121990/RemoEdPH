@@ -1093,7 +1093,7 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
           return res.status(400).json({
             success: false,
             message:
-              'Use the same email address you used for the level assessment to claim your free trial class.',
+              'Use the same email address you used for the level assessment.',
           });
         }
       }

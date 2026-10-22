@@ -89,6 +89,62 @@
         color: var(--remoed-brand-blue);
         border: 2px solid rgba(0, 143, 196, 0.45);
       }
+      body.guest-quiz #student-sidebar-root,
+      body.guest-quiz .remoed-header,
+      body.guest-quiz header.nav-header,
+      body.guest-quiz .student-page-header,
+      body.guest-quiz .student-page-nav-header,
+      body.guest-quiz nav.remoed-sidebar,
+      body.guest-quiz #remoed-bottom-nav,
+      body.guest-quiz #remoed-more-sheet,
+      body.guest-quiz .remoed-mobile-topbar,
+      body.guest-quiz .remoed-app-topbar { display: none !important; }
+      body.guest-quiz { padding-bottom: 0 !important; }
+      body.guest-quiz .remoed-content { margin-left: 0 !important; max-width: 100% !important; }
+      body.guest-quiz .post-assessment-modal__card { max-width: 520px; text-align: left; }
+      body.guest-quiz .post-assessment-modal__card h2,
+      body.guest-quiz .quiz-level-badge,
+      body.guest-quiz .quiz-offer,
+      body.guest-quiz .quiz-note { text-align: center; }
+      .quiz-level-badge {
+        display: inline-block;
+        margin: 0 auto 14px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #e8f7fc;
+        color: #008fc4;
+        font-weight: 800;
+      }
+      .quiz-offer {
+        margin: 0 0 16px;
+        line-height: 1.5;
+        color: #1a3a4a;
+      }
+      .quiz-field { text-align: left; margin: 0 0 12px; }
+      .quiz-field label { display: block; font-weight: 700; margin-bottom: 4px; color: #1a3a4a; }
+      .quiz-field input[type="text"],
+      .quiz-field input[type="email"],
+      .quiz-field input[type="password"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px 14px;
+        border: 2px solid #d7eef8;
+        border-radius: 12px;
+        font: inherit;
+      }
+      .quiz-consent {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        text-align: left;
+        font-size: 0.92rem;
+        margin: 4px 0 12px;
+      }
+      .quiz-note { font-size: 0.88rem; color: #4a6575; margin: 12px 0 0; line-height: 1.45; }
+      .quiz-error { color: #b45309; font-size: 0.92rem; margin: 0 0 10px; }
+      .quiz-pass-hint { font-size: 0.82rem; color: #64748b; margin: 4px 0 0; }
+      .question-container { animation: quizIn .28s ease; }
+      @keyframes quizIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
       .cefr-guides {
         margin: 28px 0 8px;
         text-align: left;
@@ -294,13 +350,33 @@
 
     <div id="post-assessment-modal" class="post-assessment-modal" role="dialog" aria-modal="true" aria-labelledby="pam-title" aria-hidden="true">
         <div class="post-assessment-modal__card">
-            <h2 id="pam-title">Congratulations! 🎉</h2>
-            <p id="pam-hook" class="post-assessment-modal__hook"></p>
-            <div id="pam-score" class="post-assessment-modal__score"></div>
-            <div class="post-assessment-modal__actions">
-                <button type="button" class="pam-btn-primary" id="pam-btn-register">Save My Results &amp; Register</button>
-                <button type="button" class="pam-btn-secondary" id="pam-btn-plans">Enroll in a Plan Now</button>
-            </div>
+            <h2 id="pam-title">Quiz Complete! 🎉</h2>
+            <p id="quiz-level-badge" class="quiz-level-badge">Estimated Level: Beginner</p>
+            <p class="quiz-offer">Unlock Free Interactive Trial Games: Simon Says, Vocabulary Builder &amp; Speaking/Pronunciation Challenge!</p>
+            <form id="quiz-register-form">
+                <p id="quiz-form-error" class="quiz-error" hidden></p>
+                <div class="quiz-field">
+                    <label for="quiz-child-name">Child's Name</label>
+                    <input type="text" id="quiz-child-name" name="childName" maxlength="200" required autocomplete="name">
+                </div>
+                <div class="quiz-field">
+                    <label for="quiz-parent-email">Parent's Email</label>
+                    <input type="email" id="quiz-parent-email" name="email" maxlength="320" required autocomplete="email">
+                </div>
+                <div class="quiz-field">
+                    <label for="quiz-password">Password</label>
+                    <input type="password" id="quiz-password" name="password" required autocomplete="new-password">
+                    <p class="quiz-pass-hint">At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.</p>
+                </div>
+                <label class="quiz-consent">
+                    <input type="checkbox" id="quiz-privacy" required>
+                    <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>.</span>
+                </label>
+                <div class="post-assessment-modal__actions">
+                    <button type="submit" class="pam-btn-primary" id="quiz-save-btn">Save Results &amp; Try Free Interactive Games</button>
+                </div>
+            </form>
+            <p class="quiz-note">Note: Live 1-on-1 teacher lessons are available upon upgrading to a subscription plan. Comprehensive placement assessments are also available inside the student portal.</p>
         </div>
     </div>
 
@@ -438,8 +514,18 @@
         let currentQuestion = 0;
         let answers = [];
         let totalQuestions = assessmentQuestions.length;
+        let guestResult = null;
 
         const GUEST_PREFILL_STORAGE_KEY = 'remoedGuestAssessmentPrefill';
+        const GUEST_QUIZ_KEY = 'remoedGuestQuizProgress';
+
+        function quizQuestions() {
+            return isGuestAssessment ? assessmentQuestions.slice(0, 5) : assessmentQuestions;
+        }
+
+        function syncQuizLength() {
+            totalQuestions = quizQuestions().length;
+        }
 
         function escapeHtml(s) {
             return String(s == null ? '' : s)
@@ -453,13 +539,77 @@
         let guestAssessmentData = null;
 
         function isLoggedInStudent() {
-            var ut = localStorage.getItem('userType');
-            var tok = localStorage.getItem('token') || localStorage.getItem('studentToken');
+            var ut = localStorage.getItem('userType') || localStorage.getItem('userRole') || '';
+            var tok = '';
+            try {
+                tok = localStorage.getItem('remoed_student_token') ||
+                    sessionStorage.getItem('remoed_student_token') ||
+                    localStorage.getItem('token') ||
+                    localStorage.getItem('studentToken') || '';
+            } catch (e) {}
             return ut === 'student' && !!tok;
+        }
+
+        function readGuestQuiz() {
+            try {
+                var raw = sessionStorage.getItem(GUEST_QUIZ_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function persistGuestQuiz(extra) {
+            if (!isGuestAssessment) return;
+            try {
+                var payload = {
+                    answers: answers,
+                    currentQuestion: currentQuestion,
+                    finished: false
+                };
+                if (extra) {
+                    Object.keys(extra).forEach(function (key) { payload[key] = extra[key]; });
+                }
+                sessionStorage.setItem(GUEST_QUIZ_KEY, JSON.stringify(payload));
+            } catch (e) {}
+        }
+
+        function prepareGuestChrome() {
+            document.body.classList.add('guest-quiz');
+            var sb = document.getElementById('student-sidebar-root');
+            if (sb) sb.style.display = 'none';
+            var content = document.querySelector('.remoed-content');
+            if (content) {
+                content.style.marginLeft = '0';
+                content.style.maxWidth = '100%';
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('guest') === '1' && !isLoggedInStudent()) {
+                isGuestAssessment = true;
+                prepareGuestChrome();
+                var savedQuiz = readGuestQuiz();
+                if (savedQuiz && savedQuiz.finished && savedQuiz.cefrLevel) {
+                    showGuestResult({
+                        cefrLevel: savedQuiz.cefrLevel,
+                        score: savedQuiz.score,
+                        label: savedQuiz.label,
+                        answers: savedQuiz.answers || []
+                    });
+                    return;
+                }
+                if (savedQuiz && Array.isArray(savedQuiz.answers) && savedQuiz.answers.length) {
+                    answers = savedQuiz.answers;
+                    currentQuestion = Number(savedQuiz.currentQuestion) || 0;
+                    if (currentQuestion >= quizQuestions().length) currentQuestion = 0;
+                    startAssessment(true);
+                    return;
+                }
+                startAssessment(false);
+                return;
+            }
             const prefillToken = urlParams.get('p');
             const legacyChild = urlParams.get('childName');
             const legacyParent = urlParams.get('parentEmail');
@@ -557,7 +707,7 @@
                     var guestMsg = document.createElement('div');
                     guestMsg.style.cssText = 'background: #FFF3CD; border: 2px solid #FFD700; padding: 16px; border-radius: 12px; margin-bottom: 24px; text-align: center;';
                     var safe = escapeHtml(guestAssessmentData.childName);
-                    guestMsg.innerHTML = '<strong>👋 Welcome ' + safe + '!</strong> Complete the assessment to see your level on the next screen. After that, you can choose a learning plan and enroll.';
+                    guestMsg.innerHTML = '<strong>👋 Welcome ' + safe + '!</strong> Answer 5 quick questions. You can save your level at the end.';
                     introScreen.insertBefore(guestMsg, introScreen.firstChild);
                 }
                 return;
@@ -654,16 +804,20 @@
             }
         }
 
-        function startAssessment() {
+        function startAssessment(keep) {
+            syncQuizLength();
             document.getElementById('intro-screen').style.display = 'none';
             document.getElementById('questions-container').style.display = 'block';
-            currentQuestion = 0;
-            answers = [];
+            if (!keep) {
+                currentQuestion = 0;
+                answers = [];
+            }
             renderQuestion();
         }
 
         function renderQuestion() {
-            const question = assessmentQuestions[currentQuestion];
+            syncQuizLength();
+            const question = quizQuestions()[currentQuestion];
             const container = document.getElementById('questions-container');
             
             const progress = ((currentQuestion + 1) / totalQuestions) * 100;
@@ -711,6 +865,7 @@
 
         function selectOption(optionIndex) {
             answers[currentQuestion] = optionIndex;
+            persistGuestQuiz();
             
             // Update button states
             const container = document.getElementById('questions-container');
@@ -742,7 +897,7 @@
                 return;
             }
             
-            if (currentQuestion < totalQuestions - 1) {
+            if (currentQuestion < quizQuestions().length - 1) {
                 currentQuestion++;
                 renderQuestion();
             } else {
@@ -752,14 +907,16 @@
 
         function submitAssessment() {
             // Calculate score
+            syncQuizLength();
+            const bank = quizQuestions();
             let correctAnswers = 0;
-            assessmentQuestions.forEach((question, index) => {
+            bank.forEach((question, index) => {
                 if (answers[index] === question.correct) {
                     correctAnswers++;
                 }
             });
             
-            const score = Math.round((correctAnswers / totalQuestions) * 100);
+            const score = Math.round((correctAnswers / bank.length) * 100);
             
             // Determine CEFR Level
             let cefrLevel, cefrBadge, description;
@@ -787,8 +944,22 @@
                 };
             }
             
-            if (isGuestAssessment && guestAssessmentData) {
-                submitGuestAssessmentWithModal(cefrLevel, cefrBadge, description, score, correctAnswers);
+            if (isGuestAssessment) {
+                var label = score >= 80 ? 'Intermediate' : 'Beginner';
+                guestResult = {
+                    cefrLevel: cefrLevel,
+                    score: score,
+                    label: label,
+                    answers: answers.slice(0, bank.length)
+                };
+                persistGuestQuiz({
+                    finished: true,
+                    cefrLevel: cefrLevel,
+                    score: score,
+                    label: label,
+                    answers: guestResult.answers
+                });
+                showGuestResult(guestResult);
                 return;
             }
 
@@ -796,97 +967,196 @@
             showResults(cefrLevel, cefrBadge, description, score, correctAnswers);
         }
 
-        function recommendedPlanLabel(level) {
-            if (level === 'A2') return 'RemoSteady or RemoScholar';
-            return 'RemoSpark';
+        function showGuestResult(result) {
+            guestResult = result || guestResult;
+            var label = (guestResult && guestResult.label) || ((guestResult && guestResult.cefrLevel === 'A2') ? 'Intermediate' : 'Beginner');
+            var badge = document.getElementById('quiz-level-badge');
+            if (badge) badge.textContent = 'Estimated Level: ' + label;
+            var nameInput = document.getElementById('quiz-child-name');
+            var emailInput = document.getElementById('quiz-parent-email');
+            if (guestAssessmentData) {
+                if (nameInput && !nameInput.value && guestAssessmentData.childName) nameInput.value = guestAssessmentData.childName;
+                if (emailInput && !emailInput.value && guestAssessmentData.parentEmail) emailInput.value = guestAssessmentData.parentEmail;
+            }
+            var intro = document.getElementById('intro-screen');
+            if (intro) intro.style.display = 'none';
+            var questions = document.getElementById('questions-container');
+            if (questions) questions.style.display = 'none';
+            var results = document.getElementById('results-container');
+            if (results) results.classList.remove('active');
+            var modal = document.getElementById('post-assessment-modal');
+            if (modal) {
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+            }
         }
 
-        function openPostAssessmentModal(level, badge, description, score, correct, trialToken) {
-            try {
-                localStorage.removeItem('remoedAssessmentInProgress');
-                sessionStorage.removeItem(GUEST_PREFILL_STORAGE_KEY);
-            } catch (e) { /* ignore */ }
-
-            const modal = document.getElementById('post-assessment-modal');
-            const childName = (guestAssessmentData && guestAssessmentData.childName) ? escapeHtml(guestAssessmentData.childName) : 'Learner';
-            const planHint = recommendedPlanLabel(level);
-            document.getElementById('pam-title').textContent = 'Congratulations, ' + (guestAssessmentData && guestAssessmentData.childName ? guestAssessmentData.childName : 'friend') + '! 🎉';
-            document.getElementById('pam-hook').innerHTML =
-                '<strong>Your Level is: ' + escapeHtml(level) + '</strong> — ' + escapeHtml(badge) +
-                '! You are ready for <strong>' + escapeHtml(planHint) + '</strong>. ' +
-                escapeHtml(description.text);
-            document.getElementById('pam-score').innerHTML =
-                '<div>' + escapeHtml(description.title) + '</div>' +
-                '<div style="margin-top:8px;">You got <strong>' + correct + '</strong> out of <strong>' + totalQuestions + '</strong> correct — ' +
-                '<strong>' + score + '%</strong></div>';
-
-            const baseReg = window.location.origin || '';
-            const emailQ = guestAssessmentData ? encodeURIComponent(guestAssessmentData.parentEmail) : '';
-            const levelQ = encodeURIComponent(level);
-            const scoreQ = encodeURIComponent(String(score));
-            let registerUrl = baseReg + '/student-register.html?cefrLevel=' + levelQ + '&score=' + scoreQ;
-            if (emailQ) registerUrl += '&email=' + emailQ;
-            if (trialToken) registerUrl += '&trial=' + encodeURIComponent(trialToken);
-
-            let plansUrl = baseReg + '/index.html?email=' + emailQ + '&cefrLevel=' + levelQ + '&score=' + scoreQ;
-            if (trialToken) plansUrl += '&trial=' + encodeURIComponent(trialToken);
-            plansUrl += '#plans';
-
-            document.getElementById('pam-btn-register').onclick = function () {
-                window.location.href = registerUrl;
-            };
-            document.getElementById('pam-btn-plans').onclick = function () {
-                window.location.href = plansUrl;
-            };
-
-            document.getElementById('questions-container').style.display = 'none';
-            document.getElementById('results-container').classList.remove('active');
-            modal.classList.add('is-open');
-            modal.setAttribute('aria-hidden', 'false');
+        function quizFormError(message, showLogin) {
+            var el = document.getElementById('quiz-form-error');
+            if (!el) return;
+            el.hidden = false;
+            if (showLogin) {
+                el.innerHTML = escapeHtml(message) + ' <a href="/login/">Log in</a>';
+            } else {
+                el.textContent = message;
+            }
         }
 
-        async function submitGuestAssessmentWithModal(level, badge, description, score, correct) {
-            let trialToken = '';
+        function passwordIsStrong(password) {
+            return password.length >= 8 &&
+                /[A-Z]/.test(password) &&
+                /[a-z]/.test(password) &&
+                /\d/.test(password) &&
+                /[^A-Za-z0-9]/.test(password);
+        }
+
+        function splitChildName(raw) {
+            var parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+            if (!parts.length) return null;
+            var firstName = parts[0].slice(0, 80);
+            var lastName = parts.length > 1 ? parts.slice(1).join(' ').slice(0, 80) : 'Learner';
+            return { firstName: firstName, lastName: lastName, childName: parts.join(' ').slice(0, 200) };
+        }
+
+        function usernameFromEmail(email) {
+            var local = String(email || '').split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 12);
+            if (local.length < 3) local = 'learner';
+            return (local + Math.random().toString(36).slice(2, 6)).slice(0, 24);
+        }
+
+        function storeStudentSession(data, email) {
+            var token = data && data.token;
+            if (!token) return;
+            localStorage.setItem('remoed_student_token', token);
+            localStorage.setItem('remoed_user_token', token);
+            localStorage.setItem('token', token);
+            localStorage.setItem('userType', 'student');
+            localStorage.setItem('userRole', 'student');
+            localStorage.setItem('remoedUsername', (data && data.username) || email);
+            if (data && data.studentId) localStorage.setItem('studentId', String(data.studentId));
+        }
+
+        async function saveQuizRegistration(event) {
+            event.preventDefault();
+            var errEl = document.getElementById('quiz-form-error');
+            if (errEl) {
+                errEl.hidden = true;
+                errEl.textContent = '';
+            }
+            if (!guestResult || !guestResult.cefrLevel) {
+                quizFormError('Finish the quiz before saving.');
+                return;
+            }
+            var names = splitChildName(document.getElementById('quiz-child-name').value);
+            var email = String(document.getElementById('quiz-parent-email').value || '').trim().toLowerCase();
+            var password = document.getElementById('quiz-password').value || '';
+            var privacy = document.getElementById('quiz-privacy');
+            if (!names) {
+                quizFormError("Enter the child's name.");
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                quizFormError('Enter a valid parent email.');
+                return;
+            }
+            if (!passwordIsStrong(password)) {
+                quizFormError('Use at least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.');
+                return;
+            }
+            if (!privacy || !privacy.checked) {
+                quizFormError('A parent or guardian must accept the Student Privacy and Recording Policy.');
+                return;
+            }
+            var btn = document.getElementById('quiz-save-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+            }
             try {
-                const emailResponse = await fetch('/api/student/send-assessment-email', {
+                var emailResponse = await fetch('/api/student/send-assessment-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        email: guestAssessmentData.parentEmail,
-                        childName: guestAssessmentData.childName,
-                        parentEmail: guestAssessmentData.parentEmail,
-                        contactNumber: guestAssessmentData.contactNumber,
-                        cefrLevel: level,
-                        score: score,
-                        assessmentAnswers: answers.slice(0, 10)
+                        email: email,
+                        childName: names.childName,
+                        parentEmail: email,
+                        cefrLevel: guestResult.cefrLevel,
+                        score: guestResult.score,
+                        assessmentAnswers: (guestResult.answers || []).slice(0, 5)
                     })
                 });
-                const emailResult = await emailResponse.json().catch(function () { return {}; });
-                if (emailResult.trialToken) trialToken = emailResult.trialToken;
-                if (emailResponse.status === 409 || emailResult.code === 'ASSESSMENT_ALREADY_TAKEN') {
-                    alert(
-                        emailResult.message ||
-                        'Assessment already taken. Please check your email for your results and registration link.'
-                    );
-                    const emailQ = encodeURIComponent(guestAssessmentData.parentEmail || '');
-                    const levelQ = encodeURIComponent(emailResult.cefrLevel || level);
-                    window.location.href =
-                        (window.location.origin || '') +
-                        '/index.html?email=' +
-                        emailQ +
-                        '&cefrLevel=' +
-                        levelQ +
-                        '#plans';
+                var emailResult = await emailResponse.json().catch(function () { return {}; });
+                var trialToken = emailResult.trialToken || '';
+                if ((emailResponse.status === 409 || emailResult.code === 'ASSESSMENT_ALREADY_TAKEN') && !trialToken) {
+                    quizFormError(emailResult.message || 'Assessment already taken. Please log in with your student account.', true);
                     return;
                 }
-                if (emailResult.success || emailResult.fallback) {
-                    console.log('✅ Assessment email / trial token ready');
+                if (!emailResponse.ok && emailResponse.status !== 409) {
+                    quizFormError('Could not save the quiz. Please try again.');
+                    return;
                 }
+                var registered = false;
+                var username = usernameFromEmail(email);
+                var attempt;
+                for (attempt = 0; attempt < 2 && !registered; attempt++) {
+                    if (attempt === 1) username = usernameFromEmail(email);
+                    var regResponse = await fetch('/api/auth/student-register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            firstName: names.firstName,
+                            lastName: names.lastName,
+                            username: username,
+                            email: email,
+                            password: password,
+                            parentEmail: email,
+                            referralCode: localStorage.getItem('referralCode') || '',
+                            assessmentTrialToken: trialToken || undefined,
+                            privacyConsentAccepted: true
+                        })
+                    });
+                    var regBody = await regResponse.json().catch(function () { return {}; });
+                    if (regResponse.ok && regBody.success) {
+                        registered = true;
+                        break;
+                    }
+                    var regMessage = regBody.message || 'Could not create the account.';
+                    if (/already registered/i.test(regMessage)) {
+                        quizFormError('This email is already registered.', true);
+                        return;
+                    }
+                    if (attempt === 1 || !/username already exists/i.test(regMessage)) {
+                        quizFormError(regMessage);
+                        return;
+                    }
+                }
+                var loginResponse = await fetch('/api/auth/student-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+                var loginBody = await loginResponse.json().catch(function () { return {}; });
+                if (!loginResponse.ok || !loginBody.token) {
+                    quizFormError('Account saved. Log in to open the games.', true);
+                    return;
+                }
+                storeStudentSession(loginBody, email);
+                try { sessionStorage.removeItem(GUEST_QUIZ_KEY); } catch (e) {}
+                window.location.href = '/trial.html';
             } catch (err) {
-                console.error('Guest assessment email error', err);
+                quizFormError('Could not save the quiz. Please try again.');
+            } finally {
+                if (btn && document.getElementById('quiz-form-error') && document.getElementById('quiz-form-error').hidden === false) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Results & Try Free Interactive Games';
+                }
             }
-            openPostAssessmentModal(level, badge, description, score, correct, trialToken);
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.getElementById('quiz-register-form');
+            if (form) form.addEventListener('submit', saveQuizRegistration);
+        });
 
         function showResults(level, badge, description, score, correct) {
             document.getElementById('questions-container').style.display = 'none';

@@ -480,14 +480,8 @@
     <!-- comment -->
     <!-- Free Assessment Section -->
     <section class="assessment-section" id="assessment">
-      <h2 data-i18n="assessment_title">Free Level Assessment</h2>
-      <p>
-        Find out your child's English level and get personalized recommendations
-        straight to your email.
-      </p>
-      <p style="font-size: 1.05rem; margin-top: 10px">
-        Perfect for first-time parents checking readiness.
-      </p>
+      <h2 data-i18n="assessment_title">Find Your Child's Ideal English Level in 2 Minutes</h2>
+      <p data-i18n="assessment_sub">100% Free • No Credit Card Required • Instant Results</p>
       <div class="assessment-layout">
         <div class="sophia-guide assessment-guide--robot">
           <div class="speech-bubble">
@@ -504,39 +498,7 @@
           />
         </div>
         <div class="assessment-form">
-          <form id="assessment-form">
-            <div class="form-group">
-              <label>Child's Name</label>
-              <input
-                type="text"
-                id="child-name"
-                required
-                placeholder="Enter child's name"
-              />
-            </div>
-            <div class="form-group">
-              <label>Parent's Email</label>
-              <input
-                type="email"
-                id="parent-email"
-                required
-                placeholder="Enter parent's email"
-              />
-            </div>
-            <div class="form-group">
-              <label>Phone Number</label>
-              <input
-                type="tel"
-                id="contact-number"
-                required
-                placeholder="Enter phone number"
-              />
-            </div>
-            <button type="submit" class="assessment-btn">
-              Start Free Assessment
-            </button>
-            <p id="assessment-already-taken-msg" class="assessment-already-taken-msg" hidden role="alert"></p>
-          </form>
+          <a class="assessment-btn" href="/student-assessment.html?guest=1" data-i18n="assessment_cta" style="display:block;text-decoration:none;box-sizing:border-box;text-align:center;">Start Quick 5-Question Quiz</a>
         </div>
       </div>
     </section>
@@ -880,87 +842,6 @@
         }
       }
 
-      document
-        .getElementById("assessment-form")
-        .addEventListener("submit", async function (e) {
-          e.preventDefault();
-          const childEl = document.getElementById("child-name");
-          const emailEl = document.getElementById("parent-email");
-          const contactEl = document.getElementById("contact-number");
-          const alreadyMsg = document.getElementById("assessment-already-taken-msg");
-          const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
-          const childName = childEl.value.trim();
-          const parentEmail = emailEl.value.trim();
-          const contactNumber = contactEl.value.trim();
-          [childEl, emailEl, contactEl].forEach((el) => el.setCustomValidity(""));
-          if (alreadyMsg) {
-            alreadyMsg.hidden = true;
-            alreadyMsg.textContent = "";
-          }
-          if (!childName) {
-            childEl.setCustomValidity("Required");
-            childEl.reportValidity();
-            childEl.focus();
-            return;
-          }
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
-            emailEl.setCustomValidity("Enter a valid email address");
-            emailEl.reportValidity();
-            emailEl.focus();
-            return;
-          }
-          if (!contactNumber) {
-            contactEl.setCustomValidity("Required");
-            contactEl.reportValidity();
-            contactEl.focus();
-            return;
-          }
-
-          if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.dataset.originalText = submitBtn.textContent;
-            submitBtn.textContent = "Checking…";
-          }
-
-          try {
-            const statusRes = await fetch(
-              "/api/public/assessment-status?email=" + encodeURIComponent(parentEmail)
-            );
-            const status = await statusRes.json().catch(function () {
-              return {};
-            });
-            if (status && status.taken) {
-              const msg =
-                status.message ||
-                "Assessment already taken. Please check your email for your results and registration link.";
-              if (alreadyMsg) {
-                alreadyMsg.textContent = msg;
-                alreadyMsg.hidden = false;
-              } else {
-                alert(msg);
-              }
-              return;
-            }
-          } catch (statusErr) {
-            console.warn("Assessment status check failed; continuing", statusErr);
-          } finally {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.textContent =
-                submitBtn.dataset.originalText || "Start Free Assessment";
-            }
-          }
-
-          assessmentData = { childName, parentEmail, contactNumber };
-
-          try {
-            localStorage.setItem("remoedAssessmentInProgress", "1");
-          } catch (e) {}
-
-          const assessmentUrl = `/student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
-          window.location.href = assessmentUrl;
-        });
-
       function setPlanButtonLoadingState(buttonEl, isLoading) {
         if (!buttonEl) return;
         if (isLoading) {
@@ -1165,7 +1046,7 @@
           }
         });
     </script>
-    <script src="/js/site-i18n.js?v=landing-lang-1"></script>
+    <script src="/js/site-i18n.js?v=landing-quiz-1"></script>
     <script>
       (function () {
         function writeCookie(lang) {
