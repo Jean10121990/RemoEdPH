@@ -1,7 +1,7 @@
 /**
  * Pure rules for attendance exceptions. No database.
- * Default close is 07:00 Asia/Manila the morning after the business date,
- * which matches the existing 7:00 AM business-day cutoff and covers overnight work.
+ * Teachers and admins close at 12:00 midnight (00:00) Asia/Manila
+ * at the end of the business date.
  * A system close is not verified working time.
  */
 const { DateTime } = require('luxon');
@@ -14,21 +14,25 @@ const STATUSES = ['PENDING_REVIEW', 'NEEDS_CLARIFICATION', 'APPROVED', 'REJECTED
 function attendanceConfig(env = process.env) {
   const zone = String(env.ATTENDANCE_TIMEZONE || 'Asia/Manila').trim() || 'Asia/Manila';
   const closeHour = Number(env.ATTENDANCE_CLOSE_HOUR);
+  const adminCloseHour = Number(env.ATTENDANCE_ADMIN_CLOSE_HOUR);
   const reviewHours = Number(env.ATTENDANCE_REVIEW_SLA_HOURS);
   return {
     zone: DateTime.now().setZone(zone).isValid ? zone : 'Asia/Manila',
-    closeHour: Number.isFinite(closeHour) && closeHour >= 0 && closeHour <= 23 ? closeHour : 7,
+    closeHour: Number.isFinite(closeHour) && closeHour >= 0 && closeHour <= 23 ? closeHour : 0,
+    adminCloseHour: Number.isFinite(adminCloseHour) && adminCloseHour >= 0 && adminCloseHour <= 23 ? adminCloseHour : 0,
     reviewSlaHours: Number.isFinite(reviewHours) && reviewHours > 0 ? reviewHours : 24,
     provisionalTimeIn: false,
   };
 }
 
-function cutoffForAttendanceDate(ymd, cfg) {
+function cutoffForAttendanceDate(ymd, cfg, options) {
   const config = cfg || attendanceConfig();
   const day = DateTime.fromISO(String(ymd || ''), { zone: config.zone });
   if (!day.isValid) return null;
+  const ownerType = options && options.ownerType === 'admin' ? 'admin' : 'teacher';
+  const hour = ownerType === 'admin' ? config.adminCloseHour : config.closeHour;
   return day.plus({ days: 1 }).set({
-    hour: config.closeHour,
+    hour: hour,
     minute: 0,
     second: 0,
     millisecond: 0,

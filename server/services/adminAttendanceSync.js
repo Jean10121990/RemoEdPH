@@ -74,8 +74,8 @@ function eachYmd(startYmd, endYmd) {
   return out;
 }
 
-/** Today's admin time-log day (7:00 AM to 6:59 AM, Asia/Manila), same rule as admin clock-in. */
-function phBusinessYmd(now = new Date(), cutoffHour = 7) {
+/** Today's admin time-log day (midnight to midnight, Asia/Manila), same rule as admin clock-in. */
+function phBusinessYmd(now = new Date(), cutoffHour = 0) {
   const hour = Number(
     new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', hour12: false }).format(now)
   ) % 24;

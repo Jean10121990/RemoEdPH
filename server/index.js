@@ -3951,7 +3951,7 @@ const startServer = () => {
             closeOpenSessions().catch((e) => console.warn('[attendance-close]', e.message || e));
           setInterval(runAttendanceClose, 15 * 60 * 1000);
           setTimeout(runAttendanceClose, 20000);
-          console.log('⏰ Open attendance sessions close at the configured cutoff (default 07:00 Asia/Manila)');
+          console.log('⏰ Open attendance sessions close at 12:00 midnight Asia/Manila');
 
           // Daily notification digest (opt-in) — run shortly after Manila midnight-ish via 6h tick check
           let lastDigestDay = '';

@@ -2921,8 +2921,8 @@ function getPhilippineHour(date = new Date()) {
   return Number(hourPart ? hourPart.value : '0');
 }
 
-function getPhilippineBusinessDate(cutoffHour = 7) {
-  // Defines the "time log day" as 7:00 AM to 6:59 AM (Asia/Manila)
+function getPhilippineBusinessDate(cutoffHour = 0) {
+  // Time-log day runs from 12:00 midnight to the next midnight (Asia/Manila).
   const now = new Date();
   const phHour = getPhilippineHour(now);
   const effective = phHour < cutoffHour
@@ -2956,7 +2956,7 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
     const teacherId = req.user.teacherId;
     console.log('Teacher ID:', teacherId);
     
-    const phDate = getPhilippineBusinessDate(7);
+    const phDate = getPhilippineBusinessDate(0);
     const currentTime = getPhilippineTimeString();
     
     console.log('Philippine Date:', phDate);
@@ -3085,7 +3085,7 @@ router.post('/time-tracking/clock-out', verifyToken, requireTeacher, async (req,
 router.get('/time-tracking/status', verifyToken, requireTeacher, async (req, res) => {
   try {
     const teacherId = req.user.teacherId;
-    const phDate = getPhilippineBusinessDate(7);
+    const phDate = getPhilippineBusinessDate(0);
     
     // Check if there's an open log (clocked-in) regardless of date
     const openLog = await TimeLog.findOne({

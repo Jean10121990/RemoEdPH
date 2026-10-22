@@ -11,10 +11,18 @@ const {
   releaseAllowed,
 } = require('../server/services/attendanceExceptionPolicy');
 
-test('default cutoff is 07:00 Asia/Manila the next morning', () => {
+test('teacher cutoff is 12:00 midnight Asia/Manila at the end of the business date', () => {
   const cfg = attendanceConfig({});
   const cutoff = cutoffForAttendanceDate('2026-10-11', cfg);
-  assert.equal(cutoff.toISO(), '2026-10-12T07:00:00.000+08:00');
+  assert.equal(cfg.closeHour, 0);
+  assert.equal(cutoff.toISO(), '2026-10-12T00:00:00.000+08:00');
+});
+
+test('admin cutoff is 12:00 midnight Asia/Manila at the end of the business date', () => {
+  const cfg = attendanceConfig({});
+  const cutoff = cutoffForAttendanceDate('2026-10-11', cfg, { ownerType: 'admin' });
+  assert.equal(cfg.adminCloseHour, 0);
+  assert.equal(cutoff.toISO(), '2026-10-12T00:00:00.000+08:00');
 });
 
 test('overnight reported time-out is the next calendar day', () => {

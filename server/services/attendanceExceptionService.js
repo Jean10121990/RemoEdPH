@@ -223,9 +223,11 @@ async function closeOpenSessions(now = new Date()) {
     const open = await TimeLog.find({ status: 'clocked-in' }).limit(80);
     for (const log of open) {
       try {
-        const cutoff = cutoffForAttendanceDate(log.date, cfg);
+        const ownerType = log.logOwnerType === 'admin' ? 'admin' : 'teacher';
+        const cutoff = cutoffForAttendanceDate(log.date, cfg, { ownerType });
         if (!cutoff || DateTime.fromJSDate(now).setZone(cfg.zone) < cutoff) continue;
         const label = formatPhLabel(cutoff.toJSDate(), cfg.zone);
+        const closeReason = 'Open session closed at 12:00 midnight. This is not verified working time.';
         const totalHours = hoursBetween(log.clockIn && log.clockIn.timestamp, cutoff.toJSDate());
         const updated = await TimeLog.findOneAndUpdate(
           { _id: log._id, status: 'clocked-in' },
@@ -237,7 +239,7 @@ async function closeOpenSessions(now = new Date()) {
               systemClockOut: {
                 time: label,
                 timestamp: cutoff.toJSDate(),
-                reason: 'Open session closed at the configured cutoff. This is not verified working time.',
+                reason: closeReason,
               },
               totalHours,
             },
@@ -250,7 +252,6 @@ async function closeOpenSessions(now = new Date()) {
           closed += 1;
           continue;
         }
-        const ownerType = updated.logOwnerType === 'admin' ? 'admin' : 'teacher';
         if (ownerType === 'admin' && (await isOwnerExemptWorker(updated.teacherId))) {
           closed += 1;
           continue;

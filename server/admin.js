@@ -1167,7 +1167,7 @@ function toProgressPercent(stage) {
   return Math.round((idx / (TEACHER_PIPELINE_STAGES.length - 2)) * 100);
 }
 
-// ——— Admin time tracking (registered early; 7 AM PHT business day) ———
+// ——— Admin time tracking (registered early; midnight PHT business day) ———
 function adminTimeWorkerId(username) {
   return `admin:${String(username || 'unknown').toLowerCase()}`;
 }
@@ -1191,7 +1191,7 @@ function getPhilippineHourAdmin(date = new Date()) {
   return Number(hourPart ? hourPart.value : '0');
 }
 
-function getPhilippineBusinessDateAdmin(cutoffHour = 7) {
+function getPhilippineBusinessDateAdmin(cutoffHour = 0) {
   const now = new Date();
   const phHour = getPhilippineHourAdmin(now);
   const effective = phHour < cutoffHour
@@ -1213,7 +1213,7 @@ function getPhilippineTimeStringAdmin() {
 router.post('/time-tracking/clock-in', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const workerId = adminTimeWorkerId(req.user.username);
-    const phDate = getPhilippineBusinessDateAdmin(7);
+    const phDate = getPhilippineBusinessDateAdmin(0);
     const currentTime = getPhilippineTimeStringAdmin();
 
     const attendanceBlock = await require('./services/attendanceExceptionService').findBlocking(workerId);
@@ -1305,7 +1305,7 @@ router.post('/time-tracking/clock-out', verifyAdminApiAuth, requireAdmin, async 
 router.get('/time-tracking/status', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const workerId = adminTimeWorkerId(req.user.username);
-    const phDate = getPhilippineBusinessDateAdmin(7);
+    const phDate = getPhilippineBusinessDateAdmin(0);
 
     const openLog = await TimeLog.findOne({
       teacherId: workerId,
