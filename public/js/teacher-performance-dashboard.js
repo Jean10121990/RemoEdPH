@@ -143,4 +143,6 @@
   }
 
   window.RemoedTeacherPerformance = { load };
+  var panel = document.getElementById('performance-tab');
+  if (panel && panel.classList.contains('active')) load();
 })();

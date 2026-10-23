@@ -325,7 +325,7 @@ These “fixes” **are** the snap bugs:
 
 ### Profile / Messages (phone)
 
-- Teacher Profile **Performance** tab (`public/teacher-profile.html`, `public/js/teacher-performance-dashboard.js`) loads `GET /api/teacher/performance-summary` for the signed-in teacher. Quality bands are Getting started, Building, Strong, and Excellent. Eco-Stewardship Champion and Christian Values Exemplar stay locked until a stored award exists. Leave `teacher-performance-indicator.html` and `leaderboard.html` as they are.
+- Teacher Profile opens on the **Performance** tab (`public/teacher-profile.html`, `public/js/teacher-performance-dashboard.js`). Personal Information is the second tab. Profile Completion sits in the header beside the photo, email, and hire date. Quick Info is the right column (below the main card on a phone). The panel loads `GET /api/teacher/performance-summary` for the signed-in teacher. Quality bands are Getting started, Building, Strong, and Excellent. Eco-Stewardship Champion and Christian Values Exemplar stay locked until a stored award exists. Leave `teacher-performance-indicator.html` and `leaderboard.html` as they are.
 - Teacher Profile two-column in `style.css` never collapses: `.page-teacher-profile @media` is invalid (comment between selector and `@media`). Phone stacking lives in late `portal-chrome-compact.css` / `mobile-first.css` on `.profile-content-grid`. Do not “fix” only the broken `style.css` block and assume it applies.
 - Messages: list **or** thread on phone, not both. Composer must not be `position: sticky` inside a clipped parent.
 

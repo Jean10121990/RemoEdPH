@@ -1,3 +1,41 @@
+body.page-teacher-profile .profile-header-info {
+  flex: 0 1 auto;
+  max-width: 360px;
+  min-width: 160px;
+}
+
+body.page-teacher-profile #profile-completion-indicator {
+  flex: 1 1 280px;
+  min-width: 220px;
+  margin: 0 !important;
+  align-self: center;
+  box-sizing: border-box;
+}
+
+@media (min-width: 769px) {
+  body.page-teacher-profile .profile-content-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  }
+}
+
+body.page-teacher-profile .profile-main-card {
+  order: 1;
+}
+
+body.page-teacher-profile .profile-sidebar-card {
+  order: 2;
+}
+
+@media (max-width: 768px) {
+  body.page-teacher-profile .profile-header-info,
+  body.page-teacher-profile #profile-completion-indicator {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+  }
+}
+
 .page-teacher-profile .tpd {
   color: #1a2a4a;
 }
