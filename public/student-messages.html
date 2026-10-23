@@ -110,7 +110,6 @@
             const userSearchEl = document.getElementById('user-search');
             const backBtnEl = document.getElementById('back-btn');
 
-            let planPurchased = false;
             let chats = [];
             let userSearchHits = [];
             let userSearchTimer = null;
@@ -212,7 +211,7 @@
             function renderChatList() {
                 const f = (chatFilterEl && chatFilterEl.value) ? chatFilterEl.value.trim().toLowerCase() : '';
                 const welcome = welcomeChat();
-                const showWelcome = planPurchased && (!f || welcome.name.toLowerCase().includes(f) || welcome.lastMessage.toLowerCase().includes(f) || 'plan'.includes(f) || 'congratulations'.includes(f));
+                const showWelcome = !f || welcome.name.toLowerCase().includes(f) || welcome.lastMessage.toLowerCase().includes(f) || 'plan'.includes(f) || 'congratulations'.includes(f);
                 const rows = (showWelcome ? [welcome] : []).concat(chats.filter(c => !f || (c.name || '').toLowerCase().includes(f)));
                 const hits = userSearchHits.filter(h => !rows.some(r => String(r.peerId) === String(h.peerId)));
                 let html = '';
@@ -347,23 +346,6 @@
                 }
                 chats.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
                 renderChatList();
-            }
-
-            function profileSaysPaid(profile) {
-                if (!profile) return false;
-                if (profile.isSubscribed === true) return true;
-                return profile.paymentStatus === 'paid' && profile.subscriptionStatus === 'active';
-            }
-            async function loadPlanWelcome() {
-                try {
-                    const res = await fetch('/api/student/profile', { headers: { 'Authorization': 'Bearer ' + token } });
-                    const data = await res.json().catch(function () { return {}; });
-                    planPurchased = !!(res.ok && profileSaysPaid(data.profile));
-                } catch (e) {
-                    planPurchased = false;
-                }
-                renderChatList();
-                if (planPurchased && !welcomeSeen() && !peerIdFromUrl) openWelcome();
             }
 
             async function loadChats() {
@@ -506,12 +488,13 @@
 
             loadChats().then(() => {
                 if (peerIdFromUrl) return openChat(peerIdFromUrl);
+                if (!welcomeSeen()) openWelcome();
             }).catch(err => {
                 console.error(err);
                 chats = [];
-                renderChatList();
+                if (!welcomeSeen()) openWelcome();
+                else renderChatList();
             });
-            loadPlanWelcome();
         })();
     </script>
 </body>
