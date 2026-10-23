@@ -114,7 +114,7 @@
         <script>AdminSidebar.render('admin-sidebar-root', 'admin-fee');</script>
         <div class="remoed-content">
             <div class="af-wrap">
-                <p class="af-intro">View your <strong>2% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.</p>
+                <p class="af-intro" id="af-intro">View your <strong>2% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.</p>
 
                 <div class="af-toolbar">
                     <label for="af-period">Pay period</label>
@@ -127,7 +127,7 @@
 
                 <div class="af-stats" id="af-stats">
                     <div class="af-stat"><div class="lbl">Gross subscription sales</div><div class="val" id="af-gross">₱0</div></div>
-                    <div class="af-stat"><div class="lbl">2% Admin share</div><div class="val" id="af-share">₱0</div></div>
+                    <div class="af-stat"><div class="lbl" id="af-share-lbl">2% Admin share</div><div class="val" id="af-share">₱0</div></div>
                     <div class="af-stat"><div class="lbl">Hours worked</div><div class="val" id="af-hours">0</div></div>
                     <div class="af-stat"><div class="lbl" id="af-wallet-label">Pending earnings</div><div class="val" id="af-payout">₱0</div></div>
                 </div>
@@ -138,11 +138,11 @@
                         <p class="af-muted" id="af-period-label">—</p>
                         <p style="margin:10px 0 0;font-size:0.95rem;" id="af-elig-text">—</p>
                         <p class="af-note" id="af-admin-meta"></p>
-                        <p class="af-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 2% fee.</p>
+                        <p class="af-note" id="af-elig-note" style="margin-top:12px;">Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 2% fee.</p>
                     </div>
                     <div class="af-card">
                         <h2>How payout works</h2>
-                        <p class="af-muted">2% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
+                        <p class="af-muted" id="af-how">2% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.</p>
                         <p class="af-note">Need MariBank? <a href="https://maribank.ph/c/earnfreemoney?referralCode=KB740303" target="_blank" rel="noopener noreferrer">Open MariBank</a>.</p>
                     </div>
                 </div>
@@ -300,6 +300,10 @@
     function statusBadge(row) {
         var need = (lastSummary && lastSummary.requiredShiftHours) || 6;
         if (row.status === 'clocked_in') return '<span class="badge-info">In progress</span>';
+        if (lastSummary && lastSummary.payBasis === 'daily') {
+            if ((Number(row.totalHours) || 0) > 0) return '<span class="badge-ok">₱' + (lastSummary.dailyRate || 350) + ' day</span>';
+            return '<span class="badge-warn">No hours</span>';
+        }
         if ((Number(row.totalHours) || 0) >= need) return '<span class="badge-ok">' + need + 'h met</span>';
         if (row.status === 'short_shift' || row.status === 'completed') return '<span class="badge-warn">Under ' + need + 'h</span>';
         return '<span class="badge-warn">Incomplete</span>';
@@ -311,8 +315,21 @@
         var period = document.getElementById('af-period').value;
         var d = await api('/api/admin/admin-fee/summary?period=' + encodeURIComponent(period));
         lastSummary = d;
+        var daily = d.payBasis === 'daily';
+        document.getElementById('af-intro').innerHTML = daily
+            ? 'Your pay is <strong>₱' + esc(d.dailyRate || 350) + ' for each Monday to Friday</strong> you time out. Admin QA is an employee rate, so the 2% partner commission does not apply. Clock in/out from the Admin Dashboard or top header — not on this page.'
+            : 'View your <strong>2% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.';
+        document.getElementById('af-share-lbl').textContent = daily ? 'Daily pay' : '2% Admin share';
+        document.getElementById('af-elig-note').innerHTML = daily
+            ? 'Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Each closed Monday to Friday with hours recorded pays <strong>₱' + esc(d.dailyRate || 350) + '</strong>. A shift still in progress is counted after Time Out.'
+            : 'Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 2% fee.';
+        document.getElementById('af-how').innerHTML = daily
+            ? 'Employee daily rate of <strong>₱' + esc(d.dailyRate || 350) + '</strong> times the closed weekdays in this cutoff. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.'
+            : '2% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.';
         document.getElementById('af-gross').textContent = peso(d.grossSales);
-        document.getElementById('af-share').textContent = peso(d.adminShareAmount);
+        document.getElementById('af-share').textContent = daily
+            ? peso(d.estimatedPayout) + ' · ' + (d.paidDays || 0) + ' day' + ((d.paidDays || 0) === 1 ? '' : 's')
+            : peso(d.adminShareAmount);
         document.getElementById('af-hours').textContent = String(d.totalEligibleHours || 0);
         var payEl = document.getElementById('af-payout');
         payEl.textContent = peso(d.estimatedPayout);
@@ -351,7 +368,11 @@
         var met = d.metDays || 0;
         var missed = (d.weekdayDays || []).filter(function (x) { return x.status === 'missing' || x.status === 'short'; });
         var eligHtml;
-        if (d.eligible) {
+        if (daily) {
+            eligHtml = '<strong style="color:#15803d">Employee daily rate</strong> — ₱' + esc(d.dailyRate || 350) +
+                ' × ' + (d.paidDays || 0) + ' closed weekday' + ((d.paidDays || 0) === 1 ? '' : 's') +
+                ' = ' + peso(d.estimatedPayout) + '.';
+        } else if (d.eligible) {
             eligHtml = '<strong style="color:#15803d">Eligible</strong> — you timed in all ' + req +
                 ' weekdays with at least ' + need + ' hours each.';
         } else if (missed.length) {
@@ -394,20 +415,28 @@
         var sh = ps.shiftSummary || {};
         document.getElementById('af-payslip-shifts').innerHTML =
             '<div class="payslip-row"><span>Total shifts</span><span>' + esc(sh.totalShifts) + '</span></div>' +
-            '<div class="payslip-row"><span>Weekdays with ' + esc(sh.requiredHoursPerShift || 6) + 'h or more</span><span>' + esc(sh.metDays || 0) + ' of ' + esc(sh.requiredDays || 0) + '</span></div>' +
+            (sh.payBasis === 'daily'
+                ? '<div class="payslip-row"><span>Paid weekdays</span><span>' + esc(sh.paidDays || 0) + '</span></div>'
+                : '<div class="payslip-row"><span>Weekdays with ' + esc(sh.requiredHoursPerShift || 6) + 'h or more</span><span>' + esc(sh.metDays || 0) + ' of ' + esc(sh.requiredDays || 0) + '</span></div>') +
             '<div class="payslip-row"><span>Total hours worked</span><span>' + esc(sh.totalHours) + '</span></div>' +
             '<div class="payslip-row"><span>Eligibility</span><span>' + (sh.eligible ? 'Eligible' : 'Not eligible') + '</span></div>';
         var s = ps.sales || {};
-        document.getElementById('af-payslip-sales').innerHTML =
-            '<div class="payslip-row"><span>Gross subscription sales pool</span><span>' + peso(s.grossSubscriptionSales) + '</span></div>' +
-            '<div class="payslip-row"><span>Purchases counted</span><span>' + esc(s.purchaseCount) + '</span></div>' +
-            '<div class="payslip-row"><span>Commission rate</span><span>' + esc(s.commissionRate) + '%</span></div>' +
-            '<div class="payslip-row"><span>2% commission</span><span>' + peso(s.commissionAmount) + '</span></div>';
+        document.getElementById('af-payslip-sales').innerHTML = s.payBasis === 'daily'
+            ? '<div class="payslip-row"><span>Daily rate</span><span>₱' + esc(s.dailyRate || 350) + '</span></div>' +
+              '<div class="payslip-row"><span>Closed weekdays</span><span>' + esc(s.paidDays || 0) + '</span></div>' +
+              '<div class="payslip-row"><span>Daily pay</span><span>' + peso(s.dailyPay) + '</span></div>' +
+              '<div class="payslip-row"><span>Partner commission</span><span>None</span></div>'
+            : '<div class="payslip-row"><span>Gross subscription sales pool</span><span>' + peso(s.grossSubscriptionSales) + '</span></div>' +
+              '<div class="payslip-row"><span>Purchases counted</span><span>' + esc(s.purchaseCount) + '</span></div>' +
+              '<div class="payslip-row"><span>Commission rate</span><span>' + esc(s.commissionRate) + '%</span></div>' +
+              '<div class="payslip-row"><span>2% commission</span><span>' + peso(s.commissionAmount) + '</span></div>';
         document.getElementById('af-payslip-net').innerHTML =
             '<span>Total net payout</span><span>' + peso(ps.netPayout) + '</span>';
         document.getElementById('af-payslip-foot').textContent =
             'Generated ' + new Date(ps.generatedAt || Date.now()).toLocaleString() +
-            ' · Payout requires a time-in of at least ' + (sh.requiredHoursPerShift || 6) + ' hours every Monday to Friday in the period.';
+            (sh.payBasis === 'daily'
+                ? ' · Employee daily rate. Each closed Monday to Friday pays ₱' + (sh.dailyRate || 350) + '.'
+                : ' · Payout requires a time-in of at least ' + (sh.requiredHoursPerShift || 6) + ' hours every Monday to Friday in the period.');
     }
 
     async function openPayslip() {

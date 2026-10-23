@@ -18,6 +18,7 @@ const {
   REQUIRED_SHIFT_HOURS,
   syncAdminAttendanceFromTimeLog,
   evaluateWeekdayAttendance,
+  countClosedWeekdays,
 } = require('./services/adminAttendanceSync');
 const {
   isReleased,
@@ -35,7 +36,37 @@ const router = express.Router();
 
 router.use(verifyAdminApiAuth, requireAdmin, requireAdminTwoFactorSatisfied, requireAdminSessionValid);
 
-const COMMISSION_RATE = 2; // percent
+const COMMISSION_RATE = 2; // percent of subscription gross, for partner admin roles
+/** Admin QA is an employee (daily rate), not a 2% business-partner fee. */
+const QA_EMPLOYEE_ROLE = 'admin_qa';
+const QA_DAILY_RATE = 350;
+
+function isQaEmployeeRole(role) {
+  return String(role || '') === QA_EMPLOYEE_ROLE;
+}
+
+function quoteAdminFee(role, stats, attendance, startYmd, endYmd, commissionPool) {
+  if (isQaEmployeeRole(role)) {
+    const paidDays = countClosedWeekdays(attendance, startYmd, endYmd);
+    const amount = Math.round(paidDays * QA_DAILY_RATE * 100) / 100;
+    return {
+      payBasis: 'daily',
+      commissionRate: 0,
+      dailyRate: QA_DAILY_RATE,
+      paidDays,
+      amount,
+      eligible: paidDays > 0,
+    };
+  }
+  return {
+    payBasis: 'commission',
+    commissionRate: COMMISSION_RATE,
+    dailyRate: 0,
+    paidDays: 0,
+    amount: stats.eligible ? commissionPool : 0,
+    eligible: !!stats.eligible,
+  };
+}
 
 function parsePayPeriodKey(periodKey) {
   const m = String(periodKey || '').match(/^(\d{4})-(\d{2})-(1|2)$/);
@@ -185,11 +216,12 @@ router.get('/summary', async (req, res) => {
       .lean();
 
     const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
-    const estimatedPayout = stats.eligible ? commissionPool : 0;
-
     const admin = await Admin.findOne({ username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') })
       .select('username email firstName lastName adminRole status')
       .lean();
+    const role = (admin && admin.adminRole) || req.user.adminRole || '';
+    const quote = quoteAdminFee(role, stats, attendance, startYmd, endYmd, commissionPool);
+    const estimatedPayout = quote.amount;
 
     const existingPayout = await AdminPayout.findOne({
       adminUsername: admin ? admin.username : username,
@@ -206,17 +238,20 @@ router.get('/summary', async (req, res) => {
           ? `${startYmd} → ${endYmd} (Period 1 · 1st–15th)`
           : `${startYmd} → ${endYmd} (Period 2 · 16th–end)`,
       requiredShiftHours: REQUIRED_SHIFT_HOURS,
-      commissionRate: COMMISSION_RATE,
+      payBasis: quote.payBasis,
+      dailyRate: quote.dailyRate,
+      paidDays: quote.paidDays,
+      commissionRate: quote.commissionRate,
       grossSales,
       purchaseCount,
-      adminSharePercent: COMMISSION_RATE,
-      adminShareAmount: commissionPool,
+      adminSharePercent: quote.commissionRate,
+      adminShareAmount: quote.payBasis === 'daily' ? quote.amount : commissionPool,
       totalEligibleHours: stats.totalHours,
       totalShifts: stats.totalShifts,
       completedShifts: stats.completedShifts,
       ...weekdayFields(stats),
       weekdayDays: stats.weekdayDays,
-      eligible: stats.eligible,
+      eligible: quote.eligible,
       estimatedPayout,
       payoutStatus: existingPayout ? existingPayout.status : 'none',
       payoutId: existingPayout ? String(existingPayout._id) : null,
@@ -327,11 +362,12 @@ router.get('/payslip', async (req, res) => {
       .sort({ date: 1 })
       .lean();
     const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
-    const netPayout = stats.eligible ? commissionPool : 0;
-
     const admin = await Admin.findOne({ username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') })
       .select('username email firstName lastName adminRole')
       .lean();
+    const role = (admin && admin.adminRole) || req.user.adminRole || '';
+    const quote = quoteAdminFee(role, stats, attendance, startYmd, endYmd, commissionPool);
+    const netPayout = quote.amount;
 
     res.json({
       success: true,
@@ -353,13 +389,20 @@ router.get('/payslip', async (req, res) => {
           totalHours: stats.totalHours,
           requiredHoursPerShift: REQUIRED_SHIFT_HOURS,
           ...weekdayFields(stats),
-          eligible: stats.eligible,
+          payBasis: quote.payBasis,
+          paidDays: quote.paidDays,
+          dailyRate: quote.dailyRate,
+          eligible: quote.eligible,
         },
         sales: {
           grossSubscriptionSales: grossSales,
           purchaseCount,
-          commissionRate: COMMISSION_RATE,
-          commissionAmount: commissionPool,
+          payBasis: quote.payBasis,
+          dailyRate: quote.dailyRate,
+          paidDays: quote.paidDays,
+          commissionRate: quote.commissionRate,
+          commissionAmount: quote.payBasis === 'daily' ? 0 : commissionPool,
+          dailyPay: quote.payBasis === 'daily' ? quote.amount : 0,
         },
         netPayout,
         generatedAt: new Date(),
@@ -391,11 +434,11 @@ router.post('/record-payout', async (req, res) => {
       date: { $gte: startYmd, $lte: endYmd },
     }).lean();
     const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
-    const totalAmount = stats.eligible ? commissionPool : 0;
-
     const admin = await Admin.findOne({ username: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') })
-      .select('_id username')
+      .select('_id username adminRole')
       .lean();
+    const quote = quoteAdminFee((admin && admin.adminRole) || req.user.adminRole || '', stats, attendance, startYmd, endYmd, commissionPool);
+    const totalAmount = quote.amount;
 
     const doc = await AdminPayout.findOneAndUpdate(
       {
@@ -410,12 +453,12 @@ router.post('/record-payout', async (req, res) => {
           periodStart: bounds.start,
           periodEnd: bounds.end,
           grossSales,
-          commissionRate: COMMISSION_RATE,
+          commissionRate: quote.commissionRate,
           totalAmount,
           totalHours: stats.totalHours,
           totalShifts: stats.totalShifts,
           completedShifts: stats.completedShifts,
-          eligible: stats.eligible,
+          eligible: quote.eligible,
           status: 'generated',
           generatedAt: new Date(),
         },
@@ -463,7 +506,8 @@ router.get('/payroll', async (req, res) => {
         date: { $gte: startYmd, $lte: endYmd },
       }).lean();
       const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
-      const amount = stats.eligible ? commissionPool : 0;
+      const quote = quoteAdminFee(a.adminRole, stats, attendance, startYmd, endYmd, commissionPool);
+      const amount = quote.amount;
       const prev = byUser[String(a.username).toLowerCase()];
       let paymentStatus = 'Ineligible';
       let payoutLifecycle = 'pending';
@@ -488,9 +532,12 @@ router.get('/payroll', async (req, res) => {
         totalShifts: stats.totalShifts,
         completedShifts: stats.completedShifts,
         ...weekdayFields(stats),
-        eligible: stats.eligible,
+        eligible: quote.eligible,
+        payBasis: quote.payBasis,
+        dailyRate: quote.dailyRate,
+        paidDays: quote.paidDays,
         grossSales,
-        commissionRate: COMMISSION_RATE,
+        commissionRate: quote.commissionRate,
         feeAmount: amount,
       paymentStatus,
       payoutLifecycle,
@@ -564,7 +611,8 @@ router.post('/dispense', async (req, res) => {
         date: { $gte: startYmd, $lte: endYmd },
       }).lean();
       const stats = summarizeAttendanceRows(attendance, startYmd, endYmd);
-      const amount = stats.eligible ? commissionPool : 0;
+      const quote = quoteAdminFee(a.adminRole, stats, attendance, startYmd, endYmd, commissionPool);
+      const amount = quote.amount;
 
       const existing = await AdminPayout.findOne({
         adminUsername: a.username,
@@ -591,7 +639,7 @@ router.post('/dispense', async (req, res) => {
             periodStart: bounds.start,
             periodEnd: bounds.end,
             grossSales,
-            commissionRate: COMMISSION_RATE,
+            commissionRate: quote.commissionRate,
             totalAmount: amount,
             totalHours: stats.totalHours,
             totalShifts: stats.totalShifts,
@@ -613,7 +661,7 @@ router.post('/dispense', async (req, res) => {
           await notifyTeacher(
             a.username,
             'salary',
-            `Your admin fee of ₱${amount.toFixed(2)} for ${startYmd} – ${endYmd} has been released. Open Admin Fee → Withdraw via MariBank.`
+            `Your ${quote.payBasis === 'daily' ? 'daily pay' : 'admin fee'} of ₱${amount.toFixed(2)} for ${startYmd} – ${endYmd} has been released. Open Admin Fee → Withdraw via MariBank.`
           );
         } catch (nErr) {
           console.warn('Admin fee notify failed:', a.username, nErr && nErr.message);

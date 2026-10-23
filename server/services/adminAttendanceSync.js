@@ -127,10 +127,29 @@ function evaluateWeekdayAttendance(rows, startYmd, endYmd, todayYmd = phBusiness
   };
 }
 
+/** Closed Monday–Friday rows with recorded hours. Used for the Admin QA daily rate. */
+function countClosedWeekdays(rows, startYmd, endYmd) {
+  const byDate = new Map();
+  (rows || []).forEach((r) => {
+    if (r && r.date) byDate.set(String(r.date), r);
+  });
+  let paidDays = 0;
+  eachYmd(startYmd, endYmd).forEach((date) => {
+    const wd = weekdayOfYmd(date);
+    if (wd === 0 || wd === 6) return;
+    const row = byDate.get(date);
+    if (!row || row.status === 'clocked_in') return;
+    if ((Number(row.totalHours) || 0) <= 0) return;
+    paidDays += 1;
+  });
+  return paidDays;
+}
+
 module.exports = {
   REQUIRED_SHIFT_HOURS,
   syncAdminAttendanceFromTimeLog,
   resolveAttendanceStatus,
   evaluateWeekdayAttendance,
+  countClosedWeekdays,
   phBusinessYmd,
 };
