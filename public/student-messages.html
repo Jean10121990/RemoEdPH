@@ -89,13 +89,19 @@
             const token = studentToken();
             const me = localStorage.getItem('studentUsername') || localStorage.getItem('remoedUsername') || localStorage.getItem('username') || '';
             const WELCOME_ID = 'remoed-welcome';
-            const WELCOME_SEEN_KEY = 'remoed_plan_welcome_seen';
-            const WELCOME_LINES = [
-                'Welcome to RemoEdPH, and congratulations on purchasing your plan. You just opened a live English adventure with a real teacher.',
-                'A friendly one-on-one class is waiting. Book a time, meet your teacher, and enjoy speaking a little more each visit. My Schedule keeps the time, and My Classes keeps every lesson you finish.',
-                'Your plan brings lesson credits for live classes, Play & Learn games, videos for extra practice, a Learning Journey that lights up as you go, and a Virtual Garden that grows with you.',
-                'Class time is warm and personal. Your teacher is right there with you, cheering every try. It is fun, it is kind, and it is yours because you chose this plan.',
-                'Whenever you are ready, open Book a Class and pick a time. We are so glad you are here.'
+            const SIGNUP_SEEN_KEY = 'remoed_signup_welcome_seen';
+            const PLAN_SEEN_KEY = 'remoed_plan_welcome_seen';
+            const SIGNUP_LINES = [
+                'Welcome to RemoEdPH. Your account is ready, and we are glad you signed up.',
+                'Start with the free trial lessons. All 7 steps are yours to try: games, speaking, and a short parent report at the end.',
+                'Open Claim free trial lessons in the menu. Play & Learn, Videos, My Learning Journey, and the Virtual Garden are there whenever you want more practice.',
+                'Live one-on-one classes with a real teacher open after you choose a plan. Have fun exploring first.'
+            ];
+            const PLAN_LINES = [
+                'Congratulations on purchasing your plan. A live English adventure with a real teacher is now open.',
+                'Book a class when you are ready. My Schedule keeps the time, and My Classes keeps every lesson you finish.',
+                'Your plan brings lesson credits for live classes, plus the games, videos, journey, and garden you can keep enjoying.',
+                'Class time is warm and personal. Your teacher is right there with you, cheering every try. It is fun, it is kind, and it is yours because you chose this plan.'
             ];
             const messengerEl = document.getElementById('messenger');
             const chatItemsEl = document.getElementById('chat-items');
@@ -110,6 +116,7 @@
             const userSearchEl = document.getElementById('user-search');
             const backBtnEl = document.getElementById('back-btn');
 
+            let planPurchased = false;
             let chats = [];
             let userSearchHits = [];
             let userSearchTimer = null;
@@ -176,42 +183,77 @@
                 return name ? ('📎 ' + name) : (m && m.attachment ? '📎 Attachment' : '');
             }
 
-            function welcomeSeen() {
-                try { return localStorage.getItem(WELCOME_SEEN_KEY) === '1'; } catch (e) { return false; }
+            function welcomeSeen(key) {
+                try { return localStorage.getItem(key) === '1'; } catch (e) { return false; }
             }
-            function markWelcomeSeen() {
-                try { localStorage.setItem(WELCOME_SEEN_KEY, '1'); } catch (e) {}
+            function markWelcomeSeen(key) {
+                try { localStorage.setItem(key, '1'); } catch (e) {}
+            }
+            function welcomeLines() {
+                return planPurchased ? SIGNUP_LINES.concat(PLAN_LINES) : SIGNUP_LINES.slice();
             }
             function welcomeChat() {
+                const planNew = planPurchased && !welcomeSeen(PLAN_SEEN_KEY);
+                const signupNew = !welcomeSeen(SIGNUP_SEEN_KEY);
                 return {
                     peerId: WELCOME_ID,
                     name: 'RemoEdPH',
                     profilePicture: '/images/remoed-favicon.png',
-                    lastMessage: 'Congratulations on your plan — an adventure is waiting.',
+                    lastMessage: planPurchased
+                        ? 'Congratulations on your plan — an adventure is waiting.'
+                        : 'Welcome — your free trial lessons are ready.',
                     lastAt: null,
-                    unreadCount: welcomeSeen() ? 0 : 1,
+                    unreadCount: (signupNew || planNew) ? 1 : 0,
                     isWelcome: true
                 };
             }
             function openWelcome() {
                 activePeerId = WELCOME_ID;
-                markWelcomeSeen();
+                markWelcomeSeen(SIGNUP_SEEN_KEY);
+                if (planPurchased) markWelcomeSeen(PLAN_SEEN_KEY);
                 paneNameEl.textContent = 'RemoEdPH';
-                paneSubEl.textContent = 'Welcome';
+                paneSubEl.textContent = planPurchased ? 'Welcome' : 'Free trial';
                 paneAvatarEl.innerHTML = '<img src="/images/remoed-favicon.png" alt="RemoEdPH">';
                 composerEl.style.display = 'none';
                 messengerEl.classList.add('show-chat');
-                chatScrollEl.innerHTML = WELCOME_LINES.map(function (line) {
+                chatScrollEl.innerHTML = welcomeLines().map(function (line) {
                     return '<div class="message-wrap"><div class="bubble message-received">' + esc(line) + '</div></div>';
                 }).join('');
                 scrollToBottom();
                 renderChatList();
             }
+            function maybeAutoOpenWelcome() {
+                if (peerIdFromUrl) return;
+                if (planPurchased && !welcomeSeen(PLAN_SEEN_KEY)) {
+                    openWelcome();
+                    return;
+                }
+                if (!welcomeSeen(SIGNUP_SEEN_KEY)) openWelcome();
+            }
+            function profileSaysPaid(profile) {
+                if (!profile) return false;
+                if (profile.isSubscribed === true) return true;
+                return profile.paymentStatus === 'paid' && profile.subscriptionStatus === 'active';
+            }
+            async function loadPlanWelcome() {
+                try {
+                    const res = await fetch('/api/student/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+                    const data = await res.json().catch(function () { return {}; });
+                    planPurchased = !!(res.ok && profileSaysPaid(data.profile));
+                } catch (e) {
+                    planPurchased = false;
+                }
+                if (String(activePeerId) === WELCOME_ID) openWelcome();
+                else {
+                    renderChatList();
+                    maybeAutoOpenWelcome();
+                }
+            }
 
             function renderChatList() {
                 const f = (chatFilterEl && chatFilterEl.value) ? chatFilterEl.value.trim().toLowerCase() : '';
                 const welcome = welcomeChat();
-                const showWelcome = !f || welcome.name.toLowerCase().includes(f) || welcome.lastMessage.toLowerCase().includes(f) || 'plan'.includes(f) || 'congratulations'.includes(f);
+                const showWelcome = !f || welcome.name.toLowerCase().includes(f) || welcome.lastMessage.toLowerCase().includes(f) || 'trial'.includes(f) || 'plan'.includes(f);
                 const rows = (showWelcome ? [welcome] : []).concat(chats.filter(c => !f || (c.name || '').toLowerCase().includes(f)));
                 const hits = userSearchHits.filter(h => !rows.some(r => String(r.peerId) === String(h.peerId)));
                 let html = '';
@@ -488,13 +530,13 @@
 
             loadChats().then(() => {
                 if (peerIdFromUrl) return openChat(peerIdFromUrl);
-                if (!welcomeSeen()) openWelcome();
+                maybeAutoOpenWelcome();
             }).catch(err => {
                 console.error(err);
                 chats = [];
-                if (!welcomeSeen()) openWelcome();
-                else renderChatList();
+                maybeAutoOpenWelcome();
             });
+            loadPlanWelcome();
         })();
     </script>
 </body>
