@@ -465,7 +465,7 @@
     speak(title);
     var monster = '';
     if (feeding && pets) monster = '<div class="home" id="monster" aria-label="Home"></div>';
-    else if (feeding) monster = '<div class="monster" id="monster" aria-hidden="true"><span class="mouth"></span></div>';
+    else if (feeding) monster = '<div class="monster" id="monster" aria-hidden="true"><span class="eye left"></span><span class="eye right"></span><span class="cheek left"></span><span class="cheek right"></span><span class="mouth"></span></div>';
     stage('<p>' + title + '</p>' + monster + '<div class="row" id="opts"></div>');
     var mouth = $('monster');
     words.forEach(function (item) {

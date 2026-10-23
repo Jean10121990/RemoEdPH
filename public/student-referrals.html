@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
   <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
   <link rel="stylesheet" href="css/remoed-layers.css">
+  <link rel="stylesheet" href="css/student-badges.css?v=refer-badges-1">
   <style>
     body { margin: 0; font-family: Nunito, "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
     .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
@@ -30,15 +31,45 @@
     .badge { display: inline-flex; align-items: center; gap: 8px; margin: 8px 8px 0 0; padding: 8px; border-radius: 12px; background: #f8fafc; }
     .badge.locked { filter: grayscale(1); opacity: .55; }
     #ref-toast { display: none; margin-top: 8px; color: #047857; font-weight: 700; }
+    .ref-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+    .remoed-content button.ref-tab {
+      border: 2px solid #bae6fd; background: #fff; color: #0369a1;
+      border-radius: 999px; padding: 10px 16px; font-weight: 800; cursor: pointer; font: inherit;
+      box-shadow: none;
+    }
+    .remoed-content button.ref-tab.is-on { background: #1CA7E7; color: #fff; border-color: #1CA7E7; }
+    .remoed-content button.sb-filter {
+      background: #fff; color: #64748b; border: 2px solid #e2e8f0; box-shadow: none;
+    }
+    .ref-banner {
+      margin: 0 0 16px; padding: 16px 18px; border-radius: 18px; text-align: center;
+      background: linear-gradient(135deg, #e8f7fc 0%, #fff8dc 100%);
+      box-shadow: 0 8px 20px rgba(28, 167, 231, .12);
+    }
+    .ref-banner .quote { margin: 0; color: #0c4a6e; font-weight: 800; font-size: 1.08rem; line-height: 1.45; }
+    .ref-banner .more { margin: 8px 0 0; color: #0369a1; font-size: .95rem; line-height: 1.45; }
+    @media (max-width: 700px) {
+      .ref-tab { flex: 1 1 140px; text-align: center; }
+      .ref-banner { padding: 14px; }
+      .ref-banner .quote { font-size: 1rem; }
+    }
   </style>
 </head>
 <body class="student-portal page-student-referrals">
   <div class="remoed-main">
   <div id="student-sidebar-root"></div>
   <div class="remoed-content">
+    <div class="ref-tabs" role="tablist" aria-label="Refer and Earn">
+      <button type="button" class="ref-tab is-on" id="tab-btn-share" data-tab="share">Refer &amp; Earn</button>
+      <button type="button" class="ref-tab" id="tab-btn-badges" data-tab="badges">My Badges</button>
+    </div>
+    <div id="tab-share">
     <div class="card">
-      <h1>Refer & Earn</h1>
-      <p class="hint">Share your link. Each successful referral earns 3 free lessons.</p>
+      <h1>Refer &amp; Earn</h1>
+      <div class="ref-banner">
+        <p class="quote">Share the joy of speaking English. When a friend starts a plan, you earn 3 free lessons with a live teacher.</p>
+        <p class="more">They get one-on-one classes. You keep learning — and you can unlock referral badges along the way.</p>
+      </div>
       <div class="link-row">
         <input class="link" id="ref-link" readonly value="">
         <button type="button" id="ref-copy">Copy</button>
@@ -60,12 +91,43 @@
         <tbody id="ref-rows"><tr><td colspan="4">Loading…</td></tr></tbody>
       </table>
     </div>
-    <div class="card">
-      <h2>Referral badges</h2>
-      <div id="ref-badges"></div>
+    </div>
+    <div id="tab-badges" hidden>
+      <div class="card">
+        <h2>Referral badges</h2>
+        <p class="hint">Invite friends and collect a badge at each milestone.</p>
+        <div id="ref-badges"></div>
+      </div>
+      <div class="card">
+        <div class="sb-cabinet" id="sb-cabinet-root">
+          <div class="sb-cabinet-hero">
+            <div>
+              <h3>My Trophy Cabinet</h3>
+              <p>Every badge celebrates your own growth — keep practicing and shining in class!</p>
+            </div>
+            <div class="sb-cabinet-count" id="sb-cabinet-count">…</div>
+          </div>
+          <div class="sb-filter-row" role="tablist" aria-label="Badge filters">
+            <button type="button" class="sb-filter is-active" data-filter="ALL">All</button>
+            <button type="button" class="sb-filter" data-filter="SKILL">Skills</button>
+            <button type="button" class="sb-filter" data-filter="CHARACTER">Character</button>
+            <button type="button" class="sb-filter" data-filter="HABIT">Habits</button>
+          </div>
+          <div class="sb-grid" id="sb-badge-grid" aria-live="polite">
+            <p class="sb-empty">Loading your badges…</p>
+          </div>
+          <div class="sb-reports">
+            <h4>Quarterly Progress Reports</h4>
+            <div class="sb-report-list" id="sb-report-list">
+              <p class="sb-empty">Loading reports…</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   </div>
+  <script src="js/student-badges.js?v=refer-badges-1"></script>
   <script src="js/student-sidebar.js?v=parent-pin-wrong-1"></script>
   <script>
     (function () {
@@ -85,6 +147,120 @@
         });
       }
       var shareText = 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns 3 free lessons.';
+      var sbCabinetLoaded = false;
+      var sbBadgeFilter = 'ALL';
+      var sbCabinetData = null;
+      function safeColor(value) {
+        return /^#[0-9a-fA-F]{3,8}$/.test(String(value || '')) ? String(value) : '#00aeef';
+      }
+      function showRefTab(name) {
+        var share = document.getElementById('tab-share');
+        var badges = document.getElementById('tab-badges');
+        var shareBtn = document.getElementById('tab-btn-share');
+        var badgeBtn = document.getElementById('tab-btn-badges');
+        var onBadges = name === 'badges';
+        if (share) share.hidden = onBadges;
+        if (badges) badges.hidden = !onBadges;
+        if (shareBtn) shareBtn.classList.toggle('is-on', !onBadges);
+        if (badgeBtn) badgeBtn.classList.toggle('is-on', onBadges);
+        if (onBadges) loadStudentBadgeCabinet();
+      }
+      document.querySelectorAll('.ref-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var name = btn.getAttribute('data-tab') || 'share';
+          if (name === 'badges') location.hash = 'badges';
+          else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+          showRefTab(name);
+        });
+      });
+      window.addEventListener('hashchange', function () {
+        showRefTab(location.hash === '#badges' ? 'badges' : 'share');
+      });
+      function renderStudentBadgeGrid() {
+        var grid = document.getElementById('sb-badge-grid');
+        var countEl = document.getElementById('sb-cabinet-count');
+        if (!grid || !sbCabinetData) return;
+        var iconFor = (window.RemoedStudentBadges && RemoedStudentBadges.iconFor) || function () { return '⭐'; };
+        var badges = (sbCabinetData.badges || []).filter(function (b) {
+          if (sbBadgeFilter === 'ALL') return true;
+          return b.category === sbBadgeFilter;
+        });
+        if (countEl) countEl.textContent = (sbCabinetData.earnedCount || 0) + ' / ' + (sbCabinetData.totalCount || 0) + ' unlocked';
+        if (!badges.length) {
+          grid.innerHTML = '<p class="sb-empty">No badges in this group yet — keep growing!</p>';
+          return;
+        }
+        grid.innerHTML = badges.map(function (b) {
+          var unlocked = !!b.earned;
+          var when = b.awardedAt ? new Date(b.awardedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          var meta = unlocked ? (when ? 'Unlocked ' + when : 'Unlocked!') : (b.unlockHint || 'Keep practicing to unlock!');
+          var body = unlocked ? (b.description || '') : (b.unlockHint || b.description || '');
+          return '<article class="sb-card' + (unlocked ? '' : ' is-locked') + '">' +
+            '<div class="sb-icon-wrap" style="background:' + (unlocked ? safeColor(b.colorHex) : '#cbd5e1') + '">' + iconFor(b.iconName) + '</div>' +
+            '<span class="sb-cat">' + esc(b.category) + '</span>' +
+            '<h4 class="sb-name">' + esc(b.name) + '</h4>' +
+            '<p class="sb-desc">' + esc(body) + '</p>' +
+            '<div class="sb-meta">' + esc(meta) + '</div></article>';
+        }).join('');
+      }
+      function loadStudentBadgeCabinet() {
+        var grid = document.getElementById('sb-badge-grid');
+        var reportList = document.getElementById('sb-report-list');
+        var auth = token();
+        if (!auth) {
+          if (grid) grid.innerHTML = '<p class="sb-empty">Please sign in to see your badges.</p>';
+          return;
+        }
+        if (!sbCabinetLoaded && grid) grid.innerHTML = '<p class="sb-empty">Loading your badges…</p>';
+        Promise.all([
+          fetch('/api/student/badges', { headers: { Authorization: 'Bearer ' + auth } }),
+          fetch('/api/student/progress-reports', { headers: { Authorization: 'Bearer ' + auth } })
+        ]).then(function (pair) {
+          return Promise.all([pair[0].json().catch(function () { return {}; }), pair[1].json().catch(function () { return {}; }), pair[0].ok, pair[1].ok]);
+        }).then(function (parts) {
+          var badgeData = parts[0];
+          var reportData = parts[1];
+          if (!parts[2] || !badgeData.success) throw new Error('badges');
+          sbCabinetData = badgeData;
+          sbCabinetLoaded = true;
+          renderStudentBadgeGrid();
+          if (badgeData.earnedCount > 0 && window.RemoedStudentBadges && RemoedStudentBadges.burstConfetti) {
+            try {
+              if (!sessionStorage.getItem('sb_confetti_shown')) {
+                RemoedStudentBadges.burstConfetti();
+                sessionStorage.setItem('sb_confetti_shown', '1');
+              }
+            } catch (e) {}
+          }
+          if (!reportList) return;
+          var reports = (parts[3] && reportData.success && reportData.reports) || [];
+          if (!parts[3] || !reportData.success) {
+            reportList.innerHTML = '<p class="sb-empty">Reports unavailable right now. Please try again soon.</p>';
+            return;
+          }
+          if (!reports.length) {
+            var y = new Date().getFullYear();
+            var q = 'Q' + (Math.floor(new Date().getMonth() / 3) + 1);
+            reportList.innerHTML = '<div class="sb-report-row"><div><strong>This quarter</strong><div style="font-size:0.8rem;color:#64748b;">Badges earned so far — full letter arrives when your teacher posts it.</div></div><a href="student-progress-report.html?year=' + y + '&quarter=' + encodeURIComponent(q) + '">View preview</a></div>';
+            return;
+          }
+          reportList.innerHTML = reports.map(function (r) {
+            return '<div class="sb-report-row"><div><strong>' + esc(r.quarter) + ' ' + esc(r.year) + '</strong></div><a href="student-progress-report.html?year=' + encodeURIComponent(r.year) + '&quarter=' + encodeURIComponent(r.quarter) + '">Open report</a></div>';
+          }).join('');
+        }).catch(function () {
+          if (grid) grid.innerHTML = '<p class="sb-empty">Could not load badges right now. Please try again soon.</p>';
+          if (reportList) reportList.innerHTML = '<p class="sb-empty">Reports unavailable.</p>';
+        });
+      }
+      document.querySelectorAll('.sb-filter').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.sb-filter').forEach(function (b) { b.classList.remove('is-active'); });
+          btn.classList.add('is-active');
+          sbBadgeFilter = btn.getAttribute('data-filter') || 'ALL';
+          renderStudentBadgeGrid();
+        });
+      });
+      if (location.hash === '#badges') showRefTab('badges');
       function popup(url) { window.open(url, '_blank', 'noopener,width=640,height=640'); }
       function paintShares(link) {
         var msg = shareText + ' ' + link;

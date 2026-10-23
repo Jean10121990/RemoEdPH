@@ -515,6 +515,7 @@ Student-to-student referrals are separate from teacher/admin `referralCode` comm
 - `GET /signup?ref=` redirects to `student-register.html` and keeps the query. `public/js/referral-tracking.js` stores the first code for 30 days.
 - The PayMongo webhook grants a fixed `REFERRAL_REWARD_CREDITS` (3) once per referred student (`referral_rewards.referredUserId` unique) plus milestone badges in one transaction. The amount lives in `server/config/studentReferral.js`. Older rows may still store the previous 1–5 roll.
 - Public pages: `GET /badges/:id`, `GET /u/:username`. Own profile always lists locked badges. The public profile hides badges when `showBadgesOnProfile` is false.
+- **My Badges** (trophy cabinet, quarterly progress reports, and referral badges) is a tab on `student-referrals.html`, not on Profile. Profile Settings still has “Show badges on my profile.” Progress reports return to `student-referrals.html#badges`.
 
 ## Social sign-in (Google / Facebook)
 

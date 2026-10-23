@@ -1,7 +1,7 @@
 /**
  * Student Trophy Cabinet + badge chips — RemoEd student blue theme.
  */
-.page-student-profile .sb-cabinet {
+.page-student-referrals .sb-cabinet {
   --sb-blue: #00aeef;
   --sb-blue-deep: #008fc4;
   --sb-mist: #e8f7fd;
@@ -10,7 +10,7 @@
   --sb-line: #e2e8f0;
 }
 
-.page-student-profile .sb-cabinet-hero {
+.page-student-referrals .sb-cabinet-hero {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -25,14 +25,14 @@
   border: 1px solid var(--sb-line);
 }
 
-.page-student-profile .sb-cabinet-hero h3 {
+.page-student-referrals .sb-cabinet-hero h3 {
   margin: 0 0 0.25rem;
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--sb-ink);
 }
 
-.page-student-profile .sb-cabinet-hero p {
+.page-student-referrals .sb-cabinet-hero p {
   margin: 0;
   color: var(--sb-muted);
   font-size: 0.9rem;
@@ -40,7 +40,7 @@
   max-width: 36rem;
 }
 
-.page-student-profile .sb-cabinet-count {
+.page-student-referrals .sb-cabinet-count {
   font-weight: 800;
   font-size: 0.95rem;
   color: var(--sb-blue-deep);
@@ -50,14 +50,14 @@
   padding: 0.45rem 0.9rem;
 }
 
-.page-student-profile .sb-filter-row {
+.page-student-referrals .sb-filter-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 1rem;
 }
 
-.page-student-profile .sb-filter {
+.page-student-referrals .sb-filter {
   border: 2px solid var(--sb-line);
   background: #fff;
   color: var(--sb-muted);
@@ -68,19 +68,19 @@
   cursor: pointer;
 }
 
-.page-student-profile .sb-filter.is-active {
+.page-student-referrals .sb-filter.is-active {
   border-color: var(--sb-blue);
   background: linear-gradient(90deg, var(--sb-blue-deep), var(--sb-blue));
   color: #fff;
 }
 
-.page-student-profile .sb-grid {
+.page-student-referrals .sb-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 14px;
 }
 
-.page-student-profile .sb-card {
+.page-student-referrals .sb-card {
   position: relative;
   border-radius: 16px;
   border: 1px solid var(--sb-line);
@@ -92,26 +92,26 @@
   overflow: hidden;
 }
 
-.page-student-profile .sb-card:hover {
+.page-student-referrals .sb-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 24px rgba(0, 143, 196, 0.12);
 }
 
-.page-student-profile .sb-card.is-locked {
+.page-student-referrals .sb-card.is-locked {
   background: #f8fafc;
 }
 
-.page-student-profile .sb-card.is-locked .sb-icon-wrap {
+.page-student-referrals .sb-card.is-locked .sb-icon-wrap {
   filter: grayscale(1);
   opacity: 0.45;
 }
 
-.page-student-profile .sb-card.is-locked .sb-name,
-.page-student-profile .sb-card.is-locked .sb-desc {
+.page-student-referrals .sb-card.is-locked .sb-name,
+.page-student-referrals .sb-card.is-locked .sb-desc {
   color: #94a3b8;
 }
 
-.page-student-profile .sb-icon-wrap {
+.page-student-referrals .sb-icon-wrap {
   width: 64px;
   height: 64px;
   margin: 0 auto 0.65rem;
@@ -124,14 +124,14 @@
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
 }
 
-.page-student-profile .sb-name {
+.page-student-referrals .sb-name {
   margin: 0 0 0.25rem;
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--sb-ink);
 }
 
-.page-student-profile .sb-cat {
+.page-student-referrals .sb-cat {
   display: inline-block;
   font-size: 0.65rem;
   font-weight: 800;
@@ -144,7 +144,7 @@
   margin-bottom: 0.4rem;
 }
 
-.page-student-profile .sb-desc {
+.page-student-referrals .sb-desc {
   margin: 0;
   font-size: 0.78rem;
   color: var(--sb-muted);
@@ -152,32 +152,32 @@
   min-height: 2.2em;
 }
 
-.page-student-profile .sb-meta {
+.page-student-referrals .sb-meta {
   margin-top: 0.55rem;
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--sb-blue-deep);
 }
 
-.page-student-profile .sb-reports {
+.page-student-referrals .sb-reports {
   margin-top: 1.35rem;
   padding-top: 1.1rem;
   border-top: 1px solid var(--sb-line);
 }
 
-.page-student-profile .sb-reports h4 {
+.page-student-referrals .sb-reports h4 {
   margin: 0 0 0.65rem;
   font-size: 1rem;
   color: var(--sb-ink);
 }
 
-.page-student-profile .sb-report-list {
+.page-student-referrals .sb-report-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.page-student-profile .sb-report-row {
+.page-student-referrals .sb-report-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -189,7 +189,7 @@
   background: #fff;
 }
 
-.page-student-profile .sb-report-row a {
+.page-student-referrals .sb-report-row a {
   display: inline-flex;
   align-items: center;
   padding: 0.4rem 0.85rem;
@@ -201,13 +201,13 @@
   text-decoration: none;
 }
 
-.page-student-profile .sb-empty {
+.page-student-referrals .sb-empty {
   color: var(--sb-muted);
   font-size: 0.9rem;
   padding: 0.5rem 0;
 }
 
-.page-student-profile .sb-confetti {
+.page-student-referrals .sb-confetti {
   pointer-events: none;
   position: fixed;
   inset: 0;
@@ -215,7 +215,7 @@
   overflow: hidden;
 }
 
-.page-student-profile .sb-confetti i {
+.page-student-referrals .sb-confetti i {
   position: absolute;
   top: -12px;
   width: 10px;

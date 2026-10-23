@@ -721,7 +721,6 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=icon-align-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=icon-align-1">
-    <link rel="stylesheet" href="css/student-badges.css?v=1">
     <link rel="stylesheet" href="css/password-toggle.css">
 </head>
 <body class="student-portal page-student-profile">
@@ -790,7 +789,6 @@
                 <div class="tab-container">
                     <div class="tab-buttons">
                         <button class="tab-btn active" onclick="showTab('personal')">Personal Information</button>
-                        <button class="tab-btn" onclick="showTab('badges')">My Badges</button>
                         <button class="tab-btn" onclick="showTab('settings')">Settings</button>
                     </div>
                     
@@ -936,38 +934,6 @@
                         </div>
                     </div>
                     
-                    <!-- Trophy Cabinet / Badges Tab -->
-                    <div id="badges" class="tab-content">
-                        <div class="info-section" id="referral-badge-showcase" style="margin-bottom:16px;">
-                            <h4 class="info-section-title">Badges</h4>
-                            <div id="referral-badge-list">Loading badges…</div>
-                        </div>
-                        <div class="sb-cabinet" id="sb-cabinet-root">
-                            <div class="sb-cabinet-hero">
-                                <div>
-                                    <h3>🏆 My Trophy Cabinet</h3>
-                                    <p>Every badge celebrates your own growth — keep practicing and shining in class!</p>
-                                </div>
-                                <div class="sb-cabinet-count" id="sb-cabinet-count">…</div>
-                            </div>
-                            <div class="sb-filter-row" role="tablist" aria-label="Badge filters">
-                                <button type="button" class="sb-filter is-active" data-filter="ALL">All</button>
-                                <button type="button" class="sb-filter" data-filter="SKILL">Skills</button>
-                                <button type="button" class="sb-filter" data-filter="CHARACTER">Character</button>
-                                <button type="button" class="sb-filter" data-filter="HABIT">Habits</button>
-                            </div>
-                            <div class="sb-grid" id="sb-badge-grid" aria-live="polite">
-                                <p class="sb-empty">Loading your badges…</p>
-                            </div>
-                            <div class="sb-reports">
-                                <h4>📄 Quarterly Progress Reports</h4>
-                                <div class="sb-report-list" id="sb-report-list">
-                                    <p class="sb-empty">Loading reports…</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Settings Tab -->
                     <div id="settings" class="tab-content">
                         <div class="info-section">
@@ -1053,7 +1019,6 @@
     <script src="avatar-helper.js"></script>
     <script src="js/age-from-birthday.js?v=1"></script>
     <script src="js/intl-mobile.js?v=5"></script>
-    <script src="js/student-badges.js?v=1"></script>
     <script>
         /** Bearer for /api/student/* — aligns with remoed_student_auth / remoed_student_token from login. */
         function getStudentAuthToken() {
@@ -1073,6 +1038,9 @@
         }
 
         // Role-based access control
+        if ((location.hash || '') === '#badges') {
+            location.replace('student-referrals.html#badges');
+        }
         const userType = localStorage.getItem('userType');
         if (userType !== 'student') {
             alert('Access denied. This page is for students only.');
@@ -1300,11 +1268,11 @@
             }
         }
 
-        let sbCabinetLoaded = false;
-        let sbBadgeFilter = 'ALL';
-        let sbCabinetData = null;
-
         function showTab(tabName) {
+            if (tabName === 'badges') {
+                location.href = 'student-referrals.html#badges';
+                return;
+            }
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.tab-content');
             tabContents.forEach(content => content.classList.remove('active'));
@@ -1332,126 +1300,7 @@
             if (editActions) {
                 editActions.style.display = tabName === 'personal' ? '' : 'none';
             }
-
-            if (tabName === 'badges') {
-                loadStudentBadgeCabinet();
-            }
         }
-
-        function renderStudentBadgeGrid() {
-            const grid = document.getElementById('sb-badge-grid');
-            const countEl = document.getElementById('sb-cabinet-count');
-            if (!grid || !sbCabinetData) return;
-            const iconFor = (window.RemoedStudentBadges && RemoedStudentBadges.iconFor) || function () { return '⭐'; };
-            const badges = (sbCabinetData.badges || []).filter((b) => {
-                if (sbBadgeFilter === 'ALL') return true;
-                return b.category === sbBadgeFilter;
-            });
-            if (countEl) {
-                countEl.textContent = (sbCabinetData.earnedCount || 0) + ' / ' + (sbCabinetData.totalCount || 0) + ' unlocked';
-            }
-            if (!badges.length) {
-                grid.innerHTML = '<p class="sb-empty">No badges in this group yet — keep growing!</p>';
-                return;
-            }
-            grid.innerHTML = badges.map((b) => {
-                const unlocked = !!b.earned;
-                const when = b.awardedAt
-                    ? new Date(b.awardedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-                    : '';
-                const meta = unlocked
-                    ? (when ? 'Unlocked ' + when : 'Unlocked!')
-                    : (b.unlockHint || 'Keep practicing to unlock!');
-                const body = unlocked ? (b.description || '') : (b.unlockHint || b.description || '');
-                return (
-                    '<article class="sb-card' + (unlocked ? '' : ' is-locked') + '" data-key="' + String(b.key || '') + '">' +
-                    '<div class="sb-icon-wrap" style="background:' + (unlocked ? (b.colorHex || '#00aeef') : '#cbd5e1') + '">' +
-                    iconFor(b.iconName) +
-                    '</div>' +
-                    '<span class="sb-cat">' + String(b.category || '') + '</span>' +
-                    '<h4 class="sb-name">' + String(b.name || '') + '</h4>' +
-                    '<p class="sb-desc">' + body + '</p>' +
-                    '<div class="sb-meta">' + meta + '</div>' +
-                    '</article>'
-                );
-            }).join('');
-        }
-
-        async function loadStudentBadgeCabinet() {
-            const grid = document.getElementById('sb-badge-grid');
-            const reportList = document.getElementById('sb-report-list');
-            const token = getStudentAuthToken();
-            if (!token) {
-                if (grid) grid.innerHTML = '<p class="sb-empty">Please sign in to see your badges.</p>';
-                return;
-            }
-            try {
-                if (!sbCabinetLoaded) {
-                    if (grid) grid.innerHTML = '<p class="sb-empty">Loading your badges…</p>';
-                }
-                const [badgeRes, reportRes] = await Promise.all([
-                    fetch('/api/student/badges', { headers: { Authorization: 'Bearer ' + token } }),
-                    fetch('/api/student/progress-reports', { headers: { Authorization: 'Bearer ' + token } }),
-                ]);
-                const badgeData = await badgeRes.json().catch(() => ({}));
-                const reportData = await reportRes.json().catch(() => ({}));
-                if (!badgeRes.ok || !badgeData.success) {
-                    throw new Error(badgeData.error || 'Could not load badges');
-                }
-                sbCabinetData = badgeData;
-                sbCabinetLoaded = true;
-                renderStudentBadgeGrid();
-                if (badgeData.earnedCount > 0 && window.RemoedStudentBadges && RemoedStudentBadges.burstConfetti) {
-                    try {
-                        const seen = sessionStorage.getItem('sb_confetti_shown');
-                        if (!seen) {
-                            RemoedStudentBadges.burstConfetti();
-                            sessionStorage.setItem('sb_confetti_shown', '1');
-                        }
-                    } catch (_c) {}
-                }
-                if (reportList) {
-                    if (!reportRes.ok || !reportData.success) {
-                        reportList.innerHTML = '<p class="sb-empty">Reports unavailable right now. Please try again soon.</p>';
-                    } else {
-                    const reports = reportData.reports || [];
-                    if (!reports.length) {
-                        const y = new Date().getFullYear();
-                        const q = 'Q' + (Math.floor(new Date().getMonth() / 3) + 1);
-                        reportList.innerHTML =
-                            '<div class="sb-report-row">' +
-                            '<div><strong>This quarter</strong><div style="font-size:0.8rem;color:#64748b;">Badges earned so far — full letter arrives when your teacher posts it.</div></div>' +
-                            '<a href="student-progress-report.html?year=' + y + '&quarter=' + q + '">View preview</a>' +
-                            '</div>';
-                    } else {
-                        reportList.innerHTML = reports.map((r) => {
-                            return (
-                                '<div class="sb-report-row">' +
-                                '<div><strong>' + r.quarter + ' ' + r.year + '</strong></div>' +
-                                '<a href="student-progress-report.html?year=' + r.year + '&quarter=' + r.quarter + '">Open report</a>' +
-                                '</div>'
-                            );
-                        }).join('');
-                    }
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-                if (grid) grid.innerHTML = '<p class="sb-empty">Could not load badges right now. Please try again soon.</p>';
-                if (reportList) reportList.innerHTML = '<p class="sb-empty">Reports unavailable.</p>';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.sb-filter').forEach((btn) => {
-                btn.addEventListener('click', function () {
-                    document.querySelectorAll('.sb-filter').forEach((b) => b.classList.remove('is-active'));
-                    btn.classList.add('is-active');
-                    sbBadgeFilter = btn.getAttribute('data-filter') || 'ALL';
-                    renderStudentBadgeGrid();
-                });
-            });
-        });
 
         function addEducationItem() {
             const educationList = document.getElementById('education-list');
@@ -2533,37 +2382,12 @@
             var token = '';
             try { token = getStudentAuthToken(); } catch (e) { return; }
             if (!token) return;
-            var list = document.getElementById('referral-badge-list');
             var toggle = document.getElementById('show-badges-on-profile');
-            function esc(s) {
-                return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-                });
-            }
             fetch('/api/student/referrals', { headers: { Authorization: 'Bearer ' + token } })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (!data || !data.success || !list) return;
+                    if (!data || !data.success) return;
                     if (toggle) toggle.checked = data.showBadgesOnProfile !== false;
-                    list.innerHTML = (data.badges || []).map(function (b) {
-                        var when = b.earnedAt ? new Date(b.earnedAt).toLocaleDateString() : '';
-                        var grey = b.earned ? '' : ' style="filter:grayscale(1);opacity:.55"';
-                        var meta = b.earned ? esc(when) : esc(b.progress) + '/' + esc(b.threshold) + ' referrals';
-                        var share = b.earned && b.shareUrl
-                            ? ' <button type="button" data-share="' + esc(b.shareUrl) + '">Share</button>'
-                            : '';
-                        return '<div' + grey + ' style="display:inline-block;margin:8px;text-align:center;width:120px;">' +
-                            '<img src="' + esc(b.image) + '" alt="" width="64" height="64"><div>' + esc(b.name) +
-                            '</div><div>' + meta + share + '</div></div>';
-                    }).join('');
-                    list.querySelectorAll('[data-share]').forEach(function (btn) {
-                        btn.addEventListener('click', function () {
-                            var url = btn.getAttribute('data-share');
-                            var text = 'I earned a RemoEdPH badge.';
-                            if (navigator.share) navigator.share({ title: 'RemoEdPH badge', text: text, url: url }).catch(function () {});
-                            else window.open(url, '_blank', 'noopener');
-                        });
-                    });
                 })
                 .catch(function () {});
             if (toggle) {

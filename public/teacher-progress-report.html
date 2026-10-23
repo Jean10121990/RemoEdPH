@@ -281,7 +281,7 @@
           if (!res.ok || !data.success) {
             throw new Error(data.error || ('Save failed (' + res.status + ')'));
           }
-          status.textContent = 'Saved! Parents can view it from the student’s My Badges tab.';
+          status.textContent = 'Saved! Parents can view it from Refer & Earn, then the My Badges tab.';
         } catch (err) {
           status.textContent = err.message || 'Save failed.';
         }
