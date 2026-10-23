@@ -1,0 +1,190 @@
+.page-teacher-profile .tpd {
+  color: #1a2a4a;
+}
+
+.page-teacher-profile .tpd-banner {
+  background: #fff;
+  border: 1px solid #e3eedf;
+  border-left: 4px solid #47BC3E;
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.page-teacher-profile .tpd-score {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: #fff;
+  border: 1px solid #e6eef5;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.page-teacher-profile .tpd-meter {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(#47BC3E calc(var(--score) * 1%), #e8eef3 0);
+  flex: 0 0 auto;
+}
+
+.page-teacher-profile .tpd-meter span {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #1a2a4a;
+}
+
+.page-teacher-profile .tpd-band {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #47BC3E;
+}
+
+.page-teacher-profile .tpd-note {
+  margin: 6px 0 0;
+  color: #4A6FA5;
+}
+
+.page-teacher-profile .tpd-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.page-teacher-profile .tpd-kpi {
+  background: #fff;
+  border: 1px solid #e6eef5;
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.page-teacher-profile .tpd-kpi strong {
+  display: block;
+  font-size: 1.35rem;
+  color: #1a2a4a;
+  margin-top: 4px;
+}
+
+.page-teacher-profile .tpd-kpi span {
+  color: #4A6FA5;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.page-teacher-profile .tpd h3 {
+  margin: 8px 0 10px;
+  color: #1a2a4a;
+}
+
+.page-teacher-profile .tpd-badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.page-teacher-profile .tpd-badge {
+  background: #fff;
+  border: 1px solid #d7efd4;
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+  color: #1a2a4a;
+}
+
+.page-teacher-profile .tpd-badge.is-locked {
+  filter: grayscale(1);
+  opacity: 0.55;
+  border-color: #e5e5e5;
+}
+
+.page-teacher-profile .tpd-badge .tpd-ico {
+  font-size: 1.6rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.page-teacher-profile .tpd-badge .tpd-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.page-teacher-profile .tpd-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.page-teacher-profile .remoed-content button.tpd-filter {
+  background: #fff;
+  color: #1a2a4a;
+  border: 1px solid #d7e3ef;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.page-teacher-profile .remoed-content button.tpd-filter.is-on {
+  background: #47BC3E;
+  color: #fff;
+  border-color: #47BC3E;
+}
+
+.page-teacher-profile .tpd-review {
+  background: #fff;
+  border: 1px solid #e6eef5;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.page-teacher-profile .tpd-review header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.page-teacher-profile .tpd-stars {
+  color: #47BC3E;
+  letter-spacing: 1px;
+}
+
+.page-teacher-profile .tpd-review p {
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+
+.page-teacher-profile .tpd-empty {
+  color: #4A6FA5;
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px dashed #d7e3ef;
+}
+
+@media (max-width: 768px) {
+  .page-teacher-profile .tpd-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .page-teacher-profile .tpd-score {
+    align-items: flex-start;
+  }
+}

@@ -40,6 +40,7 @@ const COMMISSION_RATE = 2; // percent of subscription gross, for partner admin r
 /** Admin QA is an employee (daily rate), not a 2% business-partner fee. */
 const QA_EMPLOYEE_ROLE = 'admin_qa';
 const QA_DAILY_RATE = 350;
+const QA_REQUIRED_HOURS = 3;
 
 function isQaEmployeeRole(role) {
   return String(role || '') === QA_EMPLOYEE_ROLE;
@@ -47,12 +48,13 @@ function isQaEmployeeRole(role) {
 
 function quoteAdminFee(role, stats, attendance, startYmd, endYmd, commissionPool) {
   if (isQaEmployeeRole(role)) {
-    const paidDays = countClosedWeekdays(attendance, startYmd, endYmd);
+    const paidDays = countClosedWeekdays(attendance, startYmd, endYmd, QA_REQUIRED_HOURS);
     const amount = Math.round(paidDays * QA_DAILY_RATE * 100) / 100;
     return {
       payBasis: 'daily',
       commissionRate: 0,
       dailyRate: QA_DAILY_RATE,
+      dailyRequiredHours: QA_REQUIRED_HOURS,
       paidDays,
       amount,
       eligible: paidDays > 0,
@@ -62,6 +64,7 @@ function quoteAdminFee(role, stats, attendance, startYmd, endYmd, commissionPool
     payBasis: 'commission',
     commissionRate: COMMISSION_RATE,
     dailyRate: 0,
+    dailyRequiredHours: REQUIRED_SHIFT_HOURS,
     paidDays: 0,
     amount: stats.eligible ? commissionPool : 0,
     eligible: !!stats.eligible,
@@ -240,6 +243,7 @@ router.get('/summary', async (req, res) => {
       requiredShiftHours: REQUIRED_SHIFT_HOURS,
       payBasis: quote.payBasis,
       dailyRate: quote.dailyRate,
+      dailyRequiredHours: quote.dailyRequiredHours,
       paidDays: quote.paidDays,
       commissionRate: quote.commissionRate,
       grossSales,
@@ -392,6 +396,7 @@ router.get('/payslip', async (req, res) => {
           payBasis: quote.payBasis,
           paidDays: quote.paidDays,
           dailyRate: quote.dailyRate,
+          dailyRequiredHours: quote.dailyRequiredHours,
           eligible: quote.eligible,
         },
         sales: {

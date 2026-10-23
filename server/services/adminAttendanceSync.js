@@ -127,8 +127,9 @@ function evaluateWeekdayAttendance(rows, startYmd, endYmd, todayYmd = phBusiness
   };
 }
 
-/** Closed Monday–Friday rows with recorded hours. Used for the Admin QA daily rate. */
-function countClosedWeekdays(rows, startYmd, endYmd) {
+/** Closed Monday–Friday rows with at least minHours. Used for the Admin QA daily rate. */
+function countClosedWeekdays(rows, startYmd, endYmd, minHours) {
+  const need = Number(minHours) || 0;
   const byDate = new Map();
   (rows || []).forEach((r) => {
     if (r && r.date) byDate.set(String(r.date), r);
@@ -139,7 +140,7 @@ function countClosedWeekdays(rows, startYmd, endYmd) {
     if (wd === 0 || wd === 6) return;
     const row = byDate.get(date);
     if (!row || row.status === 'clocked_in') return;
-    if ((Number(row.totalHours) || 0) <= 0) return;
+    if ((Number(row.totalHours) || 0) < need) return;
     paidDays += 1;
   });
   return paidDays;

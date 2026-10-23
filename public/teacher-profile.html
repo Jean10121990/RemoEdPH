@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
     <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
     <link rel="stylesheet" href="css/password-toggle.css">
+    <link rel="stylesheet" href="css/teacher-performance-dashboard.css?v=perf-1">
     <script src="js/user-session.js"></script>
     <script src="js/remoed-auth-token.js"></script>
     <script src="js/teacher-session-gate.js?v=2"></script>
@@ -127,10 +128,17 @@
                     <div class="tab-container">
                         <div class="tab-buttons">
                             <button type="button" class="tab-button active" onclick="showTab('personal', event)">Personal Information</button>
+                            <button type="button" class="tab-button" onclick="showTab('performance', event)">Performance</button>
                             <button type="button" class="tab-button" onclick="showTab('education', event)">Education and Work Experience</button>
                             <button type="button" class="tab-button" onclick="showTab('documents', event)">Documents & Certificates</button>
                             <button type="button" class="tab-button" onclick="showTab('support', event)">Support & Resources</button>
                             <button type="button" class="tab-button" onclick="showTab('settings', event)">Settings</button>
+                        </div>
+                    </div>
+
+                    <div id="performance-tab" class="tab-content">
+                        <div id="tpd-root" class="tpd">
+                            <p class="tpd-empty">Your quality score, badges, and parent feedback load here.</p>
                         </div>
                     </div>
                     
@@ -846,6 +854,9 @@
                         button.classList.add('active');
                     }
                 });
+            }
+            if (tabName === 'performance' && window.RemoedTeacherPerformance) {
+                RemoedTeacherPerformance.load();
             }
         }
 
@@ -4416,6 +4427,7 @@
 <script src="js/remo-ai-enhance.js?v=smart-1"></script>
 <script src="js/password-toggle.js"></script>
 <script src="js/remoed-oauth-profile.js?v=oauth-1"></script>
+<script src="js/teacher-performance-dashboard.js?v=perf-1"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     if (window.RemoEdOAuthProfile) RemoEdOAuthProfile.mount({});

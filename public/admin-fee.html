@@ -301,8 +301,9 @@
         var need = (lastSummary && lastSummary.requiredShiftHours) || 6;
         if (row.status === 'clocked_in') return '<span class="badge-info">In progress</span>';
         if (lastSummary && lastSummary.payBasis === 'daily') {
-            if ((Number(row.totalHours) || 0) > 0) return '<span class="badge-ok">₱' + (lastSummary.dailyRate || 350) + ' day</span>';
-            return '<span class="badge-warn">No hours</span>';
+            var dayNeed = lastSummary.dailyRequiredHours || 3;
+            if ((Number(row.totalHours) || 0) >= dayNeed) return '<span class="badge-ok">₱' + (lastSummary.dailyRate || 350) + ' day</span>';
+            return '<span class="badge-warn">Under ' + dayNeed + 'h</span>';
         }
         if ((Number(row.totalHours) || 0) >= need) return '<span class="badge-ok">' + need + 'h met</span>';
         if (row.status === 'short_shift' || row.status === 'completed') return '<span class="badge-warn">Under ' + need + 'h</span>';
@@ -317,14 +318,14 @@
         lastSummary = d;
         var daily = d.payBasis === 'daily';
         document.getElementById('af-intro').innerHTML = daily
-            ? 'Your pay is <strong>₱' + esc(d.dailyRate || 350) + ' for each Monday to Friday</strong> you time out. Admin QA is an employee rate, so the 2% partner commission does not apply. Clock in/out from the Admin Dashboard or top header — not on this page.'
+            ? 'Your pay is <strong>₱' + esc(d.dailyRate || 350) + ' for each Monday to Friday</strong> you work at least <strong>' + esc(d.dailyRequiredHours || 3) + ' hours</strong>. Admin QA is an employee rate, so the 2% partner commission does not apply. Clock in/out from the Admin Dashboard or top header — not on this page.'
             : 'View your <strong>2% admin fee</strong> from student plan subscription sales for each bi-monthly cutoff (1st–15th and 16th–end). Clock in/out from the Admin Dashboard or top header — not on this page.';
         document.getElementById('af-share-lbl').textContent = daily ? 'Daily pay' : '2% Admin share';
         document.getElementById('af-elig-note').innerHTML = daily
-            ? 'Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Each closed Monday to Friday with hours recorded pays <strong>₱' + esc(d.dailyRate || 350) + '</strong>. A shift still in progress is counted after Time Out.'
+            ? 'Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. A Monday to Friday counts after Time Out when you have worked at least <strong>' + esc(d.dailyRequiredHours || 3) + ' hours</strong>. That day pays <strong>₱' + esc(d.dailyRate || 350) + '</strong>.'
             : 'Clock in/out from the <strong>top header Time In</strong> control or the Admin Dashboard. Time in every <strong>Monday to Friday</strong> in this period and work at least <strong>6 hours</strong> each day to unlock the 2% fee.';
         document.getElementById('af-how').innerHTML = daily
-            ? 'Employee daily rate of <strong>₱' + esc(d.dailyRate || 350) + '</strong> times the closed weekdays in this cutoff. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.'
+            ? 'Employee daily rate of <strong>₱' + esc(d.dailyRate || 350) + '</strong> for each Monday to Friday with at least <strong>' + esc(d.dailyRequiredHours || 3) + ' hours</strong>. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.'
             : '2% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.';
         document.getElementById('af-gross').textContent = peso(d.grossSales);
         document.getElementById('af-share').textContent = daily
@@ -370,8 +371,8 @@
         var eligHtml;
         if (daily) {
             eligHtml = '<strong style="color:#15803d">Employee daily rate</strong> — ₱' + esc(d.dailyRate || 350) +
-                ' × ' + (d.paidDays || 0) + ' closed weekday' + ((d.paidDays || 0) === 1 ? '' : 's') +
-                ' = ' + peso(d.estimatedPayout) + '.';
+                ' × ' + (d.paidDays || 0) + ' weekday' + ((d.paidDays || 0) === 1 ? '' : 's') +
+                ' with at least ' + esc(d.dailyRequiredHours || 3) + ' hours = ' + peso(d.estimatedPayout) + '.';
         } else if (d.eligible) {
             eligHtml = '<strong style="color:#15803d">Eligible</strong> — you timed in all ' + req +
                 ' weekdays with at least ' + need + ' hours each.';
@@ -435,7 +436,7 @@
         document.getElementById('af-payslip-foot').textContent =
             'Generated ' + new Date(ps.generatedAt || Date.now()).toLocaleString() +
             (sh.payBasis === 'daily'
-                ? ' · Employee daily rate. Each closed Monday to Friday pays ₱' + (sh.dailyRate || 350) + '.'
+                ? ' · Employee daily rate. A Monday to Friday pays ₱' + (sh.dailyRate || 350) + ' after at least ' + (sh.dailyRequiredHours || 3) + ' hours.'
                 : ' · Payout requires a time-in of at least ' + (sh.requiredHoursPerShift || 6) + ' hours every Monday to Friday in the period.');
     }
 

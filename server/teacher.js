@@ -47,6 +47,7 @@ const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
 const { tutorCancellationDeductionPeso } = require('./utils/tutorCancellationDeduction');
 const { evaluateTeacherBadges } = require('./services/badgeRulesEngine');
+const { buildTeacherPerformanceSummary } = require('./services/teacherPerformanceSummary');
 const { effectivePayoutFields, ratePer25FromTeacher, isFreeTrialTeacher } = require('./utils/teacherPayoutTier');
 const {
   isProbableHexObjectIdForTeacher,
@@ -6206,6 +6207,17 @@ router.get('/resolved-issue-payments', verifyToken, requireTeacher, async (req, 
       success: false,
       error: 'Failed to fetch resolved issue payments'
     });
+  }
+});
+
+// Profile Performance tab. Teacher JWT only — ignore any id in the query or body.
+router.get('/performance-summary', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const summary = await buildTeacherPerformanceSummary(req.teacher);
+    return res.json({ success: true, ...summary });
+  } catch (error) {
+    console.error('GET /api/teacher/performance-summary failed');
+    return res.status(500).json({ success: false, error: 'Could not load performance' });
   }
 });
 
