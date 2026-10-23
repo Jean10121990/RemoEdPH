@@ -123,6 +123,11 @@
     .cam { width:min(100%, 640px); height:360px; object-fit:cover; border:none; border-radius:20px; background:#0f172a; box-shadow:0 10px 24px rgba(0,174,239,.2); transform:scaleX(-1); }
     .lock-note { background:#f8fafc; border-radius:16px; padding:12px; }
     a.plan { display:inline-flex; align-items:center; justify-content:center; min-height:80px; padding:0 22px; border-radius:999px; border:none; background:var(--blue); color:#fff; text-decoration:none; box-shadow:0 6px 0 var(--blue-deep); }
+    .ready-banner {
+      display:block; margin:18px auto 14px; max-width:520px; padding:12px 18px;
+      border-radius:999px; background:#e8f7fc; color:#008fc4;
+      font-family:Fredoka,Quicksand,sans-serif; font-weight:700; font-size:1.15rem; line-height:1.35; text-align:center;
+    }
     button:disabled, a.disabled { opacity:.45; pointer-events:none; }
     video { width:100%; max-height:400px; background:#0f172a; border-radius:16px; }
     .pulse { outline:4px solid var(--green); }
@@ -161,6 +166,7 @@
       .tap.choice { width:132px; height:132px; min-width:132px; min-height:132px; }
       .tap.choice .emoji { font-size:76px; }
       .tiles { grid-template-columns:1fr; }
+      .ready-banner { border-radius:20px; font-size:1.05rem; padding:12px 14px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, .mascot, .cloud, .tap.bubble, .stage.is-in, .wave span, .stickers span { animation:none !important; transition:none !important; }
@@ -198,6 +204,6 @@
   <div class="toast" id="toast" role="status"></div>
   <div class="confetti" id="confetti" aria-hidden="true"></div>
   <script src="trial-client.js?v=trial-save-1"></script>
-  <script src="trial.js?v=trial-choice-1"></script>
+  <script src="trial.js?v=trial-report-1"></script>
 </body>
 </html>

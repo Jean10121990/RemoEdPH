@@ -620,6 +620,7 @@
         '<div class="tile">Minutes<b>' + (report.minutes || 0) + '</b></div>' +
         '</div>' +
         '<p>Needs practice: ' + practice + '</p>' +
+        '<p class="ready-banner">🌟 Great job! Ready to speak 1-on-1 with a live teacher?</p>' +
         '<div class="row"><a class="plan" id="plans" href="/student-credits.html">Choose a plan</a>' +
         '<a class="plan" id="book" href="/student-book.html">Book a class</a></div>' +
         (paid && !afterPaid ? '<button type="button" class="tap green" id="more">Continue the lesson</button>' : '')
