@@ -53,7 +53,7 @@
       teachers_see_more: "See More",
       plans_title: "Choose Your Learning Plan",
       plans_register_note:
-        "You must register an account first (by taking the free assessment) before buying a plan.",
+        "Take the free assessment first and we'll recommend the best plan for your child.",
       plans_post_assessment:
         "You have taken the assessment. Register now to create your account and claim your free trial.",
       assessment_already_taken:

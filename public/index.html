@@ -140,7 +140,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-18" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-19" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
   <!-- Google tag (gtag.js) -->
@@ -377,11 +377,16 @@
       <p class="section-lead" data-i18n="teachers_lead">
         Meet the educators who make English fun for young learners.
       </p>
-      <div id="home-teachers-status" class="loading-state">Loading teachers…</div>
+      <div id="home-teachers-status" class="loading-state" role="status">
+        <span class="home-teachers-skeleton" aria-hidden="true"></span>
+        <span class="home-teachers-skeleton" aria-hidden="true"></span>
+        <span class="home-teachers-skeleton" aria-hidden="true"></span>
+        <span class="home-teachers-skeleton" aria-hidden="true"></span>
+        Loading teachers…
+      </div>
       <div id="home-teachers-grid" class="home-teachers-grid" hidden></div>
       <div class="home-teachers-actions">
         <a href="/teachers" class="nav-btn primary" data-i18n="teachers_see_more">See More</a>
-        <a href="/application-form" class="nav-btn" data-i18n="nav_apply">Apply Now</a>
       </div>
     </section>
     <!-- TODO: paste real parent quotes into HOME_TESTIMONIALS before launch. Leave the array empty until then. Example: { quote: "", parentName: "", childAge: "" } -->
@@ -399,7 +404,7 @@
         <a id="cefr-register-now-btn" class="cefr-register-now-btn" href="/student-register.html">Register Now</a>
       </div>
       <p class="plans-register-note" id="plans-register-note" data-i18n="plans_register_note">
-        You must register an account first (by taking the free assessment) before buying a plan.
+        Take the free assessment first and we'll recommend the best plan for your child.
       </p>
       <p class="plans-assessment-taken-note" id="plans-assessment-taken-note" hidden>
         Assessment already taken. Please check your email for your results and registration link.
@@ -582,7 +587,13 @@
       </div>
     </section>
 
-    <section class="section home-final-cta" id="final-cta" hidden></section>
+    <section class="section home-final-cta" id="final-cta" aria-labelledby="final-cta-title">
+      <h2 class="section-title" id="final-cta-title">Ready to see your child's level?</h2>
+      <p class="home-final-cta__note">The quiz is free. No card needed.</p>
+      <p class="home-final-cta__cta">
+        <a href="#assessment" class="cta-btn primary">Take Free Assessment</a>
+      </p>
+    </section>
 
     <!-- Footer -->
     <footer class="footer site-footer">
@@ -682,7 +693,7 @@
             <input type="hidden" id="selected-plan" value="" />
             <input type="hidden" id="selected-plan-price" value="" />
             <button type="submit" class="assessment-btn">
-              ✨ Sign Up & Subscribe
+              Create Account & See Results
             </button>
           </form>
         </div>
@@ -772,7 +783,7 @@
             '<span class="btn-spinner" aria-hidden="true"></span> Generating secure payment link...';
         } else {
           btn.disabled = false;
-          btn.innerHTML = "✨ Sign Up & Subscribe";
+          btn.innerHTML = "Create Account & See Results";
         }
       }
 
@@ -980,7 +991,7 @@
           }
         });
     </script>
-    <script src="/js/site-i18n.js?v=landing-quiz-1"></script>
+    <script src="/js/site-i18n.js?v=landing-quiz-2"></script>
     <script>
       (function () {
         function writeCookie(lang) {

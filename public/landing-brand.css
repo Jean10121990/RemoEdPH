@@ -788,6 +788,44 @@ body.page-index .home-faq__more a {
   color: #2e9a28;
 }
 
+body.page-index #final-cta {
+  text-align: center;
+  background: linear-gradient(160deg, var(--remo-tint-blue) 0%, #ffffff 55%, var(--remo-tint-green) 100%);
+}
+
+body.page-index .home-final-cta__note {
+  margin: 0 auto;
+  max-width: 36rem;
+  color: #4a6fa5;
+  font-weight: 600;
+}
+
+body.page-index .home-final-cta__cta {
+  margin: 18px 0 0;
+}
+
+body.page-index .home-teachers-skeleton {
+  display: block;
+  height: 14px;
+  margin: 0 auto 10px;
+  max-width: 220px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e8eef3 0%, #f7fbfd 50%, #e8eef3 100%);
+  background-size: 200% 100%;
+  animation: home-teachers-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes home-teachers-pulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-index .home-teachers-skeleton {
+    animation: none;
+  }
+}
+
 body.page-index .hero,
 body.page-index #benefits,
 body.page-index #how-it-works,
