@@ -1597,6 +1597,17 @@ body.page-index .nav-menu-toggle {
   cursor: pointer;
 }
 
+body.page-index .nav-menu-toggle:focus-visible,
+body.page-index .nav-btn:focus-visible,
+body.page-index .home-sticky-cta:focus-visible {
+  outline: 3px solid #1a3a4a;
+  outline-offset: 3px;
+}
+
+body.page-index .home-sticky-cta {
+  display: none;
+}
+
 body.page-index .navbar .site-lang-switcher {
   pointer-events: auto;
   z-index: 1200;
@@ -1644,6 +1655,27 @@ body.page-index .navbar .site-lang-switcher {
   }
   body.page-index .nav-buttons.is-open {
     display: flex;
+  }
+  body.page-index .home-sticky-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1050;
+    min-height: 48px;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #2e9a28, #47bc3e);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 8px 24px rgba(46, 154, 40, 0.35);
+  }
+  body.page-index .home-sticky-cta[hidden] {
+    display: none !important;
   }
   body.page-index .hero-fullbleed .hero-grid {
     grid-template-columns: 1fr !important;
