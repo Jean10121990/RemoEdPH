@@ -2154,6 +2154,10 @@ app.get('/teachers', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/teachers.html'));
 });
 
+app.get('/about', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/about.html'));
+});
+
 app.get('/student-waiting-room', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/student-waiting-room.html'));
 });

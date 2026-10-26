@@ -25,7 +25,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Student waiting room | Overlay `#lc-student-waiting` + `public/js/student-class-wait.js`; page `public/student-waiting-room.html`; `GET /api/signaling/room-status` |
 | Phone app chrome / scroll | `public/js/portal-layout.js`, `public/css/remoed-layers.css`, `public/css/mobile-first.css`, `public/css/portal-chrome-compact.css`, `public/mobile-utils.js` |
 | Portal header chips | `public/css/portal-header-actions.css` (bell / calendar dropdowns) |
-| Landing culture / about | `public/index.html` (`#who-we-are` … `#vision-mission`), `public/landing-brand.css` (`.remo-culture*`) |
+| Landing culture / about | `public/about.html` (full culture), `public/index.html` (`#who-we-are` short block), `public/landing-brand.css` (`.remo-culture*`) |
 | Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
 | Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
 | Admin Marketing role (`admin_marketing`) | Seeded in `server/services/adminRbac.js`; assign via Settings → Admin Roles / HR Users; ops helper `scripts/ensure-admin-marketing.js` |
@@ -151,10 +151,10 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Landing / culture
 
-- [ ] Homepage after hero shows, in order: **Who we are?** → Foundational Principles → Core Cultural Pillars → H.E.A.R.T. Framework → Vision & Mission, then existing Why Learn / Teachers / Assessment / Plans.
+- [ ] Homepage after the hero: Why Learn at Home, How It Works, Free Assessment, Our Teachers, Plans, then a short **Who we are?** (`#who-we-are`) with a link to `/about`. Full culture (principles, pillars, H.E.A.R.T., vision, mission) is on `/about`, verbatim.
 - [ ] Pillars and HEART use **icon circles** (`.remo-culture-icon`), not cropped stock photos under `public/images/culture/`. New portal chrome uses **[Lucide](https://lucide.dev/icons/)** (see [`SKILLS.md`](SKILLS.md)); do not put emoji on password fields.
 - [ ] Password fields show a Lucide **eye** / **eye-off** toggle **inside** the field (`password-toggle.js`), not emoji or a “Show” chip. Set-password card is ~560px on desktop. New passwords need 8+ mixed case, a number, **and a symbol**.
-- [ ] Nav **About** and footer **About RemoEd** jump to `#who-we-are`.
+- [ ] Nav **About** jumps to `#who-we-are` on the homepage. Footer **About RemoEd** goes to `/about`.
 
 ### Profile gender
 
@@ -335,16 +335,17 @@ Huge generated sheet. Override later with `remoed-layers.css` / `portal-chrome-c
 
 ## Landing culture / about — do not “simplify”
 
-Product copy and layout on `public/index.html` after the hero. Style in `public/landing-brand.css` (`.remo-culture*`). Match logo tints (blue / green / yellow), Fredoka/Quicksand, and existing benefit-card patterns.
+Full culture copy lives on `public/about.html` (`GET /about`). The homepage keeps a short `#who-we-are` block (the original intro paragraph, the principles sentence, and a link to `/about`). Style in `public/landing-brand.css` (`.remo-culture*`). Match logo tints (blue / green / yellow), Fredoka/Quicksand, and existing benefit-card patterns. Do not rewrite the culture wording.
 
-### Section order (after hero)
+### Section order on `/about`
 
 1. **Who we are?** (`#who-we-are`) — Filipino ESL start-up, God-centered online education for kids across Asia.
 2. **Foundational Principles of RemoEd Culture** (`#foundational-principles`) — Christian worldview, honoring each person, biblical distinction of gender in all conduct.
 3. **Core Cultural Pillars** (`#core-cultural-pillars`) — Joyful Learning; Respect & Care; Integrity & Accountability.
 4. **H.E.A.R.T. Framework** (`#heart-framework`) — Hospitality, Excellence, Affection, Respect, Togetherness.
 5. **Our Vision / Our Mission** (`#vision-mission`, `#our-vision`, `#our-mission`).
-6. Then existing `#benefits`, `#our-teachers`, `#assessment`, `#plans`.
+
+Homepage order after the hero: `#benefits`, `#how-it-works`, `#assessment`, `#our-teachers`, `#testimonials`, `#plans`, `#faq`, short `#who-we-are`, `#final-cta`.
 
 The navbar language menu (`public/js/site-i18n.js`) follows the visitor’s browser language on the first visit and remembers a later choice in `i18nextLng`. English stays as written. Any other language translates the landing page. The menu includes Filipino, Chinese, Japanese, Korean, Spanish, Portuguese, French, German, Arabic, Hindi, Indonesian, Malay, Vietnamese, Thai, Russian, Turkish, and Italian. Do not remove the menu or lock the page to English.
 
@@ -363,7 +364,7 @@ Pillars and HEART use brand icon circles (same family as Foundational Principles
 
 ### Nav / footer
 
-Keep **About** → `#who-we-are` in the landing navbar and **About RemoEd** in the footer Learn column. Cache-bust `landing-brand.css?v=` when culture CSS changes.
+Landing navbar **About** stays on `#who-we-are`. Footer **About RemoEd** goes to `/about`. Cache-bust `landing-brand.css?v=` when culture CSS changes.
 
 ## Gender — Male / Female only
 
@@ -670,7 +671,7 @@ Surfaces locked in on this date (extend around; do not rewrite). Details above.
 | Area | What shipped |
 |------|----------------|
 | Phone app shell / scroll | `.remoed-main` sole scroller ≤768; no `window.scrollTo` / lastY snap / PTR on `.remoed-content`; adopt `.nav-right` only on phone; desktop Time In / bell / calendar stay in `.nav-header`. |
-| Landing culture | After hero: Who we are → Principles → Pillars → HEART → Vision/Mission; icon circles not culture photos; About → `#who-we-are`. |
+| Landing culture | Full story on `/about` (Who we are → Principles → Pillars → HEART → Vision/Mission); homepage `#who-we-are` is the short block. Icon circles, not culture photos. |
 | UI icons | [Lucide](https://lucide.dev/icons/) for portal chrome; password **eye** / **eye-off**; no emoji toggles (`SKILLS.md`). |
 | Gender | Profile selects Male / Female only; Teacher enum rejects Other. |
 | Marketing Hub | Unique Link Commissions under sidebar **Marketing Hub** (below Accounting); Accounting Hub = Payroll + Subscriptions only. |

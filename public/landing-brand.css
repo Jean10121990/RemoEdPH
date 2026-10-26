@@ -1991,6 +1991,15 @@ body.page-index .remo-culture__lead--narrow {
   margin-bottom: 28px;
 }
 
+body.page-index .home-about-more {
+  margin: 8px 0 0;
+  font-weight: 700;
+}
+
+body.page-index .home-about-more a {
+  color: #2e9a28;
+}
+
 body.page-index .remo-culture--who {
   background: linear-gradient(
     160deg,

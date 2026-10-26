@@ -120,6 +120,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
+| 2026-10-26 | Public `GET /about` serves `public/about.html` (same pattern as `GET /teachers`). No token. |
 | 2026-10-23 | `GET /api/teacher/performance-summary` is teacher JWT only. The teacher id comes from the token. Query and body ids are ignored. Reviews are returned as “Parent” with no student username or email. |
 | 2026-10-20 | `GET` and `POST /api/admin/level-assessments/:id/trial-invite` (admin JWT, `hr:level_assessments`) preview or email the stored address on an unregistered assessment only. The signup link is built from that row. The GET does not send mail. `GET`/`POST /api/admin/level-assessments/proficiency-invite` share the public free-assessment link; POST emails only the address in the body. |
 | 2026-10-20 | Interactive trial uses the student JWT and the signed-in student id. Starting again reopens that trial (theme saved, answers cleared, passed expiry renewed 7 days). Progress and complete save the same student’s words when the id is `current` or the previous run was completed or expired. They do not answer 410. Live book-class returns 402 until `isPaidSubscriber`. `GET`/`POST /api/admin/level-assessments` (`hr:level_assessments`) lists assessment leads and emails only the stored address. |
