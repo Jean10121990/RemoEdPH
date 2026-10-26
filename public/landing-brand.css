@@ -719,12 +719,27 @@ body.page-index .home-how__cta {
   }
 }
 
+body.page-index #testimonials {
+  text-align: center;
+}
+
+body.page-index #testimonials .section-title {
+  text-align: center;
+}
+
 body.page-index .home-testimonials {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
   max-width: 980px;
   margin: 0 auto;
+  text-align: center;
+}
+
+body.page-index .home-testimonials__empty {
+  margin: 12px 0 0;
+  color: #4a6fa5;
+  font-weight: 600;
 }
 
 body.page-index .home-testimonial {

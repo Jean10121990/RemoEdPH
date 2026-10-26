@@ -46,9 +46,8 @@
       }
 
       var founderLine = card.querySelector('[data-price-line="founder"]');
-      if (founderLine && p.usdFounderDiscount > 0 && p.months > 0) {
-        var perMonth = toPhp(p.usdFounderDiscount / p.months, rate);
-        founderLine.textContent = 'Founder Discount −' + php(perMonth) + '/mo × ' + p.months + ' (−' + php(discountPhp) + ')';
+      if (founderLine && p.usdFounderDiscount > 0) {
+        founderLine.textContent = 'Founder discount: −' + php(discountPhp);
       }
     });
   }
