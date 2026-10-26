@@ -657,6 +657,30 @@ body.page-index .our-teachers-section {
   background: #ffffff;
 }
 
+body.page-index #how-it-works,
+body.page-index #testimonials,
+body.page-index #faq,
+body.page-index #final-cta {
+  background: #ffffff;
+}
+
+body.page-index .hero,
+body.page-index #benefits,
+body.page-index #how-it-works,
+body.page-index #assessment,
+body.page-index #our-teachers,
+body.page-index #testimonials,
+body.page-index #plans,
+body.page-index #faq,
+body.page-index #who-we-are,
+body.page-index #foundational-principles,
+body.page-index #core-cultural-pillars,
+body.page-index #heart-framework,
+body.page-index #vision-mission,
+body.page-index #final-cta {
+  scroll-margin-top: 88px;
+}
+
 /* Site footer — multi-column (index + teachers) */
 body.page-index .footer.site-footer,
 body.page-teachers .footer.site-footer {
