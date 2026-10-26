@@ -140,7 +140,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-17" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-18" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
   <!-- Google tag (gtag.js) -->
@@ -384,7 +384,11 @@
         <a href="/application-form" class="nav-btn" data-i18n="nav_apply">Apply Now</a>
       </div>
     </section>
-    <section class="section home-testimonials" id="testimonials" hidden></section>
+    <!-- TODO: paste real parent quotes into HOME_TESTIMONIALS before launch. Leave the array empty until then. Example: { quote: "", parentName: "", childAge: "" } -->
+    <section class="section home-testimonials" id="testimonials" hidden aria-labelledby="testimonials-title">
+      <h2 class="section-title" id="testimonials-title">From parents</h2>
+      <div id="home-testimonials" class="home-testimonials"></div>
+    </section>
 
     <!-- Subscription Plans -->
     <section class="section" id="plans">
@@ -533,7 +537,32 @@
       </div>
     </section>
 
-    <section class="section home-faq" id="faq" hidden></section>
+    <section class="section home-faq" id="faq" aria-labelledby="faq-title">
+      <h2 class="section-title" id="faq-title">Questions parents ask</h2>
+      <div class="home-faq__list">
+        <details class="home-faq__item">
+          <summary>How much screen time is a class for ages 3–6?</summary>
+          <p>Live RemoEd classes are typically 25 minutes, for children ages 3–6.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>How long is a class?</summary>
+          <p>Live RemoEd classes are typically 25 minutes — keep energy high and one clear goal per session.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>Can we pick a time that fits our family?</summary>
+          <p>Choose class times that work for your family. Book sessions that fit your family's routine.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>Where does the class happen?</summary>
+          <p>Learn in the safety and comfort of your own home. Simple platform designed for kids. Easy for parents to manage too!</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>How do credits and validity work?</summary>
+          <p>Each plan has a validity window (Spark 3 months, Steady 6, Scholar 12, Summit 24). Unused lesson credits return to 0 when that date passes. Classes you already booked are not cancelled.</p>
+        </details>
+      </div>
+      <p class="home-faq__more"><a href="/site-faq.html">See all FAQs</a></p>
+    </section>
 
     <!-- Who we are (short homepage block; full story is /about) -->
     <section class="section remo-culture remo-culture--who" id="who-we-are" aria-labelledby="who-we-are-title">
@@ -1065,6 +1094,23 @@
           if (/^https?:\/\//i.test(photo) || /^data:/i.test(photo)) return photo;
           return photo.charAt(0) === "/" ? photo : "/" + photo;
         }
+        var HOME_TESTIMONIALS = [];
+        var testimonialsRoot = document.getElementById("testimonials");
+        var testimonialsGrid = document.getElementById("home-testimonials");
+        if (testimonialsRoot && testimonialsGrid && HOME_TESTIMONIALS.length) {
+          testimonialsGrid.innerHTML = HOME_TESTIMONIALS.map(function (item) {
+            return (
+              '<blockquote class="home-testimonial"><p>' +
+              esc(item.quote) +
+              "</p><footer>" +
+              esc(item.parentName) +
+              (item.childAge ? " · age " + esc(item.childAge) : "") +
+              "</footer></blockquote>"
+            );
+          }).join("");
+          testimonialsRoot.hidden = false;
+        }
+
         fetch("/api/teachers/landing?limit=4&offset=0")
           .then(function (r) {
             if (!r.ok) throw new Error("teachers");
