@@ -165,7 +165,7 @@
         <a href="#plans" class="nav-btn" data-i18n="nav_plans">Plans</a>
         <a href="#who-we-are" class="nav-btn">About</a>
         <a href="/login/" class="nav-btn" data-i18n="nav_login">Login</a>
-        <a href="#assessment" class="nav-btn primary" data-i18n="nav_assessment">Free Assessment</a>
+        <a href="#assessment" class="nav-btn primary" data-i18n="nav_assessment" data-track="nav_cta">Free Assessment</a>
         <select
           class="site-lang-switcher"
           id="nav-lang-switcher"
@@ -174,7 +174,7 @@
       </div>
       <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
     </nav>
-    <a href="#assessment" class="home-sticky-cta" id="home-sticky-cta" hidden aria-label="Take the free assessment">Free Assessment</a>
+    <a href="#assessment" class="home-sticky-cta" id="home-sticky-cta" hidden aria-label="Take the free assessment" data-track="sticky_cta">Free Assessment</a>
 
     <!-- Hero: full-bleed visual plane + left copy band -->
     <section class="hero japandi-hero hero-fullbleed" aria-label="RemoEdPH introduction">
@@ -191,7 +191,7 @@
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
               <div class="assessment-cta-cluster">
-                <a href="#assessment" class="cta-btn primary" data-i18n="hero_cta"
+                <a href="#assessment" class="cta-btn primary" data-i18n="hero_cta" data-track="hero_cta"
                   >Take Free Assessment</a
                 >
               </div>
@@ -343,7 +343,7 @@
         </li>
       </ol>
       <p class="home-how__cta">
-        <a href="#assessment" class="cta-btn primary">Take Free Assessment</a>
+        <a href="#assessment" class="cta-btn primary" data-track="how_it_works_cta">Take Free Assessment</a>
       </p>
     </section>
 
@@ -367,7 +367,7 @@
           />
         </div>
         <div class="assessment-form">
-          <a class="assessment-btn" href="/student-assessment.html?guest=1" data-i18n="assessment_cta" style="display:block;text-decoration:none;box-sizing:border-box;text-align:center;">Start Quick 5-Question Quiz</a>
+          <a class="assessment-btn" href="/student-assessment.html?guest=1" data-i18n="assessment_cta" data-track="assessment_start" style="display:block;text-decoration:none;box-sizing:border-box;text-align:center;">Start Quick 5-Question Quiz</a>
         </div>
       </div>
     </section>
@@ -441,7 +441,7 @@
             <li>Credits remain active for 3 full months</li>
             <li>Access to digital and video library</li>
           </ul>
-          <button class="plan-btn" onclick="selectPlan('spark', this)">
+          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('spark', this)">
             Subscribe
           </button>
         </div>
@@ -472,7 +472,7 @@
             <li>Credits remain active for 6 full months</li>
             <li>Digital print outs</li>
           </ul>
-          <button class="plan-btn" onclick="selectPlan('steady', this)">
+          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('steady', this)">
             Subscribe
           </button>
         </div>
@@ -504,7 +504,7 @@
             <li>Credits remain active for 12 full months</li>
             <li>Mid-term progress report</li>
           </ul>
-          <button class="plan-btn" onclick="selectPlan('scholar', this)">
+          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('scholar', this)">
             Subscribe
           </button>
         </div>
@@ -535,7 +535,7 @@
             <li>Credits remain active for 24 full months</li>
             <li>End-of-year certificate</li>
           </ul>
-          <button class="plan-btn" onclick="selectPlan('summit', this)">
+          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('summit', this)">
             Subscribe
           </button>
         </div>
@@ -591,7 +591,7 @@
       <h2 class="section-title" id="final-cta-title">Ready to see your child's level?</h2>
       <p class="home-final-cta__note">The quiz is free. No card needed.</p>
       <p class="home-final-cta__cta">
-        <a href="#assessment" class="cta-btn primary">Take Free Assessment</a>
+        <a href="#assessment" class="cta-btn primary" data-track="final_cta">Take Free Assessment</a>
       </p>
     </section>
 
@@ -653,7 +653,7 @@
           <p class="modal-subtitle">
             Sign up to receive your assessment results and start learning!
           </p>
-          <form id="signup-form">
+          <form id="signup-form" data-track="signup_submit">
             <div class="form-group">
               <label>👤 Username</label>
               <input
@@ -1120,6 +1120,24 @@
             );
           }).join("");
           testimonialsRoot.hidden = false;
+        }
+
+        document.addEventListener("click", function (event) {
+          var el = event.target.closest("[data-track]");
+          if (!el || el.id === "signup-form" || typeof gtag !== "function") return;
+          var params = { event_category: "homepage" };
+          if (el.getAttribute("data-track") === "plan_subscribe") {
+            var card = el.closest("[data-plan]");
+            if (card) params.plan = card.getAttribute("data-plan");
+          }
+          gtag("event", el.getAttribute("data-track"), params);
+        });
+        var signupForm = document.getElementById("signup-form");
+        if (signupForm) {
+          signupForm.addEventListener("submit", function () {
+            if (typeof gtag !== "function") return;
+            gtag("event", "signup_submit", { event_category: "homepage" });
+          });
         }
 
         fetch("/api/teachers/landing?limit=4&offset=0")
