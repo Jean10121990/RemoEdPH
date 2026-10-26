@@ -664,6 +664,61 @@ body.page-index #final-cta {
   background: #ffffff;
 }
 
+body.page-index .hero-trust {
+  margin: 14px 0 0;
+  color: #4a6fa5;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+body.page-index .home-how__steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  max-width: 980px;
+  margin: 8px auto 0;
+  padding: 0;
+}
+
+body.page-index .home-how__steps li {
+  background: #fff;
+  border: 1px solid rgba(0, 174, 239, 0.16);
+  border-radius: 20px;
+  padding: 22px 18px;
+  text-align: center;
+}
+
+body.page-index .home-how__steps h3 {
+  margin: 12px 0 8px;
+  color: #1a3a4a;
+  font-size: 1.05rem;
+}
+
+body.page-index .home-how__steps p {
+  margin: 0;
+  color: #4a6fa5;
+  line-height: 1.45;
+}
+
+body.page-index .home-how__steps .benefit-icon-circle {
+  margin: 0 auto;
+  font-weight: 800;
+  color: #fff;
+}
+
+body.page-index .home-how__cta {
+  margin: 28px 0 0;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  body.page-index .home-how__steps {
+    grid-template-columns: 1fr;
+  }
+}
+
 body.page-index .hero,
 body.page-index #benefits,
 body.page-index #how-it-works,
