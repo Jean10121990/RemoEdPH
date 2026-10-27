@@ -435,7 +435,7 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
     if (!plainSecret) {
       return res.status(500).json({ success: false, message: 'Two-factor is misconfigured. Contact support.' });
     }
-    const ok = authenticator.verify({ token: digits, secret: plainSecret });
+    const ok = authenticator.verify({ token: digits, secret: plainSecret, window: adminTotpWindow });
     if (!ok) {
       return res.status(401).json({ success: false, message: 'Invalid authentication code.' });
     }
@@ -457,7 +457,7 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
     );
 
     req.session.regenerate((regenErr) => {
-    const ok = authenticator.verify({ token: digits, secret: plainSecret, window: adminTotpWindow });
+      if (regenErr) {
         console.error('Session regenerate error (verify-2fa):', regenErr);
         return res.status(500).json({ success: false, message: 'Could not create session' });
       }
