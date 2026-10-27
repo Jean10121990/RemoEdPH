@@ -35,7 +35,7 @@ const { decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
 const { authenticator } = require('otplib');
 const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
 const oauthRoutes = require('./routes/oauthRoutes');
-const { sendAdminAuthChallenge } = require('./services/adminAuthChallenge');
+const { sendAdminAuthChallenge, readAdmin2faPending } = require('./services/adminAuthChallenge');
 
 function adminLoginPublicPath() {
   return `/${getAdminLoginPathSegment()}`;
@@ -457,7 +457,7 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
     );
 
     req.session.regenerate((regenErr) => {
-      if (regenErr) {
+    const ok = authenticator.verify({ token: digits, secret: plainSecret, window: adminTotpWindow });
         console.error('Session regenerate error (verify-2fa):', regenErr);
         return res.status(500).json({ success: false, message: 'Could not create session' });
       }

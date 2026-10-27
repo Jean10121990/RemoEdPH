@@ -120,6 +120,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
+| 2026-10-27 | `POST /api/auth/verify-2fa` still accepts the 10-minute `tempToken`. It also accepts the server session set at password or Google (`admin2faPendingAdminId`) so a correct authenticator code is not rejected when that token is missing or invalid. No portal JWT is issued until the code matches. |
 | 2026-10-26 | Public `GET /about` serves `public/about.html` (same pattern as `GET /teachers`). No token. |
 | 2026-10-23 | `GET /api/teacher/performance-summary` is teacher JWT only. The teacher id comes from the token. Query and body ids are ignored. Reviews are returned as “Parent” with no student username or email. |
 | 2026-10-20 | `GET` and `POST /api/admin/level-assessments/:id/trial-invite` (admin JWT, `hr:level_assessments`) preview or email the stored address on an unregistered assessment only. The signup link is built from that row. The GET does not send mail. `GET`/`POST /api/admin/level-assessments/proficiency-invite` share the public free-assessment link; POST emails only the address in the body. |

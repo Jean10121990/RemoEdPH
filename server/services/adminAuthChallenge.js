@@ -12,6 +12,41 @@ const { ADMIN_2FA_ENROLLMENT_PURPOSE, requiresForced2faEnrollment } = require('.
 const { decryptTotpSecret, encryptTotpSecret } = require('../utils/twoFactorSecretCrypto');
 
 const ADMIN_2FA_PENDING_PURPOSE = 'admin_2fa_pending';
+const ADMIN_2FA_PENDING_MS = 10 * 60 * 1000;
+
+function rememberAdmin2faPending(req, adminId) {
+  return new Promise(function (resolve, reject) {
+    if (!req.session || typeof req.session.save !== 'function') {
+      reject(new Error('No session'));
+      return;
+    }
+    const write = function () {
+      req.session.admin2faPending = true;
+      req.session.admin2faPendingAdminId = String(adminId);
+      req.session.admin2faPendingExp = Date.now() + ADMIN_2FA_PENDING_MS;
+      req.session.save(function (err) {
+        if (err) reject(err);
+        else resolve();
+      });
+    };
+    if (typeof req.session.regenerate === 'function') {
+      req.session.regenerate(function (err) {
+        if (err) reject(err);
+        else write();
+      });
+    } else {
+      write();
+    }
+  });
+}
+
+function readAdmin2faPending(req) {
+  const s = req && req.session;
+  if (!s || s.admin2faPending !== true || !s.admin2faPendingAdminId) return '';
+  const exp = Number(s.admin2faPendingExp) || 0;
+  if (exp <= Date.now()) return '';
+  return String(s.admin2faPendingAdminId);
+}
 
 async function prepareAdminTotpEnrollmentMaterials(admin) {
   let secretPlain = admin.twoFactorSecret ? decryptTotpSecret(admin.twoFactorSecret) : null;
@@ -83,12 +118,19 @@ function sendAdminAuthChallenge(req, res, admin) {
       JWT_SECRET,
       { expiresIn: '10m' }
     );
-    return res.json({
-      success: true,
-      require2FA: true,
-      tempToken,
-      username: admin.username,
-    });
+    return rememberAdmin2faPending(req, admin._id)
+      .catch(function (err) {
+        console.error('rememberAdmin2faPending:', err && err.message ? err.message : err);
+      })
+      .then(function () {
+        if (res.headersSent) return;
+        res.json({
+          success: true,
+          require2FA: true,
+          tempToken,
+          username: admin.username,
+        });
+      });
   }
 
   return getAdminSessionVersion(admin._id).then(function (sessionVersion) {
@@ -137,5 +179,6 @@ function sendAdminAuthChallenge(req, res, admin) {
 
 module.exports = {
   sendAdminAuthChallenge,
+  readAdmin2faPending,
   ADMIN_2FA_PENDING_PURPOSE,
 };

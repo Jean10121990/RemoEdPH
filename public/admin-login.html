@@ -106,7 +106,7 @@
       if (data && data.success && data.require2FA && data.tempToken) {
         admin2faTempToken = data.tempToken;
         try { sessionStorage.setItem('admin2faTempToken', data.tempToken); } catch (e) {}
-        window.location.replace('/admin/2fa-verify?t=' + encodeURIComponent(data.tempToken));
+        window.location.replace('/admin/2fa-verify');
         return true;
       }
 
