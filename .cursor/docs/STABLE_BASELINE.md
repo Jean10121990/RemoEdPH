@@ -4,6 +4,10 @@ Working beta surfaces that new features should **extend around**, not rewrite. A
 
 Treat **repo `main` after a successful production deploy** as the source of truth. Re-run this checklist after every VPS restart / deploy.
 
+## Google Analytics
+
+- Measurement ID: **`G-ERS58WHW7V`**. Homepage uses the official inline gtag snippet in `<head>` (`public/index.html`). Other site HTML loads `public/js/remoed-gtag.js` once immediately after `<head>` (idempotent; do not add a second Google tag). Homepage `data-track` / `gtag('event', …)` hooks stay as-is.
+
 ## Critical file paths
 
 | Area | Files |
