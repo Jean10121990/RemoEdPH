@@ -1956,6 +1956,34 @@ async function ensureTeacherReferralCode(teacher) {
   return code;
 }
 
+async function ensureAdminReferralCode(admin) {
+  if (admin.referralCode) return admin.referralCode;
+  let code = generateReferralCode();
+  for (let i = 0; i < 5; i++) {
+    const existsTeacher = await Teacher.findOne({ referralCode: code }).lean();
+    const existsAdmin = await Admin.findOne({ referralCode: code }).lean();
+    if (!existsTeacher && !existsAdmin) break;
+    code = generateReferralCode();
+  }
+  admin.referralCode = code;
+  await admin.save();
+  return code;
+}
+
+function adminRoleDisplayLabel(slug) {
+  const key = String(slug || 'admin').trim().toLowerCase();
+  const labels = {
+    super_admin: 'Super-Admin',
+    admin_hr: 'Admin — HR',
+    admin_accounting: 'Admin — Accounting',
+    admin_qa: 'Admin — QA',
+    admin_marketing: 'Admin — Marketing',
+  };
+  if (labels[key]) return labels[key];
+  if (!key) return 'Admin';
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId, from, to } = req.query;
@@ -2182,7 +2210,9 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
     const ReferralLinkClick = require('./models/ReferralLinkClick');
     const StudentReferralReward = require('./models/StudentReferralReward');
 
-    const [clickRows, commissionAgg, studentRewardAgg, teachers, admins, students] = await Promise.all([
+    // All active admins (HR, QA, Accounting, Marketing, Super-Admin, custom roles) —
+    // not only those who already opened the dashboard and received a lazy referralCode.
+    const [clickRows, commissionAgg, studentRewardAgg, teachers, adminDocs, students] = await Promise.all([
       ReferralLinkClick.find({}).select('referralCode clickCount ownerType ownerId').lean(),
       Referral.aggregate([
         { $match: { status: 'successful' } },
@@ -2210,13 +2240,29 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
       Teacher.find({ referralCode: { $nin: [null, ''] } })
         .select('teacherId firstName lastName fullname username email referralCode')
         .lean(),
-      Admin.find({ referralCode: { $nin: [null, ''] } })
-        .select('username firstName lastName email referralCode adminRole')
-        .lean(),
+      Admin.find({ status: { $ne: 'suspended' } }).select(
+        'username firstName lastName email referralCode adminRole status'
+      ),
       Student.find({ shareCode: { $nin: [null, ''] } })
         .select('_id username firstName lastName email parentEmail shareCode')
         .lean(),
     ]);
+
+    const admins = [];
+    for (const adminDoc of adminDocs) {
+      try {
+        if (!adminDoc.referralCode) {
+          await ensureAdminReferralCode(adminDoc);
+        }
+      } catch (ensureErr) {
+        console.warn(
+          'Leaderboard ensureAdminReferralCode failed for',
+          adminDoc.username,
+          ensureErr && ensureErr.message
+        );
+      }
+      admins.push(adminDoc.toObject ? adminDoc.toObject() : adminDoc);
+    }
 
     const clicksByCode = new Map();
     for (const row of clickRows) {
@@ -2292,6 +2338,7 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
       const linkClicks = clicksByCode.get(code) || 0;
       rows.push({
         role: 'teacher',
+        roleLabel: 'Teacher',
         ownerId: tid,
         name: displayName([t.fullname, `${t.firstName || ''} ${t.lastName || ''}`.trim(), t.username, tid]),
         email: t.email || '',
@@ -2315,9 +2362,11 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
         Number(byId && byId.totalCommission) || 0,
         Number(byCode && byCode.totalCommission) || 0
       );
-      const linkClicks = clicksByCode.get(code) || 0;
+      const linkClicks = code ? clicksByCode.get(code) || 0 : 0;
+      const adminRole = a.adminRole || 'super_admin';
       rows.push({
         role: 'admin',
+        roleLabel: adminRoleDisplayLabel(adminRole),
         ownerId: uid,
         name: displayName([`${a.firstName || ''} ${a.lastName || ''}`.trim(), a.username]),
         email: a.email || '',
@@ -2325,7 +2374,7 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
         linkClicks,
         successfulSubscriptions,
         totalCommission,
-        adminRole: a.adminRole || '',
+        adminRole,
       });
     }
 
@@ -2336,6 +2385,7 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
       const linkClicks = clicksByCode.get(code) || 0;
       rows.push({
         role: 'student',
+        roleLabel: 'Student',
         ownerId: sid,
         name: displayName([`${s.firstName || ''} ${s.lastName || ''}`.trim(), s.username]),
         email: s.email || s.parentEmail || '',

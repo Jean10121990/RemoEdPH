@@ -84,7 +84,7 @@
       <div class="remoed-section">
         <div class="remoed-section-title">Referral effort leaderboard</div>
         <p class="lead">
-          All students, teachers, and admins who have a shareable referral link, ranked by
+          All students, teachers, and active admins (including HR and QA), ranked by
           <strong>successful subscriptions</strong> first, then <strong>link clicks</strong>.
           Use this to recognize the people driving the most referral effort.
         </p>
@@ -188,7 +188,9 @@
         return allRows.filter(function (row) {
           if (role && String(row.role || '').toLowerCase() !== role) return false;
           if (!q) return true;
-          var hay = [row.name, row.email, row.referralCode, row.ownerId].join(' ').toLowerCase();
+          var hay = [row.name, row.email, row.referralCode, row.ownerId, row.roleLabel, row.adminRole]
+            .join(' ')
+            .toLowerCase();
           return hay.indexOf(q) !== -1;
         });
       }
@@ -213,6 +215,7 @@
         }
         tbody.innerHTML = rows.map(function (r, idx) {
           var role = String(r.role || 'unknown');
+          var roleLabel = String(r.roleLabel || role);
           var commission =
             role === 'student'
               ? '—'
@@ -221,7 +224,7 @@
             '<tr>' +
             '<td><span class="rank">#' + esc(r.rank || idx + 1) + '</span></td>' +
             '<td><strong>' + esc(r.name) + '</strong><br><span class="muted">' + esc(r.email || '') + '</span></td>' +
-            '<td><span class="role-pill role-' + esc(role) + '">' + esc(role) + '</span></td>' +
+            '<td><span class="role-pill role-' + esc(role) + '">' + esc(roleLabel) + '</span></td>' +
             '<td><code>' + esc(r.referralCode || '—') + '</code></td>' +
             '<td><strong>' + esc(r.linkClicks || 0) + '</strong></td>' +
             '<td><strong>' + esc(r.successfulSubscriptions || 0) + '</strong></td>' +
