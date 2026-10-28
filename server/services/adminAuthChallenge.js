@@ -2,6 +2,7 @@
  * After an admin identity is proven (password or Google), require authenticator
  * setup or a 6-digit code before any portal session or JWT is issued.
  */
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const { authenticator } = require('otplib');
@@ -13,6 +14,40 @@ const { decryptTotpSecret, encryptTotpSecret } = require('../utils/twoFactorSecr
 
 const ADMIN_2FA_PENDING_PURPOSE = 'admin_2fa_pending';
 const ADMIN_2FA_PENDING_MS = 10 * 60 * 1000;
+
+function hashPending2faToken(raw) {
+  return crypto.createHash('sha256').update(String(raw || ''), 'utf8').digest('hex');
+}
+
+async function issuePending2faToken(admin) {
+  const pendingToken = crypto.randomBytes(32).toString('hex');
+  admin.twoFactorPendingTokenHash = hashPending2faToken(pendingToken);
+  admin.twoFactorPendingExpires = new Date(Date.now() + ADMIN_2FA_PENDING_MS);
+  await admin.save();
+  return pendingToken;
+}
+
+async function findAdminIdByPending2faToken(rawToken) {
+  const raw = String(rawToken || '').trim();
+  if (!/^[a-f0-9]{64}$/i.test(raw)) return '';
+  const admin = await require('../models/Admin')
+    .findOne({
+      twoFactorPendingTokenHash: hashPending2faToken(raw),
+      twoFactorPendingExpires: { $gt: new Date() },
+      isTwoFactorEnabled: true,
+      status: { $ne: 'suspended' },
+    })
+    .select('_id')
+    .lean();
+  return admin && admin._id ? String(admin._id) : '';
+}
+
+async function clearPending2faToken(admin) {
+  if (!admin) return;
+  admin.twoFactorPendingTokenHash = null;
+  admin.twoFactorPendingExpires = null;
+  await admin.save().catch(function () {});
+}
 
 function rememberAdmin2faPending(req, adminId) {
   return new Promise(function (resolve, reject) {
@@ -113,16 +148,17 @@ function sendAdminAuthChallenge(req, res, admin) {
   }
 
   if (admin.isTwoFactorEnabled === true) {
-    const tempToken = jwt.sign(
-      { purpose: ADMIN_2FA_PENDING_PURPOSE, adminId: String(admin._id) },
-      JWT_SECRET,
-      { expiresIn: '10m' }
-    );
-    return rememberAdmin2faPending(req, admin._id)
-      .catch(function (err) {
-        console.error('rememberAdmin2faPending:', err && err.message ? err.message : err);
+    return issuePending2faToken(admin)
+      .then(function (tempToken) {
+        return rememberAdmin2faPending(req, admin._id)
+          .catch(function (err) {
+            console.error('rememberAdmin2faPending:', err && err.message ? err.message : err);
+          })
+          .then(function () {
+            return tempToken;
+          });
       })
-      .then(function () {
+      .then(function (tempToken) {
         if (res.headersSent) return;
         res.json({
           success: true,
@@ -130,6 +166,15 @@ function sendAdminAuthChallenge(req, res, admin) {
           tempToken,
           username: admin.username,
         });
+      })
+      .catch(function (err) {
+        console.error('issuePending2faToken:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: 'Could not start two-factor verification. Please try again.',
+          });
+        }
       });
   }
 
@@ -180,5 +225,9 @@ function sendAdminAuthChallenge(req, res, admin) {
 module.exports = {
   sendAdminAuthChallenge,
   readAdmin2faPending,
+  findAdminIdByPending2faToken,
+  clearPending2faToken,
+  hashPending2faToken,
   ADMIN_2FA_PENDING_PURPOSE,
+  ADMIN_2FA_PENDING_MS,
 };

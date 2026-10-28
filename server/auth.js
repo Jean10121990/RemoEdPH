@@ -35,7 +35,13 @@ const { decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
 const { authenticator } = require('otplib');
 const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
 const oauthRoutes = require('./routes/oauthRoutes');
-const { sendAdminAuthChallenge, readAdmin2faPending } = require('./services/adminAuthChallenge');
+const {
+  sendAdminAuthChallenge,
+  readAdmin2faPending,
+  findAdminIdByPending2faToken,
+  clearPending2faToken,
+  ADMIN_2FA_PENDING_PURPOSE: ADMIN_2FA_PENDING_PURPOSE_EXPORT,
+} = require('./services/adminAuthChallenge');
 
 function adminLoginPublicPath() {
   return `/${getAdminLoginPathSegment()}`;
@@ -401,32 +407,67 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
   }
 });
 
+function pendingAdminIdFromLegacyJwt(tempToken) {
+  const raw = String(tempToken || '')
+    .trim()
+    .replace(/^bearer\s+/i, '')
+    .replace(/\s+/g, '');
+  if (!raw || /^[a-f0-9]{64}$/i.test(raw)) return '';
+  const candidates = [raw];
+  try {
+    const once = decodeURIComponent(raw);
+    if (once && once !== raw) candidates.push(once.replace(/\s+/g, ''));
+  } catch (_e) {
+    /* not percent-encoded */
+  }
+  const secret = getJwtSecret();
+  for (let i = 0; i < candidates.length; i++) {
+    try {
+      const decoded = jwt.verify(candidates[i], secret, { clockTolerance: 90 });
+      if (
+        decoded &&
+        decoded.purpose === (ADMIN_2FA_PENDING_PURPOSE_EXPORT || ADMIN_2FA_PENDING_PURPOSE) &&
+        decoded.adminId
+      ) {
+        return String(decoded.adminId);
+      }
+    } catch (_err) {
+      /* try next candidate */
+    }
+  }
+  return '';
+}
+
+async function resolvePendingAdminIdFor2fa(req, tempToken) {
+  const fromDb = await findAdminIdByPending2faToken(tempToken);
+  if (fromDb) return fromDb;
+  const fromJwt = pendingAdminIdFromLegacyJwt(tempToken);
+  if (fromJwt) return fromJwt;
+  return readAdmin2faPending(req) || '';
+}
+
 /** Complete admin sign-in when TOTP is enabled (after password step). Issues session + JWT with twoFactorVerified. */
-router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
+/** No shared admin-login rate limit here: failed TOTP during a glitch must not lock staff out of the code step. */
+router.post('/verify-2fa', async (req, res) => {
   try {
     const { tempToken, code } = req.body || {};
     const digits = code != null ? String(code).replace(/\s/g, '') : '';
-    if (!tempToken || !/^\d{6}$/.test(digits)) {
+    if (!/^\d{6}$/.test(digits)) {
       return res.status(400).json({
         success: false,
-        message: 'tempToken and a valid 6-digit code are required.',
+        message: 'A valid 6-digit code is required.',
       });
     }
 
-    let decoded;
-    try {
-      decoded = jwt.verify(String(tempToken), JWT_SECRET);
-    } catch (_e) {
+    const adminId = await resolvePendingAdminIdFor2fa(req, tempToken);
+    if (!adminId) {
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired verification token. Sign in again.',
       });
     }
-    if (decoded.purpose !== ADMIN_2FA_PENDING_PURPOSE || !decoded.adminId) {
-      return res.status(401).json({ success: false, message: 'Invalid verification token.' });
-    }
 
-    const admin = await Admin.findById(String(decoded.adminId));
+    const admin = await Admin.findById(adminId);
     if (!admin || admin.status === 'suspended' || !admin.isTwoFactorEnabled) {
       return res.status(401).json({ success: false, message: 'Invalid verification request.' });
     }
@@ -437,8 +478,14 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
     }
     const ok = authenticator.verify({ token: digits, secret: plainSecret, window: adminTotpWindow });
     if (!ok) {
-      return res.status(401).json({ success: false, message: 'Invalid authentication code.' });
+      return res.status(401).json({
+        success: false,
+        message:
+          'Invalid authentication code. Use the latest code from the RemoEdPH Admin entry in your authenticator, and set your phone time to automatic.',
+      });
     }
+
+    await clearPending2faToken(admin);
 
     const adminRole = admin.adminRole || 'super_admin';
     const sessionVersion = await getAdminSessionVersion(admin._id);
@@ -452,7 +499,7 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
         twoFactorVerified: true,
         sessionVersion,
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: ADMIN_JWT_EXPIRES_IN }
     );
 

@@ -13,12 +13,13 @@ const authLoginLimiter = rateLimit({
   message: { success: false, error: 'Too many login attempts. Try again later.' },
 });
 
+/** Admin password / Google gate only (not TOTP verify). Default raised so QA recovery after a glitch is not blocked. */
 const adminLoginLimiterExtra = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Number(
     process.env.RATE_LIMIT_ADMIN_LOGIN_MAX_PER_15M ||
       process.env.ADMIN_LOGIN_RATE_LIMIT_MAX ||
-      10
+      80
   ),
   ...std,
   message: { success: false, message: 'Too many login attempts. Please try again later.' },

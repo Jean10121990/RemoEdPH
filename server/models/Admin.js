@@ -56,6 +56,12 @@ const adminSchema = new mongoose.Schema({
   isTwoFactorEnabled: { type: Boolean, default: false },
   /** JWTs issued before this time (unix iat) are rejected once 2FA is on (Bearer-only clients). */
   twoFactorEnabledAt: { type: Date, default: null },
+  /**
+   * Short-lived opaque login challenge (sha256 hex). Issued after password/Google when 2FA is on.
+   * Verified by POST /api/auth/verify-2fa — survives PM2 multi-instance (Mongo), unlike MemoryStore sessions.
+   */
+  twoFactorPendingTokenHash: { type: String, default: null },
+  twoFactorPendingExpires: { type: Date, default: null },
   /** Incremented to invalidate other sessions (see POST /api/admin/security/logout-other-sessions). */
   sessionVersion: { type: Number, default: 0 },
   firstName: { type: String, default: '' },

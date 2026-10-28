@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="/js/remoed-gtag.js?v=ga-1"></script>
-
+  <script src="/js/remoed-gtag.js?v=ga-1"></script>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +18,7 @@
     </div>
     <h2 class="remoed-form-title">Two-factor verification</h2>
     <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">
-      Enter the 6-digit code from your authenticator app. No QR scan is required for future logins.
+      Enter the 6-digit code from your authenticator app that’s linked to your account to sign in.
     </p>
     <div id="verify-error" class="remoed-status error" style="display: none;"></div>
     <div class="remoed-form-group">
@@ -28,7 +27,7 @@
     </div>
     <button type="button" id="verify-btn" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
     <p style="text-align: center; margin-top: 1rem;">
-      <a href="/index.html" style="color: #2563eb; font-size: 0.875rem;">Back to home</a>
+      <a id="back-to-login" href="/" style="color: #2563eb; font-size: 0.875rem;">Back to login</a>
     </p>
   </div>
   <script>
@@ -37,17 +36,38 @@
       var fromUrl = params.get('t') || '';
       var fromStore = '';
       try { fromStore = sessionStorage.getItem('admin2faTempToken') || ''; } catch (e) {}
-      function wholeJwt(value) {
-        var parts = String(value || '').split('.');
+      function wholeToken(value) {
+        var s = String(value || '').trim();
+        if (!s) return false;
+        if (/^[a-f0-9]{64}$/i.test(s)) return true;
+        var parts = s.split('.');
         return parts.length === 3 && parts[0] && parts[1] && parts[2];
       }
-      var tempToken = wholeJwt(fromStore) ? fromStore : (wholeJwt(fromUrl) ? fromUrl : (fromStore || fromUrl));
+      var tempToken = wholeToken(fromStore) ? fromStore : (wholeToken(fromUrl) ? fromUrl : (fromStore || fromUrl));
       if (tempToken) {
         try { sessionStorage.setItem('admin2faTempToken', tempToken); } catch (e2) {}
       }
       if (window.history && history.replaceState) {
         history.replaceState({}, '', window.location.pathname);
       }
+
+      (function resolveBackLink() {
+        var a = document.getElementById('back-to-login');
+        if (!a) return;
+        try {
+          var remembered = localStorage.getItem('remoedAdminEntryPath') || '';
+          if (remembered && remembered.charAt(0) === '/') {
+            a.href = remembered;
+            return;
+          }
+        } catch (e) {}
+        fetch('/api/auth/admin-login-path', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.path && String(j.path).charAt(0) === '/') a.href = j.path;
+          })
+          .catch(function () {});
+      })();
 
       function showErr(msg) {
         var el = document.getElementById('verify-error');
@@ -61,6 +81,10 @@
         document.getElementById('verify-error').style.display = 'none';
         if (!/^\d{6}$/.test(code)) {
           showErr('Enter a valid 6-digit code.');
+          return;
+        }
+        if (!tempToken) {
+          showErr('Missing verification session. Please sign in again.');
           return;
         }
         btn.disabled = true;
@@ -103,4 +127,3 @@
   </script>
 </body>
 </html>
-

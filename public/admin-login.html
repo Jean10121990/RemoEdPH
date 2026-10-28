@@ -46,14 +46,14 @@
     </form>
     <div id="admin-oauth" class="remoed-oauth" hidden></div>
     <div id="admin-2fa-panel" style="display: none;">
-      <p class="remoed-form-label" style="margin-bottom: 0.5rem;">Two-factor authentication</p>
-      <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">Enter the 6-digit code from your authenticator app.</p>
+      <h2 class="remoed-form-title" style="font-size: 1.25rem;">Two-factor verification</h2>
+      <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">Enter the 6-digit code from your authenticator app that’s linked to your account to sign in.</p>
       <div class="remoed-form-group">
-        <label for="admin-2fa-code" class="remoed-form-label">Authentication code</label>
+        <label for="admin-2fa-code" class="remoed-form-label">6-digit code</label>
         <input type="text" id="admin-2fa-code" class="remoed-form-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="000000" autocomplete="one-time-code">
       </div>
       <button type="button" id="admin-2fa-submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
-      <button type="button" id="admin-2fa-back" class="remoed-btn" style="width: 100%; margin-top: 0.5rem; background: #e2e8f0; color: #334155;">Back</button>
+      <button type="button" id="admin-2fa-back" class="remoed-btn" style="width: 100%; margin-top: 0.5rem; background: #e2e8f0; color: #334155;">Back to login</button>
     </div>
     <div id="admin-2fa-enroll-modal" class="admin-2fa-enroll-modal" style="display: none;" aria-hidden="true">
       <div class="admin-2fa-enroll-modal__backdrop"></div>
@@ -108,6 +108,20 @@
       if (data && data.success && data.require2FA && data.tempToken) {
         admin2faTempToken = data.tempToken;
         try { sessionStorage.setItem('admin2faTempToken', data.tempToken); } catch (e) {}
+        var panel = document.getElementById('admin-2fa-panel');
+        if (panel) {
+          var form = document.getElementById('admin-login-form');
+          if (form) form.style.display = 'none';
+          var oauthBox = document.getElementById('admin-oauth');
+          if (oauthBox) oauthBox.style.display = 'none';
+          panel.style.display = 'block';
+          var codeEl = document.getElementById('admin-2fa-code');
+          if (codeEl) {
+            codeEl.value = '';
+            try { codeEl.focus(); } catch (e2) {}
+          }
+          return true;
+        }
         window.location.replace('/admin/2fa-verify');
         return true;
       }
@@ -371,8 +385,11 @@
 
     document.getElementById('admin-2fa-back').onclick = function() {
       admin2faTempToken = '';
+      try { sessionStorage.removeItem('admin2faTempToken'); } catch (e) {}
       document.getElementById('admin-2fa-panel').style.display = 'none';
       document.getElementById('admin-login-form').style.display = 'block';
+      var oauthBox = document.getElementById('admin-oauth');
+      if (oauthBox) oauthBox.style.display = '';
       document.getElementById('admin-login-error').style.display = 'none';
     };
 
@@ -381,6 +398,9 @@
       const btn = document.getElementById('admin-2fa-submit');
       const code = (document.getElementById('admin-2fa-code').value || '').replace(/\s/g, '');
       errorDiv.style.display = 'none';
+      if (!admin2faTempToken) {
+        try { admin2faTempToken = sessionStorage.getItem('admin2faTempToken') || ''; } catch (e) {}
+      }
       if (!admin2faTempToken) {
         errorDiv.textContent = 'Session expired. Please sign in again.';
         errorDiv.style.display = 'block';

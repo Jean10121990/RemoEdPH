@@ -120,6 +120,8 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
+| 2026-10-28 | `POST /api/auth/verify-2fa` no longer uses `adminLoginLimiterExtra` (password-login bucket). Admin password login default raised to 80/15 min. Opaque Mongo pending `tempToken` + session/JWT fallbacks remain; portal JWT only after matching TOTP. |
+| 2026-10-28 | Admin 2FA pending step uses a Mongo opaque `tempToken` (`twoFactorPendingTokenHash` / `twoFactorPendingExpires`, 10 minutes). `POST /api/auth/verify-2fa` resolves admin by opaque token, then legacy JWT, then session `admin2faPendingAdminId`. Portal JWT still only after a matching TOTP. Login UI keeps the 2FA panel on the same page so QA is not dropped by a redirect-only flow. |
 | 2026-10-27 | `POST /api/auth/verify-2fa` still accepts the 10-minute `tempToken`. It also accepts the server session set at password or Google (`admin2faPendingAdminId`) so a correct authenticator code is not rejected when that token is missing or invalid. No portal JWT is issued until the code matches. |
 | 2026-10-26 | Public `GET /about` serves `public/about.html` (same pattern as `GET /teachers`). No token. |
 | 2026-10-23 | `GET /api/teacher/performance-summary` is teacher JWT only. The teacher id comes from the token. Query and body ids are ignored. Reviews are returned as “Parent” with no student username or email. |
