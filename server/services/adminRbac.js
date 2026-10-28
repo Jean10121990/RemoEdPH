@@ -177,7 +177,7 @@ const PATH_PERMISSION_RULES = [
   { re: /admin-qa-hub|admin-lessons-library|admin-classroom-recordings|admin-issue-management/, key: 'nav:qa_hub' },
   { re: /admin-accounting-hub|admin-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
   { re: /admin-fee/, key: 'nav:admin_fee' },
-  { re: /admin-marketing-hub|admin-unique-link-commission/, key: 'nav:marketing' },
+  { re: /admin-marketing-hub|admin-unique-link-commission|admin-referral-leaderboard/, key: 'nav:marketing' },
   { re: /admin-announcements/, key: 'nav:announcements' },
   { re: /admin-videos/, key: 'nav:videos' },
   { re: /admin-reports|garden-credits/, key: 'nav:reports' },

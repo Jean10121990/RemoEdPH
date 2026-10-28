@@ -81,8 +81,9 @@
     </div>
     <div class="card">
       <div class="stats">
+        <div class="stat"><b id="stat-clicks">0</b>Link clicks</div>
         <div class="stat"><b id="stat-signups">0</b>Signups</div>
-        <div class="stat"><b id="stat-purchases">0</b>Successful purchases</div>
+        <div class="stat"><b id="stat-purchases">0</b>Successful subscriptions</div>
         <div class="stat"><b id="stat-lessons">0</b>Free lessons earned</div>
       </div>
     </div>
@@ -307,9 +308,12 @@
           shareText = data.shareText || shareText;
           document.getElementById('ref-link').value = data.link || '';
           paintShares(data.link || '');
-          document.getElementById('stat-signups').textContent = data.stats.signups;
-          document.getElementById('stat-purchases').textContent = data.stats.purchases;
-          document.getElementById('stat-lessons').textContent = data.stats.freeLessons;
+          var st = data.stats || {};
+          document.getElementById('stat-clicks').textContent = st.linkClicks != null ? st.linkClicks : 0;
+          document.getElementById('stat-signups').textContent = st.signups != null ? st.signups : 0;
+          document.getElementById('stat-purchases').textContent =
+            st.successfulSubscriptions != null ? st.successfulSubscriptions : (st.purchases != null ? st.purchases : 0);
+          document.getElementById('stat-lessons').textContent = st.freeLessons != null ? st.freeLessons : 0;
           var rows = data.referrals || [];
           document.getElementById('ref-rows').innerHTML = rows.length
             ? rows.map(function (row) {

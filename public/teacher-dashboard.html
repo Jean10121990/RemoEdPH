@@ -342,7 +342,8 @@
                                     <input id="teacher-ref-link" readonly style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;" value="Loading…" />
                                     <button type="button" onclick="copyRefLink('teacher-ref-link')" style="padding:10px 12px;border:none;border-radius:8px;background:#47BC3E;color:#fff;font-weight:800;cursor:pointer;">Copy</button>
                                 </div>
-                                <p style="margin:10px 0 0;font-size:0.85rem;">
+                                <p id="teacher-ref-preview" style="margin:10px 0 0;font-size:0.85rem;color:#334155;font-weight:700;">Link clicks: — · Successful subscriptions: —</p>
+                                <p style="margin:8px 0 0;font-size:0.85rem;">
                                     <a href="teacher-referrals.html" style="color:#47BC3E;font-weight:800;text-decoration:none;">View referral stats, reference numbers &amp; earnings →</a>
                                 </p>
                             </div>
@@ -461,6 +462,13 @@
                 const origin = window.location.origin;
                 const linkEl = document.getElementById('teacher-ref-link');
                 if (linkEl) linkEl.value = origin + (data.subscriptionLink || '');
+                const preview = document.getElementById('teacher-ref-preview');
+                if (preview) {
+                  preview.textContent =
+                    'Link clicks: ' + (data.linkClicks != null ? data.linkClicks : 0) +
+                    ' · Successful subscriptions: ' +
+                    (data.successfulSubscriptions != null ? data.successfulSubscriptions : 0);
+                }
             } catch (e) {
                 console.warn('Referral link load failed:', e);
             }

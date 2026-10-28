@@ -2142,8 +2142,14 @@ router.get('/referral-link/stats', verifyAdminApiAuth, requireAdmin, async (req,
         }
         return acc;
       },
-      { count: 0, successfulCount: 0, totalAmountPaid: 0, totalCommission: 0 }
+      { count: 0, successfulCount: 0, totalAmountPaid: 0, totalCommission: 0, linkClicks: 0 }
     );
+    try {
+      const { getReferralClickCount } = require('./services/referralLinkClicks');
+      totals.linkClicks = await getReferralClickCount(referralCode);
+    } catch (clickErr) {
+      console.warn('Admin referral click count:', clickErr && clickErr.message);
+    }
     const referrals = unique.map((r) => {
       const id = String(r._id);
       return {
@@ -2164,6 +2170,214 @@ router.get('/referral-link/stats', verifyAdminApiAuth, requireAdmin, async (req,
   } catch (err) {
     console.error('Admin referral stats error:', err);
     res.status(500).json({ success: false, message: 'Failed to load referral stats' });
+  }
+});
+
+/**
+ * Marketing Hub: rank every shareable referral owner by successful subscriptions, then link clicks.
+ * Auth: admin JWT + mkt:commissions_view (via adminRoleGate /referral-link rule).
+ */
+router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const ReferralLinkClick = require('./models/ReferralLinkClick');
+    const StudentReferralReward = require('./models/StudentReferralReward');
+
+    const [clickRows, commissionAgg, studentRewardAgg, teachers, admins, students] = await Promise.all([
+      ReferralLinkClick.find({}).select('referralCode clickCount ownerType ownerId').lean(),
+      Referral.aggregate([
+        { $match: { status: 'successful' } },
+        {
+          $group: {
+            _id: {
+              ownerType: '$ownerType',
+              ownerId: '$ownerId',
+              referralCode: '$referralCode',
+            },
+            successfulSubscriptions: { $sum: 1 },
+            totalCommission: { $sum: { $ifNull: ['$commissionAmount', 0] } },
+          },
+        },
+      ]),
+      StudentReferralReward.aggregate([
+        { $match: { reversedAt: null } },
+        {
+          $group: {
+            _id: '$referrerId',
+            successfulSubscriptions: { $sum: 1 },
+          },
+        },
+      ]),
+      Teacher.find({ referralCode: { $nin: [null, ''] } })
+        .select('teacherId firstName lastName fullname username email referralCode')
+        .lean(),
+      Admin.find({ referralCode: { $nin: [null, ''] } })
+        .select('username firstName lastName email referralCode adminRole')
+        .lean(),
+      Student.find({ shareCode: { $nin: [null, ''] } })
+        .select('_id username firstName lastName email parentEmail shareCode')
+        .lean(),
+    ]);
+
+    const clicksByCode = new Map();
+    for (const row of clickRows) {
+      const code = String(row.referralCode || '').trim();
+      if (!code) continue;
+      clicksByCode.set(code, Number(row.clickCount) || 0);
+    }
+
+    const teacherSuccessById = new Map();
+    const teacherSuccessByCode = new Map();
+    const adminSuccessById = new Map();
+    const adminSuccessByCode = new Map();
+    for (const row of commissionAgg) {
+      const ownerType = String((row._id && row._id.ownerType) || '').toLowerCase();
+      const ownerId = String((row._id && row._id.ownerId) || '').trim();
+      const code = String((row._id && row._id.referralCode) || '').trim();
+      const successful = Number(row.successfulSubscriptions) || 0;
+      const commission = Number(row.totalCommission) || 0;
+      if (ownerType === 'teacher') {
+        if (ownerId) {
+          const prev = teacherSuccessById.get(ownerId) || { successfulSubscriptions: 0, totalCommission: 0 };
+          prev.successfulSubscriptions += successful;
+          prev.totalCommission += commission;
+          teacherSuccessById.set(ownerId, prev);
+        }
+        if (code) {
+          const prev = teacherSuccessByCode.get(code) || { successfulSubscriptions: 0, totalCommission: 0 };
+          prev.successfulSubscriptions += successful;
+          prev.totalCommission += commission;
+          teacherSuccessByCode.set(code, prev);
+        }
+      } else if (ownerType === 'admin') {
+        if (ownerId) {
+          const prev = adminSuccessById.get(ownerId) || { successfulSubscriptions: 0, totalCommission: 0 };
+          prev.successfulSubscriptions += successful;
+          prev.totalCommission += commission;
+          adminSuccessById.set(ownerId, prev);
+        }
+        if (code) {
+          const prev = adminSuccessByCode.get(code) || { successfulSubscriptions: 0, totalCommission: 0 };
+          prev.successfulSubscriptions += successful;
+          prev.totalCommission += commission;
+          adminSuccessByCode.set(code, prev);
+        }
+      }
+    }
+
+    const studentSuccessById = new Map();
+    for (const row of studentRewardAgg) {
+      studentSuccessById.set(String(row._id), Number(row.successfulSubscriptions) || 0);
+    }
+
+    function displayName(parts) {
+      const joined = parts.filter(Boolean).join(' ').trim();
+      return joined || '—';
+    }
+
+    const rows = [];
+
+    for (const t of teachers) {
+      const code = String(t.referralCode || '').trim();
+      const tid = String(t.teacherId || '');
+      const byId = teacherSuccessById.get(tid);
+      const byCode = teacherSuccessByCode.get(code);
+      const successfulSubscriptions = Math.max(
+        Number(byId && byId.successfulSubscriptions) || 0,
+        Number(byCode && byCode.successfulSubscriptions) || 0
+      );
+      const totalCommission = Math.max(
+        Number(byId && byId.totalCommission) || 0,
+        Number(byCode && byCode.totalCommission) || 0
+      );
+      const linkClicks = clicksByCode.get(code) || 0;
+      rows.push({
+        role: 'teacher',
+        ownerId: tid,
+        name: displayName([t.fullname, `${t.firstName || ''} ${t.lastName || ''}`.trim(), t.username, tid]),
+        email: t.email || '',
+        referralCode: code,
+        linkClicks,
+        successfulSubscriptions,
+        totalCommission,
+      });
+    }
+
+    for (const a of admins) {
+      const code = String(a.referralCode || '').trim();
+      const uid = String(a.username || '');
+      const byId = adminSuccessById.get(uid);
+      const byCode = adminSuccessByCode.get(code);
+      const successfulSubscriptions = Math.max(
+        Number(byId && byId.successfulSubscriptions) || 0,
+        Number(byCode && byCode.successfulSubscriptions) || 0
+      );
+      const totalCommission = Math.max(
+        Number(byId && byId.totalCommission) || 0,
+        Number(byCode && byCode.totalCommission) || 0
+      );
+      const linkClicks = clicksByCode.get(code) || 0;
+      rows.push({
+        role: 'admin',
+        ownerId: uid,
+        name: displayName([`${a.firstName || ''} ${a.lastName || ''}`.trim(), a.username]),
+        email: a.email || '',
+        referralCode: code,
+        linkClicks,
+        successfulSubscriptions,
+        totalCommission,
+        adminRole: a.adminRole || '',
+      });
+    }
+
+    for (const s of students) {
+      const code = String(s.shareCode || '').trim();
+      const sid = String(s._id);
+      const successfulSubscriptions = studentSuccessById.get(sid) || 0;
+      const linkClicks = clicksByCode.get(code) || 0;
+      rows.push({
+        role: 'student',
+        ownerId: sid,
+        name: displayName([`${s.firstName || ''} ${s.lastName || ''}`.trim(), s.username]),
+        email: s.email || s.parentEmail || '',
+        referralCode: code,
+        linkClicks,
+        successfulSubscriptions,
+        totalCommission: 0,
+      });
+    }
+
+    rows.sort((a, b) => {
+      if (b.successfulSubscriptions !== a.successfulSubscriptions) {
+        return b.successfulSubscriptions - a.successfulSubscriptions;
+      }
+      if (b.linkClicks !== a.linkClicks) return b.linkClicks - a.linkClicks;
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    const leaderboard = rows.map((row, index) => ({
+      rank: index + 1,
+      ...row,
+    }));
+
+    const summary = leaderboard.reduce(
+      (acc, row) => {
+        acc.people += 1;
+        acc.linkClicks += Number(row.linkClicks) || 0;
+        acc.successfulSubscriptions += Number(row.successfulSubscriptions) || 0;
+        return acc;
+      },
+      { people: 0, linkClicks: 0, successfulSubscriptions: 0 }
+    );
+
+    res.json({
+      success: true,
+      summary,
+      sort: ['successfulSubscriptions_desc', 'linkClicks_desc', 'name_asc'],
+      leaderboard,
+    });
+  } catch (err) {
+    console.error('Admin referral leaderboard error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load referral leaderboard' });
   }
 });
 
@@ -2188,11 +2402,33 @@ router.get('/referral-link', verifyAdminApiAuth, requireAdmin, async (req, res) 
     }
 
     const code = admin.referralCode;
+    let linkClicks = 0;
+    let successfulSubscriptions = 0;
+    try {
+      const { getReferralClickCount } = require('./services/referralLinkClicks');
+      linkClicks = await getReferralClickCount(code);
+    } catch (clickErr) {
+      console.warn('Admin referral-link click count:', clickErr && clickErr.message);
+    }
+    try {
+      successfulSubscriptions = await Referral.countDocuments({
+        status: 'successful',
+        ownerType: 'admin',
+        $or: [
+          { ownerId: String(admin.username) },
+          ...(code ? [{ referralCode: code }] : []),
+        ],
+      });
+    } catch (subErr) {
+      console.warn('Admin referral successful count:', subErr && subErr.message);
+    }
     res.json({
       success: true,
       ownerType: 'admin',
       ownerId: admin.username,
       referralCode: code,
+      linkClicks,
+      successfulSubscriptions,
       // Referral link opens the Free Level Assessment. The code is saved for signup.
       subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#assessment`
     });

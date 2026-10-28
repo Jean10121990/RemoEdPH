@@ -269,6 +269,13 @@ async function getDashboard(studentId) {
   const badges = await StudentReferralBadge.find({ studentId }).sort({ earnedAt: 1 }).lean();
   const earnedKeys = new Set(badges.map((b) => b.badgeKey));
   const purchaseCount = rewards.length;
+  let linkClicks = 0;
+  try {
+    const { getReferralClickCount } = require('./referralLinkClicks');
+    linkClicks = await getReferralClickCount(code);
+  } catch (clickErr) {
+    console.warn('student referral click count:', clickErr && clickErr.message);
+  }
   const list = signups.map((s) => {
     const reward = byUser.get(String(s._id));
     return {
@@ -284,8 +291,10 @@ async function getDashboard(studentId) {
     link: appOrigin() + '/signup?ref=' + encodeURIComponent(code),
     shareText: 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns ' + REFERRAL_REWARD_CREDITS + ' free lessons.',
     stats: {
+      linkClicks,
       signups: signups.length,
       purchases: purchaseCount,
+      successfulSubscriptions: purchaseCount,
       freeLessons: rewards.reduce((sum, r) => sum + Number(r.creditsAwarded || 0), 0),
     },
     referrals: list,

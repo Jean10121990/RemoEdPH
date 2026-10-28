@@ -144,10 +144,32 @@ router.get('/referral-link', verifyToken, requireTeacher, async (req, res) => {
     }
 
     const code = teacher.referralCode;
+    let linkClicks = 0;
+    let successfulSubscriptions = 0;
+    try {
+      const { getReferralClickCount } = require('./services/referralLinkClicks');
+      linkClicks = await getReferralClickCount(code);
+    } catch (clickErr) {
+      console.warn('Teacher referral click count:', clickErr && clickErr.message);
+    }
+    try {
+      successfulSubscriptions = await Referral.countDocuments({
+        status: 'successful',
+        $or: [
+          { ownerType: 'teacher', ownerId: String(teacher.teacherId) },
+          { teacherId: String(teacher.teacherId) },
+          ...(code ? [{ referralCode: code }] : []),
+        ],
+      });
+    } catch (subErr) {
+      console.warn('Teacher referral successful count:', subErr && subErr.message);
+    }
     res.json({
       success: true,
       teacherId: teacher.teacherId,
       referralCode: code,
+      linkClicks,
+      successfulSubscriptions,
       // Referral link opens the Free Level Assessment. The code is saved for signup.
       subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#assessment`
     });
@@ -234,8 +256,14 @@ router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
         }
         return acc;
       },
-      { count: 0, successfulCount: 0, pendingCount: 0, totalAmountPaid: 0, totalCommission: 0 }
+      { count: 0, successfulCount: 0, pendingCount: 0, totalAmountPaid: 0, totalCommission: 0, linkClicks: 0 }
     );
+    try {
+      const { getReferralClickCount } = require('./services/referralLinkClicks');
+      totals.linkClicks = await getReferralClickCount(referralCode);
+    } catch (clickErr) {
+      console.warn('Teacher referrals click count:', clickErr && clickErr.message);
+    }
 
     const referrals = unique.map((r) => {
       const id = String(r._id);

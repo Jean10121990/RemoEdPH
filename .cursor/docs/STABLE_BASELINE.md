@@ -383,11 +383,14 @@ RemoEd upholds the biblical distinction of gender (male and female). Profile UIs
 
 Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **below Admin Fee** (Admin Fee sits directly under Accounting Hub).
 
-- Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
-- Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`; `admin-fee.html` → `admin-fee`.
+- Hub page: `public/admin-marketing-hub.html` embeds:
+  - **Unique Link Commissions** → `admin-unique-link-commission.html?adminEmbed=1`
+  - **Referral Leaderboard** → `admin-referral-leaderboard.html?adminEmbed=1` (hash `#leaderboard`)
+- Leaderboard API: `GET /api/admin/referral-link/leaderboard` (admin JWT; `mkt:commissions_view` via the existing `/referral-link` API rule). Lists every student (`shareCode`), teacher, and admin (`referralCode`) who can share a link. Sort: **successful subscriptions** desc, then **link clicks** desc, then name. Student “successful” rows come from `StudentReferralReward`; teacher/admin from `Referral` status `successful`.
+- Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub`, `admin-unique-link-commission`, and `admin-referral-leaderboard` → `marketing`; `admin-fee.html` → `admin-fee`.
 - Default seed for **`admin_marketing`** (editable in Settings → Admin Roles and Access): Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings. Settings / System monitor remain Super-Admin (`nav:settings` / `nav:super_monitor`). Example account: `adminmktg@remoedph.com` (ops: `scripts/ensure-admin-marketing.js`).
 - Visibility is driven by **dynamic RBAC** (`GET /api/admin/me/permissions`); legacy hub-guard still falls back to role slug checks if permissions fail to load.
-- Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
+- Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html` and `admin-referral-leaderboard.html` → `admin-marketing-hub.html#leaderboard`.
 - Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (parity with teacher payroll UX + soft buttons), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
 
@@ -523,7 +526,8 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 Student-to-student referrals are separate from teacher/admin `referralCode` commissions.
 
 - Outbound code is `Student.shareCode` (lazy, 8 characters). Inbound teacher/admin code stays `referralCode`. `referredByStudentId` is set once at signup and is not updated later.
-- `GET /signup?ref=` redirects to `student-register.html` and keeps the query. `public/js/referral-tracking.js` stores the first code for 30 days.
+- `GET /signup?ref=` redirects to `student-register.html` and keeps the query. `public/js/referral-tracking.js` stores the first code for 30 days and records a **link click** via `POST /api/public/referral-click` (once per browser session per code; rate limited). Counts live in `ReferralLinkClick` and show on student / teacher / admin referral UIs as **Link clicks** next to **Successful subscriptions**.
+- Preview surfaces: `student-referrals.html` stats; `teacher-referrals.html` / `admin-referrals.html` cards; dashboard previews on `teacher-dashboard.html` and `admin-dashboard.html` (`linkClicks` + `successfulSubscriptions` from `/referral-link`).
 - The PayMongo webhook grants a fixed `REFERRAL_REWARD_CREDITS` (3) once per referred student (`referral_rewards.referredUserId` unique) plus milestone badges in one transaction. The amount lives in `server/config/studentReferral.js`. Older rows may still store the previous 1–5 roll.
 - Public pages: `GET /badges/:id`, `GET /u/:username`. Own profile always lists locked badges. The public profile hides badges when `showBadgesOnProfile` is false.
 - **My Badges** (trophy cabinet, quarterly progress reports, and referral badges) is a tab on `student-referrals.html`, not on Profile. Profile Settings still has “Show badges on my profile.” Progress reports return to `student-referrals.html#badges`.

@@ -50,6 +50,7 @@
         if (path.indexOf('admin-marketing-hub') !== -1) return 'marketing';
         if (path.indexOf('leaderboard') !== -1) return 'leaderboard';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'marketing';
+        if (path.indexOf('admin-referral-leaderboard') !== -1) return 'marketing';
         if (path.indexOf('admin-student-subscriptions') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-payroll') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-announcements') !== -1) return 'announcements';

@@ -680,6 +680,7 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
 app.use('/api/public', require('./fxRatesRoutes'));
 app.use('/api/public', publicAssessmentRoutes);
+app.use('/api/public', require('./routes/referralClickPublic'));
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api

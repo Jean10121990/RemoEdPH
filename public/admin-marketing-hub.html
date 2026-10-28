@@ -26,21 +26,28 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Marketing Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Unique link commissions and teacher referral tracking.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Unique link commissions and a leaderboard of referral effort across students, teachers, and admins.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="Marketing Hub sections">
-                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="mkt-tab-commissions" aria-selected="true" aria-controls="mkt-panel-commissions">Unique Link Commissions</button>
+                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="mkt-tab-commissions" aria-selected="true" aria-controls="mkt-panel-commissions" data-tab="commissions">Unique Link Commissions</button>
+                    <button type="button" class="hub-tab" role="tab" id="mkt-tab-leaderboard" aria-selected="false" aria-controls="mkt-panel-leaderboard" data-tab="leaderboard">Referral Leaderboard</button>
                 </div>
 
                 <div id="mkt-panel-commissions" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-commissions">
                     <iframe id="iframe-mkt-commissions" class="hub-iframe" title="Unique Link Commissions"></iframe>
+                </div>
+                <div id="mkt-panel-leaderboard" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-leaderboard" hidden>
+                    <iframe id="iframe-mkt-leaderboard" class="hub-iframe" title="Referral Leaderboard"></iframe>
                 </div>
             </div>
         </div>
     </div>
     <script>
         (function () {
-            var SRC = '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=3';
+            var IFRAMES = {
+                commissions: { id: 'iframe-mkt-commissions', src: '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=3' },
+                leaderboard: { id: 'iframe-mkt-leaderboard', src: '/admin/admin-referral-leaderboard.html?adminEmbed=1&embedVer=1' }
+            };
 
             function checkAuth() {
                 var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
@@ -60,13 +67,60 @@
                 return true;
             }
 
+            function ensureIframe(key) {
+                var cfg = IFRAMES[key];
+                if (!cfg) return;
+                var el = document.getElementById(cfg.id);
+                if (!el || el.getAttribute('data-loaded')) return;
+                el.src = cfg.src;
+                el.setAttribute('data-loaded', '1');
+            }
+
+            function setHash(tab) {
+                try {
+                    var h = tab === 'leaderboard' ? '#leaderboard' : '#commissions';
+                    if (window.location.hash !== h) {
+                        history.replaceState(null, '', 'admin-marketing-hub.html' + h);
+                    }
+                } catch (e) {}
+            }
+
+            function showTab(tab) {
+                var key = tab === 'leaderboard' ? 'leaderboard' : 'commissions';
+                var map = [
+                    { key: 'commissions', t: 'mkt-tab-commissions', p: 'mkt-panel-commissions' },
+                    { key: 'leaderboard', t: 'mkt-tab-leaderboard', p: 'mkt-panel-leaderboard' }
+                ];
+                map.forEach(function (row) {
+                    var on = row.key === key;
+                    var tEl = document.getElementById(row.t);
+                    var pEl = document.getElementById(row.p);
+                    if (tEl) {
+                        tEl.classList.toggle('hub-tab--active', on);
+                        tEl.setAttribute('aria-selected', on ? 'true' : 'false');
+                    }
+                    if (pEl) pEl.hidden = !on;
+                });
+                ensureIframe(key);
+                setHash(key);
+            }
+
+            function tabFromHash() {
+                var h = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
+                return h === 'leaderboard' ? 'leaderboard' : 'commissions';
+            }
+
             document.addEventListener('DOMContentLoaded', function () {
                 if (!checkAuth()) return;
-                var el = document.getElementById('iframe-mkt-commissions');
-                if (el && !el.getAttribute('data-loaded')) {
-                    el.src = SRC;
-                    el.setAttribute('data-loaded', '1');
-                }
+                document.querySelectorAll('.hub-tab[data-tab]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        showTab(btn.getAttribute('data-tab') || 'commissions');
+                    });
+                });
+                window.addEventListener('hashchange', function () {
+                    showTab(tabFromHash());
+                });
+                showTab(tabFromHash());
             });
         })();
     </script>

@@ -51,14 +51,19 @@
 
       <div class="grid-stats">
         <div class="stat-card">
+          <h3>Link clicks</h3>
+          <div class="big" id="total-clicks">0</div>
+          <div class="muted">Times your referral link was opened</div>
+        </div>
+        <div class="stat-card">
+          <h3>Successful subscriptions</h3>
+          <div class="big" id="total-count">0</div>
+          <div class="muted" id="pending-note">Signed up, waiting for a first plan purchase: 0</div>
+        </div>
+        <div class="stat-card">
           <h3>Total commission (your link)</h3>
           <div class="big" id="total-commission">₱0</div>
           <div class="muted">By plan: 1 month ₱1,000 · 3 months ₱1,500 · 6 months ₱2,000 · 1 year ₱2,500</div>
-        </div>
-        <div class="stat-card">
-          <h3>Successful enrollees</h3>
-          <div class="big" id="total-count">0</div>
-          <div class="muted" id="pending-note">Signed up, waiting for a first plan purchase: 0</div>
         </div>
       </div>
       </div>
@@ -154,6 +159,8 @@
         const rows = data.referrals || [];
         const t = data.totals || {};
         document.getElementById('total-commission').textContent = fmtPeso(t.totalCommission);
+        var clicksEl = document.getElementById('total-clicks');
+        if (clicksEl) clicksEl.textContent = String(t.linkClicks != null ? t.linkClicks : 0);
         document.getElementById('total-count').textContent = String(t.successfulCount || 0);
         document.getElementById('pending-note').textContent =
           'Signed up, waiting for a first plan purchase: ' + String(t.pendingCount || 0);

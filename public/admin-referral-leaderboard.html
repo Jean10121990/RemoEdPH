@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/remoed-gtag.js?v=ga-1"></script>
+  <script src="js/security-guard.js?v=2"></script>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/admin-standalone-redirect.js"></script>
+  <script src="js/admin-embed-init.js"></script>
+  <title>Referral Leaderboard - RemoEdPH Admin</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body.page-admin-referral-leaderboard { background: #f6fbff; }
+    body.page-admin-referral-leaderboard .remoed-content { padding: 16px 20px 40px; }
+    body.page-admin-referral-leaderboard .lead {
+      margin: 0 0 14px; color: #64748b; font-size: 0.9rem; max-width: 820px;
+    }
+    body.page-admin-referral-leaderboard .grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px;
+    }
+    body.page-admin-referral-leaderboard .card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px;
+    }
+    body.page-admin-referral-leaderboard .card h3 { margin: 0 0 6px; font-size: 0.85rem; color: #64748b; }
+    body.page-admin-referral-leaderboard .card .big { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+    body.page-admin-referral-leaderboard .controls {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px;
+    }
+    body.page-admin-referral-leaderboard .controls label {
+      display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px;
+    }
+    body.page-admin-referral-leaderboard .controls input,
+    body.page-admin-referral-leaderboard .controls select {
+      padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; min-width: 160px;
+    }
+    body.page-admin-referral-leaderboard .controls button {
+      border: 0; border-radius: 8px; padding: 8px 12px; background: #47BC3E; color: #fff;
+      font-weight: 800; cursor: pointer;
+    }
+    body.page-admin-referral-leaderboard .table-wrap {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: auto; max-height: 620px;
+    }
+    body.page-admin-referral-leaderboard table { width: 100%; border-collapse: collapse; min-width: 880px; }
+    body.page-admin-referral-leaderboard th,
+    body.page-admin-referral-leaderboard td {
+      padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 0.88rem;
+    }
+    body.page-admin-referral-leaderboard th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
+    body.page-admin-referral-leaderboard .rank {
+      font-weight: 800; color: #166534; background: #ecfdf3; border-radius: 999px;
+      padding: 2px 10px; display: inline-block;
+    }
+    body.page-admin-referral-leaderboard .role-pill {
+      display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 800;
+      text-transform: capitalize;
+    }
+    body.page-admin-referral-leaderboard .role-student { background: #e0f2fe; color: #075985; }
+    body.page-admin-referral-leaderboard .role-teacher { background: #fef3c7; color: #92400e; }
+    body.page-admin-referral-leaderboard .role-admin { background: #ede9fe; color: #5b21b6; }
+    body.page-admin-referral-leaderboard .empty { padding: 28px; text-align: center; color: #64748b; }
+    body.page-admin-referral-leaderboard .muted { color: #64748b; font-size: 0.8rem; }
+    body.page-admin-referral-leaderboard .error {
+      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-weight: 600;
+    }
+    @media (max-width: 900px) {
+      body.page-admin-referral-leaderboard .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="page-admin-referral-leaderboard">
+  <div class="remoed-main">
+    <div id="admin-sidebar-root"></div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js?v=app-shell-17"></script>
+    <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'marketing'); }</script>
+
+    <div class="remoed-content">
+      <div class="remoed-section">
+        <div class="remoed-section-title">Referral effort leaderboard</div>
+        <p class="lead">
+          All students, teachers, and admins who have a shareable referral link, ranked by
+          <strong>successful subscriptions</strong> first, then <strong>link clicks</strong>.
+          Use this to recognize the people driving the most referral effort.
+        </p>
+        <div id="board-error" class="error" role="alert"></div>
+        <div class="controls">
+          <div>
+            <label for="role-filter">Role</label>
+            <select id="role-filter">
+              <option value="">All roles</option>
+              <option value="student">Students</option>
+              <option value="teacher">Teachers</option>
+              <option value="admin">Admins</option>
+            </select>
+          </div>
+          <div>
+            <label for="search-box">Search</label>
+            <input type="search" id="search-box" placeholder="Name, email, or code" />
+          </div>
+          <div>
+            <button type="button" id="btn-refresh">Refresh</button>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <h3>People with links</h3>
+            <div class="big" id="sum-people">0</div>
+            <div class="muted">Students, teachers, and admins</div>
+          </div>
+          <div class="card">
+            <h3>Total link clicks</h3>
+            <div class="big" id="sum-clicks">0</div>
+            <div class="muted">Across the filtered list</div>
+          </div>
+          <div class="card">
+            <h3>Successful subscriptions</h3>
+            <div class="big" id="sum-subs">0</div>
+            <div class="muted">Paid referrals attributed to their links</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="remoed-section">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Person</th>
+                <th>Role</th>
+                <th>Code</th>
+                <th>Link clicks</th>
+                <th>Successful subscriptions</th>
+                <th>Commission (teachers/admins)</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="7" class="empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var allRows = [];
+
+      function token() {
+        return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+          ? RemoedAdminSession.getAuthToken()
+          : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '')) || '';
+      }
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+
+      function fmtPeso(n) {
+        var v = Number(n || 0) || 0;
+        return '₱' + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+
+      function showError(msg) {
+        var el = document.getElementById('board-error');
+        if (!el) return;
+        if (!msg) {
+          el.style.display = 'none';
+          el.textContent = '';
+          return;
+        }
+        el.textContent = msg;
+        el.style.display = 'block';
+      }
+
+      function filteredRows() {
+        var role = (document.getElementById('role-filter').value || '').toLowerCase();
+        var q = (document.getElementById('search-box').value || '').trim().toLowerCase();
+        return allRows.filter(function (row) {
+          if (role && String(row.role || '').toLowerCase() !== role) return false;
+          if (!q) return true;
+          var hay = [row.name, row.email, row.referralCode, row.ownerId].join(' ').toLowerCase();
+          return hay.indexOf(q) !== -1;
+        });
+      }
+
+      function paint() {
+        var rows = filteredRows();
+        var people = rows.length;
+        var clicks = 0;
+        var subs = 0;
+        rows.forEach(function (r) {
+          clicks += Number(r.linkClicks) || 0;
+          subs += Number(r.successfulSubscriptions) || 0;
+        });
+        document.getElementById('sum-people').textContent = String(people);
+        document.getElementById('sum-clicks').textContent = String(clicks);
+        document.getElementById('sum-subs').textContent = String(subs);
+
+        var tbody = document.getElementById('tbody');
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">No referral owners match this filter.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(function (r, idx) {
+          var role = String(r.role || 'unknown');
+          var commission =
+            role === 'student'
+              ? '—'
+              : fmtPeso(r.totalCommission);
+          return (
+            '<tr>' +
+            '<td><span class="rank">#' + esc(r.rank || idx + 1) + '</span></td>' +
+            '<td><strong>' + esc(r.name) + '</strong><br><span class="muted">' + esc(r.email || '') + '</span></td>' +
+            '<td><span class="role-pill role-' + esc(role) + '">' + esc(role) + '</span></td>' +
+            '<td><code>' + esc(r.referralCode || '—') + '</code></td>' +
+            '<td><strong>' + esc(r.linkClicks || 0) + '</strong></td>' +
+            '<td><strong>' + esc(r.successfulSubscriptions || 0) + '</strong></td>' +
+            '<td>' + commission + '</td>' +
+            '</tr>'
+          );
+        }).join('');
+      }
+
+      async function loadBoard() {
+        showError('');
+        var tbody = document.getElementById('tbody');
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">Loading…</td></tr>';
+        try {
+          var res = await fetch('/api/admin/referral-link/leaderboard', {
+            headers: { Authorization: 'Bearer ' + token() },
+            credentials: 'include',
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) {
+            throw new Error(data.message || data.error || 'Could not load leaderboard');
+          }
+          allRows = data.leaderboard || [];
+          paint();
+        } catch (err) {
+          allRows = [];
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">Could not load leaderboard.</td></tr>';
+          showError(err.message || String(err));
+        }
+      }
+
+      document.getElementById('btn-refresh').addEventListener('click', function () {
+        loadBoard();
+      });
+      document.getElementById('role-filter').addEventListener('change', paint);
+      document.getElementById('search-box').addEventListener('input', paint);
+
+      if (!token()) {
+        window.location.href = (function () {
+          try {
+            var p = localStorage.getItem('remoedAdminEntryPath');
+            if (p && p.charAt(0) === '/') return p;
+          } catch (e) {}
+          return 'index.html';
+        })();
+        return;
+      }
+      loadBoard();
+    })();
+  </script>
+  <script src="/js/currency-converter.js?v=fx-live-1" defer></script>
+</body>
+</html>
