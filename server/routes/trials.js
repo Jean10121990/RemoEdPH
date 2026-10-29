@@ -16,10 +16,6 @@ function requireLogin(req, res, next) {
 
 const isId = (v) => mongoose.isValidObjectId(v);
 
-function phoneOnFile(student) {
-  return String((student && (student.contact || student.parentContact)) || '').trim();
-}
-
 function childNameOf(child) {
   if (!child) return '';
   return String(child.firstName || child.nickname || child.username || '').trim();
@@ -146,9 +142,7 @@ router.post('/', requireLogin, async (req, res) => {
   const childId = body.childId;
   const theme = themeOf(body.theme);
   try {
-    if (!phoneOnFile(req.student)) {
-      return res.status(403).json({ error: 'Please verify your phone number first.' });
-    }
+    // Kids play this trial after signup — do not require a phone on file.
     const requested = isId(childId) ? String(childId) : String(req.student._id);
     if (requested !== String(req.student._id)) {
       return res.status(404).json({ error: 'Child not found.' });

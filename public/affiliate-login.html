@@ -107,45 +107,9 @@
       font-weight: 800;
       padding: 0.2rem 0.7rem;
     }
-    .aff-layout {
+    .aff-form-wrap {
       position: relative;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-      align-items: center;
-    }
-    @media (min-width: 768px) {
-      .aff-layout { grid-template-columns: 1.1fr 0.9fr; }
-    }
-    .aff-cast {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-      text-align: center;
-    }
-    .aff-cast img.family {
-      width: min(100%, 280px);
-      height: auto;
-      filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.12));
-    }
-    .aff-cast-row {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .aff-cast-row img {
-      height: 72px;
-      width: auto;
-      object-fit: contain;
-    }
-    .aff-cast p {
-      margin: 0;
-      font-size: 0.8rem;
-      color: var(--remo-muted);
-      line-height: 1.45;
-      max-width: 16rem;
+      max-width: 28rem;
     }
     label {
       display: block;
@@ -232,34 +196,23 @@
         <span class="aff-badge">Independent Growth Affiliate</span>
       </header>
 
-      <div class="aff-layout">
-        <div>
-          <div id="login-error" class="aff-error" role="alert"></div>
-          <form id="login-form" novalidate>
-            <div class="field">
-              <label for="username">Username or email</label>
-              <input id="username" name="username" type="text" autocomplete="username" required />
-            </div>
-            <div class="field">
-              <label for="password">Password</label>
-              <div class="remoed-pw-wrap">
-                <input id="password" name="password" type="password" autocomplete="current-password" required />
-                <button type="button" class="remoed-pw-toggle" aria-label="Show password"></button>
-              </div>
-            </div>
-            <button type="submit" class="btn-primary" id="btn-login">Sign in</button>
-          </form>
-          <p class="aff-hint">Need access? Ask Marketing / Super-Admin to activate your affiliate account.</p>
-        </div>
-        <aside class="aff-cast" aria-hidden="true">
-          <img class="family" src="/images/hero-remoed-family.png" alt="" onerror="this.style.display='none'" />
-          <div class="aff-cast-row">
-            <img src="/images/remo-green.png" alt="" onerror="this.style.display='none'" />
-            <img src="/images/plan-characters/plan-spark-robot.png" alt="" onerror="this.style.display='none'" />
-            <img src="/images/plan-characters/plan-steady-boy.png" alt="" onerror="this.style.display='none'" />
+      <div class="aff-form-wrap">
+        <div id="login-error" class="aff-error" role="alert"></div>
+        <form id="login-form" novalidate>
+          <div class="field">
+            <label for="username">Username or email</label>
+            <input id="username" name="username" type="text" autocomplete="username" required />
           </div>
-          <p>Faith-based 1-on-1 English — connect families worldwide.</p>
-        </aside>
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="remoed-pw-wrap">
+              <input id="password" name="password" type="password" autocomplete="current-password" required />
+              <button type="button" class="remoed-pw-toggle" aria-label="Show password"></button>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary" id="btn-login">Sign in</button>
+        </form>
+        <p class="aff-hint">Need access? Ask Marketing / Super-Admin to activate your affiliate account.</p>
       </div>
     </div>
   </div>
