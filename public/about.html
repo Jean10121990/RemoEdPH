@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="/style.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-20" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-21" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
 </head>
 <body class="page-index page-about">
@@ -26,11 +26,16 @@
       </a>
       <div class="nav-buttons" id="nav-buttons">
         <a href="/#benefits" class="nav-btn">Why Learn at Home</a>
-        <a href="/#our-teachers" class="nav-btn">Our Teachers</a>
-        <a href="/#plans" class="nav-btn">Plans</a>
+        <a href="/#our-teachers" class="nav-btn" data-i18n="nav_teachers">Our Teachers</a>
+        <a href="/#plans" class="nav-btn" data-i18n="nav_plans">Plans</a>
         <a href="#who-we-are" class="nav-btn">About</a>
-        <a href="/login/" class="nav-btn">Login</a>
-        <a href="/#assessment" class="nav-btn primary">Free Assessment</a>
+        <a href="/login/" class="nav-btn" data-i18n="nav_login">Login</a>
+        <a href="/#assessment" class="nav-btn primary" data-i18n="nav_assessment" data-track="nav_cta">Free Assessment</a>
+        <select
+          class="site-lang-switcher"
+          id="nav-lang-switcher"
+          aria-label="Language"
+        ></select>
       </div>
       <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
     </nav>

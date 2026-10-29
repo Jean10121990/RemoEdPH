@@ -186,6 +186,30 @@ body.page-teachers .navbar .site-lang-switcher {
   box-sizing: border-box;
 }
 
+/*
+ * Header pills stay fixed size/position on hover, focus, and click.
+ * (style.css used translateY + scale(1.05), which made neighbors jump.)
+ */
+body.page-index .navbar .nav-btn,
+body.page-teachers .navbar .nav-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  transform: none !important;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, filter 0.2s ease !important;
+}
+
+body.page-index .navbar .nav-btn:hover,
+body.page-index .navbar .nav-btn:focus,
+body.page-index .navbar .nav-btn:active,
+body.page-index .navbar .nav-btn:focus-visible,
+body.page-teachers .navbar .nav-btn:hover,
+body.page-teachers .navbar .nav-btn:focus,
+body.page-teachers .navbar .nav-btn:active,
+body.page-teachers .navbar .nav-btn:focus-visible {
+  transform: none !important;
+}
+
 /* Outline nav — readable + brand hover (same on index + teachers) */
 body.page-index .nav-btn:not(.primary),
 body.page-teachers .nav-btn:not(.primary) {
@@ -196,7 +220,9 @@ body.page-teachers .nav-btn:not(.primary) {
 }
 
 body.page-index .nav-btn:not(.primary):hover,
-body.page-teachers .nav-btn:not(.primary):hover {
+body.page-index .nav-btn:not(.primary):focus-visible,
+body.page-teachers .nav-btn:not(.primary):hover,
+body.page-teachers .nav-btn:not(.primary):focus-visible {
   background: linear-gradient(
     135deg,
     var(--remo-logo-blue),
@@ -205,9 +231,10 @@ body.page-teachers .nav-btn:not(.primary):hover {
   color: #fff !important;
   border-color: var(--remo-logo-yellow) !important;
   box-shadow: 0 6px 18px rgba(0, 174, 239, 0.32);
+  transform: none !important;
 }
 
-/* Primary nav CTA: logo blue with yellow rim */
+/* Primary nav CTA: same 2px border box as outline pills; yellow rim via shadow */
 body.page-index .nav-btn.primary,
 body.page-teachers .nav-btn.primary {
   background: linear-gradient(
@@ -216,14 +243,17 @@ body.page-teachers .nav-btn.primary {
     var(--remo-logo-blue)
   ) !important;
   color: #fff !important;
-  border: 3px solid var(--remo-logo-yellow) !important;
-  box-shadow: 0 6px 20px rgba(0, 143, 196, 0.35);
+  border: 2px solid var(--remo-logo-yellow) !important;
+  box-shadow: 0 0 0 2px rgba(253, 216, 53, 0.55), 0 6px 20px rgba(0, 143, 196, 0.35);
 }
 
 body.page-index .nav-btn.primary:hover,
-body.page-teachers .nav-btn.primary:hover {
+body.page-index .nav-btn.primary:focus-visible,
+body.page-teachers .nav-btn.primary:hover,
+body.page-teachers .nav-btn.primary:focus-visible {
   filter: brightness(1.05);
   color: #fff !important;
+  transform: none !important;
 }
 
 /* Hero CTAs: guaranteed contrast */

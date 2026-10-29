@@ -2337,7 +2337,10 @@ body.page-forgot-password{
         }.page-index .nav-btn:hover{
             background: #1CA7E7;
             color: white;
-            transform: translateY(-2px) scale(1.05);
+            transform: none;
+        }.page-index .nav-btn:active,
+        .page-index .nav-btn:focus{
+            transform: none;
         }.page-index .nav-btn.primary{
             background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
             color: white;
