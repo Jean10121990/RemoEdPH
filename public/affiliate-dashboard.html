@@ -72,8 +72,19 @@
       background: #ecfdf3; color: #166534;
     }
     .pill.ended { background: #f1f5f9; color: #64748b; }
+    .pw-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end;
+    }
+    .pw-grid label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px; }
+    .pw-grid input {
+      width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+    }
+    .pw-msg { margin: 10px 0 0; font-size: 0.85rem; font-weight: 600; display: none; }
+    .pw-msg.ok { color: #166534; display: block; }
+    .pw-msg.err { color: #991b1b; display: block; }
     @media (max-width: 700px) {
       .metrics { grid-template-columns: 1fr; }
+      .pw-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -96,12 +107,47 @@
       <div class="metric"><h3>Est. this month</h3><div class="big" id="m-earn">₱0</div></div>
     </div>
     <div class="card">
+      <h2>How you earn</h2>
+      <p class="muted" style="margin:0 0 8px;">
+        <strong>Upfront</strong> when a family pays:
+        1-month ₱1,000 · 3-month ₱1,500 · 6-month ₱2,000 · 1-year ₱2,500.
+      </p>
+      <p class="muted" style="margin:0;">
+        <strong>Plus 5% each month</strong> of that plan’s length (3-month plan → 5% for 3 months;
+        6-month → 6; 1-year → 12), while the student stays enrolled.
+      </p>
+    </div>
+    <div class="card">
       <h2>Your unique referral link</h2>
       <p class="muted" style="margin-top:0;">Share this link. Families open the level assessment with your email or name as the referral.</p>
       <div class="link-row">
         <div class="link-url" id="enroll-link">—</div>
         <button type="button" class="btn" id="btn-copy">Copy link</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>Change password</h2>
+      <p class="muted" style="margin-top:0;">Use at least 8 characters. You’ll need the new password the next time you sign in.</p>
+      <form id="pw-form">
+        <div class="pw-grid">
+          <div>
+            <label for="pw-current">Current password</label>
+            <input id="pw-current" type="password" autocomplete="current-password" required />
+          </div>
+          <div>
+            <label for="pw-new">New password</label>
+            <input id="pw-new" type="password" autocomplete="new-password" required minlength="8" />
+          </div>
+          <div>
+            <label for="pw-confirm">Confirm new password</label>
+            <input id="pw-confirm" type="password" autocomplete="new-password" required minlength="8" />
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button type="submit" class="btn" id="btn-pw">Update password</button>
+        </div>
+        <p id="pw-msg" class="pw-msg" role="status"></p>
+      </form>
     </div>
     <div class="card">
       <h2>Active referred students</h2>
@@ -187,6 +233,51 @@
             b.textContent = 'Copied!';
             setTimeout(function () { b.textContent = prev; }, 1200);
           });
+        }
+      });
+
+      document.getElementById('pw-form').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        var msg = document.getElementById('pw-msg');
+        var btn = document.getElementById('btn-pw');
+        var currentPassword = document.getElementById('pw-current').value;
+        var newPassword = document.getElementById('pw-new').value;
+        var confirmPassword = document.getElementById('pw-confirm').value;
+        msg.className = 'pw-msg';
+        msg.textContent = '';
+        if (newPassword.length < 8) {
+          msg.className = 'pw-msg err';
+          msg.textContent = 'New password must be at least 8 characters.';
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          msg.className = 'pw-msg err';
+          msg.textContent = 'New password and confirmation do not match.';
+          return;
+        }
+        btn.disabled = true;
+        try {
+          var res = await fetch('/api/affiliate/change-password', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + token(),
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword }),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) {
+            throw new Error(data.message || data.error || 'Could not update password');
+          }
+          document.getElementById('pw-form').reset();
+          msg.className = 'pw-msg ok';
+          msg.textContent = data.message || 'Password updated.';
+        } catch (err) {
+          msg.className = 'pw-msg err';
+          msg.textContent = err.message || String(err);
+        } finally {
+          btn.disabled = false;
         }
       });
 

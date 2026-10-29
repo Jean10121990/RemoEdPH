@@ -17,6 +17,8 @@ const {
   AFFILIATE_MONTHLY_PCT,
   phYyyymm,
   affiliateMonthlyRecurringPhp,
+  affiliateRecurringMonthKeys,
+  affiliatePlanMonths,
 } = require('./affiliateRecurring');
 
 async function resolveReferralOwner(referralCode) {
@@ -57,38 +59,47 @@ async function resolveReferralOwner(referralCode) {
   return null;
 }
 
+/**
+ * Schedule 5% recurring for each month of the plan pack:
+ * 1-month → 1 month · 3-month → 3 months · 6-month → 6 · 1-year → 12.
+ * Amount per month = 5% × (plan total ÷ months). Idempotent per (affiliate, student, yyyymm).
+ */
 async function ensureAffiliateRecurringLedger(student, owner, { amountPaid = 0, plan = '' } = {}) {
   if (!owner || owner.ownerType !== 'affiliate') return null;
-  const yyyymm = phYyyymm();
-  const amountPhp = affiliateMonthlyRecurringPhp({
-    amountPaid,
-    plan: plan || (student && student.subscriptionPlan) || '',
-  });
+  const planId = plan || (student && student.subscriptionPlan) || '';
+  const amountPhp = affiliateMonthlyRecurringPhp({ amountPaid, plan: planId });
   if (amountPhp <= 0) return null;
-  try {
-    await AffiliateRecurringLedger.updateOne(
-      {
-        affiliateId: String(owner.ownerId),
-        studentId: String(student._id),
-        yyyymm,
-      },
-      {
-        $setOnInsert: {
+  const monthKeys = affiliateRecurringMonthKeys(planId, phYyyymm());
+  const planMonths = affiliatePlanMonths(planId);
+  let written = 0;
+  for (let i = 0; i < monthKeys.length; i++) {
+    const yyyymm = monthKeys[i];
+    try {
+      const result = await AffiliateRecurringLedger.updateOne(
+        {
           affiliateId: String(owner.ownerId),
           studentId: String(student._id),
           yyyymm,
-          amountPhp,
-          planType: plan || student.subscriptionPlan || '',
         },
-      },
-      { upsert: true }
-    );
-  } catch (e) {
-    if (!(e && e.code === 11000)) {
-      console.warn('[affiliate recurring] ledger upsert failed:', e.message);
+        {
+          $setOnInsert: {
+            affiliateId: String(owner.ownerId),
+            studentId: String(student._id),
+            yyyymm,
+            amountPhp,
+            planType: planId,
+          },
+        },
+        { upsert: true }
+      );
+      if (result.upsertedCount || result.upserted) written += 1;
+    } catch (e) {
+      if (!(e && e.code === 11000)) {
+        console.warn('[affiliate recurring] ledger upsert failed:', yyyymm, e.message);
+      }
     }
   }
-  return { yyyymm, amountPhp };
+  return { monthKeys, amountPhpPerMonth: amountPhp, planMonths, written };
 }
 
 /**

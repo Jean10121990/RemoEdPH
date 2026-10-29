@@ -1987,14 +1987,15 @@ function adminRoleDisplayLabel(slug) {
 router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId, from, to } = req.query;
+    const referrerKey = String(teacherId || '').trim();
 
     // Best-effort backfill so paid referral checkouts appear even if Referral rows were never written.
     try {
       const { reconcileReferralsForOwner } = require('./utils/awardReferralCommission');
-      const teacherFilter = teacherId ? { teacherId: String(teacherId) } : {};
+      const teacherFilter = referrerKey ? { teacherId: referrerKey } : {};
       const teachers = await Teacher.find(teacherFilter)
         .select('teacherId referralCode')
-        .limit(teacherId ? 1 : 200)
+        .limit(referrerKey ? 1 : 200)
         .lean();
       for (const t of teachers) {
         if (!t.referralCode) continue;
@@ -2009,7 +2010,9 @@ router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
     }
 
     const filter = {};
-    if (teacherId) filter.teacherId = String(teacherId);
+    if (referrerKey) {
+      filter.$or = [{ teacherId: referrerKey }, { ownerId: referrerKey }];
+    }
     if (from || to) {
       filter.createdAt = {};
       if (from != null && String(from).trim() !== '') {
@@ -2027,19 +2030,67 @@ router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
     }
 
     const referrals = await Referral.find(filter).sort({ createdAt: -1 }).limit(500).lean();
-    const teacherIds = Array.from(new Set(referrals.map(r => r.teacherId)));
-    const teachers = await Teacher.find({ teacherId: { $in: teacherIds } })
-      .select('teacherId firstName lastName fullname username referralCode')
-      .lean();
-    const teacherMap = new Map(teachers.map(t => [t.teacherId, t]));
+    const ownerKeys = Array.from(
+      new Set(referrals.flatMap((r) => [String(r.ownerId || ''), String(r.teacherId || '')].filter(Boolean)))
+    );
+    const objectIds = ownerKeys.filter((id) => mongoose.isValidObjectId(id));
 
-    const rows = referrals.map(r => {
-      const t = teacherMap.get(r.teacherId);
-      const teacherName =
-        (t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || t?.username || r.teacherId);
+    const Affiliate = require('./models/Affiliate');
+    const [teachers, admins, affiliates] = await Promise.all([
+      Teacher.find({ teacherId: { $in: ownerKeys } })
+        .select('teacherId firstName lastName fullname username referralCode')
+        .lean(),
+      Admin.find({ username: { $in: ownerKeys } })
+        .select('username firstName lastName email referralCode')
+        .lean(),
+      objectIds.length
+        ? Affiliate.find({ _id: { $in: objectIds } })
+            .select('name email username referralSlug')
+            .lean()
+        : Promise.resolve([]),
+    ]);
+    const teacherMap = new Map(teachers.map((t) => [String(t.teacherId), t]));
+    const adminMap = new Map(admins.map((a) => [String(a.username), a]));
+    const affiliateMap = new Map(affiliates.map((a) => [String(a._id), a]));
+
+    function referrerDisplay(r) {
+      const ownerType = String(r.ownerType || 'teacher').toLowerCase();
+      const oid = String(r.ownerId || r.teacherId || '');
+      if (ownerType === 'affiliate') {
+        const a = affiliateMap.get(oid);
+        const name =
+          (a && (a.name || a.username || a.email || a.referralSlug)) || oid || 'Affiliate';
+        return { referrerName: name, referrerRole: 'Affiliate', referrerId: oid };
+      }
+      if (ownerType === 'admin') {
+        const a = adminMap.get(oid);
+        const name =
+          (a &&
+            (`${a.firstName || ''} ${a.lastName || ''}`.trim() || a.username || a.email)) ||
+          oid ||
+          'Admin';
+        return { referrerName: name, referrerRole: 'Admin', referrerId: oid };
+      }
+      const t = teacherMap.get(oid) || teacherMap.get(String(r.teacherId || ''));
+      const name =
+        (t &&
+          (t.fullname ||
+            `${t.firstName || ''} ${t.lastName || ''}`.trim() ||
+            t.username ||
+            t.teacherId)) ||
+        oid ||
+        String(r.teacherId || 'Teacher');
+      return { referrerName: name, referrerRole: 'Teacher', referrerId: oid || String(r.teacherId || '') };
+    }
+
+    const rows = referrals.map((r) => {
+      const display = referrerDisplay(r);
       return {
         ...r,
-        teacherName,
+        teacherName: display.referrerName,
+        referrerName: display.referrerName,
+        referrerRole: display.referrerRole,
+        referrerId: display.referrerId,
         studentContact: decryptPiiString(r.studentContact || ''),
       };
     });
@@ -2063,12 +2114,13 @@ router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
 
 router.get('/referrals/teachers', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
+    const Affiliate = require('./models/Affiliate');
+    const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
     const teachers = await Teacher.find({})
       .select('teacherId firstName lastName fullname username referralCode')
       .sort({ createdAt: -1 })
       .lean();
 
-    // Backfill referral codes for existing teachers (best-effort; do sequential to avoid unique collisions)
     const out = [];
     for (const t of teachers) {
       if (!t.referralCode) {
@@ -2077,17 +2129,51 @@ router.get('/referrals/teachers', verifyAdminApiAuth, requireAdmin, async (req, 
           t.referralCode = await ensureTeacherReferralCode(teacherDoc);
         }
       }
-      const teacherName = t.fullname || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.username || t.teacherId;
+      const teacherName =
+        t.fullname || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.username || t.teacherId;
       out.push({
         teacherId: t.teacherId,
         teacherName,
+        referrerName: teacherName,
+        referrerRole: 'Teacher',
         referralCode: t.referralCode || '',
-        // Referral link opens the Free Level Assessment. The code is saved for signup.
-        subscriptionLink: `/index.html?ref=${encodeURIComponent(t.referralCode || '')}#assessment`
+        subscriptionLink: `/index.html?ref=${encodeURIComponent(t.referralCode || '')}#assessment`,
       });
     }
 
-    res.json({ success: true, teachers: out });
+    const admins = await Admin.find({ referralCode: { $nin: [null, ''] } })
+      .select('username firstName lastName email referralCode')
+      .lean();
+    for (const a of admins) {
+      const name =
+        `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.username || a.email || 'Admin';
+      out.push({
+        teacherId: a.username,
+        teacherName: `${name} (Admin)`,
+        referrerName: name,
+        referrerRole: 'Admin',
+        referralCode: a.referralCode || '',
+        subscriptionLink: `/index.html?ref=${encodeURIComponent(a.referralCode || '')}#assessment`,
+      });
+    }
+
+    const affiliates = await Affiliate.find({ status: { $ne: 'inactive' } })
+      .select('name email username referralSlug')
+      .lean();
+    for (const a of affiliates) {
+      const name = a.name || a.username || a.email || 'Affiliate';
+      out.push({
+        teacherId: String(a._id),
+        teacherName: `${name} (Affiliate)`,
+        referrerName: name,
+        referrerRole: 'Affiliate',
+        referralCode: a.referralSlug || '',
+        subscriptionLink: enrollLinkForSlug(a.referralSlug, ''),
+      });
+    }
+
+    out.sort((a, b) => String(a.teacherName).localeCompare(String(b.teacherName)));
+    res.json({ success: true, teachers: out, referrers: out });
   } catch (err) {
     console.error('Admin referrals teachers error:', err);
     res.status(500).json({ success: false, message: 'Failed to load teachers referral links' });

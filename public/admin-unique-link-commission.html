@@ -29,9 +29,9 @@
 
         <div class="controls" style="margin-bottom: 12px;">
           <div>
-            <label>Teacher</label>
+            <label>Referrer name</label>
             <select id="teacher-filter">
-              <option value="">All Teachers</option>
+              <option value="">All referrers</option>
             </select>
           </div>
           <div>
@@ -44,7 +44,7 @@
           </div>
           <div>
             <button type="button" onclick="loadReferrals()">Load</button>
-            <button type="button" class="secondary" onclick="loadTeachers()">Refresh teachers</button>
+            <button type="button" class="secondary" onclick="loadTeachers()">Refresh referrers</button>
           </div>
         </div>
 
@@ -73,7 +73,7 @@
           <table>
             <thead>
               <tr>
-                <th>Teacher</th>
+                <th>Referrer name</th>
                 <th>Student</th>
                 <th>Contact</th>
                 <th>Plan</th>
@@ -117,11 +117,11 @@
       if (!res.ok || !data.success) throw new Error(data.message || data.error || `Failed to load teachers (${res.status})`);
 
       const select = document.getElementById('teacher-filter');
-      select.innerHTML = '<option value="">All Teachers</option>';
-      data.teachers.forEach(t => {
+      select.innerHTML = '<option value="">All referrers</option>';
+      (data.referrers || data.teachers || []).forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.teacherId;
-        opt.textContent = t.teacherName;
+        opt.textContent = t.teacherName || t.referrerName || t.teacherId;
         select.appendChild(opt);
       });
     }
@@ -157,9 +157,13 @@
       }
       empty.style.display = 'none';
 
-      tbody.innerHTML = rows.map(r => `
+      tbody.innerHTML = rows.map(r => {
+        const name = r.referrerName || r.teacherName || r.teacherId || '—';
+        const role = r.referrerRole || r.ownerType || '';
+        const idHint = r.referrerId || r.ownerId || r.teacherId || '';
+        return `
         <tr>
-          <td><strong>${r.teacherName || r.teacherId}</strong><br><span class="muted">${r.teacherId}</span></td>
+          <td><strong>${name}</strong><br><span class="muted">${role ? role + (idHint ? ' · ' : '') : ''}${idHint}</span></td>
           <td><strong>${r.studentName || r.studentEmail || '—'}</strong><br><span class="muted">${r.studentEmail || ''}</span></td>
           <td>${r.studentContact || '—'}</td>
           <td>${r.subscriptionPlan || '—'}</td>
@@ -167,7 +171,8 @@
           <td>${fmtPeso(r.commissionAmount || 1000)}</td>
           <td>${r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     document.addEventListener('DOMContentLoaded', async () => {

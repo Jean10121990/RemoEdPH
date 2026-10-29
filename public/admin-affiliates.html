@@ -122,12 +122,13 @@
                 <th>Email / slug</th>
                 <th>Username</th>
                 <th>Status</th>
+                <th>New password</th>
                 <th>Enroll link</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="tbody">
-              <tr><td colspan="6" class="muted" style="padding:20px;text-align:center;">Loading…</td></tr>
+              <tr><td colspan="7" class="muted" style="padding:20px;text-align:center;">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -171,7 +172,7 @@
           if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load');
           var rows = data.affiliates || [];
           if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="muted" style="padding:20px;text-align:center;">No affiliates yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="muted" style="padding:20px;text-align:center;">No affiliates yet.</td></tr>';
             return;
           }
           tbody.innerHTML = rows.map(function (a) {
@@ -186,7 +187,8 @@
                 return '<option value="' + s + '"' + (a.status === s ? ' selected' : '') + '>' + s + '</option>';
               }).join('') +
               '</select></td>' +
-              '<td style="max-width:220px;word-break:break-all;font-size:0.78rem;">' + esc(a.enrollLink) + '</td>' +
+              '<td><input type="password" class="pw-reset" placeholder="Min 8 chars" autocomplete="new-password" style="min-width:140px;" /></td>' +
+              '<td style="max-width:200px;word-break:break-all;font-size:0.78rem;">' + esc(a.enrollLink) + '</td>' +
               '<td><button type="button" class="btn btn-outline btn-save">Save</button></td>' +
               '</tr>'
             );
@@ -197,8 +199,16 @@
               var tr = btn.closest('tr');
               var id = tr.getAttribute('data-id');
               var status = tr.querySelector('.status-sel').value;
+              var pwEl = tr.querySelector('.pw-reset');
+              var password = pwEl ? String(pwEl.value || '') : '';
               showError('');
+              if (password && password.length < 8) {
+                showError('New password must be at least 8 characters (or leave blank to keep the current one).');
+                return;
+              }
               try {
+                var body = { status: status };
+                if (password) body.password = password;
                 var res2 = await fetch('/api/admin/affiliates/' + encodeURIComponent(id), {
                   method: 'PATCH',
                   headers: {
@@ -206,18 +216,23 @@
                     'Content-Type': 'application/json',
                   },
                   credentials: 'include',
-                  body: JSON.stringify({ status: status }),
+                  body: JSON.stringify(body),
                 });
                 var d2 = await res2.json().catch(function () { return {}; });
                 if (!res2.ok || !d2.success) throw new Error(d2.message || 'Update failed');
-                showOk('Updated ' + (d2.affiliate && d2.affiliate.name ? d2.affiliate.name : 'affiliate'));
+                if (pwEl) pwEl.value = '';
+                showOk(
+                  'Updated ' +
+                    (d2.affiliate && d2.affiliate.name ? d2.affiliate.name : 'affiliate') +
+                    (password ? ' (password reset)' : '')
+                );
               } catch (e) {
                 showError(e.message || String(e));
               }
             });
           });
         } catch (e) {
-          tbody.innerHTML = '<tr><td colspan="6" class="muted" style="padding:20px;text-align:center;">Could not load affiliates.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" class="muted" style="padding:20px;text-align:center;">Could not load affiliates.</td></tr>';
           showError(e.message || String(e));
         }
       }

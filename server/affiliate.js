@@ -118,6 +118,46 @@ router.get('/me', verifyToken, requireAffiliate, async (req, res) => {
   }
 });
 
+/** Affiliate changes their own password (current password required). */
+router.post('/change-password', verifyToken, requireAffiliate, async (req, res) => {
+  try {
+    const currentPassword = String((req.body && req.body.currentPassword) || '');
+    const newPassword = String((req.body && req.body.newPassword) || '');
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required',
+      });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters',
+      });
+    }
+    const affiliate = await Affiliate.findById(req.user.affiliateId);
+    if (!affiliate || !affiliate.passwordHash) {
+      return res.status(404).json({ success: false, message: 'Affiliate not found' });
+    }
+    const ok = await bcrypt.compare(currentPassword, affiliate.passwordHash);
+    if (!ok) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+    if (await bcrypt.compare(newPassword, affiliate.passwordHash)) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from the current password',
+      });
+    }
+    affiliate.passwordHash = await bcrypt.hash(newPassword, 12);
+    await affiliate.save();
+    res.json({ success: true, message: 'Password updated. Use the new password next time you sign in.' });
+  } catch (err) {
+    console.error('Affiliate change-password error:', err);
+    res.status(500).json({ success: false, message: 'Could not update password' });
+  }
+});
+
 router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
   try {
     const affiliateId = String(req.user.affiliateId);
@@ -197,11 +237,14 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
       });
     }
     for (const row of freshLedger) {
+      const planLabel = String(row.planType || '').trim();
       payoutHistory.push({
         date: row.createdAt || new Date(),
         yyyymm: row.yyyymm,
         type: 'recurring',
-        label: '5% monthly recurring',
+        label: planLabel
+          ? `5% monthly recurring (${planLabel})`
+          : '5% monthly recurring',
         amountPhp: Number(row.amountPhp) || 0,
         studentId: row.studentId,
         initials: studentInitials('', row.studentId),
