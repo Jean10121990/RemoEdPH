@@ -4548,10 +4548,13 @@ router.post('/qr-payments/:id/confirm', async (req, res) => {
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const idempotencyKey = 'qrclaim:' + String(claim._id);
+    // Prefer claim.referralCode (submitted with QR), then live student attribution.
+    const referralFromClaim = String(claim.referralCode || '').trim();
+    const referralFromStudent = String(student.referralCode || '').trim();
     const pending = {
       plan: claim.planId,
       amount: claim.amountPhp,
-      referralCode: '',
+      referralCode: referralFromClaim || referralFromStudent || '',
       registrationId: idempotencyKey,
       status: 'pending',
       save: async function savePendingStub() {

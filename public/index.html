@@ -694,7 +694,7 @@
       </div>
     </div>
 
-    <script src="/js/referral-tracking.js?v=ref-2"></script>
+    <script src="/js/referral-tracking.js?v=ref-3"></script>
     <script src="/js/plan-pricing.js?v=pricing-2"></script>
     <script src="/js/plan-currency-converter.js?v=fx-4"></script>
     <script>
@@ -976,7 +976,12 @@
               alert(
                 "Plan payments are on the MariBank QR. Create your account, log in, then pay on Credits."
               );
-              window.location.href = "/student-register.html";
+              var refQ = "";
+              try {
+                var rc = localStorage.getItem("referralCode") || "";
+                if (rc) refQ = "?ref=" + encodeURIComponent(rc);
+              } catch (_e) {}
+              window.location.href = "/student-register.html" + refQ;
               return;
             }
             const payload = {

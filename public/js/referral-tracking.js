@@ -1,5 +1,6 @@
-// Capture ?ref= once. First code wins for 30 days (cookie + localStorage).
-// Also records a link click for the referrer (once per browser session per code).
+// Capture ?ref= from the URL. When the link includes ?ref=, that code wins
+// (affiliate / teacher enroll links). Otherwise keep the stored code for 30 days.
+// Also records a link click (once per browser session per code).
 (function () {
   'use strict';
 
@@ -48,23 +49,24 @@
   }
 
   try {
+    var params = new URLSearchParams(window.location.search);
+    var ref = params.get('ref');
+    ref = ref && String(ref).trim() ? String(ref).trim() : '';
+
+    if (ref) {
+      // Opening an enroll/share link always attributes to that ref (not first-wins-only).
+      localStorage.setItem('referralCode', ref);
+      localStorage.setItem('referralCapturedAt', new Date().toISOString());
+      writeCookie(ref);
+      recordClick(ref);
+      return;
+    }
+
     var stored = localStorage.getItem('referralCode') || '';
     var cookie = readCookie();
     if (!stored && cookie) {
       localStorage.setItem('referralCode', cookie);
-      stored = cookie;
     }
-    var params = new URLSearchParams(window.location.search);
-    var ref = params.get('ref');
-    ref = ref && String(ref).trim() ? String(ref).trim() : '';
-    if (ref) {
-      // Count a visit whenever the URL carries ?ref=, even if first-wins already stored another code.
-      recordClick(ref);
-    }
-    if (!ref || stored || cookie) return;
-    localStorage.setItem('referralCode', ref);
-    localStorage.setItem('referralCapturedAt', new Date().toISOString());
-    writeCookie(ref);
   } catch (e) {
     // ignore storage errors
   }

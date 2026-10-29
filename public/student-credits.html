@@ -454,7 +454,13 @@
             'Content-Type': 'application/json',
             Authorization: 'Bearer ' + token,
           },
-          body: JSON.stringify({ planId: sel.value, reference: reference }),
+          body: JSON.stringify({
+            planId: sel.value,
+            reference: reference,
+            referralCode: (function () {
+              try { return localStorage.getItem('referralCode') || ''; } catch (e) { return ''; }
+            })(),
+          }),
         });
         var data = await res.json().catch(function () { return {}; });
         if (data.code === 'CONSENT_REQUIRED') {
