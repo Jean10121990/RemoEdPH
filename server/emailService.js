@@ -1474,9 +1474,109 @@ async function sendNotificationDigestEmail(toEmail, displayName, lines, role) {
   }
 }
 
+function escapeEmailHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Email affiliate username + password after first sign-in or password change.
+ * @param {{ to: string, name?: string, username: string, password: string, reason?: 'first_login'|'password_change' }} opts
+ */
+async function sendAffiliateCredentialsEmail(opts = {}) {
+  const to = String(opts.to || '').trim();
+  const username = String(opts.username || '').trim();
+  const password = String(opts.password || '');
+  const name = String(opts.name || '').trim() || 'Affiliate';
+  const reason = opts.reason === 'password_change' ? 'password_change' : 'first_login';
+
+  if (!to) return { success: false, error: 'Missing recipient' };
+  if (!username || !password) return { success: false, error: 'Missing credentials' };
+
+  if (!isEmailConfigured) {
+    return {
+      success: false,
+      fallback: true,
+      error: 'Email service not configured',
+    };
+  }
+
+  const safeName = escapeEmailHtml(name);
+  const safeUser = escapeEmailHtml(username);
+  const safePass = escapeEmailHtml(password);
+  const loginUrl = 'https://remoedph.com/affiliate-login.html';
+  const subject =
+    reason === 'password_change'
+      ? 'RemoEdPH Affiliate — your updated login'
+      : 'RemoEdPH Affiliate — your login credentials';
+  const intro =
+    reason === 'password_change'
+      ? 'Your affiliate portal password was updated. Keep this copy of your username and new password.'
+      : 'Welcome to the RemoEdPH Independent Growth Affiliate portal. Here are your login credentials for your records.';
+
+  const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e3a5f;">
+        <div style="max-width: 560px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488; font-size: 1.35rem;">RemoEdPH Affiliate</h1>
+          <p>Hello ${safeName},</p>
+          <p>${escapeEmailHtml(intro)}</p>
+          <div style="background: #f0fdfa; border: 2px solid #0d9488; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0 0 8px;"><strong>Username:</strong> <code style="font-size: 1.05rem;">${safeUser}</code></p>
+            <p style="margin: 0;"><strong>Password:</strong> <code style="font-size: 1.05rem;">${safePass}</code></p>
+          </div>
+          <p><a href="${loginUrl}" style="display: inline-block; background: #0d9488; color: #fff; padding: 10px 18px; border-radius: 8px; text-decoration: none;">Open affiliate login</a></p>
+          <p style="color: #64748b; font-size: 0.9rem;">Do not share these credentials. If you did not request this, contact RemoEdPH support.</p>
+        </div>
+      </body>
+      </html>`;
+
+  const text = `RemoEdPH Affiliate
+
+Hello ${name},
+
+${intro}
+
+Username: ${username}
+Password: ${password}
+
+Login: ${loginUrl}
+
+Do not share these credentials.`;
+
+  try {
+    if (activeEmailService === 'mailgun') {
+      return await sendEmailViaMailgun(to, subject, html, text);
+    }
+    if (activeEmailService === 'smtp') {
+      if (!transporterVerified) {
+        await transporter.verify();
+        transporterVerified = true;
+      }
+      const info = await smtpSendMail({ to, subject, html, text });
+      return { success: true, messageId: info.messageId };
+    }
+    return { success: false, error: 'No email service configured' };
+  } catch (error) {
+    const errorMessage = error.message || String(error);
+    console.error(
+      '❌ sendAffiliateCredentialsEmail failed:',
+      errorMessage.replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***')
+    );
+    return { success: false, error: errorMessage };
+  }
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
+  sendAffiliateCredentialsEmail,
   sendSubscriptionEmail,
   sendAssessmentEmail,
   sendTeacherPipelineWelcomeEmail,

@@ -21,6 +21,8 @@ const affiliateSchema = new mongoose.Schema(
       default: 'pending',
       index: true,
     },
+    /** Set after first successful login emails username + password to the affiliate. */
+    credentialsEmailedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

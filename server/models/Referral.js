@@ -14,7 +14,7 @@ const referralSchema = new mongoose.Schema(
     subscriptionPlan: { type: String, default: '' }, // 1month/3months/6months/1year
     amountPaid: { type: Number, default: 0 }, // subscription amount (PHP)
     commissionAmount: { type: Number, default: 1000 }, // plan-tier commission (₱1000/1500/2000/2500), see utils/referralCommissionTiers.js
-    /** Affiliate program: 5% monthly while enrolled (teachers/admins leave default). */
+    /** Affiliate program: 2% monthly while enrolled (teachers/admins leave default). */
     monthlyCommissionPercentage: { type: Number, default: 0 },
     recurringActive: { type: Boolean, default: false },
     status: { type: String, enum: ['pending', 'successful', 'void'], default: 'successful' }

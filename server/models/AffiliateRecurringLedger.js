@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * 5% monthly recurring accrual for an affiliate-referred student.
+ * 2% monthly recurring accrual for an affiliate-referred student.
  * One row per affiliate + student + calendar month (YYYY-MM).
  */
 const affiliateRecurringLedgerSchema = new mongoose.Schema(

@@ -60,9 +60,9 @@ async function resolveReferralOwner(referralCode) {
 }
 
 /**
- * Schedule 5% recurring for each month of the plan pack:
+ * Schedule 2% recurring for each month of the plan pack:
  * 1-month → 1 month · 3-month → 3 months · 6-month → 6 · 1-year → 12.
- * Amount per month = 5% × (plan total ÷ months). Idempotent per (affiliate, student, yyyymm).
+ * Amount per month = 2% × (plan total ÷ months). Idempotent per (affiliate, student, yyyymm).
  */
 async function ensureAffiliateRecurringLedger(student, owner, { amountPaid = 0, plan = '' } = {}) {
   if (!owner || owner.ownerType !== 'affiliate') return null;

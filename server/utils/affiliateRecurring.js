@@ -2,7 +2,7 @@
 
 const { normalizePlanId, PLAN_CREDITS } = require('../config/planCredits');
 
-const AFFILIATE_MONTHLY_PCT = 0.05;
+const AFFILIATE_MONTHLY_PCT = 0.02;
 
 /** Asia/Manila YYYY-MM for ledger keys. */
 function phYyyymm(date = new Date()) {
@@ -32,7 +32,7 @@ function addMonthsToYyyymm(yyyymm, n) {
 }
 
 /**
- * 5% of amortized monthly plan value (phpTotal / planMonths).
+ * 2% of amortized monthly plan value (phpTotal / planMonths).
  * A 3-month plan → this amount once per month for 3 months (same for 6 / 12).
  */
 function affiliateMonthlyRecurringPhp({ amountPaid = 0, plan = '', phpTotal = null } = {}) {

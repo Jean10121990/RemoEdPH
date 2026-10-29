@@ -12,7 +12,10 @@ const { verifyToken } = require('./authMiddleware');
 const { getJwtSecret } = require('./config/jwtSecret');
 const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
 const { studentLooksPaid, ensureAffiliateRecurringLedger } = require('./utils/awardReferralCommission');
-const { phYyyymm } = require('./utils/affiliateRecurring');
+const { phYyyymm, AFFILIATE_MONTHLY_PCT } = require('./utils/affiliateRecurring');
+const { sendAffiliateCredentialsEmail } = require('./emailService');
+
+const RECURRING_PCT_LABEL = `${Math.round(AFFILIATE_MONTHLY_PCT * 100)}%`;
 
 const router = express.Router();
 const JWT_SECRET = getJwtSecret();
@@ -71,6 +74,30 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, affiliate.passwordHash);
     if (!ok) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // First successful sign-in: email username + password so the affiliate has a record.
+    if (!affiliate.credentialsEmailedAt && affiliate.email) {
+      try {
+        const mail = await sendAffiliateCredentialsEmail({
+          to: affiliate.email,
+          name: affiliate.name,
+          username: affiliate.username,
+          password,
+          reason: 'first_login',
+        });
+        if (mail && mail.success) {
+          affiliate.credentialsEmailedAt = new Date();
+          await affiliate.save();
+        } else {
+          console.warn(
+            'Affiliate first-login credentials email not sent:',
+            (mail && mail.error) || 'unknown'
+          );
+        }
+      } catch (mailErr) {
+        console.warn('Affiliate first-login credentials email error:', mailErr.message || mailErr);
+      }
     }
 
     const token = jwt.sign(
@@ -151,7 +178,42 @@ router.post('/change-password', verifyToken, requireAffiliate, async (req, res) 
     }
     affiliate.passwordHash = await bcrypt.hash(newPassword, 12);
     await affiliate.save();
-    res.json({ success: true, message: 'Password updated. Use the new password next time you sign in.' });
+
+    // Email username + new password so the affiliate has an updated record.
+    let emailSent = false;
+    if (affiliate.email) {
+      try {
+        const mail = await sendAffiliateCredentialsEmail({
+          to: affiliate.email,
+          name: affiliate.name,
+          username: affiliate.username,
+          password: newPassword,
+          reason: 'password_change',
+        });
+        if (mail && mail.success) {
+          emailSent = true;
+          if (!affiliate.credentialsEmailedAt) {
+            affiliate.credentialsEmailedAt = new Date();
+            await affiliate.save();
+          }
+        } else {
+          console.warn(
+            'Affiliate change-password credentials email not sent:',
+            (mail && mail.error) || 'unknown'
+          );
+        }
+      } catch (mailErr) {
+        console.warn('Affiliate change-password credentials email error:', mailErr.message || mailErr);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: emailSent
+        ? 'Password updated. We emailed your username and new password.'
+        : 'Password updated. Use the new password next time you sign in.',
+      emailSent,
+    });
   } catch (err) {
     console.error('Affiliate change-password error:', err);
     res.status(500).json({ success: false, message: 'Could not update password' });
@@ -243,8 +305,8 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
         yyyymm: row.yyyymm,
         type: 'recurring',
         label: planLabel
-          ? `5% monthly recurring (${planLabel})`
-          : '5% monthly recurring',
+          ? `${RECURRING_PCT_LABEL} monthly recurring (${planLabel})`
+          : `${RECURRING_PCT_LABEL} monthly recurring`,
         amountPhp: Number(row.amountPhp) || 0,
         studentId: row.studentId,
         initials: studentInitials('', row.studentId),
