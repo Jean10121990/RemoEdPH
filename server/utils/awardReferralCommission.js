@@ -5,11 +5,19 @@
  */
 const Teacher = require('../models/Teacher');
 const Admin = require('../models/Admin');
+const Affiliate = require('../models/Affiliate');
 const Student = require('../models/Student');
 const Referral = require('../models/Referral');
 const PendingRegistration = require('../models/PendingRegistration');
+const AffiliateRecurringLedger = require('../models/AffiliateRecurringLedger');
 const { encryptPiiString } = require('../utils/piiCrypto');
 const { referralCommissionForPlan } = require('./referralCommissionTiers');
+const { affiliateSlugExactRe } = require('./affiliateReferralSlug');
+const {
+  AFFILIATE_MONTHLY_PCT,
+  phYyyymm,
+  affiliateMonthlyRecurringPhp,
+} = require('./affiliateRecurring');
 
 async function resolveReferralOwner(referralCode) {
   const code = String(referralCode || '').trim();
@@ -32,7 +40,55 @@ async function resolveReferralOwner(referralCode) {
       ownerId: String(admin.username),
     };
   }
+  const slugRe = affiliateSlugExactRe(code);
+  if (slugRe) {
+    const affiliate = await Affiliate.findOne({
+      status: { $ne: 'inactive' },
+      $or: [{ referralSlug: slugRe }, { email: slugRe }],
+    }).lean();
+    if (affiliate) {
+      return {
+        referralCode: String(affiliate.referralSlug || code),
+        ownerType: 'affiliate',
+        ownerId: String(affiliate._id),
+      };
+    }
+  }
   return null;
+}
+
+async function ensureAffiliateRecurringLedger(student, owner, { amountPaid = 0, plan = '' } = {}) {
+  if (!owner || owner.ownerType !== 'affiliate') return null;
+  const yyyymm = phYyyymm();
+  const amountPhp = affiliateMonthlyRecurringPhp({
+    amountPaid,
+    plan: plan || (student && student.subscriptionPlan) || '',
+  });
+  if (amountPhp <= 0) return null;
+  try {
+    await AffiliateRecurringLedger.updateOne(
+      {
+        affiliateId: String(owner.ownerId),
+        studentId: String(student._id),
+        yyyymm,
+      },
+      {
+        $setOnInsert: {
+          affiliateId: String(owner.ownerId),
+          studentId: String(student._id),
+          yyyymm,
+          amountPhp,
+          planType: plan || student.subscriptionPlan || '',
+        },
+      },
+      { upsert: true }
+    );
+  } catch (e) {
+    if (!(e && e.code === 11000)) {
+      console.warn('[affiliate recurring] ledger upsert failed:', e.message);
+    }
+  }
+  return { yyyymm, amountPhp };
 }
 
 /**
@@ -160,6 +216,23 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
     commissionAmount: { $gt: 0 },
   }).lean();
   if (alreadyAwarded) {
+    if (ownerType === 'affiliate') {
+      await ensureAffiliateRecurringLedger(student, owner, {
+        amountPaid: paid,
+        plan: plan || student.subscriptionPlan || alreadyAwarded.subscriptionPlan || '',
+      });
+      if (!alreadyAwarded.recurringActive) {
+        await Referral.updateOne(
+          { _id: alreadyAwarded._id },
+          {
+            $set: {
+              recurringActive: true,
+              monthlyCommissionPercentage: AFFILIATE_MONTHLY_PCT,
+            },
+          }
+        );
+      }
+    }
     return {
       ok: true,
       status: 'successful',
@@ -169,6 +242,7 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
   }
 
   const commissionAmount = referralCommissionForPlan(plan || student.subscriptionPlan || '');
+  const isAffiliate = ownerType === 'affiliate';
   await Referral.updateOne(
     { ownerType, ownerId: String(ownerId), studentId: String(student._id) },
     {
@@ -185,6 +259,12 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
         amountPaid: paid,
         commissionAmount,
         status: 'successful',
+        ...(isAffiliate
+          ? {
+              monthlyCommissionPercentage: AFFILIATE_MONTHLY_PCT,
+              recurringActive: true,
+            }
+          : {}),
       },
       $setOnInsert: {
         createdAt: new Date(),
@@ -192,6 +272,13 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
     },
     { upsert: true }
   );
+
+  if (isAffiliate) {
+    await ensureAffiliateRecurringLedger(student, owner, {
+      amountPaid: paid,
+      plan: plan || student.subscriptionPlan || '',
+    });
+  }
 
   // Keep student attribution fields in sync for future look-ups.
   try {
@@ -302,4 +389,5 @@ module.exports = {
   awardReferralCommissionOnPayment,
   reconcileReferralsForOwner,
   studentLooksPaid,
+  ensureAffiliateRecurringLedger,
 };

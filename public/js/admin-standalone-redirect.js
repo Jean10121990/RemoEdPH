@@ -14,6 +14,7 @@
             'admin-payroll.html': 'admin-accounting-hub.html#payroll',
             'admin-unique-link-commission.html': 'admin-marketing-hub.html',
             'admin-referral-leaderboard.html': 'admin-marketing-hub.html#leaderboard',
+            'admin-affiliates.html': 'admin-marketing-hub.html#affiliates',
             'admin-student-subscriptions.html': 'admin-accounting-hub.html#subscriptions',
             'admin-lessons-library.html': 'admin-qa-hub.html#library',
             'admin-incidents.html': 'admin-qa-hub.html#sos'

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/remoed-gtag.js?v=ga-1"></script>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Affiliate Login - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body.page-affiliate-login {
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(160deg, #e8f7ff 0%, #f0fdf4 55%, #fff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      padding: 24px;
+    }
+    .aff-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+    }
+    .aff-card h1 { margin: 0 0 6px; font-size: 1.35rem; color: #0f172a; }
+    .aff-card .lead { margin: 0 0 20px; color: #64748b; font-size: 0.9rem; line-height: 1.45; }
+    .aff-card label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px; }
+    .aff-card input {
+      width: 100%; box-sizing: border-box; padding: 10px 12px;
+      border: 1px solid #d1d5db; border-radius: 8px; margin-bottom: 14px; font-size: 0.95rem;
+    }
+    .aff-card button {
+      width: 100%; border: 0; border-radius: 8px; padding: 11px 14px;
+      background: #47BC3E; color: #fff; font-weight: 800; cursor: pointer; font-size: 0.95rem;
+    }
+    .aff-card button:disabled { opacity: 0.6; cursor: wait; }
+    .aff-error {
+      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 0.85rem; font-weight: 600;
+    }
+    .aff-brand { font-weight: 800; color: #00aeef; letter-spacing: 0.02em; margin-bottom: 12px; font-size: 0.85rem; }
+  </style>
+</head>
+<body class="page-affiliate-login">
+  <div class="aff-card">
+    <div class="aff-brand">RemoEdPH</div>
+    <h1>Affiliate portal</h1>
+    <p class="lead">Sign in to view your referral link, active enrollments, and monthly payout history.</p>
+    <div id="login-error" class="aff-error" role="alert"></div>
+    <form id="login-form">
+      <label for="username">Username or email</label>
+      <input id="username" name="username" autocomplete="username" required />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+      <button type="submit" id="btn-login">Sign in</button>
+    </form>
+  </div>
+  <script src="js/password-toggle.js"></script>
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('remoed_affiliate_token')) {
+          window.location.replace('affiliate-dashboard.html');
+          return;
+        }
+      } catch (e) {}
+
+      var errEl = document.getElementById('login-error');
+      function showErr(msg) {
+        if (!msg) {
+          errEl.style.display = 'none';
+          errEl.textContent = '';
+          return;
+        }
+        errEl.textContent = msg;
+        errEl.style.display = 'block';
+      }
+
+      document.getElementById('login-form').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        showErr('');
+        var btn = document.getElementById('btn-login');
+        btn.disabled = true;
+        try {
+          var res = await fetch('/api/affiliate/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              username: document.getElementById('username').value.trim(),
+              password: document.getElementById('password').value,
+            }),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success || !data.token) {
+            throw new Error(data.message || data.error || 'Sign-in failed');
+          }
+          localStorage.setItem('remoed_affiliate_token', data.token);
+          localStorage.setItem('affiliateId', data.affiliateId || '');
+          localStorage.setItem('userType', 'affiliate');
+          localStorage.setItem('userRole', 'affiliate');
+          window.location.href = 'affiliate-dashboard.html';
+        } catch (err) {
+          showErr(err.message || String(err));
+          btn.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

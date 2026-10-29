@@ -54,6 +54,10 @@
     );
   }
 
+  function getAffiliateToken() {
+    return firstNonEmpty(ls('remoed_affiliate_token'), ss('remoed_affiliate_token'));
+  }
+
   function getStudentToken() {
     try {
       if (global.RemoedSecurityGuard && typeof global.RemoedSecurityGuard.getToken === 'function') {
@@ -129,6 +133,7 @@
         'remoed_teacher_auth',
         'remoed_student_token',
         'remoed_student_auth',
+        'remoed_affiliate_token',
         'remoed_user_token',
         'token',
         'userType',
@@ -145,6 +150,7 @@
   global.RemoedAuthToken = {
     getTeacherToken: getTeacherToken,
     getStudentToken: getStudentToken,
+    getAffiliateToken: getAffiliateToken,
     resolveClassroomToken: resolveClassroomToken,
     clearSessionTokens: clearSessionTokens,
   };

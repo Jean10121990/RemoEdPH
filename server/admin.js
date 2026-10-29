@@ -2431,6 +2431,215 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
   }
 });
 
+// ——— Independent Growth Affiliates (Marketing Hub) ———
+router.get('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const Affiliate = require('./models/Affiliate');
+    const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
+    const rows = await Affiliate.find({})
+      .select('name email phone username referralSlug status christianValuesBackground notes createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({
+      success: true,
+      affiliates: rows.map((a) => ({
+        id: String(a._id),
+        name: a.name,
+        email: a.email || '',
+        phone: a.phone || '',
+        username: a.username,
+        referralSlug: a.referralSlug,
+        status: a.status,
+        christianValuesBackground: !!a.christianValuesBackground,
+        notes: a.notes || '',
+        enrollLink: enrollLinkForSlug(a.referralSlug, 'https://remoedph.com'),
+        createdAt: a.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error('Admin affiliates list error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load affiliates' });
+  }
+});
+
+router.post('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const bcrypt = require('bcrypt');
+    const Affiliate = require('./models/Affiliate');
+    const {
+      buildAffiliateReferralSlug,
+      enrollLinkForSlug,
+      affiliateSlugExactRe,
+    } = require('./utils/affiliateReferralSlug');
+
+    const name = String((req.body && req.body.name) || '').trim();
+    const email = String((req.body && req.body.email) || '')
+      .trim()
+      .toLowerCase();
+    const phone = String((req.body && req.body.phone) || '').trim();
+    const usernameRaw = String((req.body && req.body.username) || email || '').trim().toLowerCase();
+    const password = String((req.body && req.body.password) || '');
+    const status = String((req.body && req.body.status) || 'pending').toLowerCase();
+    const notes = String((req.body && req.body.notes) || '').trim();
+    const christianValuesBackground =
+      req.body && req.body.christianValuesBackground === false ? false : true;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+    if (!email && !name) {
+      return res.status(400).json({ success: false, message: 'Email or name is required for the referral link' });
+    }
+    if (!usernameRaw) {
+      return res.status(400).json({ success: false, message: 'Username is required' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    const allowedStatus = ['pending', 'active', 'inactive'];
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const referralSlug = buildAffiliateReferralSlug({ email, name });
+    if (!referralSlug) {
+      return res.status(400).json({ success: false, message: 'Could not build referral slug from email/name' });
+    }
+
+    const slugRe = affiliateSlugExactRe(referralSlug);
+    const slugTaken = await Affiliate.findOne({
+      $or: [{ referralSlug: slugRe }, { email: slugRe }],
+    }).lean();
+    if (slugTaken) {
+      return res.status(409).json({
+        success: false,
+        message: 'An affiliate already uses this email or name for their referral link',
+      });
+    }
+
+    const userTaken = await Affiliate.findOne({ username: usernameRaw }).lean();
+    if (userTaken) {
+      return res.status(409).json({ success: false, message: 'Username already in use' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const affiliate = await Affiliate.create({
+      name,
+      email: email || null,
+      phone,
+      username: usernameRaw,
+      passwordHash,
+      referralSlug,
+      christianValuesBackground,
+      notes,
+      status,
+    });
+
+    res.status(201).json({
+      success: true,
+      affiliate: {
+        id: String(affiliate._id),
+        name: affiliate.name,
+        email: affiliate.email || '',
+        username: affiliate.username,
+        referralSlug: affiliate.referralSlug,
+        status: affiliate.status,
+        enrollLink: enrollLinkForSlug(affiliate.referralSlug, 'https://remoedph.com'),
+      },
+    });
+  } catch (err) {
+    console.error('Admin create affiliate error:', err);
+    if (err && err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Affiliate username or referral link already exists' });
+    }
+    res.status(500).json({ success: false, message: 'Failed to create affiliate' });
+  }
+});
+
+router.patch('/affiliates/:id', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const bcrypt = require('bcrypt');
+    const mongoose = require('mongoose');
+    const Affiliate = require('./models/Affiliate');
+    const {
+      buildAffiliateReferralSlug,
+      enrollLinkForSlug,
+      affiliateSlugExactRe,
+    } = require('./utils/affiliateReferralSlug');
+
+    const id = String(req.params.id || '');
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid affiliate id' });
+    }
+    const affiliate = await Affiliate.findById(id);
+    if (!affiliate) {
+      return res.status(404).json({ success: false, message: 'Affiliate not found' });
+    }
+
+    if (req.body.name != null) affiliate.name = String(req.body.name).trim() || affiliate.name;
+    if (req.body.email != null) {
+      const em = String(req.body.email).trim().toLowerCase();
+      affiliate.email = em || null;
+    }
+    if (req.body.phone != null) affiliate.phone = String(req.body.phone).trim();
+    if (req.body.notes != null) affiliate.notes = String(req.body.notes).trim();
+    if (req.body.christianValuesBackground != null) {
+      affiliate.christianValuesBackground = !!req.body.christianValuesBackground;
+    }
+    if (req.body.status != null) {
+      const st = String(req.body.status).toLowerCase();
+      if (!['pending', 'active', 'inactive'].includes(st)) {
+        return res.status(400).json({ success: false, message: 'Invalid status' });
+      }
+      affiliate.status = st;
+    }
+    if (req.body.password) {
+      const pw = String(req.body.password);
+      if (pw.length < 8) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+      }
+      affiliate.passwordHash = await bcrypt.hash(pw, 12);
+    }
+
+    // Rebuild slug when email/name change (prefer email).
+    const nextSlug = buildAffiliateReferralSlug({
+      email: affiliate.email,
+      name: affiliate.name,
+    });
+    if (nextSlug && nextSlug !== affiliate.referralSlug) {
+      const slugRe = affiliateSlugExactRe(nextSlug);
+      const taken = await Affiliate.findOne({
+        _id: { $ne: affiliate._id },
+        $or: [{ referralSlug: slugRe }, { email: slugRe }],
+      }).lean();
+      if (taken) {
+        return res.status(409).json({
+          success: false,
+          message: 'Another affiliate already uses this email or name for their referral link',
+        });
+      }
+      affiliate.referralSlug = nextSlug;
+    }
+
+    await affiliate.save();
+    res.json({
+      success: true,
+      affiliate: {
+        id: String(affiliate._id),
+        name: affiliate.name,
+        email: affiliate.email || '',
+        username: affiliate.username,
+        referralSlug: affiliate.referralSlug,
+        status: affiliate.status,
+        enrollLink: enrollLinkForSlug(affiliate.referralSlug, 'https://remoedph.com'),
+      },
+    });
+  } catch (err) {
+    console.error('Admin patch affiliate error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update affiliate' });
+  }
+});
+
 router.get('/referral-link', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const username = req.user.username;

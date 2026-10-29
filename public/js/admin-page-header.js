@@ -41,6 +41,7 @@
         payroll: 'Bi-weekly Salary Disbursement',
         'unique-link-commission': 'Unique Link Commission',
         'referral-leaderboard': 'Referral Leaderboard',
+        'affiliates': 'Affiliates',
         'student-subscriptions': 'Student Subscriptions',
         'issue-management': 'Class Issue Management',
         'classroom-recordings': 'Classroom Recordings',
@@ -181,6 +182,7 @@
         if (path.indexOf('admin-payroll') !== -1) return 'payroll';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'marketing';
         if (path.indexOf('admin-referral-leaderboard') !== -1) return 'marketing';
+        if (path.indexOf('admin-affiliates') !== -1) return 'marketing';
         if (path.indexOf('admin-student-subscriptions') !== -1) return 'student-subscriptions';
         if (path.indexOf('admin-issue-management') !== -1) return 'issue-management';
         if (path.indexOf('admin-classroom-recordings') !== -1) return 'classroom-recordings';

@@ -604,6 +604,7 @@ app.use('/api/teacher/training', noStoreProtectedResponse, teacherTrainingRoutes
 app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
+app.use('/api/affiliate', noStoreProtectedResponse, require('./affiliate'));
 app.use('/api/trials', noStoreProtectedResponse, require('./routes/trials'));
 {
   const { gardenRouter, playRouter, sharePageRouter, gardenAdminRouter } = require('./garden').buildRouters();
@@ -909,6 +910,18 @@ app.get(['/', '/index.html'], sendLandingHtml);
 app.get('/signup', (req, res) => {
   const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
   res.redirect(302, '/student-register.html' + q);
+});
+
+/** Affiliate marketing alias → assessment funnel; keeps ?ref= for referral-tracking.js */
+app.get(['/enroll', '/enroll/'], (req, res) => {
+  const params = new URLSearchParams();
+  Object.keys(req.query || {}).forEach((key) => {
+    const val = req.query[key];
+    if (Array.isArray(val)) val.forEach((v) => params.append(key, v));
+    else if (val != null) params.append(key, String(val));
+  });
+  const q = params.toString();
+  res.redirect(302, '/index.html' + (q ? `?${q}` : '') + '#assessment');
 });
 
 app.get('/badges/:id', async (req, res) => {

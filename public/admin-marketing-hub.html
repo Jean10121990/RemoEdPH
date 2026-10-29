@@ -26,11 +26,12 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Marketing Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Unique link commissions and a leaderboard of referral effort across students, teachers, and admins.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Unique link commissions, referral leaderboard, and Independent Growth Affiliates.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="Marketing Hub sections">
                     <button type="button" class="hub-tab hub-tab--active" role="tab" id="mkt-tab-commissions" aria-selected="true" aria-controls="mkt-panel-commissions" data-tab="commissions">Unique Link Commissions</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-leaderboard" aria-selected="false" aria-controls="mkt-panel-leaderboard" data-tab="leaderboard">Referral Leaderboard</button>
+                    <button type="button" class="hub-tab" role="tab" id="mkt-tab-affiliates" aria-selected="false" aria-controls="mkt-panel-affiliates" data-tab="affiliates">Affiliates</button>
                 </div>
 
                 <div id="mkt-panel-commissions" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-commissions">
@@ -39,6 +40,9 @@
                 <div id="mkt-panel-leaderboard" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-leaderboard" hidden>
                     <iframe id="iframe-mkt-leaderboard" class="hub-iframe" title="Referral Leaderboard"></iframe>
                 </div>
+                <div id="mkt-panel-affiliates" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-affiliates" hidden>
+                    <iframe id="iframe-mkt-affiliates" class="hub-iframe" title="Affiliates"></iframe>
+                </div>
             </div>
         </div>
     </div>
@@ -46,7 +50,8 @@
         (function () {
             var IFRAMES = {
                 commissions: { id: 'iframe-mkt-commissions', src: '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=3' },
-                leaderboard: { id: 'iframe-mkt-leaderboard', src: '/admin/admin-referral-leaderboard.html?adminEmbed=1&embedVer=1' }
+                leaderboard: { id: 'iframe-mkt-leaderboard', src: '/admin/admin-referral-leaderboard.html?adminEmbed=1&embedVer=1' },
+                affiliates: { id: 'iframe-mkt-affiliates', src: '/admin/admin-affiliates.html?adminEmbed=1&embedVer=1' }
             };
 
             function checkAuth() {
@@ -78,7 +83,9 @@
 
             function setHash(tab) {
                 try {
-                    var h = tab === 'leaderboard' ? '#leaderboard' : '#commissions';
+                    var h = '#commissions';
+                    if (tab === 'leaderboard') h = '#leaderboard';
+                    else if (tab === 'affiliates') h = '#affiliates';
                     if (window.location.hash !== h) {
                         history.replaceState(null, '', 'admin-marketing-hub.html' + h);
                     }
@@ -86,10 +93,13 @@
             }
 
             function showTab(tab) {
-                var key = tab === 'leaderboard' ? 'leaderboard' : 'commissions';
+                var key = 'commissions';
+                if (tab === 'leaderboard') key = 'leaderboard';
+                else if (tab === 'affiliates') key = 'affiliates';
                 var map = [
                     { key: 'commissions', t: 'mkt-tab-commissions', p: 'mkt-panel-commissions' },
-                    { key: 'leaderboard', t: 'mkt-tab-leaderboard', p: 'mkt-panel-leaderboard' }
+                    { key: 'leaderboard', t: 'mkt-tab-leaderboard', p: 'mkt-panel-leaderboard' },
+                    { key: 'affiliates', t: 'mkt-tab-affiliates', p: 'mkt-panel-affiliates' }
                 ];
                 map.forEach(function (row) {
                     var on = row.key === key;
@@ -107,7 +117,9 @@
 
             function tabFromHash() {
                 var h = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
-                return h === 'leaderboard' ? 'leaderboard' : 'commissions';
+                if (h === 'leaderboard') return 'leaderboard';
+                if (h === 'affiliates') return 'affiliates';
+                return 'commissions';
             }
 
             document.addEventListener('DOMContentLoaded', function () {

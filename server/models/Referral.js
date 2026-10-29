@@ -4,8 +4,8 @@ const { piiContactString } = require('../utils/piiMongoose');
 const referralSchema = new mongoose.Schema(
   {
     referralCode: { type: String, required: true, index: true },
-    ownerType: { type: String, enum: ['teacher', 'admin'], required: true, index: true },
-    ownerId: { type: String, required: true, index: true }, // teacherId or admin username
+    ownerType: { type: String, enum: ['teacher', 'admin', 'affiliate'], required: true, index: true },
+    ownerId: { type: String, required: true, index: true }, // teacherId, admin username, or affiliate _id
     teacherId: { type: String, required: true, index: true }, // legacy mirror of ownerId for compatibility
     studentId: { type: String, required: true, index: true }, // Student _id as string
     studentName: { type: String, default: '' },
@@ -14,6 +14,9 @@ const referralSchema = new mongoose.Schema(
     subscriptionPlan: { type: String, default: '' }, // 1month/3months/6months/1year
     amountPaid: { type: Number, default: 0 }, // subscription amount (PHP)
     commissionAmount: { type: Number, default: 1000 }, // plan-tier commission (₱1000/1500/2000/2500), see utils/referralCommissionTiers.js
+    /** Affiliate program: 5% monthly while enrolled (teachers/admins leave default). */
+    monthlyCommissionPercentage: { type: Number, default: 0 },
+    recurringActive: { type: Boolean, default: false },
     status: { type: String, enum: ['pending', 'successful', 'void'], default: 'successful' }
   },
   {

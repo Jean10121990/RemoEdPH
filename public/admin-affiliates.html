@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/remoed-gtag.js?v=ga-1"></script>
+  <script src="js/security-guard.js?v=2"></script>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/admin-standalone-redirect.js"></script>
+  <script src="js/admin-embed-init.js"></script>
+  <title>Affiliates - RemoEdPH Admin</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body.page-admin-affiliates { background: #f6fbff; }
+    body.page-admin-affiliates .remoed-content { padding: 16px 20px 40px; }
+    body.page-admin-affiliates .lead { margin: 0 0 14px; color: #64748b; font-size: 0.9rem; max-width: 820px; }
+    body.page-admin-affiliates .card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+    }
+    body.page-admin-affiliates .grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+    }
+    body.page-admin-affiliates label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px; }
+    body.page-admin-affiliates input, body.page-admin-affiliates select, body.page-admin-affiliates textarea {
+      width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+    }
+    body.page-admin-affiliates button.btn {
+      border: 0; border-radius: 8px; padding: 8px 12px; background: #47BC3E; color: #fff; font-weight: 800; cursor: pointer;
+    }
+    body.page-admin-affiliates button.btn-outline {
+      background: #fff; color: #166534; border: 1px solid #47BC3E;
+    }
+    body.page-admin-affiliates table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    body.page-admin-affiliates th, body.page-admin-affiliates td {
+      padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 0.88rem;
+    }
+    body.page-admin-affiliates .table-wrap { overflow: auto; max-height: 520px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
+    body.page-admin-affiliates .error {
+      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-weight: 600;
+    }
+    body.page-admin-affiliates .ok {
+      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
+      background: #ecfdf3; border: 1px solid #bbf7d0; color: #166534; font-weight: 600;
+    }
+    body.page-admin-affiliates .muted { color: #64748b; font-size: 0.8rem; }
+    @media (max-width: 800px) {
+      body.page-admin-affiliates .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="page-admin-affiliates">
+  <div class="remoed-main">
+    <div id="admin-sidebar-root"></div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js?v=app-shell-17"></script>
+    <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'marketing'); }</script>
+    <div class="remoed-content">
+      <div class="remoed-section">
+        <div class="remoed-section-title">Independent Growth Affiliates</div>
+        <p class="lead">
+          Create affiliate accounts after off-platform applications. Their enroll link uses
+          <strong>email</strong> (or full name) as <code>?ref=</code> — not an opaque code.
+          Portal: <code>/affiliate-login.html</code>
+        </p>
+        <div id="msg-error" class="error" role="alert"></div>
+        <div id="msg-ok" class="ok" role="status"></div>
+        <div class="card">
+          <h3 style="margin:0 0 10px;font-size:0.95rem;">Create affiliate</h3>
+          <form id="create-form">
+            <div class="grid">
+              <div>
+                <label for="c-name">Complete name</label>
+                <input id="c-name" required />
+              </div>
+              <div>
+                <label for="c-email">Email (preferred for referral link)</label>
+                <input id="c-email" type="email" />
+              </div>
+              <div>
+                <label for="c-phone">Phone</label>
+                <input id="c-phone" />
+              </div>
+              <div>
+                <label for="c-username">Username (login)</label>
+                <input id="c-username" placeholder="defaults to email" />
+              </div>
+              <div>
+                <label for="c-password">Temporary password (min 8)</label>
+                <input id="c-password" type="password" required minlength="8" />
+              </div>
+              <div>
+                <label for="c-status">Status</label>
+                <select id="c-status">
+                  <option value="active">Active</option>
+                  <option value="pending" selected>Pending</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:10px;">
+              <label for="c-notes">Notes</label>
+              <textarea id="c-notes" rows="2"></textarea>
+            </div>
+            <label style="margin-top:10px;display:flex;align-items:center;gap:8px;font-weight:600;">
+              <input type="checkbox" id="c-christian" checked /> Christian values background
+            </label>
+            <div style="margin-top:12px;">
+              <button type="submit" class="btn">Create affiliate</button>
+            </div>
+          </form>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email / slug</th>
+                <th>Username</th>
+                <th>Status</th>
+                <th>Enroll link</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="6" class="muted" style="padding:20px;text-align:center;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function token() {
+        return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+          ? RemoedAdminSession.getAuthToken()
+          : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '')) || '';
+      }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function showError(msg) {
+        var el = document.getElementById('msg-error');
+        var ok = document.getElementById('msg-ok');
+        ok.style.display = 'none';
+        if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.textContent = msg; el.style.display = 'block';
+      }
+      function showOk(msg) {
+        var el = document.getElementById('msg-ok');
+        var er = document.getElementById('msg-error');
+        er.style.display = 'none';
+        el.textContent = msg; el.style.display = 'block';
+      }
+
+      async function loadList() {
+        var tbody = document.getElementById('tbody');
+        try {
+          var res = await fetch('/api/admin/affiliates', {
+            headers: { Authorization: 'Bearer ' + token() },
+            credentials: 'include',
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load');
+          var rows = data.affiliates || [];
+          if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="muted" style="padding:20px;text-align:center;">No affiliates yet.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = rows.map(function (a) {
+            return (
+              '<tr data-id="' + esc(a.id) + '">' +
+              '<td><strong>' + esc(a.name) + '</strong></td>' +
+              '<td><code>' + esc(a.referralSlug) + '</code><br><span class="muted">' + esc(a.email) + '</span></td>' +
+              '<td>' + esc(a.username) + '</td>' +
+              '<td>' +
+              '<select class="status-sel">' +
+              ['pending', 'active', 'inactive'].map(function (s) {
+                return '<option value="' + s + '"' + (a.status === s ? ' selected' : '') + '>' + s + '</option>';
+              }).join('') +
+              '</select></td>' +
+              '<td style="max-width:220px;word-break:break-all;font-size:0.78rem;">' + esc(a.enrollLink) + '</td>' +
+              '<td><button type="button" class="btn btn-outline btn-save">Save</button></td>' +
+              '</tr>'
+            );
+          }).join('');
+
+          tbody.querySelectorAll('.btn-save').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+              var tr = btn.closest('tr');
+              var id = tr.getAttribute('data-id');
+              var status = tr.querySelector('.status-sel').value;
+              showError('');
+              try {
+                var res2 = await fetch('/api/admin/affiliates/' + encodeURIComponent(id), {
+                  method: 'PATCH',
+                  headers: {
+                    Authorization: 'Bearer ' + token(),
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({ status: status }),
+                });
+                var d2 = await res2.json().catch(function () { return {}; });
+                if (!res2.ok || !d2.success) throw new Error(d2.message || 'Update failed');
+                showOk('Updated ' + (d2.affiliate && d2.affiliate.name ? d2.affiliate.name : 'affiliate'));
+              } catch (e) {
+                showError(e.message || String(e));
+              }
+            });
+          });
+        } catch (e) {
+          tbody.innerHTML = '<tr><td colspan="6" class="muted" style="padding:20px;text-align:center;">Could not load affiliates.</td></tr>';
+          showError(e.message || String(e));
+        }
+      }
+
+      document.getElementById('create-form').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        showError('');
+        var body = {
+          name: document.getElementById('c-name').value.trim(),
+          email: document.getElementById('c-email').value.trim(),
+          phone: document.getElementById('c-phone').value.trim(),
+          username: document.getElementById('c-username').value.trim(),
+          password: document.getElementById('c-password').value,
+          status: document.getElementById('c-status').value,
+          notes: document.getElementById('c-notes').value.trim(),
+          christianValuesBackground: document.getElementById('c-christian').checked,
+        };
+        try {
+          var res = await fetch('/api/admin/affiliates', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + token(),
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(body),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) throw new Error(data.message || 'Create failed');
+          showOk('Created ' + data.affiliate.name + ' — link: ' + data.affiliate.enrollLink);
+          document.getElementById('create-form').reset();
+          document.getElementById('c-christian').checked = true;
+          document.getElementById('c-status').value = 'pending';
+          loadList();
+        } catch (e) {
+          showError(e.message || String(e));
+        }
+      });
+
+      if (!token()) {
+        window.location.href = (function () {
+          try {
+            var p = localStorage.getItem('remoedAdminEntryPath');
+            if (p && p.charAt(0) === '/') return p;
+          } catch (e) {}
+          return 'index.html';
+        })();
+        return;
+      }
+      loadList();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/remoed-gtag.js?v=ga-1"></script>
+  <script src="js/security-guard.js?v=2"></script>
+  <script src="js/user-session.js"></script>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Affiliate Dashboard - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body.page-affiliate-dash {
+      margin: 0;
+      background: linear-gradient(180deg, #eef9ff 0%, #f8fafc 40%, #fff 100%);
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #0f172a;
+    }
+    .aff-wrap { max-width: 920px; margin: 0 auto; padding: 24px 18px 48px; }
+    .aff-top {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start;
+      gap: 12px; margin-bottom: 18px;
+    }
+    .aff-top h1 { margin: 0; font-size: 1.4rem; }
+    .aff-top .muted { color: #64748b; font-size: 0.9rem; margin: 6px 0 0; }
+    .aff-top .logout {
+      border: 1px solid #cbd5e1; background: #fff; border-radius: 8px;
+      padding: 8px 12px; font-weight: 700; cursor: pointer; color: #334155;
+    }
+    .card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+      padding: 16px 18px; margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 1rem; }
+    .metrics {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px;
+    }
+    .metric { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; }
+    .metric h3 { margin: 0 0 4px; font-size: 0.75rem; color: #64748b; font-weight: 700; }
+    .metric .big { font-size: 1.5rem; font-weight: 800; }
+    .link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .link-url {
+      flex: 1 1 220px; word-break: break-all; font-size: 0.88rem; font-weight: 700;
+      color: #166534; background: #ecfdf3; border-radius: 8px; padding: 10px 12px;
+    }
+    .btn {
+      border: 0; border-radius: 8px; padding: 9px 12px; background: #47BC3E;
+      color: #fff; font-weight: 800; cursor: pointer;
+    }
+    .btn:active { transform: scale(0.98); }
+    .muted { color: #64748b; font-size: 0.82rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 0.88rem; }
+    th { color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .empty { padding: 20px; text-align: center; color: #64748b; }
+    .error {
+      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-weight: 600;
+    }
+    .pill {
+      display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 800;
+      background: #ecfdf3; color: #166534;
+    }
+    .pill.ended { background: #f1f5f9; color: #64748b; }
+    @media (max-width: 700px) {
+      .metrics { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="page-affiliate-dash">
+  <div class="aff-wrap">
+    <div class="aff-top">
+      <div>
+        <h1>Independent Growth Affiliate</h1>
+        <p class="muted" id="greet">Welcome</p>
+      </div>
+      <button type="button" class="logout" id="btn-logout">Sign out</button>
+    </div>
+    <div id="dash-error" class="error" role="alert"></div>
+    <div class="metrics">
+      <div class="metric"><h3>Link clicks</h3><div class="big" id="m-clicks">0</div></div>
+      <div class="metric"><h3>Active enrolled</h3><div class="big" id="m-active">0</div></div>
+      <div class="metric"><h3>Est. this month</h3><div class="big" id="m-earn">₱0</div></div>
+    </div>
+    <div class="card">
+      <h2>Your unique referral link</h2>
+      <p class="muted" style="margin-top:0;">Share this link. Families open the level assessment with your email or name as the referral.</p>
+      <div class="link-row">
+        <div class="link-url" id="enroll-link">—</div>
+        <button type="button" class="btn" id="btn-copy">Copy link</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Active referred students</h2>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr><th>Initials</th><th>Student ID</th><th>Plan</th><th>5% status</th></tr>
+          </thead>
+          <tbody id="tbody-active">
+            <tr><td colspan="4" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Monthly payout history</h2>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr><th>Month</th><th>Type</th><th>Student</th><th>Amount</th></tr>
+          </thead>
+          <tbody id="tbody-payout">
+            <tr><td colspan="4" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function token() {
+        try {
+          if (window.RemoedAuthToken && RemoedAuthToken.getAffiliateToken) {
+            return RemoedAuthToken.getAffiliateToken() || '';
+          }
+        } catch (e) {}
+        return localStorage.getItem('remoed_affiliate_token') || '';
+      }
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+
+      function peso(n) {
+        return '₱' + (Number(n) || 0).toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
+      }
+
+      function showError(msg) {
+        var el = document.getElementById('dash-error');
+        if (!msg) {
+          el.style.display = 'none';
+          el.textContent = '';
+          return;
+        }
+        el.textContent = msg;
+        el.style.display = 'block';
+      }
+
+      function logout() {
+        try {
+          localStorage.removeItem('remoed_affiliate_token');
+          localStorage.removeItem('affiliateId');
+          localStorage.removeItem('userType');
+          localStorage.removeItem('userRole');
+        } catch (e) {}
+        window.location.href = 'affiliate-login.html';
+      }
+
+      document.getElementById('btn-logout').addEventListener('click', logout);
+
+      document.getElementById('btn-copy').addEventListener('click', function () {
+        var link = document.getElementById('enroll-link').textContent || '';
+        if (!link || link === '—') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(function () {
+            var b = document.getElementById('btn-copy');
+            var prev = b.textContent;
+            b.textContent = 'Copied!';
+            setTimeout(function () { b.textContent = prev; }, 1200);
+          });
+        }
+      });
+
+      async function load() {
+        if (!token()) {
+          window.location.href = 'affiliate-login.html';
+          return;
+        }
+        showError('');
+        try {
+          var res = await fetch('/api/affiliate/dashboard', {
+            headers: { Authorization: 'Bearer ' + token() },
+            credentials: 'include',
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (res.status === 401 || res.status === 403) {
+            logout();
+            return;
+          }
+          if (!res.ok || !data.success) {
+            throw new Error(data.message || data.error || 'Could not load dashboard');
+          }
+
+          document.getElementById('greet').textContent =
+            'Signed in as ' + (data.affiliate && data.affiliate.name ? data.affiliate.name : 'affiliate');
+          document.getElementById('enroll-link').textContent = data.enrollLink || '—';
+          document.getElementById('m-clicks').textContent = String((data.metrics && data.metrics.linkClicks) || 0);
+          document.getElementById('m-active').textContent = String(
+            (data.metrics && data.metrics.activeEnrolledStudents) || 0
+          );
+          document.getElementById('m-earn').textContent = peso(
+            (data.metrics && data.metrics.estimatedMonthlyEarnings) || 0
+          );
+
+          var active = data.activeStudents || [];
+          var tActive = document.getElementById('tbody-active');
+          if (!active.length) {
+            tActive.innerHTML = '<tr><td colspan="4" class="empty">No active enrolled students yet.</td></tr>';
+          } else {
+            tActive.innerHTML = active
+              .map(function (r) {
+                return (
+                  '<tr>' +
+                  '<td><strong>' + esc(r.initials) + '</strong></td>' +
+                  '<td><code>' + esc(String(r.studentId || '').slice(-8)) + '</code></td>' +
+                  '<td>' + esc(r.plan || '—') + '</td>' +
+                  '<td><span class="pill">' + esc(r.recurringStatus || 'Active') + '</span></td>' +
+                  '</tr>'
+                );
+              })
+              .join('');
+          }
+
+          var hist = data.payoutHistory || [];
+          var tPay = document.getElementById('tbody-payout');
+          if (!hist.length) {
+            tPay.innerHTML = '<tr><td colspan="4" class="empty">No payouts yet.</td></tr>';
+          } else {
+            tPay.innerHTML = hist
+              .map(function (r) {
+                return (
+                  '<tr>' +
+                  '<td>' + esc(r.yyyymm || '—') + '</td>' +
+                  '<td>' + esc(r.label || r.type) + '</td>' +
+                  '<td>' + esc(r.initials || '—') +
+                  ' <span class="muted">(' + esc(String(r.studentId || '').slice(-8)) + ')</span></td>' +
+                  '<td><strong>' + peso(r.amountPhp) + '</strong></td>' +
+                  '</tr>'
+                );
+              })
+              .join('');
+          }
+        } catch (err) {
+          showError(err.message || String(err));
+          document.getElementById('tbody-active').innerHTML =
+            '<tr><td colspan="4" class="empty">Could not load.</td></tr>';
+          document.getElementById('tbody-payout').innerHTML =
+            '<tr><td colspan="4" class="empty">Could not load.</td></tr>';
+        }
+      }
+
+      load();
+    })();
+  </script>
+</body>
+</html>

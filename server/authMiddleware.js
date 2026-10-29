@@ -155,9 +155,13 @@ const verifyToken = async (req, res, next) => {
       normRoleClaim(decoded.userRole) === 'student' ||
       normRoleClaim(decoded.userType) === 'student' ||
       (decoded.studentId && !decoded.teacherId);
+    const affiliateish =
+      normRoleClaim(decoded.role) === 'affiliate' ||
+      normRoleClaim(decoded.userType) === 'affiliate' ||
+      !!decoded.affiliateId;
 
     if (pathOnly.startsWith('/api/admin')) {
-      if (!adminClaims && (teacherish || studentish)) {
+      if (!adminClaims && (teacherish || studentish || affiliateish)) {
         return res.status(403).json({
           error: 'Admin token required for admin routes.',
           code: 'WRONG_PORTAL_TOKEN',
@@ -165,9 +169,18 @@ const verifyToken = async (req, res, next) => {
       }
     }
     if (pathOnly.startsWith('/api/student')) {
-      if (teacherish && !studentish && !adminClaims) {
+      if ((teacherish || affiliateish) && !studentish && !adminClaims) {
         return res.status(403).json({
           error: 'Student token required for student routes.',
+          code: 'WRONG_PORTAL_TOKEN',
+        });
+      }
+    }
+    if (pathOnly.startsWith('/api/affiliate')) {
+      const isLogin = /\/api\/affiliate\/login$/i.test(pathOnly.replace(/\/+$/, '') || pathOnly);
+      if (!isLogin && !affiliateish && (teacherish || studentish || adminClaims)) {
+        return res.status(403).json({
+          error: 'Affiliate token required for affiliate routes.',
           code: 'WRONG_PORTAL_TOKEN',
         });
       }
@@ -183,7 +196,7 @@ const verifyToken = async (req, res, next) => {
       (method === 'GET' && /\/api\/teacher\/booking\/by-classroom\//.test(normPath)) ||
       (method === 'GET' && /\/api\/teacher\/public\//.test(normPath));
     if (pathOnly.startsWith('/api/teacher') && !studentMayCallThisTeacherRoute) {
-      if (studentish && !teacherish && !adminClaims) {
+      if ((studentish || affiliateish) && !teacherish && !adminClaims) {
         return res.status(403).json({
           error: 'Teacher token required for teacher routes.',
           code: 'WRONG_PORTAL_TOKEN',

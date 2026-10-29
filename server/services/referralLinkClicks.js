@@ -2,14 +2,18 @@ const ReferralLinkClick = require('../models/ReferralLinkClick');
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const Admin = require('../models/Admin');
+const Affiliate = require('../models/Affiliate');
+const { affiliateSlugExactRe } = require('../utils/affiliateReferralSlug');
 
 function normalizeCode(raw) {
-  return String(raw || '').trim().slice(0, 64);
+  // Emails / full names for affiliates can exceed short teacher codes.
+  return String(raw || '').trim().slice(0, 254);
 }
 
 /**
  * Resolve which portal owns this share/referral code.
- * Students use `shareCode`; teachers and admins use `referralCode`.
+ * Students use `shareCode`; teachers and admins use `referralCode`;
+ * affiliates use `referralSlug` (email or full name).
  */
 async function resolveReferralCodeOwner(rawCode) {
   const code = normalizeCode(rawCode);
@@ -28,6 +32,23 @@ async function resolveReferralCodeOwner(rawCode) {
   const admin = await Admin.findOne({ referralCode: code }).select('username').lean();
   if (admin) {
     return { referralCode: code, ownerType: 'admin', ownerId: String(admin.username) };
+  }
+
+  const slugRe = affiliateSlugExactRe(code);
+  if (slugRe) {
+    const affiliate = await Affiliate.findOne({
+      status: { $ne: 'inactive' },
+      $or: [{ referralSlug: slugRe }, { email: slugRe }],
+    })
+      .select('_id referralSlug')
+      .lean();
+    if (affiliate) {
+      return {
+        referralCode: String(affiliate.referralSlug || code),
+        ownerType: 'affiliate',
+        ownerId: String(affiliate._id),
+      };
+    }
   }
 
   return null;

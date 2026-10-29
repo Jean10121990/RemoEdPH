@@ -55,6 +55,7 @@ const PERMISSION_CATALOG = [
   { key: 'fee:payslip', module: 'Admin Fee', label: 'Admin Fee — Generate Payslip', sortOrder: 560 },
   // Marketing
   { key: 'mkt:commissions_view', module: 'Marketing Hub', label: 'Unique Link Commissions', sortOrder: 600 },
+  { key: 'mkt:affiliates_manage', module: 'Marketing Hub', label: 'Affiliates — Create / Manage', sortOrder: 605 },
   { key: 'mkt:announcements_create', module: 'Marketing Hub', label: 'Create / Edit Announcements', sortOrder: 610 },
   // System
   { key: 'system:settings', module: 'System', label: 'System Settings APIs', sortOrder: 700 },
@@ -115,6 +116,7 @@ const ROLE_SEED_PERMISSIONS = {
     'acct:qr_confirm',
     'acct:export',
     'mkt:commissions_view',
+    'mkt:affiliates_manage',
   ],
   admin_marketing: [
     'nav:dashboard',
@@ -129,6 +131,7 @@ const ROLE_SEED_PERMISSIONS = {
     'fee:view',
     'fee:payslip',
     'mkt:commissions_view',
+    'mkt:affiliates_manage',
     'mkt:announcements_create',
   ],
 };
@@ -177,7 +180,7 @@ const PATH_PERMISSION_RULES = [
   { re: /admin-qa-hub|admin-lessons-library|admin-classroom-recordings|admin-issue-management/, key: 'nav:qa_hub' },
   { re: /admin-accounting-hub|admin-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
   { re: /admin-fee/, key: 'nav:admin_fee' },
-  { re: /admin-marketing-hub|admin-unique-link-commission|admin-referral-leaderboard/, key: 'nav:marketing' },
+  { re: /admin-marketing-hub|admin-unique-link-commission|admin-referral-leaderboard|admin-affiliates/, key: 'nav:marketing' },
   { re: /admin-announcements/, key: 'nav:announcements' },
   { re: /admin-videos/, key: 'nav:videos' },
   { re: /admin-reports|garden-credits/, key: 'nav:reports' },
@@ -197,6 +200,7 @@ const API_PATH_PERMISSION_RULES = [
   { re: /classroom-recordings/, key: 'qa:recordings_view' },
   { re: /teacher-pipeline/, key: 'hr:pipeline' },
   { re: /unique-link|referral-link/, key: 'mkt:commissions_view' },
+  { re: /\/affiliates(\/|$|\?)/, key: 'mkt:affiliates_manage' },
   { re: /garden-credits/, key: 'nav:reports' },
   { re: /^\/user(\/|$|\?)/, key: 'hr:users_edit' },
   { re: /admins-list|^\/admins$|teachers-list|students-list/, key: 'hr:users_view' },
@@ -269,6 +273,14 @@ async function seedAdminRbac() {
         existing.permissions.indexOf('acct:qr_confirm') === -1
       ) {
         await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'acct:qr_confirm' } });
+      }
+      if (
+        (slug === 'admin_marketing' || slug === 'admin_accounting') &&
+        existing &&
+        Array.isArray(existing.permissions) &&
+        existing.permissions.indexOf('mkt:affiliates_manage') === -1
+      ) {
+        await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'mkt:affiliates_manage' } });
       }
     }
     return true;

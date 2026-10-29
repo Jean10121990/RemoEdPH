@@ -9,7 +9,7 @@ const referralLinkClickSchema = new mongoose.Schema(
     referralCode: { type: String, required: true, unique: true, trim: true, index: true },
     ownerType: {
       type: String,
-      enum: ['student', 'teacher', 'admin', 'unknown'],
+      enum: ['student', 'teacher', 'admin', 'affiliate', 'unknown'],
       default: 'unknown',
     },
     ownerId: { type: String, default: '' },

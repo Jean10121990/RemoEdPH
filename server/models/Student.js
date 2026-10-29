@@ -229,7 +229,7 @@ const studentSchema = new mongoose.Schema({
   // Referral tracking (teacher referral link -> student signup/subscription)
   referralCode: { type: String, default: null },
   referredByTeacherId: { type: String, default: null }, // legacy (teacher only)
-  referredByOwnerType: { type: String, enum: ['teacher', 'admin', null], default: null },
+  referredByOwnerType: { type: String, enum: ['teacher', 'admin', 'affiliate', null], default: null },
   referredByOwnerId: { type: String, default: null }, // teacherId or admin username
   /** Outbound student-to-student code. Not the inbound teacher/admin referralCode. */
   shareCode: { type: String, unique: true, sparse: true },

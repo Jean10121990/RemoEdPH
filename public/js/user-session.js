@@ -1,6 +1,6 @@
 /**
- * Shared session helpers for Student/Teacher/Admin portals.
- * Role-specific storage: remoed_admin_token, remoed_teacher_token, remoed_student_token
+ * Shared session helpers for Student/Teacher/Admin/Affiliate portals.
+ * Role-specific storage: remoed_admin_token, remoed_teacher_token, remoed_student_token, remoed_affiliate_token
  * (legacy: remoed_*_auth, adminToken, remoed_user_token, token)
  * Bearer token for /api/* is chosen from the current URL path so admin and teacher sessions do not overwrite each other.
  */
@@ -13,6 +13,7 @@
   var LS_ADMIN = 'remoed_admin_token';
   var LS_TEACHER = 'remoed_teacher_token';
   var LS_STUDENT = 'remoed_student_token';
+  var LS_AFFILIATE = 'remoed_affiliate_token';
 
   function portalKindFromLocation() {
     try {
@@ -23,6 +24,7 @@
       if (p.indexOf('super-monitor') !== -1) return 'admin';
       if (p.startsWith('/admin-') || p.indexOf('/admin/') !== -1) return 'admin';
       if (p.indexOf('forgot-password') !== -1 || p.indexOf('reset-password') !== -1) return '';
+      if (p.startsWith('/affiliate-') || p.indexOf('/affiliate/') !== -1) return 'affiliate';
       if (p.startsWith('/teacher-')) return 'teacher';
       if (p.startsWith('/student-')) return 'student';
       if (p.indexOf('change-password') !== -1) {
@@ -97,6 +99,7 @@
       try {
         var ut2 = (global.localStorage.getItem('userType') || global.localStorage.getItem('userRole') || '').toLowerCase();
         if (ut2 === 'admin') return 'admin';
+        if (ut2 === 'affiliate') return 'affiliate';
         if (ut2 === 'teacher') return 'teacher';
         if (ut2 === 'student') return 'student';
       } catch (_e2) {}
@@ -159,6 +162,11 @@
           global.localStorage.getItem('token') ||
           global.sessionStorage.getItem('token') ||
           '';
+      } else if (kind === 'affiliate') {
+        token =
+          global.localStorage.getItem(LS_AFFILIATE) ||
+          global.sessionStorage.getItem(LS_AFFILIATE) ||
+          '';
       } else {
         token =
           global.localStorage.getItem('remoed_user_token') ||
@@ -167,6 +175,7 @@
           global.sessionStorage.getItem('token') ||
           global.localStorage.getItem(LS_TEACHER) ||
           global.localStorage.getItem(LS_STUDENT) ||
+          global.localStorage.getItem(LS_AFFILIATE) ||
           '';
       }
       syncMediaAuthCookie(token);
@@ -225,6 +234,14 @@
         global.localStorage.removeItem('userRole');
         return;
       }
+      if (kind === 'affiliate') {
+        global.localStorage.removeItem(LS_AFFILIATE);
+        global.sessionStorage.removeItem(LS_AFFILIATE);
+        global.localStorage.removeItem('affiliateId');
+        global.localStorage.removeItem('userType');
+        global.localStorage.removeItem('userRole');
+        return;
+      }
       global.localStorage.removeItem(LS_ADMIN);
       global.sessionStorage.removeItem(LS_ADMIN);
       global.localStorage.removeItem('remoed_admin_auth');
@@ -239,6 +256,8 @@
       global.sessionStorage.removeItem(LS_STUDENT);
       global.localStorage.removeItem('remoed_student_auth');
       global.sessionStorage.removeItem('remoed_student_auth');
+      global.localStorage.removeItem(LS_AFFILIATE);
+      global.sessionStorage.removeItem(LS_AFFILIATE);
       global.localStorage.removeItem('remoed_user_token');
       global.sessionStorage.removeItem('remoed_user_token');
       global.localStorage.removeItem('token');
