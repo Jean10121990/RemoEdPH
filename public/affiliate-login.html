@@ -6,61 +6,262 @@
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Affiliate Login - RemoEdPH</title>
-  <link rel="stylesheet" href="modern-styles.css">
-  <link rel="stylesheet" href="style.css">
+  <title>Affiliate Login — RemoEdPH</title>
+  <link rel="stylesheet" href="css/password-toggle.css">
   <style>
+    :root {
+      --remo-green: #47BC3E;
+      --remo-blue: #00aeef;
+      --remo-yellow: #fdd835;
+      --remo-ink: #0a3d18;
+      --remo-muted: #4a6575;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
     body.page-affiliate-login {
-      min-height: 100vh;
       margin: 0;
-      background: linear-gradient(160deg, #e8f7ff 0%, #f0fdf4 55%, #fff 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-      padding: 24px;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+      background: linear-gradient(165deg, #f0fdf4 0%, #e8f8ec 45%, #fffbeb 100%);
+      background-attachment: fixed;
+    }
+    .aff-wrap {
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 2.5rem 1rem 3rem;
     }
     .aff-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.92);
+      padding: 1.5rem;
+      box-shadow: 0 4px 24px -4px rgba(71, 188, 62, 0.12), 0 8px 32px -8px rgba(0, 174, 239, 0.1);
+      backdrop-filter: blur(8px);
+    }
+    @media (min-width: 768px) {
+      .aff-card { padding: 2.5rem; }
+    }
+    .aff-orb {
+      pointer-events: none;
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(48px);
+    }
+    .aff-orb-tr {
+      right: -5rem; top: -5rem; width: 16rem; height: 16rem;
+      background: linear-gradient(to bottom right, rgba(13, 148, 136, 0.2), rgba(37, 99, 235, 0.15), rgba(234, 179, 8, 0.25));
+    }
+    .aff-orb-bl {
+      left: -4rem; bottom: -6rem; width: 14rem; height: 14rem;
+      background: linear-gradient(to top right, rgba(37, 99, 235, 0.1), rgba(234, 179, 8, 0.2));
+    }
+    .aff-header {
+      position: relative;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .aff-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .aff-brand img { height: 48px; width: auto; }
+    .aff-kicker {
+      margin: 0;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--remo-green);
+    }
+    .aff-title {
+      margin: 0.5rem 0 0;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      background: linear-gradient(90deg, var(--remo-ink), var(--remo-blue), var(--remo-green));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .aff-lead {
+      margin: 0.75rem 0 0;
+      max-width: 36rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--remo-muted);
+    }
+    .aff-badge {
+      display: inline-block;
+      margin-top: 0.85rem;
+      border-radius: 999px;
+      background: rgba(254, 240, 138, 0.8);
+      color: #78350f;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 0.2rem 0.7rem;
+    }
+    .aff-layout {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    @media (min-width: 768px) {
+      .aff-layout { grid-template-columns: 1.1fr 0.9fr; }
+    }
+    .aff-cast {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: center;
+    }
+    .aff-cast img.family {
+      width: min(100%, 280px);
+      height: auto;
+      filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.12));
+    }
+    .aff-cast-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .aff-cast-row img {
+      height: 72px;
+      width: auto;
+      object-fit: contain;
+    }
+    .aff-cast p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--remo-muted);
+      line-height: 1.45;
+      max-width: 16rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .field { margin-bottom: 1rem; }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
       width: 100%;
-      max-width: 420px;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
       background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 28px 24px;
-      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+      padding: 0.65rem 0.8rem;
+      font-size: 0.9rem;
+      color: var(--remo-ink);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .aff-card h1 { margin: 0 0 6px; font-size: 1.35rem; color: #0f172a; }
-    .aff-card .lead { margin: 0 0 20px; color: #64748b; font-size: 0.9rem; line-height: 1.45; }
-    .aff-card label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px; }
-    .aff-card input {
-      width: 100%; box-sizing: border-box; padding: 10px 12px;
-      border: 1px solid #d1d5db; border-radius: 8px; margin-bottom: 14px; font-size: 0.95rem;
+    input:focus {
+      outline: none;
+      border-color: var(--remo-blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
     }
-    .aff-card button {
-      width: 100%; border: 0; border-radius: 8px; padding: 11px 14px;
-      background: #47BC3E; color: #fff; font-weight: 800; cursor: pointer; font-size: 0.95rem;
+    .remoed-pw-wrap {
+      border-radius: 0.75rem;
+      border-color: #e2e8f0;
     }
-    .aff-card button:disabled { opacity: 0.6; cursor: wait; }
+    .btn-primary {
+      width: 100%;
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1.35rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--remo-green), #0f766e);
+      color: #fff;
+      box-shadow: 0 10px 18px -8px rgba(13, 148, 136, 0.45);
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-primary:disabled {
+      cursor: wait;
+      background: #cbd5e1;
+      box-shadow: none;
+    }
     .aff-error {
-      display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
-      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 0.85rem; font-weight: 600;
+      display: none;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
     }
-    .aff-brand { font-weight: 800; color: #00aeef; letter-spacing: 0.02em; margin-bottom: 12px; font-size: 0.85rem; }
+    .aff-hint {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--remo-muted);
+      text-align: center;
+    }
   </style>
 </head>
 <body class="page-affiliate-login">
-  <div class="aff-card">
-    <div class="aff-brand">RemoEdPH</div>
-    <h1>Affiliate portal</h1>
-    <p class="lead">Sign in to view your referral link, active enrollments, and monthly payout history.</p>
-    <div id="login-error" class="aff-error" role="alert"></div>
-    <form id="login-form">
-      <label for="username">Username or email</label>
-      <input id="username" name="username" autocomplete="username" required />
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required />
-      <button type="submit" id="btn-login">Sign in</button>
-    </form>
+  <div class="aff-wrap">
+    <div class="aff-card">
+      <div class="aff-orb aff-orb-tr" aria-hidden="true"></div>
+      <div class="aff-orb aff-orb-bl" aria-hidden="true"></div>
+      <header class="aff-header">
+        <div class="aff-brand">
+          <img src="/images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.onerror=null;this.src='/remoed-logo.png';" />
+        </div>
+        <p class="aff-kicker">RemoEd · Growth affiliates</p>
+        <h1 class="aff-title">Affiliate portal</h1>
+        <p class="aff-lead">
+          Sign in to copy your unique enroll link, track active referred students, and review monthly payout history.
+        </p>
+        <span class="aff-badge">Independent Growth Affiliate</span>
+      </header>
+
+      <div class="aff-layout">
+        <div>
+          <div id="login-error" class="aff-error" role="alert"></div>
+          <form id="login-form" novalidate>
+            <div class="field">
+              <label for="username">Username or email</label>
+              <input id="username" name="username" type="text" autocomplete="username" required />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="remoed-pw-wrap">
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+                <button type="button" class="remoed-pw-toggle" aria-label="Show password"></button>
+              </div>
+            </div>
+            <button type="submit" class="btn-primary" id="btn-login">Sign in</button>
+          </form>
+          <p class="aff-hint">Need access? Ask Marketing / Super-Admin to activate your affiliate account.</p>
+        </div>
+        <aside class="aff-cast" aria-hidden="true">
+          <img class="family" src="/images/hero-remoed-family.png" alt="" onerror="this.style.display='none'" />
+          <div class="aff-cast-row">
+            <img src="/images/remo-green.png" alt="" onerror="this.style.display='none'" />
+            <img src="/images/plan-characters/plan-spark-robot.png" alt="" onerror="this.style.display='none'" />
+            <img src="/images/plan-characters/plan-steady-boy.png" alt="" onerror="this.style.display='none'" />
+          </div>
+          <p>Faith-based 1-on-1 English — connect families worldwide.</p>
+        </aside>
+      </div>
+    </div>
   </div>
   <script src="js/password-toggle.js"></script>
   <script>
@@ -88,6 +289,7 @@
         showErr('');
         var btn = document.getElementById('btn-login');
         btn.disabled = true;
+        btn.textContent = 'Signing in…';
         try {
           var res = await fetch('/api/affiliate/login', {
             method: 'POST',
@@ -110,6 +312,7 @@
         } catch (err) {
           showErr(err.message || String(err));
           btn.disabled = false;
+          btn.textContent = 'Sign in';
         }
       });
     })();

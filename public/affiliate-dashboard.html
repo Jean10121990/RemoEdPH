@@ -14,17 +14,24 @@
   <style>
     body.page-affiliate-dash {
       margin: 0;
-      background: linear-gradient(180deg, #eef9ff 0%, #f8fafc 40%, #fff 100%);
+      background: linear-gradient(165deg, #f0fdf4 0%, #e8f8ec 45%, #fffbeb 100%);
+      background-attachment: fixed;
       min-height: 100vh;
-      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #0f172a;
     }
     .aff-wrap { max-width: 920px; margin: 0 auto; padding: 24px 18px 48px; }
+    .aff-brand-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .aff-brand-row img { height: 40px; width: auto; }
     .aff-top {
       display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start;
       gap: 12px; margin-bottom: 18px;
     }
-    .aff-top h1 { margin: 0; font-size: 1.4rem; }
+    .aff-top h1 {
+      margin: 0; font-size: 1.5rem; font-weight: 800;
+      background: linear-gradient(90deg, #0a3d18, #00aeef, #47BC3E);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
     .aff-top .muted { color: #64748b; font-size: 0.9rem; margin: 6px 0 0; }
     .aff-top .logout {
       border: 1px solid #cbd5e1; background: #fff; border-radius: 8px;
@@ -74,6 +81,9 @@
   <div class="aff-wrap">
     <div class="aff-top">
       <div>
+        <div class="aff-brand-row">
+          <img src="/images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.onerror=null;this.src='/remoed-logo.png';" />
+        </div>
         <h1>Independent Growth Affiliate</h1>
         <p class="muted" id="greet">Welcome</p>
       </div>

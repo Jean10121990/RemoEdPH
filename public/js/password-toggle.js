@@ -37,8 +37,18 @@
 
     var parent = input.parentElement;
     var existing =
-      (parent && parent.querySelector('button.password-toggle, button.pw-toggle, button.remoed-pw-toggle')) ||
-      input.nextElementSibling;
+      parent && parent.querySelector('button.password-toggle, button.pw-toggle, button.remoed-pw-toggle');
+    // Never treat a following submit/login button as the eye toggle (was wiping "Sign in" text).
+    if (
+      !existing &&
+      input.nextElementSibling &&
+      input.nextElementSibling.tagName === 'BUTTON' &&
+      (input.nextElementSibling.classList.contains('password-toggle') ||
+        input.nextElementSibling.classList.contains('pw-toggle') ||
+        input.nextElementSibling.classList.contains('remoed-pw-toggle'))
+    ) {
+      existing = input.nextElementSibling;
+    }
     if (existing && existing.tagName === 'BUTTON') {
       bind(existing, input);
       return;
