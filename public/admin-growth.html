@@ -175,7 +175,7 @@
         '<p>TikTok and X · copy the post and publish it there. Automatic posting waits on their app review.</p>' +
         '<div class="row-actions"><button type="button" id="meta-connect">Connect Facebook &amp; Instagram</button>' +
         '<button type="button" class="ghost" id="meta-disconnect">Disconnect</button></div>' +
-        '<p class="muted" id="meta-note">' + (social.facebookAppReady ? 'Sign in as an admin of the RemoEd page. Add https://remoedph.com/api/admin/growth/social/meta/callback as a Facebook Login redirect in the Meta app.' : 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.') + '</p></section>' +
+        '<p class="muted" id="meta-note">' + (social.facebookAppReady ? 'Sign in as an admin of the RemoEd page. Facebook returns through the same login address already used by RemoEd.' : 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.') + '</p></section>' +
         bars('Posts by status', byStatus) +
         '<section class="chart"><h2>New post</h2><textarea id="post-body" rows="4" placeholder="Write the post"></textarea>' +
         '<label>Public image URL (required for Instagram)</label><input id="post-image" placeholder="https://…">' +

@@ -199,9 +199,22 @@ router.get('/:provider/callback', authRegisterLimiter, async (req, res) => {
     if (provider !== 'google' && provider !== 'facebook') {
       return res.status(404).json({ success: false, message: 'Unknown provider' });
     }
+    if (provider === 'facebook') {
+      const { completeMetaOAuth } = require('../growth/metaConnect');
+      const page = await completeMetaOAuth(req.query || {});
+      if (page) return res.type('html').send(page);
+    }
     const redirectTo = await handleCallback(req, provider, req.query || {});
     return res.redirect(302, redirectTo);
   } catch (err) {
+    if (String(req.params.provider || '').toLowerCase() === 'facebook') {
+      try {
+        const { readState, renderMetaPage } = require('../growth/metaConnect');
+        if (readState((req.query || {}).state)) {
+          return res.status(400).type('html').send(renderMetaPage(false, err.message || 'Could not connect the Page.'));
+        }
+      } catch (_e) { /* fall through to the student login error page */ }
+    }
     return redirectError(
       res,
       req,

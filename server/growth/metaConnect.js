@@ -11,7 +11,8 @@ const PREFERRED = ['remoed', 'remoedph'];
 function metaRedirectUri() {
   const fromEnv = String(process.env.META_OAUTH_REDIRECT_URI || '').trim();
   if (fromEnv) return fromEnv;
-  return 'https://remoedph.com/api/admin/growth/social/meta/callback';
+  const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').trim().replace(/\/$/, '');
+  return base + '/api/auth/oauth/facebook/callback';
 }
 
 function connectUrl(adminId) {
@@ -195,6 +196,42 @@ function publicAccounts(rows) {
   });
 }
 
+function renderMetaPage(ok, message) {
+  const safe = String(message || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const next = ok
+    ? `<script>try{sessionStorage.setItem('remoed_meta_connect',${JSON.stringify(message || 'Connected')});}catch(e){}if(window.top){window.top.location='/admin/admin-marketing-hub.html#posts';}</script>`
+    : '<p><a href="/admin/admin-marketing-hub.html#posts">Back to Marketing Hub</a></p>';
+  return `<!DOCTYPE html><html><body style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1a365d;"><h1>${ok ? 'Connected' : 'Not connected'}</h1><p>${safe}</p>${next}</body></html>`;
+}
+
+/** Facebook returns to the already-whitelisted student login callback. State purpose selects this flow. */
+async function completeMetaOAuth(query) {
+  const state = readState(query && query.state);
+  if (!state) return null;
+  if (query.error) return renderMetaPage(false, 'Facebook did not grant access.');
+  const Admin = require('../models/Admin');
+  const admin = await Admin.findById(state.adminId).select('_id').lean();
+  if (!admin) return renderMetaPage(false, 'That admin account was not found.');
+  const code = String(query.code || '');
+  if (!code) return renderMetaPage(false, 'Facebook did not return a code.');
+  const userToken = await exchangeCode(code);
+  const page = await choosePage(userToken);
+  const saved = await saveConnectedPage(page);
+  let inboxNote = '';
+  try {
+    await graph('/' + page.id + '/subscribed_apps', page.access_token, {
+      method: 'POST',
+      body: { subscribed_fields: 'messages' },
+    });
+  } catch (subErr) {
+    inboxNote = ' Page messages were not subscribed: ' + (subErr.message || 'Facebook refused.');
+  }
+  const line = (saved.instagram
+    ? `Connected ${saved.facebook} and Instagram ${saved.instagram}.`
+    : `Connected ${saved.facebook}. Instagram is not linked to that Page yet.`) + inboxNote;
+  return renderMetaPage(true, line);
+}
+
 module.exports = {
   facebookConfigured,
   metaRedirectUri,
@@ -207,4 +244,6 @@ module.exports = {
   accountFor,
   publicAccounts,
   graph,
+  renderMetaPage,
+  completeMetaOAuth,
 };
