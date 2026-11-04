@@ -914,7 +914,10 @@
                 curricula.forEach(curriculum => {
                     const option = document.createElement('option');
                     option.value = curriculum._id;
-                    option.textContent = `${curriculum.title} (${curriculum.level})`;
+                    const title = curriculum.title || '';
+                    option.textContent = /^RemoEd Level \d/.test(title)
+                        ? title
+                        : (title + ' (' + (curriculum.level || '') + ')');
                     select.appendChild(option);
                 });
             } catch (error) {

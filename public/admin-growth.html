@@ -197,7 +197,8 @@
         note.textContent = 'Opening Facebook…';
         try {
           var started = await api('/api/admin/growth/social/meta/start');
-          window.location.href = started.url;
+          var target = window.top && window.top.location ? window.top : window;
+          target.location.href = started.url;
         } catch (err) { note.textContent = err.message || String(err); }
       });
       document.getElementById('meta-disconnect').addEventListener('click', async function () {
@@ -273,9 +274,9 @@
         return { name: k, count: Math.round(Number(split[k]) || 0) };
       });
       document.getElementById('app').innerHTML =
-        '<h1>Reports</h1><p class="muted">' + (data.count || 0) + ' leads in the funnel.</p>' +
-        bars('Funnel', stages, 'The funnel stays at zero until a lead is saved.') +
-        '<div class="split">' + bars('New leads by week', weeks) + bars('Source', sources, 'No source mix yet.') + '</div>' +
+        '<h1>Reports</h1><p class="muted">' + esc(data.note || '') + '</p>' +
+        bars('Funnel', stages, 'No level assessments yet. They show up here when a family finishes the quiz in HR Hub → Level Assessment.') +
+        '<div class="split">' + bars('New assessments by week', weeks) + bars('Source', sources, 'No source mix yet.') + '</div>' +
         '<section class="chart"><h2>Monthly money split (PHP)</h2><p class="muted">Partners 2%, growth 5%, charity 5%, buffer 5%, operations ₱6,400. Profit is what remains.</p>' +
         '<div class="split"><div><label>Gross collected</label><input id="r-gross" type="number" min="0" value="' + esc(gross || split.gross || 0) + '">' +
         '<label>Teacher pay</label><input id="r-teachers" type="number" min="0" value="' + esc(teachers || split.teachers || 0) + '">' +

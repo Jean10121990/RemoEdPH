@@ -418,7 +418,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 
 - `GET /healthz` returns 200 when Mongo answers a ping and 503 otherwise. It does not return secrets. `GET /api/health` is unchanged.
 - Affiliate apply: public `POST /api/applications/affiliate` (rate limited). HR Pass on `applicantType: affiliate` creates the affiliate account.
-- Growth admin API is ` /api/admin/growth/*` (admin JWT). Keys: `growth.inbox`, `growth.leads`, `growth.posts`, `growth.campaigns`, `growth.automations`, `growth.ai_settings`, `growth.reports`. `admin_assistant` may open inbox and leads only.
+- Growth admin API is ` /api/admin/growth/*` (admin JWT). Keys: `growth.inbox`, `growth.leads`, `growth.posts`, `growth.campaigns`, `growth.automations`, `growth.ai_settings`, `growth.reports`. `admin_assistant` may open inbox and leads only. Reports → Funnel counts **level assessments** (the same `AssessmentTrial` rows as HR Hub → Level Assessment): Assessment done, Registered (account created), Paid plan. Inquiry is only site chat / Messenger. Renewal due, At-risk, and Lost are subsets of paid accounts.
 - Public web chat: `POST /api/public/chat` (rate limited, no token). Meta webhook: `GET/POST /api/webhooks/meta` (verify token and `X-Hub-Signature-256`).
 - Brevo events: `POST /api/webhooks/brevo` (no token; stores open/click/unsubscribe only).
 - Public testimonials: `GET /api/public/testimonials` returns rows marked `publicTestimonial`. Empty list hides the landing block.
@@ -681,6 +681,7 @@ Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whe
 
 - Settings → **Test student plan** is a Free / Paid switch per allowlisted test student (`Student.planModeOverride`, `GET`/`POST /api/admin/settings/test-student-plan`). Allowlist: **plflores3303@gmail.com** only. Do not apply that field to any other student. Paid still spends that student’s real credits. Free books the next of 3 Pre-Level lessons, with no monthly lesson.
 - `Pre-Level` (Free Trial Lessons) is a **curriculum-only** level (`PRE_LEVEL` / `CURRICULUM_DOC_LEVELS` / `normalizeCurriculumDocLevel` in `server/config/curriculumLevels.js`). It stays out of `CURRICULUM_LEVELS`. QA Hub → Lesson Library lists it first. The catalog is exactly these 3 lessons, in order (`FREE_PLAN_LESSON_COUNT` in `server/services/freePlanAccess.js`). There is no monthly free lesson and no 22-lesson free trail.
+- Growth levels stay Little Seeds, Sprouts, Saplings, and Young Stewards. Each level’s Lesson Library dropdown is twelve curricula, in this order: Month 1 through Month 4, Vacation Month 1, Vacation Month 2, then Month 5 through Month 10. Titles are `RemoEd Level N Month M` and `RemoEd Level N Vacation Month 1|2`. The existing 22 lessons stay on **Month 1**. Later months start empty. Demo Free Trial Lessons stay on Pre-Level.
 
 | # | Library title | File on the lesson |
 |---|---------------|--------------------|

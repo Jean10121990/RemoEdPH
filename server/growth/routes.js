@@ -3,6 +3,8 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const Lead = require('../models/Lead');
+const AssessmentTrial = require('../models/AssessmentTrial');
+const Student = require('../models/Student');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Admin = require('../models/Admin');
@@ -158,30 +160,75 @@ router.get('/gmail', requireGrowth('growth.inbox'), (_req, res) => {
 });
 
 router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
-  const leads = await Lead.find({}).select('stage source createdAt').lean();
-  const funnel = {};
-  const sourceMap = {};
-  STAGES.forEach((name) => { funnel[name] = 0; });
-  leads.forEach((l) => {
-    const stage = STAGES.includes(l.stage) ? l.stage : 'Inquiry';
-    funnel[stage] = (funnel[stage] || 0) + 1;
+  const [chatLeads, trials] = await Promise.all([
+    Lead.find({}).select('stage source createdAt').lean(),
+    AssessmentTrial.find({}).select('redeemedByStudentId createdAt').lean(),
+  ]);
+  const studentIds = trials.map((t) => t.redeemedByStudentId).filter(Boolean);
+  const students = studentIds.length
+    ? await Student.find({ _id: { $in: studentIds } })
+      .select('isSubscribed paymentStatus subscriptionStatus subscriptionEndDate creditBalance freeLessonCompletedCount accountStatus')
+      .lean()
+    : [];
+  const byId = {};
+  students.forEach((s) => { byId[String(s._id)] = s; });
+
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  let registered = 0;
+  let trial = 0;
+  let paid = 0;
+  let renewal = 0;
+  let atRisk = 0;
+  let lost = 0;
+  trials.forEach((row) => {
+    const student = row.redeemedByStudentId ? byId[String(row.redeemedByStudentId)] : null;
+    if (!student) return;
+    registered += 1;
+    const payment = String(student.paymentStatus || '').toLowerCase();
+    const sub = String(student.subscriptionStatus || '').toLowerCase();
+    const isPaid = student.isSubscribed === true || payment === 'paid' || sub === 'active';
+    const end = student.subscriptionEndDate ? new Date(student.subscriptionEndDate).getTime() : 0;
+    const startedTrial = Number(student.freeLessonCompletedCount) > 0
+      || String(student.accountStatus || '').indexOf('trial') === 0;
+    if (startedTrial) trial += 1;
+    if (!isPaid) return;
+    paid += 1;
+    if (sub === 'expired' || (end && end < now)) lost += 1;
+    else if (end && end - now <= 30 * day) renewal += 1;
+    else if (Number(student.creditBalance) <= 3) atRisk += 1;
+  });
+
+  const funnel = {
+    Inquiry: chatLeads.filter((l) => l.stage === 'Inquiry' || !l.stage).length,
+    'Assessment done': trials.length,
+    Trial: trial,
+    Registered: registered,
+    'Paid plan': paid,
+    'Renewal due': renewal,
+    'At-risk': atRisk,
+    Lost: lost,
+  };
+  const stages = STAGES.map((name) => ({ name, count: funnel[name] || 0 }));
+  const sourceMap = { 'level assessment': trials.length };
+  chatLeads.forEach((l) => {
     const source = l.source || 'manual';
+    if (source === 'level assessment') return;
     sourceMap[source] = (sourceMap[source] || 0) + 1;
   });
-  const stages = STAGES.map((name) => ({ name, count: funnel[name] || 0 }));
   const sources = Object.keys(sourceMap)
+    .filter((name) => sourceMap[name] > 0)
     .map((name) => ({ name, count: sourceMap[name] }))
     .sort((a, b) => b.count - a.count);
   const weeks = [];
-  const now = new Date();
   for (let i = 7; i >= 0; i -= 1) {
-    const start = new Date(now);
+    const start = new Date();
     start.setDate(start.getDate() - (i * 7) - start.getDay());
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
-    const count = leads.filter((l) => {
-      const t = new Date(l.createdAt || 0).getTime();
+    const count = trials.filter((row) => {
+      const t = new Date(row.createdAt || 0).getTime();
       return t >= start.getTime() && t < end.getTime();
     }).length;
     weeks.push({
@@ -199,7 +246,8 @@ router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
     stages,
     sources,
     weeks,
-    count: leads.length,
+    count: trials.length,
+    note: 'Assessment done is the same list as HR Hub → Level Assessment. Registered means they created a student account. Paid plan means that account has a paid subscription.',
     readOnlyAskAi: true,
     split: monthlySplit({ grossPhp, teachersPhp, affiliatesPhp }),
   });
