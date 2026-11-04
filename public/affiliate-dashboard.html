@@ -147,6 +147,11 @@
         <button type="button" class="btn" id="btn-copy">Copy link</button>
       </div>
     </div>
+    <div class="card" id="kit-card">
+      <h2>Marketing kit</h2>
+      <p class="muted" style="margin-top:0;">Posts and banners in the site languages. Each one includes your referral link.</p>
+      <div id="aff-kit" class="muted">Loading…</div>
+    </div>
     <div class="card">
       <h2>Change password</h2>
       <p class="muted" style="margin-top:0;">Use at least 8 characters. You’ll need the new password the next time you sign in.</p>
@@ -326,6 +331,26 @@
           document.getElementById('greet').textContent =
             'Signed in as ' + (data.affiliate && data.affiliate.name ? data.affiliate.name : 'affiliate');
           document.getElementById('enroll-link').textContent = data.enrollLink || '—';
+          try {
+            var kitRes = await fetch('/api/affiliate/kit', { headers: { Authorization: 'Bearer ' + token() } });
+            var kit = await kitRes.json();
+            var posts = (kit && kit.posts) || [];
+            var link = data.enrollLink || '';
+            document.getElementById('aff-kit').innerHTML = posts.length ? posts.map(function (p) {
+              var text = (p.body || '') + (link ? '\n' + link : '');
+              return '<p><strong>' + esc(p.language || 'en') + '</strong><br>' + esc(text) +
+                (p.mediaPath ? ' <a href="' + esc(p.mediaPath) + '" download>Download</a>' : '') +
+                ' <button type="button" class="btn kit-copy">Copy</button></p>';
+            }).join('') : 'No kit posts yet.';
+            document.querySelectorAll('.kit-copy').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var t = btn.parentElement ? btn.parentElement.innerText : '';
+                if (navigator.clipboard) navigator.clipboard.writeText(t);
+              });
+            });
+          } catch (_kit) {
+            document.getElementById('aff-kit').textContent = 'Kit is unavailable right now.';
+          }
           document.getElementById('m-clicks').textContent = String((data.metrics && data.metrics.linkClicks) || 0);
           document.getElementById('m-active').textContent = String(
             (data.metrics && data.metrics.activeEnrolledStudents) || 0

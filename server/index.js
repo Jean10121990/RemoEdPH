@@ -695,6 +695,14 @@ app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiComb
 app.use('/api/payments', paymentRoutes);
 const growthInbox = require('./growth/inboxRoutes');
 app.use('/api/webhooks', growthInbox.metaRouter);
+app.post('/api/webhooks/brevo', async (req, res) => {
+  try {
+    await require('./growth/brevo').recordBrevoEvent(req.body || {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
 app.use('/api/public', growthInbox.chatRouter);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);

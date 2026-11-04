@@ -64,7 +64,14 @@
         });
       });
     }
-    else if (tab === 'posts' || tab === 'campaigns') document.getElementById('app').textContent = 'This tab is ready for the posting and email phase.';
+    else if (tab === 'posts') {
+      api('/api/admin/growth/posts').then(function (data) {
+        var rows = (data && data.posts) || [];
+        document.getElementById('app').innerHTML = '<p>' + rows.length + ' posts</p>' + rows.map(function (p) {
+          return '<div class="card">' + esc(p.language) + ' ' + esc(p.status) + '<br>' + esc(p.body) + '</div>';
+        }).join('');
+      });
+    } else if (tab === 'campaigns') document.getElementById('app').textContent = 'Campaigns send through Brevo. Unsubscribe stays on every message. Daily cap is 300.';
     else if (tab === 'reports') {
       api('/api/admin/growth/reports').then(function (data) {
         document.getElementById('app').textContent = JSON.stringify(data.funnel || {}, null, 2);

@@ -440,4 +440,10 @@ router.post('/withdraw', verifyToken, requireAffiliate, async (req, res) => {
   }
 });
 
+router.get('/kit', verifyToken, requireAffiliate, async (_req, res) => {
+  const Post = require('./models/Post');
+  const posts = await Post.find({ affiliateKit: true }).sort({ updatedAt: -1 }).limit(40).select('body language mediaPath').lean();
+  res.json({ success: true, posts });
+});
+
 module.exports = router;

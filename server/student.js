@@ -2197,6 +2197,11 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
     console.log('⭐ Star saved to StarReceived collection for teacher:', teacherIdStr);
 
     try {
+      const { maybeSendReviewNudge } = require('./growth/reviewNudge');
+      maybeSendReviewNudge(req.user.studentId || req.user.username, ratingNum).catch(() => {});
+    } catch (_reviewErr) { /* non-blocking */ }
+
+    try {
       const { rebuildMonth, currentMonthKey } = require('./services/leaderboardService');
       rebuildMonth(currentMonthKey()).catch(() => {});
     } catch (_lbErr) {

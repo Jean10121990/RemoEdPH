@@ -88,4 +88,6 @@ router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
   res.json({ success: true, funnel, count: leads.length });
 });
 
+router.use(require('./contentRoutes'));
+
 module.exports = router;

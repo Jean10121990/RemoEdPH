@@ -203,6 +203,9 @@ async function recordReferralSignup(student) {
  */
 async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan = '' } = {}) {
   if (!student || !student._id) return { ok: false, reason: 'no_student' };
+  try {
+    if (student.email) await require('../growth/brevo').markCampaignPaid(student.email);
+  } catch (_campaignErr) { /* non-blocking */ }
 
   let code = String(student.referralCode || '').trim();
   if (!code) return { ok: false, reason: 'no_referral' };
