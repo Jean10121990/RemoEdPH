@@ -80,7 +80,6 @@ const initialForm = {
   email: '',
   contactNo: '',
   testAnswers: ['', '', ''],
-  testVideos: ['', '', ''],
   demoVideoUrl: '',
   documents: {
     nationalId: '',
@@ -337,101 +336,7 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder, uploa
   );
 }
 
-function AudioRecorderCard({ title, description, onUploaded, uploadFolder, uploadedUrl }) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-
-  const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl, error: audioRecorderError } =
-    useReactMediaRecorder({
-      video: false,
-      audio: true,
-      blobPropertyBag: { type: 'audio/webm' }
-    });
-
-  const canUpload = useMemo(() => Boolean(mediaBlobUrl) && !uploading, [mediaBlobUrl, uploading]);
-
-  const handleUpload = async () => {
-    if (!mediaBlobUrl) return;
-    setUploading(true);
-    setUploadError('');
-    try {
-      const blob = await fetch(mediaBlobUrl).then((r) => r.blob());
-      const file = new File([blob], `voice-answer-${Date.now()}.webm`, { type: 'audio/webm' });
-      const url = await uploadToBucket(file, uploadFolder);
-      onUploaded(url);
-    } catch (error) {
-      setUploadError(error.message || 'Failed to upload audio.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-remo ring-1 ring-remo-green/10">
-      <h3 className="text-base font-bold text-remo-ink">{title}</h3>
-      <p className="mt-1 text-sm text-remo-muted">{description}</p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={startRecording}
-          disabled={status === 'recording' || status === 'acquiring_media'}
-          className="rounded-lg bg-gradient-to-r from-remo-green to-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-teal-500/20 disabled:opacity-50"
-        >
-          Start
-        </button>
-        <button
-          type="button"
-          onClick={stopRecording}
-          disabled={status !== 'recording' && status !== 'paused'}
-          className="rounded-lg border-2 border-remo-blue/40 bg-white px-4 py-2.5 text-sm font-semibold text-remo-blue hover:bg-blue-50 disabled:opacity-40"
-        >
-          Stop
-        </button>
-        <button
-          type="button"
-          onClick={clearBlobUrl}
-          className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-        >
-          Clear
-        </button>
-      </div>
-
-      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-remo-muted">
-        Status: {status.replace(/_/g, ' ')}
-      </p>
-
-      {audioRecorderError && (
-        <p className="mt-2 text-sm font-medium text-amber-800">Microphone: {audioRecorderError}</p>
-      )}
-
-      {mediaBlobUrl && (
-        <audio controls src={mediaBlobUrl} className="mt-4 w-full rounded-lg border border-slate-200" />
-      )}
-
-      <div className="mt-4">
-        <button
-          type="button"
-          onClick={handleUpload}
-          disabled={!canUpload}
-          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
-            canUpload
-              ? 'bg-gradient-to-r from-remo-yellow to-amber-500 text-amber-950 shadow-md shadow-amber-500/25'
-              : 'cursor-not-allowed bg-slate-300 text-slate-500 shadow-none'
-          }`}
-        >
-          {uploading ? 'Uploading...' : 'Upload voice answer'}
-        </button>
-        {!mediaBlobUrl && (
-          <p className="mt-2 text-xs text-remo-muted">Record first. This button stays gray until a local clip exists.</p>
-        )}
-      </div>
-
-      {uploadedUrl && <p className="mt-2 text-xs font-medium text-teal-700">Voice answer uploaded.</p>}
-      {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
-    </div>
-  );
-}
+const MIN_ANSWER_CHARS = 80;
 
 export default function App() {
   const [step, setStep] = useState(1);
@@ -449,20 +354,13 @@ export default function App() {
       return { ...prev, testAnswers: clone };
     });
 
-  const setQuestionVideo = (index, url) =>
-    setForm((prev) => {
-      const clone = [...prev.testVideos];
-      clone[index] = url;
-      return { ...prev, testVideos: clone };
-    });
-
   const nameError = touched.fullName && !isValidName(form.fullName) ? 'Enter your full name (at least 2 characters).' : '';
   const emailError = touched.email && !isValidEmail(form.email) ? 'Enter a valid email address.' : '';
   const contactError =
     touched.contactNo && !isValidContact(form.contactNo) ? 'Enter a valid contact number (at least 10 digits).' : '';
 
   const step1Valid = isValidName(form.fullName) && isValidEmail(form.email) && isValidContact(form.contactNo);
-  const step2Valid = form.testVideos.every(Boolean);
+  const step2Valid = form.testAnswers.every((a) => String(a || '').trim().length >= MIN_ANSWER_CHARS);
   const step3Valid = Boolean(form.demoVideoUrl);
   const step4Valid = Boolean(docFiles.nationalId && docFiles.nbi);
 
@@ -473,7 +371,7 @@ export default function App() {
     step === 1 && !step1Valid
       ? 'Complete name, email, and contact number to continue.'
       : step === 2 && !step2Valid
-        ? 'Record and upload all three voice answers to continue.'
+        ? 'Write at least 80 characters for each of the three answers to continue.'
         : step === 3 && !step3Valid
           ? 'Record and upload your 2-minute video lesson to continue.'
           : '';
@@ -515,8 +413,8 @@ export default function App() {
         currentStage: 'applied',
         status: true,
         testAnswers: {
-          text: form.testAnswers.join('\n\n'),
-          videoUrls: form.testVideos.filter(Boolean)
+          answers: form.testAnswers.map((a) => String(a || '').trim()),
+          text: form.testAnswers.map((a) => String(a || '').trim()).join('\n\n')
         },
         demoVideoUrl: form.demoVideoUrl,
         uploadedDocuments: {
@@ -656,10 +554,10 @@ export default function App() {
         {step === 2 && (
           <section className="relative space-y-5">
             <h2 className="text-lg font-bold text-remo-ink">
-              Step 2: <span className="text-remo-green">Pedagogical</span> voice answers
+              Step 2: <span className="text-remo-green">Pedagogical</span> written answers
             </h2>
             <p className="text-sm text-remo-muted">
-              Record each answer on this device first, then upload. Continue stays disabled until all three are uploaded.
+              Write each answer in the box. Continue stays disabled until every answer is at least 80 characters.
             </p>
             <div className="space-y-4">
               {PEDAGOGICAL_QUESTIONS.map((question, idx) => (
@@ -671,21 +569,15 @@ export default function App() {
                     Q{idx + 1}. {question}
                   </p>
                   <textarea
-                    placeholder="Optional written summary..."
+                    placeholder="Write your answer (at least 80 characters)..."
                     value={form.testAnswers[idx]}
                     onChange={(e) => setQuestionText(idx, e.target.value)}
                     className={`${inputClass} mt-3`}
-                    rows={3}
+                    rows={5}
                   />
-                  <div className="mt-4">
-                    <AudioRecorderCard
-                      title={`Record Voice Answer ${idx + 1}`}
-                      description="Use microphone only. The clip stays on your device until you upload."
-                      uploadFolder={`application-question-${idx + 1}`}
-                      uploadedUrl={form.testVideos[idx]}
-                      onUploaded={(url) => setQuestionVideo(idx, url)}
-                    />
-                  </div>
+                  <p className="mt-1 text-xs font-semibold text-remo-muted">
+                    {String(form.testAnswers[idx] || '').trim().length}/80 characters
+                  </p>
                 </div>
               ))}
             </div>

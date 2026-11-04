@@ -1,6 +1,7 @@
 /**
  * Subscription validity: unused lesson credits return to 0 after subscriptionEndDate.
- * Notices at 10 / 5 / 2 calendar days (Asia/Manila). Already-booked classes are untouched
+ * Notices at 14 and 7 calendar days (Asia/Manila), plus once per lot at 3 credits left.
+ * Already-booked classes are untouched
  * (those credits were already deducted on book).
  */
 const { DateTime } = require('luxon');
@@ -16,11 +17,10 @@ const {
 } = require('./creditLots');
 
 const MANILA = 'Asia/Manila';
-const NOTICE_MILESTONES = [10, 5, 2];
+const NOTICE_MILESTONES = [14, 7];
 const NOTICE_FIELD = {
-  10: 'creditExpiryNotices.d10',
-  5: 'creditExpiryNotices.d5',
-  2: 'creditExpiryNotices.d2',
+  14: 'creditExpiryNotices.d14',
+  7: 'creditExpiryNotices.d7',
 };
 
 function toDate(value) {
@@ -134,22 +134,40 @@ function buildExpiryPayload(student, now = new Date()) {
 }
 
 function emptyNoticeFlags() {
-  return { d10: null, d5: null, d2: null, expired: null };
+  return { d14: null, d7: null, low3Keys: [], expired: null };
 }
 
 function pickNoticeMilestone(daysLeft, expired) {
   if (expired || daysLeft == null || daysLeft < 0) return null;
-  if (daysLeft <= 2) return 2;
-  if (daysLeft <= 5) return 5;
-  if (daysLeft <= 10) return 10;
+  if (daysLeft <= 7) return 7;
+  if (daysLeft <= 14) return 14;
   return null;
+}
+
+function lotNoticeKey(lot) {
+  if (!lot) return '';
+  const bought = lot.purchasedAt ? new Date(lot.purchasedAt).toISOString() : '';
+  return `${lot.paymentId || ''}|${bought}|${lot.planId || ''}`;
+}
+
+/** Lots still holding exactly 3 credits that have not been notified. */
+function lowCreditLotsToNotify(student) {
+  const sent = new Set((student && student.creditExpiryNotices && student.creditExpiryNotices.low3Keys) || []);
+  const out = [];
+  for (const lot of (student && student.creditLots) || []) {
+    if (Number(lot.creditsRemaining) !== 3) continue;
+    if (lot.expiredAt) continue;
+    const key = lotNoticeKey(lot);
+    if (!key || sent.has(key)) continue;
+    out.push({ key, lot });
+  }
+  return out;
 }
 
 function noticeAlreadySent(student, milestone) {
   const n = student.creditExpiryNotices || {};
-  if (milestone === 10) return !!n.d10;
-  if (milestone === 5) return !!n.d5;
-  if (milestone === 2) return !!n.d2;
+  if (milestone === 14) return !!n.d14;
+  if (milestone === 7) return !!n.d7;
   if (milestone === 'expired') return !!n.expired;
   return false;
 }
@@ -309,14 +327,14 @@ function noticeMessage(unused, daysLeft, endLabel) {
 }
 
 async function sendCreditExpiryNotices(now = new Date()) {
-  const horizon = DateTime.fromJSDate(now, { zone: 'utc' }).setZone(MANILA).plus({ days: 11 }).toJSDate();
+  const horizon = DateTime.fromJSDate(now, { zone: 'utc' }).setZone(MANILA).plus({ days: 15 }).toJSDate();
   const students = await Student.find({
     creditBalance: { $gt: 0 },
     subscriptionEndDate: { $gt: now, $lte: horizon },
     subscriptionStatus: { $in: ['active', 'pending'] },
   })
     .select(
-      'username email parentEmail firstName lastName creditBalance subscriptionEndDate subscriptionStatus creditExpiryNotices notificationPrefs'
+      'username email parentEmail firstName lastName creditBalance creditLots subscriptionEndDate subscriptionStatus creditExpiryNotices notificationPrefs'
     )
     .limit(200)
     .lean();
@@ -366,6 +384,37 @@ async function sendCreditExpiryNotices(now = new Date()) {
       console.warn('[credit-expiry] notice failed:', s.username, e.message || e);
     }
   }
+
+  const lowStudents = await Student.find({
+    'creditLots.creditsRemaining': 3,
+    subscriptionStatus: { $in: ['active', 'pending'] },
+  })
+    .select('username email parentEmail creditLots creditExpiryNotices notificationPrefs')
+    .limit(200)
+    .lean();
+  for (const s of lowStudents) {
+    const pending = lowCreditLotsToNotify(s);
+    if (!pending.length) continue;
+    const keys = pending.map((p) => p.key);
+    const claimed = await Student.findOneAndUpdate(
+      { _id: s._id },
+      { $addToSet: { 'creditExpiryNotices.low3Keys': { $each: keys } } },
+      { new: true }
+    );
+    if (!claimed) continue;
+    try {
+      await notifyStudent(
+        claimed.username,
+        'credits-low',
+        '3 lesson credits are left on a plan. Renew before they expire.',
+        { actionUrl: '/student-credits.html', importance: 'actionable', meta: { creditsLeft: 3 } }
+      );
+    } catch (nErr) {
+      console.warn('[credit-expiry] low-credit notice failed:', claimed.username, nErr.message || nErr);
+    }
+    await emailCreditExpiryNotice(claimed, 'low', { unused: 3, daysLeft: null, endLabel: '' });
+    sent += 1;
+  }
   return sent;
 }
 
@@ -413,6 +462,9 @@ module.exports = {
   MANILA,
   NOTICE_MILESTONES,
   emptyNoticeFlags,
+  pickNoticeMilestone,
+  lotNoticeKey,
+  lowCreditLotsToNotify,
   manilaCalendarDaysUntil,
   resolveCreditExpiryDate,
   resolveFarthestExpiryDate,

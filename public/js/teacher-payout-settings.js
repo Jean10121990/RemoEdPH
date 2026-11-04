@@ -52,7 +52,8 @@
     }
     var n = (s.c1 ? 1 : 0) + (s.c2 ? 1 : 0) + (s.c3 ? 1 : 0);
     var totalHourly = s.tierBase + n * 10;
-    return { totalHourly: totalHourly, ratePer25: totalHourly / 2, settings: s };
+    var ratePer25 = Math.round(((totalHourly * 25) / 60) * 100) / 100;
+    return { totalHourly: totalHourly, ratePer25: ratePer25, settings: s };
   }
 
   function getRatePer25() {
@@ -66,7 +67,7 @@
     if (Math.abs(r - FREE_TRIAL_RATE_PER_25MIN) < 0.005) {
       return { tierBase: FREE_TRIAL_TIER_BASE, c1: false, c2: false, c3: false };
     }
-    var impliedHourly = r * 2;
+    var impliedHourly = (r * 60) / 25;
     for (var i = 0; i < TIER_VALUES.length; i++) {
       var base = TIER_VALUES[i];
       if (base === FREE_TRIAL_TIER_BASE) continue;

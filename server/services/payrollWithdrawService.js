@@ -4,7 +4,7 @@
  */
 
 const ALLOWED_BANK = 'MariBank';
-const ACCOUNTING_PAYOUT_EMAIL = 'support@remoedph.com';
+const ACCOUNTING_PAYOUT_EMAIL = process.env.ACCOUNTING_PAYOUT_EMAIL || 'remoedph@gmail.com';
 const MARIBANK_OPEN_URL = 'https://maribank.ph/c/earnfreemoney?referralCode=KB740303';
 
 /** Minimum single MariBank withdraw; below this, amount rolls to the next cut-off. */

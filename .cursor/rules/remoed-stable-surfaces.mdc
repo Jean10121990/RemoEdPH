@@ -93,7 +93,8 @@ Details: [SKILLS.md](../docs/SKILLS.md) § UI icons and [.cursor/docs/STABLE_BAS
 Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Admin Marketing Hub and § Admin Roles and Access.
 
 - Sidebar order: **Accounting Hub** → **Admin Fee** → **Marketing Hub**. Marketing Hub owns Unique Link Commissions, Referral Leaderboard, and Affiliates. Do not put commissions back as an Accounting Hub tab.
-- Independent Growth Affiliates are a fourth portal (`Affiliate` model, `remoed_affiliate_token`, `/api/affiliate/*`). Referral links use email or full name via `/enroll?ref=`. Do not give affiliates teacher tools.
+- Unique Link Commissions UI/API: label **Referrer name** / **All referrers**; show resolved teacher/admin/affiliate names (not Mongo ids).
+- Independent Growth Affiliates are a fourth portal (`Affiliate` model, `remoed_affiliate_token`, `/api/affiliate/*`). Referral links use email or full name via `/enroll?ref=`. Upfront Unique Link tiers + **2%** recurring per plan month (`AFFILIATE_MONTHLY_PCT`); do not restore 5%. Email username + password on first login and password change. Landing footer Account → Affiliate Portal; do not give affiliates teacher tools.
 - Accounting Hub tabs: Payroll Management, **Admin Payroll** (dispense admin fees), Student Subscriptions.
 - `admin-unique-link-commission.html` standalone → `admin-marketing-hub.html`.
 - Role access is **dynamic RBAC** (Settings → Admin Roles and Access — **Super-Admin only**). Default seed for `admin_marketing` matches the former whitelist (no Settings / System monitor). `nav:settings` / `nav:super_monitor` / `system:settings` are never grantable to other roles. Extend via permission keys in `server/services/adminRbac.js`, not hardcoded sidebar branches alone.

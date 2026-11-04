@@ -5960,7 +5960,9 @@ router.post('/user', async (req, res) => {
           bodyPayoutTierBase != null && bodyPayoutTierBase !== ''
             ? parseInt(bodyPayoutTierBase, 10)
             : null;
-        if (pbCreate != null && PAYOUT_TIER_VALUES.includes(pbCreate)) {
+        if (pbCreate === 83) {
+          nt = 180;
+        } else if (pbCreate != null && PAYOUT_TIER_VALUES.includes(pbCreate)) {
           nt = pbCreate;
           nc1 = !!bodyPayoutCred1;
           nc2 = !!bodyPayoutCred2;

@@ -2,6 +2,26 @@ const express = require('express');
 const router = express.Router();
 const Application = require('./models/Application');
 
+const MIN_ANSWER_CHARS = 80;
+
+function normalizeWrittenAnswers(testAnswers) {
+  const raw = testAnswers && Array.isArray(testAnswers.answers) ? testAnswers.answers : [];
+  let answers = raw.map((a) => String(a || '').trim()).filter((a) => a.length > 0);
+  if (answers.length < 3 && testAnswers && testAnswers.text) {
+    const split = String(testAnswers.text)
+      .split(/\n\s*\n/)
+      .map((a) => a.trim())
+      .filter(Boolean);
+    if (split.length >= answers.length) answers = split;
+  }
+  return answers.slice(0, 3);
+}
+
+function answersTooShort(answers) {
+  if (!Array.isArray(answers) || answers.length !== 3) return true;
+  return answers.some((a) => String(a || '').trim().length < MIN_ANSWER_CHARS);
+}
+
 // Public endpoint: create a new teacher application
 router.post('/applications', async (req, res) => {
   try {
@@ -25,6 +45,19 @@ router.post('/applications', async (req, res) => {
         error: 'fullName, email, and contact number are required.'
       });
     }
+
+    const answers = normalizeWrittenAnswers(testAnswers);
+    if (answersTooShort(answers)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Each of the 3 written answers must be at least 80 characters.'
+      });
+    }
+    const storedAnswers = {
+      answers,
+      text: answers.join('\n\n'),
+      videoUrls: []
+    };
 
     const emailNorm = String(email).toLowerCase().trim();
     const existing = await Application.findOne({ email: emailNorm });
@@ -56,10 +89,7 @@ router.post('/applications', async (req, res) => {
         existing.failedAt = null;
         existing.reapplyEligibleAt = null;
         existing.passedAt = null;
-        existing.testAnswers = {
-          text: String(testAnswers.text || ''),
-          videoUrls: Array.isArray(testAnswers.videoUrls) ? testAnswers.videoUrls.filter(Boolean) : []
-        };
+        existing.testAnswers = storedAnswers;
         existing.demoVideoUrl = String(demoVideoUrl || '');
         existing.uploadedDocuments = {
           nbi: String((uploadedDocuments && uploadedDocuments.nbi) || ''),
@@ -87,10 +117,7 @@ router.post('/applications', async (req, res) => {
       contactNo: phone,
       currentStage,
       status: Boolean(status),
-      testAnswers: {
-        text: String(testAnswers.text || ''),
-        videoUrls: Array.isArray(testAnswers.videoUrls) ? testAnswers.videoUrls.filter(Boolean) : []
-      },
+      testAnswers: storedAnswers,
       demoVideoUrl: String(demoVideoUrl || ''),
       uploadedDocuments: {
         nbi: String((uploadedDocuments && uploadedDocuments.nbi) || ''),

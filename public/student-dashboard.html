@@ -1129,7 +1129,7 @@
                 if (creditExpiryBanner && creditExpiryCount && creditExpiryText) {
                     var expiredCredits = profile.creditsExpired === true;
                     var daysLeft = profile.daysUntilExpiry;
-                    var showExpiry = expiredCredits || (daysLeft != null && daysLeft <= 10 && profile.subscriptionStatus === 'active');
+                    var showExpiry = expiredCredits || (daysLeft != null && profile.subscriptionStatus === 'active' && profile.creditsExpireOnLabel);
                     if (showExpiry) {
                         creditExpiryBanner.style.display = 'block';
                         creditExpiryCount.textContent = profile.expiryCountdownLabel || (expiredCredits ? 'Expired' : 'Credits validity');
@@ -1142,12 +1142,12 @@
                             creditExpiryBanner.style.background = '#fef2f2';
                             creditExpiryBanner.style.borderColor = '#fecaca';
                             creditExpiryBanner.style.color = '#991b1b';
-                            creditExpiryText.textContent = 'Unused credits return to 0 on ' + (profile.creditsExpireOnLabel || 'the end date') + '.';
+                            creditExpiryText.textContent = 'Credits expire on ' + (profile.creditsExpireOnLabel || 'the end date') + ' (' + (profile.expiryCountdownLabel || '') + ').';
                         } else {
                             creditExpiryBanner.style.background = '#fffbeb';
                             creditExpiryBanner.style.borderColor = '#fde68a';
                             creditExpiryBanner.style.color = '#92400e';
-                            creditExpiryText.textContent = 'Unused credits return to 0 on ' + (profile.creditsExpireOnLabel || 'the end date') + '.';
+                            creditExpiryText.textContent = 'Credits expire on ' + (profile.creditsExpireOnLabel || 'the end date') + ' (' + (profile.expiryCountdownLabel || (daysLeft + ' days left')) + ').';
                         }
                     } else {
                         creditExpiryBanner.style.display = 'none';

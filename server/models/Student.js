@@ -196,11 +196,14 @@ const studentSchema = new mongoose.Schema({
       expiredAt: { type: Date, default: null },
     },
   ],
-  /** Once-per-window flags for 10 / 5 / 2 day and expired notices. Reset on repurchase. */
+  /** Once-per-window flags for 14 / 7 day, low-credit, and expired notices. */
   creditExpiryNotices: {
+    d14: { type: Date, default: null },
+    d7: { type: Date, default: null },
     d10: { type: Date, default: null },
     d5: { type: Date, default: null },
     d2: { type: Date, default: null },
+    low3Keys: { type: [String], default: [] },
     expired: { type: Date, default: null },
   },
   /** Optional explicit pool size; booking math falls back to creditBalance when unset. */

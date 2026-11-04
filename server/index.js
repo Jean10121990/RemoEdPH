@@ -523,6 +523,18 @@ app.use('/admin', noStoreProtectedResponse, express.static(path.join(__dirname, 
 
 // Public probes — register BEFORE any /api router that applies auth (e.g. fileRoutes verifyToken).
 // Cloud Run + GitHub Actions smoke tests hit these without a JWT.
+app.get('/healthz', async (req, res) => {
+  try {
+    if (!db || db.readyState !== 1 || !db.db) {
+      return res.status(503).json({ ok: false });
+    }
+    await db.db.admin().ping();
+    return res.status(200).json({ ok: true });
+  } catch (_err) {
+    return res.status(503).json({ ok: false });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   try {
     const dbInfo = getDbConnectionInfo();
@@ -948,6 +960,16 @@ app.get('/u/:username', async (req, res) => {
     console.error('GET /u/:username', err);
     res.status(500).type('html').send('<!DOCTYPE html><title>Profile</title><p>Could not load this profile.</p>');
   }
+});
+
+// Debug and test HTML must not be reachable in production.
+app.use((req, res, next) => {
+  if (String(process.env.NODE_ENV || '').toLowerCase() !== 'production') return next();
+  const base = String(req.path || '').split('/').pop().toLowerCase();
+  if (base === 'debug-upload.html' || /^test-.*\.html$/.test(base)) {
+    return res.status(404).type('html').send('<!doctype html><html><head><meta charset="utf-8"><title>Not found</title></head><body><h1>Not found</h1></body></html>');
+  }
+  return next();
 });
 
 // Static files after core /api mounts so API paths are never shadowed by public files

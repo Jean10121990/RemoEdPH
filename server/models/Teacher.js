@@ -252,7 +252,7 @@ const teacherSchema = new mongoose.Schema({
   }],
   
   // Rate Information (hourlyRate = per 25-min class PHP; synced from payout tier + creds)
-  hourlyRate: { type: Number, default: 100 },
+  hourlyRate: { type: Number, default: 180 },
   /** Base pay tier (180/230/280/330). Set by admin; null = derive from hourlyRate for legacy rows. */
   payoutTierBase: { type: Number, default: null },
   payoutCred1: { type: Boolean, default: false },

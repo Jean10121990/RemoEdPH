@@ -61,10 +61,17 @@ const applicationSchema = new mongoose.Schema(
       default: null
     },
     testAnswers: {
+      /** Three written pedagogical answers (80+ characters each on new applications). */
+      answers: {
+        type: [String],
+        default: []
+      },
+      /** Joined text kept for HR Hub display of older and new applications. */
       text: {
         type: String,
         default: ''
       },
+      /** Legacy voice clips. New applications leave this empty; old rows stay readable. */
       videoUrls: {
         type: [String],
         default: []
