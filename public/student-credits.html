@@ -72,7 +72,7 @@
       <div class="credits-right">
         <div id="payment-return-banner" class="payment-return-banner" style="display:none;" role="status" aria-live="polite"></div>
 
-        <div id="student-refill-panel" class="checkout-order-card">
+        <div id="plans" class="checkout-order-card">
           <div class="checkout-order-header">
             <h3 id="checkout-mode-title">Pay with InstaPay QR</h3>
             <p class="muted checkout-order-sub" id="checkout-mode-sub">Scan the MariBank QR and pay the exact peso amount. Enter the transaction number. Lesson credits are added after we match that payment in the bank.</p>
@@ -235,7 +235,7 @@
     }
 
     function openRefillPanel() {
-      var p = document.getElementById('student-refill-panel');
+      var p = document.getElementById('plans');
       if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
       var s = document.getElementById('refill-plan-select');
       if (s) try { s.focus(); } catch (e) {}
@@ -856,6 +856,7 @@
         if (sel && planParam && PLAN_CHECKOUT[planParam]) sel.value = planParam;
       } catch (e) {}
       updateCheckoutBreakdown();
+      if (location.hash === '#plans') openRefillPanel();
       if (sel) sel.addEventListener('change', updateCheckoutBreakdown);
       loadQrClaims();
       try {

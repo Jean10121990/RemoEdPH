@@ -97,7 +97,7 @@ function tunnelSafeHeaders(extra = {}) {
 
 async function uploadToBucket(file, folder = 'applications') {
   const base = typeof window !== 'undefined' ? window.location.origin : '';
-  const path = import.meta.env.VITE_STORAGE_UPLOAD_URL || '/api/upload/upload';
+  const path = import.meta.env.VITE_STORAGE_UPLOAD_URL || '/api/applications/upload';
   const endpoint = path.startsWith('http') ? path : `${base}${path}`;
   const uploader = import.meta.env.VITE_STORAGE_UPLOADER || 'application-form';
   const room = `${folder}-${new Date().toISOString().slice(0, 10)}`;
@@ -118,9 +118,9 @@ async function uploadToBucket(file, folder = 'applications') {
   }
 
   const payload = await response.json();
-  const fileName = payload?.file?.filename;
+  const stored = payload?.file?.path || payload?.file?.filename;
   const publicBase = import.meta.env.VITE_STORAGE_PUBLIC_BASE_URL || '/uploads';
-  return fileName ? `${publicBase}/${fileName}` : '';
+  return stored ? `${publicBase}/${String(stored).replace(/^\/+/, '')}` : '';
 }
 
 function Progress({ step }) {

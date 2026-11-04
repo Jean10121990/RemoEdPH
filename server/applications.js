@@ -149,6 +149,39 @@ const affiliateUpload = multer({
   limits: { fileSize: 12 * 1024 * 1024 },
 });
 
+const applicationMediaUpload = multer({
+  storage: createGridFsStorage({ prefix: 'files' }),
+  limits: { fileSize: 80 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    const name = String(file.originalname || '').toLowerCase();
+    const mime = String(file.mimetype || '').toLowerCase();
+    const okExt = /\.(mp4|webm|mov|m4v|jpg|jpeg|png|pdf)$/.test(name);
+    const okMime = /^(video\/|image\/|application\/pdf|application\/octet-stream)/.test(mime);
+    if (okExt && okMime) return cb(null, true);
+    return cb(new Error('Upload a video, image, or PDF.'));
+  },
+});
+
+/** Public teacher-application files. Classroom /api/upload stays behind a login. */
+router.post('/applications/upload', fileUploadLimiter, function (req, res, next) {
+  applicationMediaUpload.single('file')(req, res, function (err) {
+    if (err) {
+      const tooBig = err.code === 'LIMIT_FILE_SIZE';
+      return res.status(400).json({ success: false, error: tooBig ? 'File is larger than 80 MB.' : err.message });
+    }
+    next();
+  });
+}, function (req, res) {
+  if (!req.file || !req.file.filename) {
+    return res.status(400).json({ success: false, error: 'No file uploaded' });
+  }
+  const stored = String(req.file.path || ('files/' + req.file.filename)).replace(/\\/g, '/');
+  return res.json({
+    success: true,
+    file: { filename: req.file.filename, path: stored },
+  });
+});
+
 router.post(
   '/applications/affiliate',
   fileUploadLimiter,
