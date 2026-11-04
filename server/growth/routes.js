@@ -2,6 +2,8 @@
 
 const express = require('express');
 const Lead = require('../models/Lead');
+const Conversation = require('../models/Conversation');
+const Message = require('../models/Message');
 const { verifyToken } = require('../authMiddleware');
 
 const router = express.Router();
@@ -42,6 +44,39 @@ router.patch('/leads/:id', requireGrowth('growth.leads'), async (req, res) => {
   if (req.body.note) lead.notes.push({ text: String(req.body.note), by: req.user.username || '' });
   await lead.save();
   res.json({ success: true, lead });
+});
+
+router.get('/inbox', requireGrowth('growth.inbox'), async (req, res) => {
+  const rows = await Conversation.find({}).sort({ lastMessageAt: -1 }).limit(100).lean();
+  res.json({ success: true, conversations: rows });
+});
+
+router.get('/inbox/:id/messages', requireGrowth('growth.inbox'), async (req, res) => {
+  const messages = await Message.find({ conversationId: req.params.id }).sort({ createdAt: 1 }).lean();
+  res.json({ success: true, messages });
+});
+
+router.post('/inbox/:id/reply', requireGrowth('growth.inbox'), async (req, res) => {
+  const convo = await Conversation.findById(req.params.id);
+  if (!convo) return res.status(404).json({ success: false, error: 'Thread not found' });
+  const text = String((req.body && req.body.text) || '').trim();
+  if (!text) return res.status(400).json({ success: false, error: 'Reply required' });
+  await Message.create({ conversationId: convo._id, direction: 'out', text, sender: 'human' });
+  if (convo.channel === 'messenger' && process.env.META_PAGE_ACCESS_TOKEN && convo.externalThreadId) {
+    await fetch('https://graph.facebook.com/v21.0/me/messages?access_token=' + encodeURIComponent(process.env.META_PAGE_ACCESS_TOKEN), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient: { id: convo.externalThreadId }, message: { text } }),
+    }).catch(() => {});
+  }
+  convo.status = 'open';
+  convo.lastMessageAt = new Date();
+  await convo.save();
+  res.json({ success: true });
+});
+
+router.get('/gmail', requireGrowth('growth.inbox'), (_req, res) => {
+  res.json({ success: true, connected: false, note: 'Gmail is not connected yet.' });
 });
 
 router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {

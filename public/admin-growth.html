@@ -46,7 +46,24 @@
         });
       });
     }
-    if (tab === 'inbox') document.getElementById('app').textContent = 'Inbox arrives in the next release. Messenger and web chat will land here.';
+    if (tab === 'inbox') {
+      api('/api/admin/growth/inbox').then(function (data) {
+        var rows = data.conversations || [];
+        document.getElementById('app').innerHTML = rows.length ? rows.map(function (c) {
+          return '<div class="card"><strong>' + esc(c.channel) + '</strong> ' + esc(c.status) +
+            '<br><button data-reply="' + c._id + '">Reply</button></div>';
+        }).join('') : 'No conversations yet.';
+        document.querySelectorAll('[data-reply]').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            var text = prompt('Reply');
+            if (!text) return;
+            await api('/api/admin/growth/inbox/' + btn.getAttribute('data-reply') + '/reply', {
+              method: 'POST', body: JSON.stringify({ text: text })
+            });
+          });
+        });
+      });
+    }
     else if (tab === 'posts' || tab === 'campaigns') document.getElementById('app').textContent = 'This tab is ready for the posting and email phase.';
     else if (tab === 'reports') {
       api('/api/admin/growth/reports').then(function (data) {

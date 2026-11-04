@@ -388,6 +388,9 @@ if (process.env.DISABLE_COMPRESSION_DEBUG !== '1') {
 
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks/meta', express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 
 // Large JSON bodies: legacy lesson uploads may still send small base64 payloads.
 // PPTX / large files should use multipart (disk) — see lessons.js upload-file.
@@ -690,6 +693,9 @@ adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin/growth', noStoreProtectedResponse, require('./growth/routes'));
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
 app.use('/api/payments', paymentRoutes);
+const growthInbox = require('./growth/inboxRoutes');
+app.use('/api/webhooks', growthInbox.metaRouter);
+app.use('/api/public', growthInbox.chatRouter);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
 app.use('/api/public', require('./fxRatesRoutes'));

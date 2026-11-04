@@ -24,7 +24,7 @@ const chatbotStyles = `
     }
     
     .chatbot-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #00A82D 0%, #00AEEF 100%);
         color: white;
         padding: 20px;
         display: flex;
@@ -267,7 +267,7 @@ const chatbotStyles = `
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #667eea;
+        background: #00AEEF;
         animation: typing 1.4s infinite;
     }
     
@@ -328,5 +328,40 @@ const chatbotHTML = `
 <button class="chatbot-toggle" id="chatbot-toggle" onclick="toggleChatbot()" title="Open Remo AI Assistant">🤖</button>
 `;
 
-// Chatbot functionality (same as dashboard)
-// This will be included in the file - continuing in next part due to length
+function ruleFallback(text) {
+  var q = String(text || '').toLowerCase();
+  if (q.indexOf('refund') >= 0 || q.indexOf('human') >= 0) return 'A person from RemoEd will follow up. Please email support@remoedph.com.';
+  if (q.indexOf('plan') >= 0 || q.indexOf('price') >= 0) return 'Plans start with RemoSpark. Take the free assessment: https://remoedph.com/#assessment';
+  return 'Live one-on-one English for ages 3–6. Start here: https://remoedph.com/#assessment';
+}
+
+async function sendChatbotMessage() {
+  var input = document.getElementById('chatbot-input');
+  var box = document.getElementById('chatbot-messages');
+  if (!input || !box) return;
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  var mine = document.createElement('div');
+  mine.className = 'chatbot-message';
+  mine.textContent = text;
+  box.appendChild(mine);
+  var reply = ruleFallback(text);
+  try {
+    var res = await fetch('/api/public/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, channel: 'webchat' })
+    });
+    var data = await res.json();
+    if (data && data.reply) reply = data.reply;
+  } catch (e) {}
+  var bot = document.createElement('div');
+  bot.className = 'chatbot-message bot';
+  bot.textContent = reply;
+  box.appendChild(bot);
+}
+
+function handleChatbotKeyPress(ev) {
+  if (ev.key === 'Enter') sendChatbotMessage();
+}
