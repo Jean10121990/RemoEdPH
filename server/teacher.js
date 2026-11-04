@@ -7740,4 +7740,28 @@ router.publicLandingHandler = handlePublicLanding;
 
 router.use(require('./attendanceExceptionRoutes').teacherRouter);
 
+/**
+ * Offer a 3-month extension after a one-on-one parent video call.
+ * Teacher id comes from the JWT. studentId is the student this teacher already teaches.
+ */
+router.post('/lesson-extension', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user && (req.user.teacherId || req.user.id);
+    if (!teacherId) return res.status(401).json({ success: false, error: 'Teacher login required' });
+    const rawStudent = req.body && (req.body.studentId || req.body.username);
+    const key = String(rawStudent || '').trim();
+    if (!key) return res.status(400).json({ success: false, error: 'Student is required' });
+    let student = await Student.findOne({ username: key });
+    if (!student && mongoose.Types.ObjectId.isValid(key)) student = await Student.findById(key);
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+    const { grantLessonExtension } = require('./services/lessonExtension');
+    const result = await grantLessonExtension(student, teacherId, req.body && req.body.parentCallConfirmed);
+    res.json({ success: true, lessonExtension: result });
+  } catch (error) {
+    const status = error.status || 500;
+    if (status >= 500) console.error('POST /api/teacher/lesson-extension:', error);
+    res.status(status).json({ success: false, error: status >= 500 ? 'Could not grant the extension' : error.message });
+  }
+});
+
 module.exports = router;

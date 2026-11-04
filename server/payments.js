@@ -94,8 +94,18 @@ function paymongoAuthHeader(secretKey) {
   return 'Basic ' + Buffer.from(`${secretKey}:`).toString('base64');
 }
 
-/** USD → PHP for PayMongo checkout (override via EXCHANGE_RATE_PHP in .env). */
+/** Fallback USD → PHP when the live rate is unavailable. */
 const EXCHANGE_RATE_PHP = parseFloat(process.env.EXCHANGE_RATE_PHP) || 60.03;
+
+async function currentPhpRate() {
+  try {
+    const { getRates } = require('./fxRatesRoutes');
+    const data = await getRates();
+    const live = Number(data && data.rates && data.rates.PHP);
+    if (live > 0) return live;
+  } catch (_err) { /* use the fallback */ }
+  return EXCHANGE_RATE_PHP;
+}
 
 /** Base rate: $7 per 25-minute class. Founder Discount: $21/mo (not applied to Starter/spark). */
 const USD_PER_CLASS = 7;
@@ -108,7 +118,7 @@ function planDescription(plan) {
   return `${row.label} Plan`;
 }
 
-function computePlanTotals(planId) {
+function computePlanTotals(planId, rate) {
   const planKey = normalizePlanId(planId);
   const row = PLAN_CREDITS[planKey];
   if (!row) return null;
@@ -122,7 +132,8 @@ function computePlanTotals(planId) {
       ? 0
       : Number((FOUNDER_DISCOUNT_PER_MONTH * months).toFixed(2));
   const usdTotal = Number((usdList - usdFounderDiscount).toFixed(2));
-  const phpTotal = Number((usdTotal * EXCHANGE_RATE_PHP).toFixed(2));
+  const phpRate = Number(rate) > 0 ? Number(rate) : EXCHANGE_RATE_PHP;
+  const phpTotal = Number((usdTotal * phpRate).toFixed(2));
   const amountCentavos = Math.round(phpTotal * 100);
 
   return {
@@ -140,6 +151,7 @@ function computePlanTotals(planId) {
     usdPerLesson:
       lessonCredits > 0 ? Number((usdTotal / lessonCredits).toFixed(4)) : 0,
     phpTotal,
+    exchangeRatePhp: phpRate,
     amountCentavos,
   };
 }
@@ -185,7 +197,7 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       return res.status(400).json({ success: false, error: 'planId is required' });
     }
 
-    const totals = computePlanTotals(selectedPlanId);
+    const totals = computePlanTotals(selectedPlanId, await currentPhpRate());
     if (!totals) {
       return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
     }
@@ -275,7 +287,7 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
             usd_list: String(totals.usdList),
             usd_founder_discount: String(totals.usdFounderDiscount),
             usd_total: String(totals.usdTotal),
-            exchange_rate_used: String(EXCHANGE_RATE_PHP),
+            exchange_rate_used: String(totals.exchangeRatePhp),
             referralCode: String(referralCode || ''),
           }
         }
@@ -347,7 +359,7 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
         planId: totals.planId,
         usd_total: totals.usdTotal,
         php_total: totals.phpTotal,
-        exchange_rate_used: EXCHANGE_RATE_PHP
+        exchange_rate_used: totals.exchangeRatePhp
       }
     });
   } catch (error) {
@@ -379,9 +391,10 @@ function normalizeInstapayReference(raw) {
 }
 
 /** Public price list for the landing / plan pages. Same totals as checkout (`computePlanTotals`). No input. */
-router.get('/plans', (req, res) => {
+router.get('/plans', async (req, res) => {
+  const rate = await currentPhpRate();
   const plans = Object.keys(PLAN_CREDITS)
-    .map((id) => computePlanTotals(id))
+    .map((id) => computePlanTotals(id, rate))
     .filter(Boolean)
     .map((t) => ({
       planId: t.planId,
@@ -396,10 +409,10 @@ router.get('/plans', (req, res) => {
       usdTotal: t.usdTotal,
       phpTotal: t.phpTotal,
     }));
-  res.set('Cache-Control', 'public, max-age=300');
+  res.set('Cache-Control', 'public, max-age=60');
   res.json({
     success: true,
-    exchangeRatePhp: EXCHANGE_RATE_PHP,
+    exchangeRatePhp: rate,
     usdPerClass: USD_PER_CLASS,
     founderDiscountPerMonth: FOUNDER_DISCOUNT_PER_MONTH,
     plans,
@@ -408,7 +421,7 @@ router.get('/plans', (req, res) => {
 
 router.get('/plan-quote', async (req, res) => {
   const selectedPlanId = normalizePlanId(req.query.planId || req.query.plan);
-  const totals = selectedPlanId ? computePlanTotals(selectedPlanId) : null;
+  const totals = selectedPlanId ? computePlanTotals(selectedPlanId, await currentPhpRate()) : null;
   if (!totals) {
     return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
   }
@@ -420,7 +433,7 @@ router.get('/plan-quote', async (req, res) => {
       planId: totals.planId,
       usd_total: totals.usdTotal,
       php_total: totals.phpTotal,
-      exchange_rate_used: EXCHANGE_RATE_PHP,
+      exchange_rate_used: totals.exchangeRatePhp,
       credits: (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].credits) || 0,
     },
   });
@@ -452,7 +465,8 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     }
 
     const selectedPlanId = normalizePlanId(req.body && (req.body.planId || req.body.plan));
-    const totals = selectedPlanId ? computePlanTotals(selectedPlanId) : null;
+    const rate = await currentPhpRate();
+    const totals = selectedPlanId ? computePlanTotals(selectedPlanId, rate) : null;
     if (!totals) {
       return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
     }

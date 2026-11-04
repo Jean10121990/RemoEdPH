@@ -36,7 +36,9 @@
         var strong = document.createElement('strong');
         strong.textContent = p.lessonCredits + ' Lessons';
         period.appendChild(strong);
-        period.appendChild(document.createTextNode(' · Valid for ' + p.validityMonths + ' Months'));
+        period.appendChild(document.createTextNode(
+          ' · Good for ' + p.months + (p.months === 1 ? ' month' : ' months')
+        ));
       }
 
       var classLine = card.querySelector('[data-price-line="class"]');

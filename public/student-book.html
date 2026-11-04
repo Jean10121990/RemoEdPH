@@ -2210,8 +2210,6 @@
             
             try {
                 await ensureStudentPlanStatus();
-                // Free plan books Free Trial teachers only (server: FREE_PLAN_TRIAL_TEACHER_ONLY).
-                const freeTrialTeachersOnly = studentFreePlanActive === true;
                 const weekStart = getWeekStartDate(currentWeek);
                 const weekString = getLocalDateString(weekStart); // Use consistent date formatting
                 
@@ -2222,7 +2220,7 @@
                 let scopedTeacherParam = '';
                 try {
                     const pt = sessionStorage.getItem('prefillPreferredTeacherId');
-                    if (!freeTrialTeachersOnly && pt && String(pt).trim()) {
+                    if (pt && String(pt).trim()) {
                         scopedTeacherParam = `&teacherId=${encodeURIComponent(String(pt).trim())}`;
                     }
                 } catch (e) {
@@ -2295,7 +2293,6 @@
                     console.log('🔍 Student booking - Processing', data.slots.length, 'slots from API');
                     data.slots.forEach(slot => {
                         if (slot.available !== true) return;
-                        if (freeTrialTeachersOnly && slot.freeTrialTeacher !== true) return;
                         let utc = slot.dateTimeUtc || null;
                         if (!utc && slot.date && slot.time) {
                             try {
@@ -3083,8 +3080,7 @@
                         const data = await res.json();
                         const idSet = new Set(ids);
                         teachers = (data.teachers || []).filter((x) =>
-                            idSet.has(normalizeId(x.teacherEmail || x.teacherId)) &&
-                            (!studentFreePlanActive || x.freeTrialTeacher === true)
+                            idSet.has(normalizeId(x.teacherEmail || x.teacherId))
                         );
                     }
                 } catch (e) {
@@ -4403,7 +4399,7 @@
                             ? 'You booked Lesson ' + bookedFree + ' of 3 free lessons. After that class is finished, Lesson ' + nextFree + ' opens. The other free lessons stay free.'
                             : 'You booked Lesson 3 of 3 free lessons. After that class is finished, subscribe to book the next levels.';
                     } else if (studentFreePlanActive) {
-                        hintEl.textContent = 'Free plan: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. The next free lesson opens after that class is finished. Free plan classes are with our Free Trial teachers.';
+                        hintEl.textContent = 'Demo orientation: Lesson ' + studentFreePlanNextLesson + ' of 3 is open. Any teacher can teach it. It is free and does not use credits. The next lesson opens after this class is finished.';
                     } else {
                         hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
                     }

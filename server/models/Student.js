@@ -82,6 +82,20 @@ const studentSchema = new mongoose.Schema({
   subscriptionPlan: { type: String },
   subscriptionStartDate: { type: Date },
   subscriptionEndDate: { type: Date },
+  /**
+   * Optional 3-month finish window. Parents request it; a teacher grants it
+   * only after a one-on-one parent video call. It does not add affiliate months.
+   */
+  lessonExtension: {
+    status: { type: String, enum: ['none', 'requested', 'granted'], default: 'none' },
+    months: { type: Number, default: 3 },
+    requestedAt: { type: Date, default: null },
+    grantedAt: { type: Date, default: null },
+    grantedBy: { type: String, default: '' },
+    parentCallConfirmed: { type: Boolean, default: false },
+    baseEnd: { type: Date, default: null },
+    newEnd: { type: Date, default: null },
+  },
   subscriptionStatus: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid'], default: 'unpaid' },
   /** Historical: bank/gcash/paypal from retired manual form; new purchases use paymongo only. */

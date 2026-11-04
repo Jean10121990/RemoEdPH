@@ -82,8 +82,8 @@
       }
     }
     note.textContent = code === 'USD'
-      ? 'Prices are in PHP, the amount you pay at checkout (₱' + CHECKOUT_PHP_RATE.toFixed(2) + ' per US$1).'
-      : 'Prices are in PHP, the amount you pay at checkout. The ' + code + ' line is an estimate at the current exchange rate.' + when + ' Your bank sets the final amount.';
+      ? 'Dollar prices stay fixed. Peso amounts use the current conversion (₱' + CHECKOUT_PHP_RATE.toFixed(2) + ' per US$1).'
+      : 'Dollar prices stay fixed. The ' + code + ' line is an estimate at the current exchange rate.' + when + ' Your bank sets the final amount.';
   }
 
   var wanted = saved();

@@ -865,6 +865,11 @@
                 </div>
             </div>
 
+            <div id="lesson-extension-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 12px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1e3a8a;">
+                <p id="lesson-extension-text" style="margin: 0 0 10px 0; line-height: 1.5;"></p>
+                <button type="button" id="lesson-extension-request" style="display: none; padding: 8px 14px; background: #00aeef; color: #fff; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer;">Ask my teacher for 3 more months</button>
+            </div>
+
             <div id="credits-expiry-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 12px; border: 1px solid #d7e5dd; background: #f0fdf4; color: #14532d;">
                 <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
                     <p style="margin: 0; flex: 1; min-width: 220px; line-height: 1.5; font-size: 0.95rem;">
@@ -1050,7 +1055,32 @@
       window.location.replace('/login/');
     }
     
-        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function() {
+            window.requestLessonExtension = function () {
+                var token = '';
+                try { token = getStudentAuthToken(); } catch (_e) {}
+                if (!token) return;
+                var btn = document.getElementById('lesson-extension-request');
+                if (btn) btn.disabled = true;
+                fetch('/api/student/lesson-extension-request', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: '{}'
+                }).then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+                  .then(function (res) {
+                    var text = document.getElementById('lesson-extension-text');
+                    if (!res.ok) {
+                        if (text) text.textContent = (res.body && res.body.error) || 'Could not send the request.';
+                        if (btn) btn.disabled = false;
+                        return;
+                    }
+                    if (text) text.textContent = 'Your request is with your teacher. The extra 3 months start after a one-on-one video call about your child\'s progress.';
+                    if (btn) btn.style.display = 'none';
+                  }).catch(function () {
+                    if (btn) btn.disabled = false;
+                  });
+            };
             const username = localStorage.getItem('remoedUsername');
             const studentId = localStorage.getItem('studentId');
             const token = getStudentAuthToken();
@@ -1152,6 +1182,21 @@
                     } else {
                         creditExpiryBanner.style.display = 'none';
                     }
+                }
+
+                var extensionBanner = document.getElementById('lesson-extension-banner');
+                var extensionText = document.getElementById('lesson-extension-text');
+                var extensionBtn = document.getElementById('lesson-extension-request');
+                var ext = profile.lessonExtension;
+                if (extensionBanner && extensionText && ext) {
+                    var showExt = ext.canRequest || ext.requested || ext.granted;
+                    extensionBanner.style.display = showExt ? 'block' : 'none';
+                    extensionText.textContent = ext.requested
+                        ? 'Your request is with your teacher. The extra 3 months start after a one-on-one video call about your child\'s progress.'
+                        : (ext.granted
+                            ? 'A 3-month extension is already on this subscription.'
+                            : (ext.message || 'Contact your teacher if lessons are still unfinished. They can offer 3 more months after a video call.'));
+                    if (extensionBtn) extensionBtn.style.display = ext.canRequest ? 'inline-block' : 'none';
                 }
 
                 var onboard = profile.onboarding;

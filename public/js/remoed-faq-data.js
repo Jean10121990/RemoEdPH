@@ -189,10 +189,11 @@
             weight: 5,
             a:
               'RemoEd offers four flexible learning bundles (prices in USD; checkout may show PHP estimates):\n\n' +
-              '• **RemoSpark (Starter)** — 1 month plan · **22 lessons** · valid 3 months · **$154.00**\n' +
-              '• **RemoSteady (Progress)** — 3 months · **66 lessons** · valid 6 months · **$399.00**\n' +
-              '• **RemoScholar (Mastery)** — 6 months · **132 lessons** · valid 12 months · **$798.00**\n' +
-              '• **RemoSummit (Ultimate)** — 12 months · **264 lessons** · valid 24 months · **$1,596.00**\n\n' +
+              '• **RemoSpark (Starter)** — **1 month** · **22 lessons** · **$154.00**\n' +
+              '• **RemoSteady (Progress)** — **3 months** · **66 lessons** · **$399.00**\n' +
+              '• **RemoScholar (Mastery)** — **6 months** · **132 lessons** · **$798.00**\n' +
+              '• **RemoSummit (Ultimate)** — **12 months** · **264 lessons** · **$1,596.00**\n\n' +
+              'If lessons are still unfinished at the end, a parent can ask the teacher for one **3-month extension** after a video call about the student\'s progress.\n\n' +
               'Families can review live plan cards on the RemoEd home page (#plans) or during student registration.',
           },
           {
@@ -208,7 +209,7 @@
             ],
             weight: 4,
             a:
-              'Yes. Each plan has a validity window (Spark 3 months, Steady 6, Scholar 12, Summit 24). Unused lesson credits return to **0** when that date passes. Classes you already booked are not cancelled.\n\n' +
+              'Yes. Credits last for the plan length: Spark 1 month, Steady 3, Scholar 6, Summit 12. Unused lesson credits return to **0** when that date passes. Classes you already booked are not cancelled. A teacher can add one 3-month extension after a parent video call if lessons remain.\n\n' +
               'You will see a countdown on **My Credits**, and we send in-app and email reminders **10 days**, **5 days**, and **2 days** before expiry.',
           },
         ],

@@ -246,6 +246,7 @@
             <span class="cim-chip" data-tier="4">&lt;3h <strong>300%</strong></span>
           </div>
           <button type="button" class="remoed-btn remoed-btn-danger" onclick="toggleCancellationForm()" id="cancel-btn">Request Cancellation</button>
+          <button type="button" class="remoed-btn remoed-btn-secondary" onclick="offerLessonExtension()" id="lesson-extension-btn" style="margin-top: 8px;">Offer 3-month extension</button>
         </section>
 
         <section id="class-management-buttons" class="cim-section" style="display: none;" aria-label="Class management">
@@ -2876,6 +2877,45 @@
         const feedbackModal = document.getElementById('class-feedback-modal');
         if (feedbackModal) feedbackModal.classList.remove('show');
         reportClassIssue().catch(console.error);
+    }
+
+    async function offerLessonExtension() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        var studentKey = currentBooking.studentId || currentBooking.studentUsername || '';
+        if (!studentKey) {
+            showNotification('This class has no student id', 'error');
+            return;
+        }
+        var ok = window.confirm('Offer a 3-month extension only after a one-on-one video call with the parents about this student\'s performance. Have you had that call?');
+        if (!ok) return;
+        var token = '';
+        try { token = resolveTeacherPortalToken(); } catch (_e) {}
+        if (!token) {
+            showNotification('Sign in again to offer the extension', 'error');
+            return;
+        }
+        try {
+            var response = await fetch('/api/teacher/lesson-extension', {
+                method: 'POST',
+                headers: {
+                    Authorization: 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ studentId: studentKey, parentCallConfirmed: true })
+            });
+            var body = await response.json().catch(function () { return {}; });
+            if (!response.ok || !body.success) {
+                showNotification(body.error || 'Could not offer the extension', 'error');
+                return;
+            }
+            showNotification('3-month extension added', 'success');
+        } catch (_err) {
+            showNotification('Could not offer the extension', 'error');
+        }
     }
 
     // Report class issue — close Class Info first so the issue modal is not stacked behind it

@@ -109,3 +109,4 @@ router.get('/fx-rates', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.getRates = getRates;

@@ -25,7 +25,6 @@ const {
   getCandidateTeachersForSlotUtc,
 } = require('./teacherSlotResolve');
 const { normalizeId } = require('../utils/normalizeId');
-const { isFreeTrialTeacher } = require('../utils/teacherPayoutTier');
 
 /** Teacher-facing notification text — many students have empty first/last until profile is completed. */
 function studentDisplayNameForNotification(studentDoc, usernameFallback) {
@@ -313,14 +312,6 @@ async function runBookSlot(req, res) {
     if (!teacher) {
       return res.status(400).json({ error: 'Assigned teacher record not found' });
     }
-    if (freePlanBooking && !isFreeTrialTeacher(teacher)) {
-      return res.status(403).json({
-        error:
-          'Free plan classes are with Free Trial teachers only. Pick a time with a Free Trial teacher, or subscribe to book any teacher.',
-        code: 'FREE_PLAN_TRIAL_TEACHER_ONLY',
-      });
-    }
-
     const utcInstant = new Date(canonicalUtc);
 
     const useTransactions =

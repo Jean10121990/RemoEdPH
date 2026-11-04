@@ -426,7 +426,7 @@
         <select id="plan-currency" aria-describedby="plan-currency-note">
           <option value="USD">USD — US Dollar</option>
         </select>
-        <p class="plan-currency-note" id="plan-currency-note" aria-live="polite">Prices are in PHP. Pick a currency to see an estimate.</p>
+        <p class="plan-currency-note" id="plan-currency-note" aria-live="polite">Dollar prices stay fixed. Peso amounts follow the current conversion.</p>
       </div>
       <div class="plans-grid">
         <div class="plan-card plan-spark" data-plan="spark">
@@ -446,11 +446,12 @@
           </div>
           <div class="plan-bundle">Starter Bundle</div>
           <div class="plan-price-local" data-usd="154">$154.00 USD</div>
-          <div class="plan-period"><strong>22 Lessons</strong> · Valid for 3 Months</div>
+          <div class="plan-period"><strong>22 Lessons</strong> · Good for 1 month</div>
           <p class="plan-tagline">Spark their curiosity.</p>
           <ul class="plan-features">
             <li data-price-line="class">22 classes × ₱420.21 = ₱9,244.62</li>
-            <li>Credits remain active for 3 full months</li>
+            <li>1 month of classes. Credits last for that month.</li>
+            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li>Access to digital and video library</li>
           </ul>
           <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('spark', this)">
@@ -476,12 +477,13 @@
           </div>
           <div class="plan-bundle">Progress Bundle</div>
           <div class="plan-price-local" data-usd="399">$399.00 USD</div>
-          <div class="plan-period"><strong>66 Lessons</strong> · Valid for 6 Months</div>
+          <div class="plan-period"><strong>66 Lessons</strong> · Good for 3 months</div>
           <p class="plan-tagline">Building a routine.</p>
           <ul class="plan-features">
             <li data-price-line="class">66 classes × ₱420.21</li>
             <li data-price-line="founder">Founder discount: −₱3,781.89</li>
-            <li>Credits remain active for 6 full months</li>
+            <li>3 months of classes. Credits last for those months.</li>
+            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li>Digital print outs</li>
           </ul>
           <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('steady', this)">
@@ -508,12 +510,13 @@
           </div>
           <div class="plan-bundle">Mastery Bundle</div>
           <div class="plan-price-local" data-usd="798">$798.00 USD</div>
-          <div class="plan-period"><strong>132 Lessons</strong> · Valid for 12 Months</div>
+          <div class="plan-period"><strong>132 Lessons</strong> · Good for 6 months</div>
           <p class="plan-tagline">Mastering the basics.</p>
           <ul class="plan-features">
             <li data-price-line="class">132 classes × ₱420.21</li>
             <li data-price-line="founder">Founder discount: −₱7,563.78</li>
-            <li>Credits remain active for 12 full months</li>
+            <li>6 months of classes. Credits last for those months.</li>
+            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li>Mid-term progress report</li>
           </ul>
           <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('scholar', this)">
@@ -539,12 +542,13 @@
           </div>
           <div class="plan-bundle">Ultimate Bundle</div>
           <div class="plan-price-local" data-usd="1596">$1,596.00 USD</div>
-          <div class="plan-period"><strong>264 Lessons</strong> · Valid for 24 Months</div>
+          <div class="plan-period"><strong>264 Lessons</strong> · Good for 12 months</div>
           <p class="plan-tagline">Reaching the peak.</p>
           <ul class="plan-features">
             <li data-price-line="class">264 classes × ₱420.21</li>
             <li data-price-line="founder">Founder discount: −₱15,127.56</li>
-            <li>Credits remain active for 24 full months</li>
+            <li>12 months of classes. Credits last for those months.</li>
+            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li>End-of-year certificate</li>
           </ul>
           <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('summit', this)">
@@ -578,11 +582,11 @@
         <details class="home-faq__item">
           <summary>What if we need to reschedule or cancel a class?</summary>
           <!-- TODO-KRISTINE: cancellation window and whether a credit returns -->
-          <p>Email support@remoedph.com before the class. The exact cancellation window is still being confirmed.</p>
+          <p>Email remoedph@gmail.com before the class. The exact cancellation window is still being confirmed.</p>
         </details>
         <details class="home-faq__item">
           <summary>How do credits and validity work?</summary>
-          <p>Each plan has a validity window (RemoSpark 3 months, RemoSteady 6, RemoScholar 12, RemoSummit 24). Unused lesson credits expire when that date passes. Classes you have already booked are not cancelled.</p>
+          <p>Plans are 1, 3, 6, or 12 months. RemoSpark is 22 lessons for 1 month. RemoSteady is 3 months, RemoScholar 6, and RemoSummit 12. Unused lesson credits expire when that month ends. Classes you have already booked are not cancelled. If lessons are still unfinished, a parent can contact the teacher. The teacher may offer one 3-month extension after a one-on-one video call about the student's progress.</p>
         </details>
       </div>
       <p class="home-faq__more"><a href="/site-faq.html">See all FAQs</a></p>
@@ -622,7 +626,7 @@
             <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="140" height="44" />
           </a>
           <p class="site-footer__tagline">Live English for ages 3–6</p>
-          <a class="site-footer__contact" href="mailto:support@remoedph.com">support@remoedph.com</a>
+          <a class="site-footer__contact" href="mailto:remoedph@gmail.com">remoedph@gmail.com</a>
           <a
             class="site-footer__social"
             href="https://www.facebook.com/remoed"
@@ -642,9 +646,10 @@
           <a href="/teachers">Our Teachers</a>
           <a href="/site-faq.html">FAQ</a>
         </nav>
-        <nav class="site-footer__col" aria-label="For teachers">
-          <h3 class="site-footer__heading">For Teachers</h3>
+        <nav class="site-footer__col" aria-label="Apply">
+          <h3 class="site-footer__heading">Apply Now</h3>
           <a href="/application-form">Apply to Teach</a>
+          <a href="/affiliate-apply.html">Apply for Affiliates</a>
         </nav>
         <nav class="site-footer__col" aria-label="Account">
           <h3 class="site-footer__heading">Account</h3>
@@ -713,10 +718,10 @@
       let EXCHANGE_RATE_USED = 60.03;
       /** Fallback until GET /api/payments/plans loads (public/js/plan-pricing.js); the server is the source of truth. */
       const PLAN_PRICING = {
-        spark: { name: "RemoSpark Plan", months: 1, validityMonths: 3, lessonCredits: 22, usdList: 154.0, usdFounderDiscount: 0, usdTotal: 154.0 },
-        steady: { name: "RemoSteady Plan", months: 3, validityMonths: 6, lessonCredits: 66, usdList: 462.0, usdFounderDiscount: 63.0, usdTotal: 399.0 },
-        scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 12, lessonCredits: 132, usdList: 924.0, usdFounderDiscount: 126.0, usdTotal: 798.0 },
-        summit: { name: "RemoSummit Plan", months: 12, validityMonths: 24, lessonCredits: 264, usdList: 1848.0, usdFounderDiscount: 252.0, usdTotal: 1596.0 },
+        spark: { name: "RemoSpark Plan", months: 1, validityMonths: 1, lessonCredits: 22, usdList: 154.0, usdFounderDiscount: 0, usdTotal: 154.0 },
+        steady: { name: "RemoSteady Plan", months: 3, validityMonths: 3, lessonCredits: 66, usdList: 462.0, usdFounderDiscount: 63.0, usdTotal: 399.0 },
+        scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 6, lessonCredits: 132, usdList: 924.0, usdFounderDiscount: 126.0, usdTotal: 798.0 },
+        summit: { name: "RemoSummit Plan", months: 12, validityMonths: 12, lessonCredits: 264, usdList: 1848.0, usdFounderDiscount: 252.0, usdTotal: 1596.0 },
       };
       if (window.RemoEdPlanPricing) {
         window.RemoEdPlanPricing.ready.then(function (data) {

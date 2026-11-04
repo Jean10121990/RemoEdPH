@@ -393,6 +393,7 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
           student.isSubscribed === true ||
           (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active'),
         subscriptionEndDate: student.subscriptionEndDate || null,
+        lessonExtension: require('./services/lessonExtension').extensionView(student),
         creditsExpireAt: creditExpiry.creditsExpireAt,
         daysUntilExpiry: creditExpiry.daysUntilExpiry,
         expiryCountdownLabel: creditExpiry.expiryCountdownLabel,
@@ -3162,6 +3163,21 @@ router.post('/referrals/privacy', verifyToken, requireStudent, async (req, res) 
   } catch (error) {
     console.error('POST /api/student/referrals/privacy:', error);
     res.status(500).json({ success: false, error: 'Could not update badge privacy' });
+  }
+});
+
+/** Parent asks for the optional 3-month finish window. Does not move dates. */
+router.post('/lesson-extension-request', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { requestLessonExtension, extensionView } = require('./services/lessonExtension');
+    const student = req.student;
+    if (!student) return res.status(401).json({ success: false, error: 'Student login required' });
+    const view = await requestLessonExtension(student);
+    res.json({ success: true, lessonExtension: view || extensionView(student) });
+  } catch (error) {
+    const status = error.status || 500;
+    if (status >= 500) console.error('POST /api/student/lesson-extension-request:', error);
+    res.status(status).json({ success: false, error: status >= 500 ? 'Could not save the extension request' : error.message });
   }
 });
 

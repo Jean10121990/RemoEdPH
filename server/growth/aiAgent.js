@@ -4,7 +4,7 @@ const AiKnowledge = require('../models/AiKnowledge');
 
 const RULES = [
   { test: /refund|complaint|human|agent/i, handoff: true, reply: 'I will ask a RemoEd person to continue this chat.' },
-  { test: /plan|price|cost|how much/i, reply: 'RemoSpark is 22 lessons for $154, valid 3 months. A 25-minute class is $7. Assessment: https://remoedph.com/#assessment' },
+  { test: /plan|price|cost|how much/i, reply: 'Plans are 1, 3, 6, or 12 months. RemoSpark is 22 lessons for $154 (1 month). A 25-minute class is $7. Assessment: https://remoedph.com/#assessment' },
   { test: /assess/i, reply: 'Start the free assessment: https://remoedph.com/#assessment' },
 ];
 

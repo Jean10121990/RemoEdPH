@@ -16,8 +16,8 @@ export default function SiteFooter() {
             />
           </a>
           <p className="site-footer__tagline">Live English for ages 3–6</p>
-          <a className="site-footer__contact" href="mailto:support@remoedph.com">
-            support@remoedph.com
+          <a className="site-footer__contact" href="mailto:remoedph@gmail.com">
+            remoedph@gmail.com
           </a>
           <a
             className="site-footer__social"
@@ -37,9 +37,10 @@ export default function SiteFooter() {
           <a href={legacyUrl("/teachers")}>Our Teachers</a>
           <a href={legacyUrl("/site-faq.html")}>FAQ</a>
         </nav>
-        <nav className="site-footer__col" aria-label="For teachers">
-          <h3 className="site-footer__heading">For Teachers</h3>
+        <nav className="site-footer__col" aria-label="Apply">
+          <h3 className="site-footer__heading">Apply Now</h3>
           <a href={legacyUrl("/application-form")}>Apply to Teach</a>
+          <a href={legacyUrl("/affiliate-apply.html")}>Apply for Affiliates</a>
         </nav>
         <nav className="site-footer__col" aria-label="Account">
           <h3 className="site-footer__heading">Account</h3>

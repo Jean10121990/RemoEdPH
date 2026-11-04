@@ -10,6 +10,21 @@ import { getAuthenticatedStudentContext } from "../utils/authStudent.js";
 
 export default function PlansSection({ onOpenSignup, cefrLevel }) {
   const [loadingId, setLoadingId] = React.useState(null);
+  const [phpByPlan, setPhpByPlan] = React.useState({});
+
+  React.useEffect(() => {
+    fetch("/api/payments/plans", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (!body || !Array.isArray(body.plans)) return;
+        const next = {};
+        body.plans.forEach((plan) => {
+          if (plan && plan.planId) next[plan.planId] = plan.phpTotal;
+        });
+        setPhpByPlan(next);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleEnroll(planId) {
     const amounts = getPlanComputedAmounts(planId);
@@ -58,7 +73,7 @@ export default function PlansSection({ onOpenSignup, cefrLevel }) {
   return (
     <section className="section plans-section" id="plans">
       <h2 className="section-title">Choose Your Learning Plan</h2>
-      <p>RemoSpark is valid 3 months, RemoSteady 6, RemoScholar 12, and RemoSummit 24. Checkout from outside the Philippines shows USD first. Payment on the live site is the MariBank QR.</p>
+      <p>Plans are strictly 1, 3, 6, or 12 months. RemoSpark is 22 lessons for 1 month. RemoSteady is 3 months, RemoScholar 6, and RemoSummit 12. If lessons are still unfinished at the end, parents can ask the teacher for one 3-month extension after a video call about the student's progress. Pay by scanning the MariBank QR after you log in.</p>
       {cefrLevel ? (
         <div className="cefr-level-banner is-visible" role="status" aria-live="polite">
           <strong>Your level: {cefrLevel}</strong>
@@ -75,7 +90,11 @@ export default function PlansSection({ onOpenSignup, cefrLevel }) {
             </div>
             <div className="plan-name">{p.name}</div>
             <div className="plan-price">{p.priceUsd}</div>
-            <div className="plan-price-local">{p.pricePhp}</div>
+            <div className="plan-price-local">
+              {phpByPlan[p.id]
+                ? "₱" + Number(phpByPlan[p.id]).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : "Peso price follows the current conversion"}
+            </div>
             <div className="plan-period">
               <strong>{p.period}</strong>
             </div>

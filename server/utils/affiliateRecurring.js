@@ -15,7 +15,9 @@ function phYyyymm(date = new Date()) {
     .slice(0, 7);
 }
 
-/** Plan pack length in months: spark 1 · steady 3 · scholar 6 · summit 12. */
+/** Plan pack length in months of classes: spark 1 · steady 3 · scholar 6 · summit 12.
+ * Paid months only. A later 3-month lesson extension must not add 2% months.
+ */
 function affiliatePlanMonths(plan) {
   const id = normalizePlanId(plan);
   return Math.max(1, Number((PLAN_CREDITS[id] && PLAN_CREDITS[id].months) || 1));
@@ -32,8 +34,9 @@ function addMonthsToYyyymm(yyyymm, n) {
 }
 
 /**
- * 2% of amortized monthly plan value (phpTotal / planMonths).
- * A 3-month plan → this amount once per month for 3 months (same for 6 / 12).
+ * 2% of one paid month (phpTotal / months of classes).
+ * RemoSpark is 1 month, so this is 2% of the full price, once.
+ * A later 3-month lesson extension is not included.
  */
 function affiliateMonthlyRecurringPhp({ amountPaid = 0, plan = '', phpTotal = null } = {}) {
   const months = affiliatePlanMonths(plan);
