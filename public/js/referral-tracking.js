@@ -50,6 +50,10 @@
 
   try {
     var params = new URLSearchParams(window.location.search);
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (key) {
+      var value = params.get(key);
+      if (value) localStorage.setItem(key, String(value).trim());
+    });
     var ref = params.get('ref');
     ref = ref && String(ref).trim() ? String(ref).trim() : '';
 

@@ -213,6 +213,16 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
       await student.save();
     }
   } catch (_onboardingErr) { /* non-blocking */ }
+  try {
+    const { upsertLead } = require('../growth/leadService');
+    await upsertLead({
+      email: student.email,
+      name: [student.firstName, student.lastName].filter(Boolean).join(' '),
+      source: 'payment',
+      stage: 'Paid plan',
+      studentId: student._id,
+    });
+  } catch (_leadErr) { /* non-blocking */ }
 
   let code = String(student.referralCode || '').trim();
   if (!code) return { ok: false, reason: 'no_referral' };

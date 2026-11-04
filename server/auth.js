@@ -1189,6 +1189,21 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
     await student.save();
 
     try {
+      const { upsertLead } = require('./growth/leadService');
+      await upsertLead({
+        name: [student.firstName, student.lastName].filter(Boolean).join(' '),
+        email: student.email,
+        source: 'register',
+        stage: 'Registered',
+        studentId: student._id,
+        referralCode: student.referralCode || '',
+        timeZone: student.timeZone,
+      });
+    } catch (leadErr) {
+      console.warn('Lead register update failed:', leadErr.message);
+    }
+
+    try {
       const { recordReferralSignup } = require('./utils/awardReferralCommission');
       await recordReferralSignup(student);
     } catch (refSignupErr) {
