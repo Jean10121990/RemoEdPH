@@ -15,6 +15,12 @@ const applicationSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     },
+    applicantType: {
+      type: String,
+      enum: ['teacher', 'affiliate'],
+      default: 'teacher',
+      index: true
+    },
     /** Legacy: some older applications only have this (bcrypt). New applications use contactNo only. */
     password: {
       type: String,

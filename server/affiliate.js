@@ -322,8 +322,10 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
       .filter((p) => p.yyyymm === thisMonth)
       .reduce((s, p) => s + (Number(p.amountPhp) || 0), 0);
 
+    const balance = await affiliateBalancePhp(affiliate);
     res.json({
       success: true,
+      balance,
       affiliate: {
         name: affiliate.name,
         email: affiliate.email,
@@ -343,6 +345,98 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
   } catch (err) {
     console.error('Affiliate dashboard error:', err);
     res.status(500).json({ success: false, message: 'Failed to load dashboard' });
+  }
+});
+
+const { affiliateBalancePhp, nextAffiliatePayoutDate, publicAffiliateName } = require('./utils/affiliateBalance');
+const { sendRawEmail } = require('./emailService');
+
+router.get('/leaderboard', verifyToken, requireAffiliate, async (req, res) => {
+  try {
+    const thisMonth = phYyyymm();
+    const start = new Date(`${thisMonth}-01T00:00:00+08:00`);
+    const rows = await Referral.aggregate([
+      {
+        $match: {
+          ownerType: 'affiliate',
+          status: 'successful',
+          updatedAt: { $gte: start },
+        },
+      },
+      { $group: { _id: '$ownerId', paidReferrals: { $sum: 1 } } },
+      { $sort: { paidReferrals: -1, _id: 1 } },
+    ]);
+    const ids = rows.map((r) => r._id).filter(Boolean);
+    const people = await Affiliate.find({ _id: { $in: ids } }).select('name').lean();
+    const names = new Map(people.map((p) => [String(p._id), publicAffiliateName(p.name)]));
+    const board = rows.map((r, i) => ({
+      rank: i + 1,
+      name: names.get(String(r._id)) || 'Affiliate',
+      paidReferrals: r.paidReferrals,
+      isYou: String(r._id) === String(req.user.affiliateId),
+    }));
+    const mine = board.find((r) => r.isYou) || null;
+    res.json({ success: true, month: thisMonth, leaders: board.slice(0, 10), mine });
+  } catch (err) {
+    console.error('Affiliate leaderboard error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load leaderboard' });
+  }
+});
+
+router.post('/withdraw', verifyToken, requireAffiliate, async (req, res) => {
+  try {
+    const affiliate = await Affiliate.findById(req.user.affiliateId);
+    if (!affiliate || affiliate.status !== 'active') {
+      return res.status(403).json({ success: false, message: 'Affiliate account not active' });
+    }
+    const amount = Math.round(Number(req.body && req.body.amountPhp) * 100) / 100;
+    const method = String((req.body && req.body.method) || '').toLowerCase();
+    const accountName = String((req.body && req.body.accountName) || '').trim();
+    const accountNumber = String((req.body && req.body.accountNumber) || '').trim();
+    const bankName = String((req.body && req.body.bankName) || '').trim();
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Enter an amount greater than 0' });
+    }
+    if (method !== 'gcash' && method !== 'bank') {
+      return res.status(400).json({ success: false, message: 'Choose GCash or bank' });
+    }
+    if (!accountName || !accountNumber || (method === 'bank' && !bankName)) {
+      return res.status(400).json({ success: false, message: 'Account name and number are required' });
+    }
+    const balance = await affiliateBalancePhp(affiliate);
+    if (amount > balance.availablePhp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount is higher than your available balance',
+        availablePhp: balance.availablePhp,
+      });
+    }
+    affiliate.payoutMethod = method;
+    affiliate.payoutAccountName = accountName;
+    affiliate.payoutAccountNumber = accountNumber;
+    affiliate.payoutBankName = method === 'bank' ? bankName : '';
+    affiliate.withdrawals.push({
+      amountPhp: amount,
+      method,
+      accountName,
+      accountNumber,
+      bankName: method === 'bank' ? bankName : '',
+      status: 'requested',
+      requestedAt: new Date(),
+      payoutDate: nextAffiliatePayoutDate(),
+    });
+    await affiliate.save();
+    const to = process.env.ACCOUNTING_PAYOUT_EMAIL || 'remoedph@gmail.com';
+    await sendRawEmail(
+      to,
+      'Affiliate withdrawal request',
+      `<p>${affiliate.name} requested ₱${amount} via ${method}. Next payout date ${nextAffiliatePayoutDate()}.</p>`,
+      `${affiliate.name} requested PHP ${amount} via ${method}. Next payout ${nextAffiliatePayoutDate()}.`
+    );
+    res.json({ success: true, nextPayoutDate: nextAffiliatePayoutDate(), availablePhp: balance.availablePhp - amount });
+  } catch (err) {
+    console.error('Affiliate withdraw error:', err);
+    res.status(500).json({ success: false, message: 'Could not request withdrawal' });
   }
 });
 

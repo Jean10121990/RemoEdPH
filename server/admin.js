@@ -1649,6 +1649,7 @@ router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, asy
       passedAt: a.passedAt || null,
       failedAt: a.failedAt || null,
       reapplyEligibleAt: a.reapplyEligibleAt || null,
+      applicantType: a.applicantType === 'affiliate' ? 'affiliate' : 'teacher',
       updatedAt: a.updatedAt
     }));
 
@@ -1670,6 +1671,13 @@ router.get('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdmin,
     }
     const safe = { ...applicant };
     delete safe.password;
+    if (safe.uploadedDocuments && safe.uploadedDocuments.nationalId) {
+      const { decryptPiiString } = require('./utils/piiCrypto');
+      safe.uploadedDocuments = {
+        ...safe.uploadedDocuments,
+        nationalId: decryptPiiString(safe.uploadedDocuments.nationalId),
+      };
+    }
     res.json({ success: true, applicant: safe });
   } catch (error) {
     console.error('❌ Failed to load applicant details:', error);
@@ -1709,9 +1717,18 @@ router.post('/teacher-pipeline/applicants/:id/fail', verifyAdminApiAuth, require
       applicant.contactEmail ??
       '';
     const failTargetEmail = String(rawFailMail).trim().toLowerCase();
-    const emailResult = failTargetEmail
-      ? await sendTeacherPipelineFailEmail(failTargetEmail, applicant.fullName, reapplyEligibleAt, applicant.firstName)
-      : { success: false, error: 'No recipient email on file' };
+    let emailResult = { success: false, error: 'No recipient email on file' };
+    if (failTargetEmail && applicant.applicantType === 'affiliate') {
+      const { sendRawEmail } = require('./emailService');
+      emailResult = await sendRawEmail(
+        failTargetEmail,
+        'RemoEdPH affiliate application',
+        `<p>Hello ${String(applicant.fullName || '').replace(/</g, '')},</p><p>Thank you for applying to the RemoEd Independent Growth Affiliate program. We are not able to approve this application. You may write to support@remoedph.com if you have a question.</p>`,
+        `Hello ${applicant.fullName || ''},\n\nThank you for applying. We are not able to approve this affiliate application.`
+      );
+    } else if (failTargetEmail) {
+      emailResult = await sendTeacherPipelineFailEmail(failTargetEmail, applicant.fullName, reapplyEligibleAt, applicant.firstName);
+    }
 
     res.json({
       success: true,
@@ -1759,6 +1776,51 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     }
 
     console.log('Attempting to send registration link to Applicant:', recipientEmail);
+
+    if (applicant.applicantType === 'affiliate') {
+      const bcrypt = require('bcrypt');
+      const Affiliate = require('./models/Affiliate');
+      const { buildAffiliateReferralSlug } = require('./utils/affiliateReferralSlug');
+      const { sendAffiliateCredentialsEmail } = require('./emailService');
+      const tempPassword = crypto.randomBytes(9).toString('base64url');
+      let affiliate = await Affiliate.findOne({ email: recipientEmail });
+      if (!affiliate) {
+        affiliate = new Affiliate({
+          name: applicant.fullName,
+          email: recipientEmail,
+          phone: applicant.contactNo || '',
+          username: recipientEmail,
+          referralSlug: buildAffiliateReferralSlug({ email: recipientEmail, name: applicant.fullName }),
+          status: 'active',
+        });
+      }
+      affiliate.status = 'active';
+      affiliate.name = applicant.fullName || affiliate.name;
+      affiliate.passwordHash = await bcrypt.hash(tempPassword, 12);
+      const mail = await sendAffiliateCredentialsEmail({
+        to: recipientEmail,
+        name: affiliate.name,
+        username: affiliate.username,
+        password: tempPassword,
+        reason: 'first_login',
+      });
+      if (mail && mail.success) affiliate.credentialsEmailedAt = new Date();
+      await affiliate.save();
+      applicant.currentStage = 'passed';
+      applicant.status = true;
+      applicant.passedAt = new Date();
+      applicant.failedAt = null;
+      applicant.reapplyEligibleAt = null;
+      await applicant.save();
+      return res.json({
+        success: true,
+        message: mail && mail.success
+          ? 'Affiliate passed and login email sent.'
+          : 'Affiliate passed. Login email failed — share the temporary password manually.',
+        emailResult: mail,
+        temporaryPassword: mail && mail.success ? undefined : tempPassword,
+      });
+    }
 
     applicant.currentStage = 'passed';
     applicant.status = true;
@@ -2523,7 +2585,7 @@ router.get('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) => 
     const Affiliate = require('./models/Affiliate');
     const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
     const rows = await Affiliate.find({})
-      .select('name email phone username referralSlug status christianValuesBackground notes createdAt')
+      .select('name email phone username referralSlug status christianValuesBackground notes createdAt withdrawals')
       .sort({ createdAt: -1 })
       .lean();
     res.json({
@@ -2540,6 +2602,15 @@ router.get('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) => 
         notes: a.notes || '',
         enrollLink: enrollLinkForSlug(a.referralSlug, 'https://remoedph.com'),
         createdAt: a.createdAt,
+        withdrawals: (a.withdrawals || []).map((w) => ({
+          id: String(w._id),
+          amountPhp: w.amountPhp,
+          method: w.method,
+          status: w.status,
+          requestedAt: w.requestedAt,
+          paidAt: w.paidAt,
+          payoutDate: w.payoutDate,
+        })),
       })),
     });
   } catch (err) {
@@ -2723,6 +2794,27 @@ router.patch('/affiliates/:id', verifyAdminApiAuth, requireAdmin, async (req, re
   } catch (err) {
     console.error('Admin patch affiliate error:', err);
     res.status(500).json({ success: false, message: 'Failed to update affiliate' });
+  }
+});
+
+router.post('/affiliates/:id/withdrawals/:withdrawalId/paid', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const Affiliate = require('./models/Affiliate');
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid affiliate id' });
+    }
+    const affiliate = await Affiliate.findById(req.params.id);
+    if (!affiliate) return res.status(404).json({ success: false, message: 'Affiliate not found' });
+    const row = (affiliate.withdrawals || []).id(req.params.withdrawalId);
+    if (!row) return res.status(404).json({ success: false, message: 'Withdrawal not found' });
+    row.status = 'paid';
+    row.paidAt = new Date();
+    await affiliate.save();
+    res.json({ success: true, withdrawalId: String(row._id), status: 'paid' });
+  } catch (err) {
+    console.error('Mark affiliate withdrawal paid:', err);
+    res.status(500).json({ success: false, message: 'Failed to mark withdrawal paid' });
   }
 });
 

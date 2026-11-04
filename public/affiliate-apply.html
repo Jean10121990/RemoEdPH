@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apply — RemoEd Affiliate</title>
+  <link rel="icon" href="/images/remoed-favicon.png" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: linear-gradient(165deg, #f0fdf4, #fffbeb); color: #1a3a4a; }
+    main { max-width: 36rem; margin: 2rem auto; background: #fff; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 8px 24px rgba(0,168,45,.12); }
+    label { display: block; font-weight: 700; margin: .8rem 0 .25rem; }
+    input { width: 100%; box-sizing: border-box; padding: .65rem .75rem; border-radius: .75rem; border: 1px solid #e2e8f0; }
+    button { margin-top: 1rem; width: 100%; border: 0; border-radius: .75rem; padding: .8rem; font-weight: 800; color: #fff; background: linear-gradient(90deg, #00A82D, #008A24); }
+    .err { color: #b91c1c; font-weight: 700; }
+    a { color: #008FC4; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Affiliate application</h1>
+    <p>Full name, email, phone, a 1-minute English video (max 12 MB), and one national ID image.</p>
+    <form id="f">
+      <label for="name">Full name</label><input id="name" required />
+      <label for="email">Email</label><input id="email" type="email" required />
+      <label for="phone">Phone</label><input id="phone" required />
+      <label for="video">English video</label><input id="video" type="file" accept="video/*" required />
+      <label for="id">National ID</label><input id="id" type="file" accept="image/*" required />
+      <button type="submit">Submit application</button>
+    </form>
+    <p id="msg"></p>
+    <p><a href="/affiliate-login.html">Back to affiliate login</a></p>
+  </main>
+  <script>
+    document.getElementById('f').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      var msg = document.getElementById('msg');
+      var video = document.getElementById('video').files[0];
+      if (video && video.size > 12 * 1024 * 1024) {
+        msg.textContent = 'Video must be 12 MB or smaller (about 1 minute).';
+        msg.className = 'err';
+        return;
+      }
+      var body = new FormData();
+      body.append('fullName', document.getElementById('name').value);
+      body.append('email', document.getElementById('email').value);
+      body.append('phone', document.getElementById('phone').value);
+      body.append('englishVideo', video);
+      body.append('nationalId', document.getElementById('id').files[0]);
+      msg.textContent = 'Submitting…';
+      msg.className = '';
+      var res = await fetch('/api/applications/affiliate', { method: 'POST', body: body });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok || !data.success) {
+        msg.textContent = data.error || 'Could not submit';
+        msg.className = 'err';
+        return;
+      }
+      msg.textContent = 'Application received. We will email you after review.';
+    });
+  </script>
+</body>
+</html>

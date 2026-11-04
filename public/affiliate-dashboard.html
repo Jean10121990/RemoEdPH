@@ -110,12 +110,34 @@
       <h2>How you earn</h2>
       <p class="muted" style="margin:0 0 8px;">
         <strong>Upfront</strong> when a family pays:
-        1-month ₱1,000 · 3-month ₱1,500 · 6-month ₱2,000 · 1-year ₱2,500.
+        RemoSpark ₱1,000 · RemoSteady ₱1,500 · RemoScholar ₱2,000 · RemoSummit ₱2,500.
       </p>
       <p class="muted" style="margin:0;">
-        <strong>Plus 2% each month</strong> of that plan’s length (3-month plan → 2% for 3 months;
-        6-month → 6; 1-year → 12), while the student stays enrolled.
+        <strong>Plus 2%</strong> for 1, 3, 6, or 12 months after purchase
+        (RemoSpark 1 · RemoSteady 3 · RemoScholar 6 · RemoSummit 12), while the student stays enrolled.
       </p>
+    </div>
+    <div class="card">
+      <h2>This month’s leaderboard</h2>
+      <p class="muted" style="margin-top:0;">Paid referrals only. Names are first name and last initial.</p>
+      <div id="aff-board" class="muted">Loading…</div>
+    </div>
+    <div class="card">
+      <h2>Request a payout</h2>
+      <p class="muted" style="margin-top:0;" id="payout-note">Payouts are sent on the 15th and the last day of the month (Philippine time).</p>
+      <form id="wd-form">
+        <div class="pw-grid">
+          <div><label for="wd-amount">Amount (₱)</label><input id="wd-amount" type="number" min="1" step="0.01" required /></div>
+          <div><label for="wd-method">Method</label>
+            <select id="wd-method"><option value="gcash">GCash</option><option value="bank">Bank</option></select>
+          </div>
+          <div><label for="wd-name">Account name</label><input id="wd-name" required /></div>
+          <div><label for="wd-number">Account number</label><input id="wd-number" required /></div>
+          <div><label for="wd-bank">Bank name</label><input id="wd-bank" /></div>
+        </div>
+        <div style="margin-top:12px;"><button type="submit" class="btn">Request withdrawal</button></div>
+        <p id="wd-msg" class="pw-msg"></p>
+      </form>
     </div>
     <div class="card">
       <h2>Your unique referral link</h2>
@@ -311,6 +333,27 @@
           document.getElementById('m-earn').textContent = peso(
             (data.metrics && data.metrics.estimatedMonthlyEarnings) || 0
           );
+          if (data.balance) {
+            document.getElementById('payout-note').textContent =
+              'Available ' + peso(data.balance.availablePhp) +
+              '. Next payout date: ' + (data.balance.nextPayoutDate || '') +
+              ' (15th and last day, Philippine time).';
+          }
+          try {
+            var lb = await fetch('/api/affiliate/leaderboard', { headers: { Authorization: 'Bearer ' + token() } });
+            var board = await lb.json();
+            var leaders = (board && board.leaders) || [];
+            var html = leaders.length
+              ? '<ol>' + leaders.map(function (r) {
+                  return '<li' + (r.isYou ? ' style="font-weight:800"' : '') + '>' +
+                    esc(r.name) + ' — ' + r.paidReferrals + (r.isYou ? ' (you)' : '') + '</li>';
+                }).join('') + '</ol>'
+              : 'No paid referrals this month yet.';
+            if (board && board.mine && !leaders.some(function (r) { return r.isYou; })) {
+              html += '<p>Your rank: ' + board.mine.rank + '</p>';
+            }
+            document.getElementById('aff-board').innerHTML = html;
+          } catch (_lb) {}
 
           var active = data.activeStudents || [];
           var tActive = document.getElementById('tbody-active');
@@ -357,6 +400,34 @@
           document.getElementById('tbody-payout').innerHTML =
             '<tr><td colspan="4" class="empty">Could not load.</td></tr>';
         }
+      }
+
+      var wdForm = document.getElementById('wd-form');
+      if (wdForm) {
+        wdForm.addEventListener('submit', async function (ev) {
+          ev.preventDefault();
+          var msg = document.getElementById('wd-msg');
+          msg.textContent = 'Sending…';
+          try {
+            var res = await fetch('/api/affiliate/withdraw', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+              body: JSON.stringify({
+                amountPhp: Number(document.getElementById('wd-amount').value),
+                method: document.getElementById('wd-method').value,
+                accountName: document.getElementById('wd-name').value,
+                accountNumber: document.getElementById('wd-number').value,
+                bankName: document.getElementById('wd-bank').value,
+              }),
+            });
+            var body = await res.json();
+            if (!res.ok || !body.success) throw new Error(body.message || 'Request failed');
+            msg.textContent = 'Requested. Next payout ' + (body.nextPayoutDate || '') + '.';
+            load();
+          } catch (err) {
+            msg.textContent = err.message || String(err);
+          }
+        });
       }
 
       load();

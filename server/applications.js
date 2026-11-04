@@ -139,4 +139,63 @@ router.post('/applications', async (req, res) => {
   }
 });
 
+const multer = require('multer');
+const { createGridFsStorage } = require('./services/gridFsMulterStorage');
+const { fileUploadLimiter } = require('./middleware/apiRateLimits');
+const { encryptPiiString } = require('./utils/piiCrypto');
+
+const affiliateUpload = multer({
+  storage: createGridFsStorage({ prefix: 'affiliate-applications' }),
+  limits: { fileSize: 12 * 1024 * 1024 },
+});
+
+router.post(
+  '/applications/affiliate',
+  fileUploadLimiter,
+  affiliateUpload.fields([
+    { name: 'englishVideo', maxCount: 1 },
+    { name: 'nationalId', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const name = String((req.body && req.body.fullName) || '').trim();
+      const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+      const phone = String((req.body && req.body.phone) || '').trim();
+      const video = req.files && req.files.englishVideo && req.files.englishVideo[0];
+      const idFile = req.files && req.files.nationalId && req.files.nationalId[0];
+      if (!name || !email || !phone || !video || !idFile) {
+        return res.status(400).json({
+          success: false,
+          error: 'Name, email, phone, English video, and national ID are required.',
+        });
+      }
+      const existing = await Application.findOne({ email });
+      if (existing) {
+        return res.status(409).json({ success: false, error: 'An application with this email already exists.' });
+      }
+      const Affiliate = require('./models/Affiliate');
+      const affiliateTaken = await Affiliate.findOne({ email }).lean();
+      if (affiliateTaken) {
+        return res.status(409).json({ success: false, error: 'An affiliate with this email already exists.' });
+      }
+      const videoUrl = '/uploads/' + String(video.path || video.filename || '').replace(/\\/g, '/');
+      const idUrl = '/uploads/' + String(idFile.path || idFile.filename || '').replace(/\\/g, '/');
+      const doc = await Application.create({
+        fullName: name,
+        email,
+        contactNo: phone,
+        applicantType: 'affiliate',
+        currentStage: 'applied',
+        status: true,
+        demoVideoUrl: videoUrl,
+        uploadedDocuments: { nationalId: encryptPiiString(idUrl), nbi: '' },
+      });
+      return res.status(201).json({ success: true, applicationId: String(doc._id) });
+    } catch (error) {
+      console.error('Affiliate application failed:', error);
+      return res.status(500).json({ success: false, error: 'Failed to submit affiliate application.' });
+    }
+  }
+);
+
 module.exports = router;
