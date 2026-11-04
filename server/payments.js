@@ -493,6 +493,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
       referenceNormalized,
       referenceDisplay: referenceNormalized,
       referralCode: referralFromBody || referralFromStudent || '',
+      proofScreenshot: String((req.body && req.body.proofScreenshot) || '').slice(0, 500000),
       status: 'pending',
     });
 

@@ -2034,7 +2034,7 @@ router.post('/send-assessment-email', async (req, res) => {
     }
 
     const token = crypto.randomBytes(24).toString('hex');
-    await AssessmentTrial.create({
+    const trial = await AssessmentTrial.create({
       token,
       parentEmail: toEmail,
       childName: childName || '',
@@ -2043,6 +2043,27 @@ router.post('/send-assessment-email', async (req, res) => {
       score: Number(finalScore) || 0,
       assessmentAnswers,
     });
+
+    try {
+      const { upsertLead } = require('./growth/leadService');
+      const body = req.body || {};
+      await upsertLead({
+        name: String(body.parentName || childName || '').trim(),
+        email: toEmail,
+        phone: String(contactNumber || '').trim(),
+        source: 'assessment',
+        stage: 'Assessment done',
+        assessmentId: trial._id,
+        referralCode: String(body.referralCode || '').trim(),
+        utm: {
+          source: String(body.utmSource || body.utm_source || '').trim(),
+          medium: String(body.utmMedium || body.utm_medium || '').trim(),
+          campaign: String(body.utmCampaign || body.utm_campaign || '').trim(),
+        },
+      });
+    } catch (leadErr) {
+      console.warn('[lead] assessment upsert failed:', leadErr.message || leadErr);
+    }
 
     const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
     const registerUrl =

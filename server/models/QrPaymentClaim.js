@@ -10,6 +10,7 @@ const qrPaymentClaimSchema = new mongoose.Schema(
     referenceDisplay: { type: String, required: true },
     /** Optional referrer code/slug captured at claim time (affiliate email/name or teacher code). */
     referralCode: { type: String, default: '' },
+    proofScreenshot: { type: String, default: '' },
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'rejected'],

@@ -110,10 +110,12 @@
           <div id="checkout-qr-panel">
             <div class="checkout-qr-box">
               <img src="/images/maribank-instapay-qr.jpg" alt="MariBank InstaPay QR code" width="220" height="220">
-              <p class="muted">Scan with GCash, Maya, or any InstaPay app. Pay the amount above, then paste the transaction number.</p>
+              <p class="muted">Scan the MariBank QR from your banking app, then enter the transaction number. A screenshot is optional.</p>
             </div>
             <label class="checkout-ref-label" for="qr-reference">Transaction No.</label>
             <input type="text" id="qr-reference" class="checkout-ref-input" maxlength="40" autocomplete="off" placeholder="Transaction number from your receipt">
+            <label class="checkout-ref-label" for="qr-proof">Screenshot (optional)</label>
+            <input type="file" id="qr-proof" accept="image/*">
             <button type="button" class="primary-btn checkout-pay-btn" id="refill-pay-btn" onclick="submitQrPayment()">
               Submit transaction number
             </button>
@@ -416,6 +418,16 @@
       }
       if (!sel || !refEl) return;
       var reference = String(refEl.value || '').trim();
+      var proofInput = document.getElementById('qr-proof');
+      window.__qrProof = '';
+      if (proofInput && proofInput.files && proofInput.files[0]) {
+        window.__qrProof = await new Promise(function (resolve) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(String(reader.result || '').slice(0, 400000)); };
+          reader.onerror = function () { resolve(''); };
+          reader.readAsDataURL(proofInput.files[0]);
+        });
+      }
       if (reference.length < 6) {
         alert('Enter the transaction number from your receipt.');
         return;
@@ -457,6 +469,7 @@
           body: JSON.stringify({
             planId: sel.value,
             reference: reference,
+            proofScreenshot: window.__qrProof || '',
             referralCode: (function () {
               try { return localStorage.getItem('referralCode') || ''; } catch (e) { return ''; }
             })(),

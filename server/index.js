@@ -687,6 +687,7 @@ adminApiCombined.use(require('./classroomSosRoutes').adminSosRouter);
 adminApiCombined.use('/level-assessments', require('./routes/levelAssessments'));
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
+app.use('/api/admin/growth', noStoreProtectedResponse, require('./growth/routes'));
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
@@ -4021,6 +4022,10 @@ const startServer = () => {
           }, 30 * 60 * 1000);
           console.log(`📧 Notification digest scheduler armed (Manila 08:00)`);
 
+          const { runLeadReminders } = require('./growth/leadReminders');
+          setInterval(() => {
+            runLeadReminders().catch((e) => console.warn('[lead-reminder]', e.message || e));
+          }, 60 * 60 * 1000);
           const { runCreditExpiryJobs } = require('./services/creditExpiry');
           setInterval(() => {
             runCreditExpiryJobs().catch((e) =>

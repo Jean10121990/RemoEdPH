@@ -56,6 +56,13 @@ const PERMISSION_CATALOG = [
   // Marketing
   { key: 'mkt:commissions_view', module: 'Marketing Hub', label: 'Unique Link Commissions', sortOrder: 600 },
   { key: 'mkt:affiliates_manage', module: 'Marketing Hub', label: 'Affiliates — Create / Manage', sortOrder: 605 },
+  { key: 'growth.inbox', module: 'Growth', label: 'Growth inbox', sortOrder: 620 },
+  { key: 'growth.leads', module: 'Growth', label: 'Growth leads', sortOrder: 621 },
+  { key: 'growth.posts', module: 'Growth', label: 'Growth posts', sortOrder: 622 },
+  { key: 'growth.campaigns', module: 'Growth', label: 'Growth campaigns', sortOrder: 623 },
+  { key: 'growth.automations', module: 'Growth', label: 'Growth automations', sortOrder: 624 },
+  { key: 'growth.ai_settings', module: 'Growth', label: 'Growth AI settings', sortOrder: 625 },
+  { key: 'growth.reports', module: 'Growth', label: 'Growth reports', sortOrder: 626 },
   { key: 'mkt:announcements_create', module: 'Marketing Hub', label: 'Create / Edit Announcements', sortOrder: 610 },
   // System
   { key: 'system:settings', module: 'System', label: 'System Settings APIs', sortOrder: 700 },
@@ -133,7 +140,15 @@ const ROLE_SEED_PERMISSIONS = {
     'mkt:commissions_view',
     'mkt:affiliates_manage',
     'mkt:announcements_create',
+    'growth.inbox',
+    'growth.leads',
+    'growth.posts',
+    'growth.campaigns',
+    'growth.automations',
+    'growth.ai_settings',
+    'growth.reports',
   ],
+  admin_assistant: ['nav:dashboard', 'nav:marketing', 'growth.inbox', 'growth.leads'],
 };
 
 const ROLE_META = {
@@ -201,6 +216,7 @@ const API_PATH_PERMISSION_RULES = [
   { re: /teacher-pipeline/, key: 'hr:pipeline' },
   { re: /unique-link|referral-link/, key: 'mkt:commissions_view' },
   { re: /\/affiliates(\/|$|\?)/, key: 'mkt:affiliates_manage' },
+  { re: /\/growth\/(leads|reports)/, key: 'growth.leads' },
   { re: /garden-credits/, key: 'nav:reports' },
   { re: /^\/user(\/|$|\?)/, key: 'hr:users_edit' },
   { re: /admins-list|^\/admins$|teachers-list|students-list/, key: 'hr:users_view' },

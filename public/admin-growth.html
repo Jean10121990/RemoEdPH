@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Growth</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; color: #1a3a4a; }
+    .col { display: inline-block; vertical-align: top; width: 180px; margin-right: 8px; background: #f8fafc; border-radius: 8px; padding: 8px; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; margin-bottom: 8px; cursor: grab; }
+    select, button, textarea { font: inherit; }
+  </style>
+</head>
+<body>
+  <div id="app">Loading…</div>
+  <script>
+    var tab = new URLSearchParams(location.search).get('tab') || 'leads';
+    function token() {
+      return localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '';
+    }
+    function esc(s) {
+      return String(s || '').replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]); });
+    }
+    async function api(path, opts) {
+      var res = await fetch(path, Object.assign({ headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' } }, opts || {}));
+      return res.json();
+    }
+    async function loadLeads() {
+      var data = await api('/api/admin/growth/leads');
+      var stages = data.stages || [];
+      var leads = data.leads || [];
+      document.getElementById('app').innerHTML = stages.map(function (stage) {
+        var cards = leads.filter(function (l) { return l.stage === stage; }).map(function (l) {
+          return '<div class="card" draggable="true" data-id="' + l._id + '"><strong>' + esc(l.name || l.email) + '</strong><br>' + esc(l.email) +
+            '<br><select data-move="' + l._id + '">' + stages.map(function (s) {
+              return '<option' + (s === l.stage ? ' selected' : '') + '>' + s + '</option>';
+            }).join('') + '</select></div>';
+        }).join('');
+        return '<div class="col"><h3>' + stage + '</h3>' + cards + '</div>';
+      }).join('');
+      document.querySelectorAll('[data-move]').forEach(function (sel) {
+        sel.addEventListener('change', async function () {
+          await api('/api/admin/growth/leads/' + sel.getAttribute('data-move'), {
+            method: 'PATCH', body: JSON.stringify({ stage: sel.value })
+          });
+          loadLeads();
+        });
+      });
+    }
+    if (tab === 'inbox') document.getElementById('app').textContent = 'Inbox arrives in the next release. Messenger and web chat will land here.';
+    else if (tab === 'posts' || tab === 'campaigns') document.getElementById('app').textContent = 'This tab is ready for the posting and email phase.';
+    else if (tab === 'reports') {
+      api('/api/admin/growth/reports').then(function (data) {
+        document.getElementById('app').textContent = JSON.stringify(data.funnel || {}, null, 2);
+      });
+    } else loadLeads();
+  </script>
+</body>
+</html>
