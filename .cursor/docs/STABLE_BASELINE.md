@@ -423,7 +423,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 - Class times shown to a family use `Student.timeZone`. Slot matching stays Asia/Manila.
 
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`, `admin-referral-leaderboard.html` → `admin-marketing-hub.html#leaderboard`, and `admin-affiliates.html` → `admin-marketing-hub.html#affiliates`.
-- Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (parity with teacher payroll UX + soft buttons), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
+- Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (parity with teacher payroll UX + soft buttons), **Affiliate Payroll** (withdrawal requests, Mark Completed), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
 
 ## Virtual Garden & Eco-Drops

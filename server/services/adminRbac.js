@@ -193,7 +193,7 @@ const PATH_PERMISSION_RULES = [
   { re: /admin-hr-hub|admin-users|admin-hr-documents|admin-teacher-pipeline|admin-teacher-training|admin-teacher-schedule|admin-teacher-assessments|admin-level-assessments|admin-assessment-answer-key|admin-attendance-exceptions/, key: 'nav:hr_hub' },
   { re: /admin-incidents/, key: 'incident:manage' },
   { re: /admin-qa-hub|admin-lessons-library|admin-classroom-recordings|admin-issue-management/, key: 'nav:qa_hub' },
-  { re: /admin-accounting-hub|admin-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
+  { re: /admin-accounting-hub|admin-payroll|admin-affiliate-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
   { re: /admin-fee/, key: 'nav:admin_fee' },
   { re: /admin-marketing-hub|admin-unique-link-commission|admin-referral-leaderboard|admin-affiliates/, key: 'nav:marketing' },
   { re: /admin-announcements/, key: 'nav:announcements' },
@@ -208,8 +208,9 @@ const PATH_PERMISSION_RULES = [
 /** API path patterns → required permission (for adminRoleGate augmentation) */
 const API_PATH_PERMISSION_RULES = [
   { re: /\/settings\/|\/maintenance|\/cleanup\//, key: 'system:settings' },
-  { re: /\/dispense|teachers-weekly-salaries|teacher-period-incentive|admin-fee\/dispense|admin-fee\/payroll/, key: 'acct:payroll_dispense' },
+  { re: /\/dispense|teachers-weekly-salaries|teacher-period-incentive|admin-fee\/dispense|admin-fee\/payroll|affiliate-payroll\/.+\/complete/, key: 'acct:payroll_dispense' },
   { re: /student-subscriptions/, key: 'acct:subscriptions_view' },
+  { re: /affiliate-payroll/, key: 'acct:payroll_view' },
   { re: /qr-payments/, key: 'acct:qr_confirm' },
   { re: /\/issues|issue-reports/, key: 'qa:issues_view' },
   { re: /classroom-recordings/, key: 'qa:recordings_view' },

@@ -1485,14 +1485,14 @@ function escapeEmailHtml(value) {
 
 /**
  * Email affiliate username + password after first sign-in or password change.
- * @param {{ to: string, name?: string, username: string, password: string, reason?: 'first_login'|'password_change' }} opts
+ * @param {{ to: string, name?: string, username: string, password: string, reason?: 'first_login'|'password_change'|'password_reset' }} opts
  */
 async function sendAffiliateCredentialsEmail(opts = {}) {
   const to = String(opts.to || '').trim();
   const username = String(opts.username || '').trim();
   const password = String(opts.password || '');
   const name = String(opts.name || '').trim() || 'Affiliate';
-  const reason = opts.reason === 'password_change' ? 'password_change' : 'first_login';
+  const reason = ['password_change', 'password_reset'].includes(opts.reason) ? opts.reason : 'first_login';
 
   if (!to) return { success: false, error: 'Missing recipient' };
   if (!username || !password) return { success: false, error: 'Missing credentials' };
@@ -1512,11 +1512,15 @@ async function sendAffiliateCredentialsEmail(opts = {}) {
   const subject =
     reason === 'password_change'
       ? 'RemoEdPH Affiliate — your updated login'
-      : 'RemoEdPH Affiliate — your login credentials';
+      : reason === 'password_reset'
+        ? 'RemoEdPH Affiliate — your new password'
+        : 'RemoEdPH Affiliate — your login credentials';
   const intro =
     reason === 'password_change'
       ? 'Your affiliate portal password was updated. Keep this copy of your username and new password.'
-      : 'Welcome to the RemoEdPH Independent Growth Affiliate portal. Here are your login credentials for your records.';
+      : reason === 'password_reset'
+        ? 'A new affiliate portal password was created for this email. Use it to sign in, then change it from your dashboard.'
+        : 'Welcome to the RemoEdPH Independent Growth Affiliate portal. Here are your login credentials for your records.';
 
   const html = `
       <!DOCTYPE html>

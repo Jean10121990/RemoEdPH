@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,7 @@ const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
 const { studentLooksPaid, ensureAffiliateRecurringLedger } = require('./utils/awardReferralCommission');
 const { phYyyymm, AFFILIATE_MONTHLY_PCT } = require('./utils/affiliateRecurring');
 const { sendAffiliateCredentialsEmail } = require('./emailService');
+const { passwordResetLimiter } = require('./middleware/apiRateLimits');
 
 const RECURRING_PCT_LABEL = `${Math.round(AFFILIATE_MONTHLY_PCT * 100)}%`;
 
@@ -341,6 +343,18 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
       },
       activeStudents,
       payoutHistory,
+      withdrawalHistory: (affiliate.withdrawals || [])
+        .slice()
+        .sort((a, b) => new Date(b.paidAt || b.requestedAt || 0) - new Date(a.paidAt || a.requestedAt || 0))
+        .map((w) => ({
+          id: String(w._id || ''),
+          amountPhp: Number(w.amountPhp) || 0,
+          method: w.method || '',
+          status: w.status === 'paid' ? 'sent' : 'processing',
+          requestedAt: w.requestedAt || null,
+          paidAt: w.paidAt || null,
+          payoutDate: w.payoutDate || '',
+        })),
     });
   } catch (err) {
     console.error('Affiliate dashboard error:', err);
@@ -349,7 +363,7 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
 });
 
 const { affiliateBalancePhp, nextAffiliatePayoutDate, publicAffiliateName } = require('./utils/affiliateBalance');
-const { sendRawEmail } = require('./emailService');
+const { sendWithdrawalEmailToAccounting } = require('./services/payrollWithdrawService');
 
 router.get('/leaderboard', verifyToken, requireAffiliate, async (req, res) => {
   try {
@@ -411,29 +425,34 @@ router.post('/withdraw', verifyToken, requireAffiliate, async (req, res) => {
         availablePhp: balance.availablePhp,
       });
     }
+    const payoutDate = nextAffiliatePayoutDate();
     affiliate.payoutMethod = method;
     affiliate.payoutAccountName = accountName;
     affiliate.payoutAccountNumber = accountNumber;
-    affiliate.payoutBankName = method === 'bank' ? bankName : '';
+    affiliate.payoutBankName = method === 'bank' ? bankName : 'GCash';
     affiliate.withdrawals.push({
       amountPhp: amount,
       method,
       accountName,
       accountNumber,
-      bankName: method === 'bank' ? bankName : '',
+      bankName: method === 'bank' ? bankName : 'GCash',
       status: 'requested',
       requestedAt: new Date(),
-      payoutDate: nextAffiliatePayoutDate(),
+      payoutDate,
     });
     await affiliate.save();
-    const to = process.env.ACCOUNTING_PAYOUT_EMAIL || 'remoedph@gmail.com';
-    await sendRawEmail(
-      to,
-      'Affiliate withdrawal request',
-      `<p>${affiliate.name} requested ₱${amount} via ${method}. Next payout date ${nextAffiliatePayoutDate()}.</p>`,
-      `${affiliate.name} requested PHP ${amount} via ${method}. Next payout ${nextAffiliatePayoutDate()}.`
-    );
-    res.json({ success: true, nextPayoutDate: nextAffiliatePayoutDate(), availablePhp: balance.availablePhp - amount });
+    await sendWithdrawalEmailToAccounting({
+      roleLabel: 'Affiliate',
+      displayName: affiliate.name,
+      username: affiliate.username,
+      email: affiliate.email,
+      amount,
+      periodLabel: payoutDate,
+      bankName: method === 'bank' ? bankName : 'GCash',
+      accountName,
+      accountNumber,
+    });
+    res.json({ success: true, nextPayoutDate: payoutDate, availablePhp: balance.availablePhp - amount });
   } catch (err) {
     console.error('Affiliate withdraw error:', err);
     res.status(500).json({ success: false, message: 'Could not request withdrawal' });
@@ -444,6 +463,46 @@ router.get('/kit', verifyToken, requireAffiliate, async (_req, res) => {
   const Post = require('./models/Post');
   const posts = await Post.find({ affiliateKit: true }).sort({ updatedAt: -1 }).limit(40).select('body language mediaPath').lean();
   res.json({ success: true, posts });
+});
+
+/** Public. Creates a new password and emails it to the affiliate's registered address. */
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
+  const generic = {
+    success: true,
+    message: 'If that account is active, we emailed a new password to the registered address.',
+  };
+  try {
+    const key = String((req.body && (req.body.email || req.body.username)) || '')
+      .trim()
+      .toLowerCase();
+    if (!key) {
+      return res.status(400).json({ success: false, message: 'Enter your username or email' });
+    }
+    const affiliate = await Affiliate.findOne({
+      status: 'active',
+      $or: [{ email: key }, { username: key }],
+    });
+    if (!affiliate || !affiliate.email) return res.json(generic);
+    const password = crypto.randomBytes(9).toString('base64url');
+    const mail = await sendAffiliateCredentialsEmail({
+      to: affiliate.email,
+      name: affiliate.name,
+      username: affiliate.username,
+      password,
+      reason: 'password_reset',
+    });
+    if (!mail || !mail.success) {
+      console.warn('Affiliate forgot-password email not sent:', (mail && mail.error) || 'unknown');
+      return res.json(generic);
+    }
+    affiliate.passwordHash = await bcrypt.hash(password, 12);
+    affiliate.credentialsEmailedAt = new Date();
+    await affiliate.save();
+    return res.json(generic);
+  } catch (err) {
+    console.error('Affiliate forgot-password error:', err);
+    return res.status(500).json({ success: false, message: 'Could not reset the password' });
+  }
 });
 
 module.exports = router;

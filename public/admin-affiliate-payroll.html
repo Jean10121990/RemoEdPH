@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="js/security-guard.js?v=2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <title>Affiliate Payroll - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { margin: 0; background: #f8fafc; color: #0f172a; font-family: Segoe UI, Arial, sans-serif; }
+        .wrap { padding: 16px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.9rem; }
+        th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+        th { background: #e8f4fd; color: #1a365d; }
+        button { padding: 6px 10px; border: 0; border-radius: 6px; font-weight: 700; cursor: pointer; }
+        .ok { background: #27ae60; color: #fff; }
+        .muted { color: #64748b; }
+        .err { color: #b91c1c; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h2 style="margin:0 0 8px;">Affiliate Payroll</h2>
+        <p class="muted" style="margin-top:0;">Withdrawal requests use the same MariBank email as admin payroll. Mark Completed after the transfer is sent. That adds the row to the affiliate’s transaction history and emails them.</p>
+        <p>
+            <label>Show
+                <select id="status-filter">
+                    <option value="requested">Waiting</option>
+                    <option value="paid">Sent</option>
+                    <option value="all">All</option>
+                </select>
+            </label>
+            <button type="button" id="reload" style="background:#1ca7e7;color:#fff;margin-left:8px;">Load</button>
+            <span id="msg" class="muted" style="margin-left:8px;"></span>
+        </p>
+        <div style="overflow:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Requested</th><th>Affiliate</th><th>Amount</th><th>Bank</th><th>Account name</th><th>Account</th><th>Payout date</th><th>Status</th><th></th>
+                    </tr>
+                </thead>
+                <tbody id="rows"><tr><td colspan="9" class="muted">Loading…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    <script src="js/admin-session.js"></script>
+    <script>
+        function token() {
+            try {
+                if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) return RemoedAdminSession.getAuthToken() || '';
+            } catch (e) {}
+            return localStorage.getItem('remoed_admin_token') || '';
+        }
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+            });
+        }
+        function peso(n) {
+            return '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function when(v) {
+            if (!v) return '—';
+            try { return new Date(v).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }); } catch (e) { return '—'; }
+        }
+        async function load() {
+            var msg = document.getElementById('msg');
+            msg.textContent = 'Loading…';
+            msg.className = 'muted';
+            var status = document.getElementById('status-filter').value;
+            var res = await fetch('/api/admin/affiliate-payroll?status=' + encodeURIComponent(status), {
+                headers: { Authorization: 'Bearer ' + token() }
+            });
+            var body = await res.json().catch(function () { return {}; });
+            if (!res.ok || !body.success) {
+                msg.textContent = body.message || 'Could not load';
+                msg.className = 'err';
+                return;
+            }
+            var rows = body.withdrawals || [];
+            var tb = document.getElementById('rows');
+            if (!rows.length) {
+                tb.innerHTML = '<tr><td colspan="9" class="muted">No rows.</td></tr>';
+            } else {
+                tb.innerHTML = rows.map(function (r) {
+                    var action = r.status === 'paid'
+                        ? '<span class="muted">Sent ' + esc(when(r.paidAt)) + '</span>'
+                        : '<button type="button" class="ok" data-aff="' + esc(r.affiliateId) + '" data-id="' + esc(r.withdrawalId) + '">Mark Completed</button>';
+                    return '<tr><td>' + esc(when(r.requestedAt)) + '</td><td><strong>' + esc(r.name) + '</strong><br><span class="muted">' + esc(r.email) + '</span></td><td><strong>' + esc(peso(r.amountPhp)) + '</strong></td><td>' + esc(r.bankName || r.method) + '</td><td>' + esc(r.accountName) + '</td><td><code>' + esc(r.accountNumber) + '</code></td><td>' + esc(r.payoutDate) + '</td><td>' + esc(r.status === 'paid' ? 'Sent' : 'Waiting') + '</td><td>' + action + '</td></tr>';
+                }).join('');
+            }
+            msg.textContent = rows.length + ' row' + (rows.length === 1 ? '' : 's');
+            tb.querySelectorAll('button[data-id]').forEach(function (btn) {
+                btn.addEventListener('click', function () { complete(btn); });
+            });
+        }
+        async function complete(btn) {
+            if (!window.confirm('Mark this affiliate payout as sent?')) return;
+            btn.disabled = true;
+            var res = await fetch('/api/admin/affiliate-payroll/' + encodeURIComponent(btn.getAttribute('data-aff')) + '/' + encodeURIComponent(btn.getAttribute('data-id')) + '/complete', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token() }
+            });
+            var body = await res.json().catch(function () { return {}; });
+            if (!res.ok || !body.success) {
+                document.getElementById('msg').textContent = body.message || 'Could not mark sent';
+                document.getElementById('msg').className = 'err';
+                btn.disabled = false;
+                return;
+            }
+            load();
+        }
+        document.getElementById('reload').addEventListener('click', load);
+        document.getElementById('status-filter').addEventListener('change', load);
+        load();
+    </script>
+</body>
+</html>

@@ -32,6 +32,7 @@ export default function SiteFooter() {
         </div>
         <nav className="site-footer__col" aria-label="Learn">
           <h3 className="site-footer__heading">Learn</h3>
+          <a href="/">Home</a>
           <a href="#assessment">Free Assessment</a>
           <a href="#plans">Plans</a>
           <a href={legacyUrl("/teachers")}>Our Teachers</a>

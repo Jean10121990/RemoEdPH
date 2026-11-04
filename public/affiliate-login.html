@@ -223,6 +223,15 @@
           </div>
           <button type="submit" class="btn-primary" id="btn-login">Sign in</button>
         </form>
+        <p class="aff-home" style="margin-top:0.75rem;"><button type="button" id="btn-forgot" style="background:none;border:0;color:#008fc4;font-weight:700;cursor:pointer;padding:0;">Forgot password?</button></p>
+        <form id="forgot-form" hidden novalidate>
+          <div class="field">
+            <label for="forgot-email">Registered username or email</label>
+            <input id="forgot-email" type="text" autocomplete="username" required />
+          </div>
+          <button type="submit" class="btn-primary" id="btn-forgot-send">Email me a new password</button>
+          <p id="forgot-msg" class="aff-hint"></p>
+        </form>
         <p class="aff-hint">Need access? Ask Marketing / Super-Admin to activate your affiliate account.</p>
         <p class="aff-home"><a href="/affiliate-apply.html">Apply to become an affiliate</a> · <a href="/index.html">Back to Home</a></p>
       </div>
@@ -248,6 +257,31 @@
         errEl.textContent = msg;
         errEl.style.display = 'block';
       }
+
+      document.getElementById('btn-forgot').addEventListener('click', function () {
+        var form = document.getElementById('forgot-form');
+        form.hidden = !form.hidden;
+      });
+      document.getElementById('forgot-form').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        var msg = document.getElementById('forgot-msg');
+        var btn = document.getElementById('btn-forgot-send');
+        btn.disabled = true;
+        msg.textContent = 'Sending…';
+        try {
+          var res = await fetch('/api/affiliate/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: document.getElementById('forgot-email').value.trim() }),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) throw new Error(data.message || data.error || 'Could not reset the password');
+          msg.textContent = data.message || 'If that account is active, we emailed a new password.';
+        } catch (err) {
+          msg.textContent = err.message || String(err);
+        }
+        btn.disabled = false;
+      });
 
       document.getElementById('login-form').addEventListener('submit', async function (ev) {
         ev.preventDefault();

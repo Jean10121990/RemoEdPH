@@ -191,6 +191,20 @@
       </div>
     </div>
     <div class="card">
+      <h2>Transaction history</h2>
+      <p class="muted" style="margin-top:0;">A row appears here after Accounting marks the payout sent.</p>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr><th>Sent</th><th>Amount</th><th>Method</th><th>Status</th></tr>
+          </thead>
+          <tbody id="tbody-tx">
+            <tr><td colspan="4" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
       <h2>Monthly payout history</h2>
       <div style="overflow:auto;">
         <table>
@@ -398,6 +412,19 @@
                 );
               })
               .join('');
+          }
+
+          var tx = (data.withdrawalHistory || []).filter(function (r) { return r.status === 'sent'; });
+          var tTx = document.getElementById('tbody-tx');
+          if (tTx) {
+            if (!tx.length) {
+              tTx.innerHTML = '<tr><td colspan="4" class="empty">No completed payouts yet.</td></tr>';
+            } else {
+              tTx.innerHTML = tx.map(function (r) {
+                var sent = r.paidAt ? new Date(r.paidAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '—';
+                return '<tr><td>' + esc(sent) + '</td><td><strong>' + peso(r.amountPhp) + '</strong></td><td>' + esc(r.method || '—') + '</td><td>Sent</td></tr>';
+              }).join('');
+            }
           }
 
           var hist = data.payoutHistory || [];
