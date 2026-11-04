@@ -1154,6 +1154,39 @@
                     }
                 }
 
+                var onboard = profile.onboarding;
+                if (onboard && onboard.started) {
+                    var box = document.getElementById('onboarding-checklist');
+                    if (!box) {
+                        box = document.createElement('div');
+                        box.id = 'onboarding-checklist';
+                        box.style.cssText = 'margin:12px 0;padding:12px 16px;border:1px solid #d1fae5;border-radius:12px;background:#f0fdf4;';
+                        var host = document.getElementById('credits-expiry-banner');
+                        if (host && host.parentNode) host.parentNode.insertBefore(box, host);
+                        else document.body.prepend(box);
+                    }
+                    function check(key, label) {
+                        var done = onboard[key] === true;
+                        return '<label style="display:block;margin:4px 0;"><input type="checkbox" data-onboard="' + key + '"' + (done ? ' checked disabled' : '') + '> ' + label + '</label>';
+                    }
+                    box.innerHTML = '<strong>Before your first class</strong>' +
+                        check('deviceChecked', 'Check your camera and microphone') +
+                        check('bookedFirst', 'Book your first class') +
+                        check('metTeacher', 'Meet your teacher');
+                    box.querySelectorAll('[data-onboard]').forEach(function (input) {
+                        input.addEventListener('change', function () {
+                            if (!input.checked) return;
+                            var payload = { timeZone: profile.timeZone || 'Asia/Manila', onboarding: {} };
+                            payload.onboarding[input.getAttribute('data-onboard')] = true;
+                            fetch('/api/student/timezone', {
+                                method: 'POST',
+                                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            }).then(function () { input.disabled = true; });
+                        });
+                    });
+                }
+
                 var freePlan = profile.freePlan || null;
                 if (freePlan && freePlan.isFree === true) {
                     if (paywall) paywall.style.display = 'none';

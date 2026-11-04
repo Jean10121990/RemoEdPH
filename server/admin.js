@@ -4757,6 +4757,17 @@ router.post('/qr-payments/:id/confirm', async (req, res) => {
     claim.confirmedAt = new Date();
     claim.creditsAdded = Number(applied.creditsAdded) || 0;
     await claim.save();
+    try {
+      const { sendRawEmail } = require('./emailService');
+      if (student.email) {
+        await sendRawEmail(
+          student.email,
+          'RemoEd payment receipt',
+          '<p>We received your MariBank payment.</p><p>Plan: ' + claim.planId + '<br>Credits added: ' + claim.creditsAdded + '</p>',
+          'Plan ' + claim.planId + '. Credits added ' + claim.creditsAdded + '.'
+        );
+      }
+    } catch (_mail) { /* receipt is best-effort */ }
     return res.json({
       success: true,
       creditsAdded: claim.creditsAdded,
@@ -4785,6 +4796,19 @@ router.post('/qr-payments/:id/reject', async (req, res) => {
     claim.rejectedBy = String((req.user && req.user.username) || '');
     claim.rejectedAt = new Date();
     await claim.save();
+    try {
+      const Student = require('./models/Student');
+      const { sendRawEmail } = require('./emailService');
+      const student = await Student.findById(claim.studentId).select('email').lean();
+      if (student && student.email) {
+        await sendRawEmail(
+          student.email,
+          'RemoEd payment not confirmed',
+          `<p>We could not confirm the MariBank payment for ${claim.planId}. Reply to this email if the transfer already left your account.</p>`,
+          `We could not confirm the payment for ${claim.planId}.`
+        );
+      }
+    } catch (_mail) { /* notice is best-effort */ }
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Could not reject this payment.' });

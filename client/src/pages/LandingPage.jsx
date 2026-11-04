@@ -77,6 +77,13 @@ export default function LandingPage() {
       <BenefitsSection />
       <AssessmentForm />
       <PlansSection onOpenSignup={openSignup} cefrLevel={cefrLevel} />
+      <section className="section home-faq" id="faq">
+        <h2 className="section-title">Questions parents ask</h2>
+        <p>Live classes are 25 minutes for ages 3–6.</p>
+        <p>RemoSpark lasts 3 months, RemoSteady 6, RemoScholar 12, and RemoSummit 24. Booked classes stay on the calendar when unused credits expire.</p>
+        <p>Pay from any country by scanning the MariBank QR after you log in.</p>
+        <p>TODO-KRISTINE: cancellation window and minimum internet speed.</p>
+      </section>
       <SiteFooter />
       <SignupModal
         open={modalOpen}

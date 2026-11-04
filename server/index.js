@@ -987,6 +987,34 @@ app.use((req, res, next) => {
   return next();
 });
 
+// Marketing locales reuse the live landing page.
+app.get(['/ja', '/ko', '/zh', '/vi', '/th', '/ar', '/es'], (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+app.get('/sitemap.xml', (req, res) => {
+  const paths = ['/', '/ja', '/ko', '/zh', '/vi', '/th', '/ar', '/es', '/about', '/site-faq.html'];
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    paths.map((p) => '  <url><loc>https://remoedph.com' + p + '</loc></url>').join('\n') +
+    '\n</urlset>\n';
+  res.type('application/xml').send(xml);
+});
+app.get('/api/public/testimonials', async (_req, res) => {
+  try {
+    const Feedback = require('./models/Feedback');
+    const rows = await Feedback.find({ publicTestimonial: true, comment: { $nin: [null, ''] } })
+      .sort({ submittedAt: -1 })
+      .limit(6)
+      .select('comment')
+      .lean();
+    res.json({
+      success: true,
+      testimonials: rows.map((row) => ({ quote: row.comment, parentName: 'Parent' })),
+    });
+  } catch (err) {
+    res.json({ success: true, testimonials: [] });
+  }
+});
+
 // Static files after core /api mounts so API paths are never shadowed by public files
 app.use(
   express.static(publicDir, {

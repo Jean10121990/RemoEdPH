@@ -360,6 +360,8 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         email: student.email,
         address: student.address,
         language: student.language,
+        timeZone: student.timeZone || 'Asia/Manila',
+        onboarding: student.onboarding || null,
         hobbies: student.hobbies,
         parentName: student.parentName,
         parentContact: student.parentContact,
@@ -456,6 +458,33 @@ router.post('/welcome-tour/dismiss', verifyToken, requireStudent, async (req, re
   } catch (error) {
     console.error('welcome-tour/dismiss:', error);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// Save the parent's time zone and onboarding checks. Slot matching stays Asia/Manila.
+router.post('/timezone', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { DateTime } = require('luxon');
+    const zone = String((req.body && req.body.timeZone) || '').trim();
+    if (!zone || !DateTime.now().setZone(zone).isValid) {
+      return res.status(400).json({ success: false, error: 'Choose a valid time zone.' });
+    }
+    const student = await Student.findOne({
+      $or: [{ username: req.user.studentId }, { studentId: req.user.studentId }, { email: req.user.email }],
+    });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+    student.timeZone = zone;
+    if (req.body && req.body.onboarding) {
+      student.onboarding = student.onboarding || {};
+      ['deviceChecked', 'bookedFirst', 'metTeacher'].forEach((key) => {
+        if (req.body.onboarding[key] === true) student.onboarding[key] = true;
+      });
+      student.markModified('onboarding');
+    }
+    await student.save();
+    res.json({ success: true, timeZone: student.timeZone, onboarding: student.onboarding });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Could not save time zone' });
   }
 });
 

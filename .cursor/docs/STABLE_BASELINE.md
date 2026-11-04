@@ -410,6 +410,18 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 - Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub`, `admin-unique-link-commission`, `admin-referral-leaderboard`, and `admin-affiliates` → `marketing`; `admin-fee.html` → `admin-fee`.
 - Default seed for **`admin_marketing`** (editable in Settings → Admin Roles and Access): Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings; includes `mkt:commissions_view` + `mkt:affiliates_manage`. Settings / System monitor remain Super-Admin (`nav:settings` / `nav:super_monitor`). Example account: `adminmktg@remoedph.com` (ops: `scripts/ensure-admin-marketing.js`).
 - Visibility is driven by **dynamic RBAC** (`GET /api/admin/me/permissions`); legacy hub-guard still falls back to role slug checks if permissions fail to load.
+
+## Growth program
+
+- `GET /healthz` returns 200 when Mongo answers a ping and 503 otherwise. It does not return secrets. `GET /api/health` is unchanged.
+- Affiliate apply: public `POST /api/applications/affiliate` (rate limited). HR Pass on `applicantType: affiliate` creates the affiliate account.
+- Growth admin API is ` /api/admin/growth/*` (admin JWT). Keys: `growth.inbox`, `growth.leads`, `growth.posts`, `growth.campaigns`, `growth.automations`, `growth.ai_settings`, `growth.reports`. `admin_assistant` may open inbox and leads only.
+- Public web chat: `POST /api/public/chat` (rate limited, no token). Meta webhook: `GET/POST /api/webhooks/meta` (verify token and `X-Hub-Signature-256`).
+- Brevo events: `POST /api/webhooks/brevo` (no token; stores open/click/unsubscribe only).
+- Public testimonials: `GET /api/public/testimonials` returns rows marked `publicTestimonial`. Empty list hides the landing block.
+- `GET /sitemap.xml` and `public/robots.txt` describe the marketing site. Locale paths `/ja`, `/ko`, `/zh`, `/vi`, `/th`, `/ar`, `/es` serve `public/index.html`.
+- Class times shown to a family use `Student.timeZone`. Slot matching stays Asia/Manila.
+
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`, `admin-referral-leaderboard.html` → `admin-marketing-hub.html#leaderboard`, and `admin-affiliates.html` → `admin-marketing-hub.html#affiliates`.
 - Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (parity with teacher payroll UX + soft buttons), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.

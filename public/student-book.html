@@ -1641,6 +1641,14 @@
             select.onchange = () => {
                 userTimezone = select.value || 'UTC';
                 console.log('🌐 Timezone changed to:', userTimezone);
+                var token = localStorage.getItem('remoed_student_token') || localStorage.getItem('token') || '';
+                if (token) {
+                    fetch('/api/student/timezone', {
+                        method: 'POST',
+                        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ timeZone: userTimezone })
+                    }).catch(function () {});
+                }
                 // Regenerate grid with new timezone
                 updateWeekDisplay();
                 generateWeeklyGrid();
@@ -1885,7 +1893,9 @@
             
             try {
                 // Validate token first
-                validateToken().then(() => {
+                validateToken().then((profileBody) => {
+                    var savedZone = profileBody && profileBody.profile && profileBody.profile.timeZone;
+                    if (savedZone) userTimezone = savedZone;
                     console.log('✅ Token validated, initializing components...');
                     initTimezoneControl();
                     updateWeekDisplay();
@@ -1982,11 +1992,11 @@
                 if (!response.ok) {
                     // If it's not a 401, it might be a server issue, not a token issue
                     console.warn('⚠️ Server returned non-200 status, but continuing with basic functionality');
-                    return true; // Continue anyway
+                    return null;
                 }
-                
+                var profileBody = await response.json();
                 console.log('✅ Token validation successful');
-                return true;
+                return profileBody;
             } catch (error) {
                 console.error('❌ Token validation failed:', error.message);
                 

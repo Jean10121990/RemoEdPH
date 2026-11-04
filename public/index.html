@@ -96,6 +96,16 @@
       content="Live online English classes for children ages 3–6 in the Philippines. Calm, engaging lessons at home. Take the free 2-minute assessment."
     />
     <meta property="og:url" content="https://remoedph.com/" />
+    <link rel="canonical" href="https://remoedph.com/" />
+    <link rel="alternate" hreflang="en" href="https://remoedph.com/" />
+    <link rel="alternate" hreflang="ja" href="https://remoedph.com/ja" />
+    <link rel="alternate" hreflang="ko" href="https://remoedph.com/ko" />
+    <link rel="alternate" hreflang="zh" href="https://remoedph.com/zh" />
+    <link rel="alternate" hreflang="vi" href="https://remoedph.com/vi" />
+    <link rel="alternate" hreflang="th" href="https://remoedph.com/th" />
+    <link rel="alternate" hreflang="ar" href="https://remoedph.com/ar" />
+    <link rel="alternate" hreflang="es" href="https://remoedph.com/es" />
+    <link rel="alternate" hreflang="x-default" href="https://remoedph.com/" />
     <meta property="og:image" content="https://remoedph.com/images/og-remoedph-1200x630.jpg?v=og-home-2" />
     <meta property="og:image:secure_url" content="https://remoedph.com/images/og-remoedph-1200x630.jpg?v=og-home-2" />
     <meta property="og:image:type" content="image/jpeg" />
@@ -562,13 +572,13 @@
         </details>
         <details class="home-faq__item">
           <summary>What do we need to join a class?</summary>
-          <!-- TODO: owner to fill in: device type, internet speed, app or browser requirements -->
-          <p>Details coming soon. Contact support@remoedph.com</p>
+          <!-- TODO-KRISTINE: minimum internet speed and whether a phone is enough -->
+          <p>A browser on a phone, tablet, or computer, plus a camera and microphone. Pay from any country by scanning the MariBank QR on the Credits page.</p>
         </details>
         <details class="home-faq__item">
           <summary>What if we need to reschedule or cancel a class?</summary>
-          <!-- TODO: owner to fill in the reschedule/cancellation policy -->
-          <p>Details coming soon. Contact support@remoedph.com</p>
+          <!-- TODO-KRISTINE: cancellation window and whether a credit returns -->
+          <p>Email support@remoedph.com before the class. The exact cancellation window is still being confirmed.</p>
         </details>
         <details class="home-faq__item">
           <summary>How do credits and validity work?</summary>
@@ -1150,24 +1160,31 @@
           if (/^https?:\/\//i.test(photo) || /^data:/i.test(photo)) return photo;
           return photo.charAt(0) === "/" ? photo : "/" + photo;
         }
-        var HOME_TESTIMONIALS = [];
         var testimonialsRoot = document.getElementById("testimonials");
         var testimonialsGrid = document.getElementById("home-testimonials");
-        if (testimonialsRoot && testimonialsGrid) {
+        function paintTestimonials(items) {
+          if (!testimonialsRoot || !testimonialsGrid) return;
+          if (!items.length) {
+            testimonialsRoot.hidden = true;
+            return;
+          }
           testimonialsRoot.hidden = false;
-          testimonialsGrid.innerHTML = HOME_TESTIMONIALS.length
-            ? HOME_TESTIMONIALS.map(function (item) {
-                return (
-                  '<blockquote class="home-testimonial"><p>' +
-                  esc(item.quote) +
-                  "</p><footer>" +
-                  esc(item.parentName) +
-                  (item.childAge ? " · age " + esc(item.childAge) : "") +
-                  "</footer></blockquote>"
-                );
-              }).join("")
-            : '<p class="home-testimonials__empty">no testimonials yet</p>';
+          testimonialsGrid.innerHTML = items.map(function (item) {
+            return (
+              '<blockquote class="home-testimonial"><p>' +
+              esc(item.quote) +
+              "</p><footer>" +
+              esc(item.parentName || "Parent") +
+              (item.childAge ? " · age " + esc(item.childAge) : "") +
+              "</footer></blockquote>"
+            );
+          }).join("");
         }
+        paintTestimonials([]);
+        fetch("/api/public/testimonials")
+          .then(function (r) { return r.json(); })
+          .then(function (body) { paintTestimonials((body && body.testimonials) || []); })
+          .catch(function () { paintTestimonials([]); });
 
         document.addEventListener("click", function (event) {
           var el = event.target.closest("[data-track]");
@@ -1230,6 +1247,18 @@
             var status = document.getElementById("home-teachers-status");
             if (status) status.textContent = "Could not load teachers right now.";
           });
+      })();
+    </script>
+    <script>
+      (function () {
+        var zone = "";
+        try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+        if (!zone || zone === "Asia/Manila") return;
+        document.querySelectorAll(".plan-card").forEach(function (card) {
+          var usd = card.querySelector(".plan-price-local");
+          var php = card.querySelector(".plan-price");
+          if (usd && php && php.parentNode) php.parentNode.insertBefore(usd, php);
+        });
       })();
     </script>
     <script src="/js/password-toggle.js"></script>

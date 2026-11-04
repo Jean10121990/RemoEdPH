@@ -206,6 +206,13 @@ async function awardReferralCommissionOnPayment(student, { amountPaid = 0, plan 
   try {
     if (student.email) await require('../growth/brevo').markCampaignPaid(student.email);
   } catch (_campaignErr) { /* non-blocking */ }
+  try {
+    if (!student.onboarding || !student.onboarding.started) {
+      student.onboarding = Object.assign({}, student.onboarding || {}, { started: true });
+      student.markModified('onboarding');
+      await student.save();
+    }
+  } catch (_onboardingErr) { /* non-blocking */ }
 
   let code = String(student.referralCode || '').trim();
   if (!code) return { ok: false, reason: 'no_referral' };

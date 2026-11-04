@@ -56,6 +56,13 @@ async function sendClassStartingReminders() {
       if (booking.reminderSnoozeUntil && new Date(booking.reminderSnoozeUntil).getTime() > now) continue;
       const start = getBookingStartAsDate(booking);
       if (!start) continue;
+      try {
+        const Student = require('../models/Student');
+        const student = await Student.findOne({
+          $or: [{ username: String(booking.studentId) }, { studentId: String(booking.studentId) }],
+        }).select('timeZone').lean();
+        if (student && student.timeZone) booking.studentLocalZone = student.timeZone;
+      } catch (_tz) { /* keep booking zone */ }
       const delta = start.getTime() - now;
       if (delta < WINDOW_MIN_MS || delta > WINDOW_MAX_MS) continue;
 
@@ -202,6 +209,7 @@ async function sendTrialEndingAlerts() {
 }
 
 module.exports = {
+  formatStudentClassWhen,
   sendClassStartingReminders,
   sendTeacherLateAlerts,
   sendTrialEndingAlerts,

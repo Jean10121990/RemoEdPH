@@ -205,6 +205,34 @@
       assessment_already_taken: "이미 평가를 완료한 이메일입니다. 결과와 등록 링크가 담긴 이메일을 확인해 주세요.",
       assessment_title: "무료 레벨 평가",
     },
+    vi: {
+      hero_title: "Học tiếng Anh tại nhà!",
+      hero_lead: "Lớp tiếng Anh trực tiếp cho trẻ 3–6 tuổi.",
+      hero_cta: "Làm bài đánh giá miễn phí",
+      nav_plans: "Gói học",
+      nav_login: "Đăng nhập",
+    },
+    th: {
+      hero_title: "เรียนภาษาอังกฤษที่บ้าน!",
+      hero_lead: "คลาสภาษาอังกฤษสดสำหรับเด็กอายุ 3–6 ปี",
+      hero_cta: "ทำแบบประเมินฟรี",
+      nav_plans: "แพ็กเกจ",
+      nav_login: "เข้าสู่ระบบ",
+    },
+    ar: {
+      hero_title: "تعلّم الإنجليزية في المنزل!",
+      hero_lead: "دروس إنجليزية مباشرة للأطفال من 3 إلى 6 سنوات.",
+      hero_cta: "ابدأ التقييم المجاني",
+      nav_plans: "الخطط",
+      nav_login: "تسجيل الدخول",
+    },
+    es: {
+      hero_title: "¡Aprende inglés en casa!",
+      hero_lead: "Clases de inglés en vivo para niños de 3 a 6 años.",
+      hero_cta: "Hacer la evaluación gratis",
+      nav_plans: "Planes",
+      nav_login: "Entrar",
+    },
   };
 
   var LANG_OPTIONS = [
@@ -253,7 +281,7 @@
 
   function packLang(code) {
     var base = optionCode(code).toLowerCase().split("-")[0];
-    if (base === "zh" || base === "ja" || base === "ko" || base === "en") return base;
+    if (STRINGS[base]) return base;
     return "en";
   }
 

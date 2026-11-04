@@ -258,6 +258,14 @@ const studentSchema = new mongoose.Schema({
   totalEcoDropsSpent: { type: Number, default: 0 },
   /** Lesson drops to celebrate on next portal visit (toast/modal). */
   pendingEcoDropCelebration: { type: Number, default: 0 },
+  /** IANA zone for how class times are shown. Slot matching stays Asia/Manila. */
+  timeZone: { type: String, default: 'Asia/Manila' },
+  onboarding: {
+    started: { type: Boolean, default: false },
+    deviceChecked: { type: Boolean, default: false },
+    bookedFirst: { type: Boolean, default: false },
+    metTeacher: { type: Boolean, default: false },
+  },
   createdAt: { type: Date, default: Date.now }
 }, {
   timestamps: true,

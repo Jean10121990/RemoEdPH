@@ -661,6 +661,7 @@
             email,
             password,
             referralCode: localStorage.getItem('referralCode') || '',
+            timeZone: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila'),
             assessmentTrialToken: urlTrialToken || undefined,
             privacyConsentAccepted: true,
             marketingConsent: !!(document.getElementById('marketing-consent') && document.getElementById('marketing-consent').checked)

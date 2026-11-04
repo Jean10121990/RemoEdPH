@@ -40,7 +40,8 @@ const feedbackSchema = new mongoose.Schema({
         enum: ['teacher_to_student', 'student_to_teacher'],
         default: 'teacher_to_student',
         index: true
-    }
+    },
+    publicTestimonial: { type: Boolean, default: false }
 }, {
     timestamps: true
 });

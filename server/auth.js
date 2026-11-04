@@ -1156,6 +1156,14 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       parentName: req.body.parentName || '',
       parentEmail: String(req.body.parentEmail || emailNorm || '').trim().toLowerCase(),
       contact: req.body.contact || '',
+      timeZone: (function () {
+        try {
+          const { DateTime } = require('luxon');
+          const zone = String(req.body.timeZone || '').trim();
+          if (zone && DateTime.now().setZone(zone).isValid) return zone;
+        } catch (_e) {}
+        return 'Asia/Manila';
+      })(),
     });
 
     // Attach referral if provided (teacher referral link)

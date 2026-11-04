@@ -58,6 +58,7 @@ export default function PlansSection({ onOpenSignup, cefrLevel }) {
   return (
     <section className="section plans-section" id="plans">
       <h2 className="section-title">Choose Your Learning Plan</h2>
+      <p>RemoSpark is valid 3 months, RemoSteady 6, RemoScholar 12, and RemoSummit 24. Checkout from outside the Philippines shows USD first. Payment on the live site is the MariBank QR.</p>
       {cefrLevel ? (
         <div className="cefr-level-banner is-visible" role="status" aria-live="polite">
           <strong>Your level: {cefrLevel}</strong>

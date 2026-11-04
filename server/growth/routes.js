@@ -85,7 +85,17 @@ router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
   leads.forEach((l) => {
     funnel[l.stage] = (funnel[l.stage] || 0) + 1;
   });
-  res.json({ success: true, funnel, count: leads.length });
+  const { monthlySplit } = require('./moneySplit');
+  const grossPhp = Number(req.query.gross) || 0;
+  const teachersPhp = Number(req.query.teachers) || 0;
+  const affiliatesPhp = Number(req.query.affiliates) || 0;
+  res.json({
+    success: true,
+    funnel,
+    count: leads.length,
+    readOnlyAskAi: true,
+    split: monthlySplit({ grossPhp, teachersPhp, affiliatesPhp }),
+  });
 });
 
 router.use(require('./contentRoutes'));
