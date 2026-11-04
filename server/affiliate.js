@@ -13,7 +13,7 @@ const { verifyToken } = require('./authMiddleware');
 const { getJwtSecret } = require('./config/jwtSecret');
 const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
 const { studentLooksPaid, ensureAffiliateRecurringLedger } = require('./utils/awardReferralCommission');
-const { phYyyymm, AFFILIATE_MONTHLY_PCT } = require('./utils/affiliateRecurring');
+const { phYyyymm, AFFILIATE_MONTHLY_PCT, affiliatePlanMonths } = require('./utils/affiliateRecurring');
 const { sendAffiliateCredentialsEmail } = require('./emailService');
 const { passwordResetLimiter } = require('./middleware/apiRateLimits');
 
@@ -262,6 +262,7 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
         }, {
           amountPaid: Number(ref.amountPaid) || 0,
           plan: ref.subscriptionPlan || student.subscriptionPlan || '',
+          startYyyymm: phYyyymm(new Date(ref.createdAt || ref.updatedAt || Date.now())),
         });
       } catch (_e) {
         /* non-fatal */
@@ -302,13 +303,16 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
     }
     for (const row of freshLedger) {
       const planLabel = String(row.planType || '').trim();
+      const planMonths = planLabel ? affiliatePlanMonths(planLabel) : 0;
       payoutHistory.push({
         date: row.createdAt || new Date(),
         yyyymm: row.yyyymm,
         type: 'recurring',
-        label: planLabel
-          ? `${RECURRING_PCT_LABEL} monthly recurring (${planLabel})`
-          : `${RECURRING_PCT_LABEL} monthly recurring`,
+        label: planMonths === 1
+          ? `${RECURRING_PCT_LABEL} of ${planLabel} (paid month only)`
+          : planLabel
+            ? `${RECURRING_PCT_LABEL} monthly recurring (${planLabel})`
+            : `${RECURRING_PCT_LABEL} monthly recurring`,
         amountPhp: Number(row.amountPhp) || 0,
         studentId: row.studentId,
         initials: studentInitials('', row.studentId),

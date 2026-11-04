@@ -1,10 +1,21 @@
 'use strict';
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const Lead = require('../models/Lead');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Admin = require('../models/Admin');
 const { verifyToken } = require('../authMiddleware');
+const {
+  facebookConfigured,
+    exchangeCode,
+    choosePage,
+    saveConnectedPage,
+    readState,
+    facebookPageAuth,
+    graph,
+} = require('./metaConnect');
 
 const router = express.Router();
 const STAGES = Lead.STAGES || [];
@@ -24,6 +35,65 @@ function requireGrowth(key) {
     return res.status(403).json({ success: false, error: 'Missing ' + key });
   };
 }
+
+const metaCallbackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+function metaDonePage(ok, message) {
+  const safe = String(message || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const next = ok
+    ? `<script>try{sessionStorage.setItem('remoed_meta_connect',${JSON.stringify(message || 'Connected')});}catch(e){}if(window.top){window.top.location='/admin/admin-marketing-hub.html#posts';}</script>`
+    : '<p><a href="/admin/admin-marketing-hub.html#posts">Back to Marketing Hub</a></p>';
+  return `<!DOCTYPE html><html><body style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1a365d;"><h1>${ok ? 'Connected' : 'Not connected'}</h1><p>${safe}</p>${next}</body></html>`;
+}
+
+/** Public. Facebook redirects the browser here. The admin id is in the signed state, not the query. */
+router.get('/social/meta/callback', metaCallbackLimiter, async (req, res) => {
+  try {
+    if (!facebookConfigured()) {
+      return res.status(503).type('html').send(metaDonePage(false, 'Facebook app id and secret are not set on the server.'));
+    }
+    const denied = String(req.query.error_reason || req.query.error || '');
+    if (denied) {
+      return res.status(400).type('html').send(metaDonePage(false, 'Facebook did not grant access.'));
+    }
+    const state = readState(req.query.state);
+    if (!state) {
+      return res.status(400).type('html').send(metaDonePage(false, 'This connect link expired. Start again from Posts.'));
+    }
+    const admin = await Admin.findById(state.adminId).select('_id').lean();
+    if (!admin) {
+      return res.status(403).type('html').send(metaDonePage(false, 'That admin account was not found.'));
+    }
+    const code = String(req.query.code || '');
+    if (!code) {
+      return res.status(400).type('html').send(metaDonePage(false, 'Facebook did not return a code.'));
+    }
+    const userToken = await exchangeCode(code);
+    const page = await choosePage(userToken);
+    const saved = await saveConnectedPage(page);
+    let inboxNote = '';
+    try {
+      await graph('/' + page.id + '/subscribed_apps', page.access_token, {
+        method: 'POST',
+        body: { subscribed_fields: 'messages' },
+      });
+    } catch (subErr) {
+      inboxNote = ' Page messages were not subscribed: ' + (subErr.message || 'Facebook refused.');
+    }
+    const line = (saved.instagram
+      ? `Connected ${saved.facebook} and Instagram ${saved.instagram}.`
+      : `Connected ${saved.facebook}. Instagram is not linked to that Page yet.`) + inboxNote;
+    return res.type('html').send(metaDonePage(true, line));
+  } catch (err) {
+    console.error('Meta connect callback:', err.message || err);
+    return res.status(400).type('html').send(metaDonePage(false, err.message || 'Could not connect the Page.'));
+  }
+});
 
 router.use(verifyToken);
 
@@ -62,12 +132,20 @@ router.post('/inbox/:id/reply', requireGrowth('growth.inbox'), async (req, res) 
   const text = String((req.body && req.body.text) || '').trim();
   if (!text) return res.status(400).json({ success: false, error: 'Reply required' });
   await Message.create({ conversationId: convo._id, direction: 'out', text, sender: 'human' });
-  if (convo.channel === 'messenger' && process.env.META_PAGE_ACCESS_TOKEN && convo.externalThreadId) {
-    await fetch('https://graph.facebook.com/v21.0/me/messages?access_token=' + encodeURIComponent(process.env.META_PAGE_ACCESS_TOKEN), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipient: { id: convo.externalThreadId }, message: { text } }),
-    }).catch(() => {});
+  if (convo.channel === 'messenger' && convo.externalThreadId) {
+    const page = await facebookPageAuth();
+    if (page && page.token) {
+      const target = page.pageId ? page.pageId : 'me';
+      await fetch('https://graph.facebook.com/v21.0/' + target + '/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: { id: convo.externalThreadId },
+          message: { text },
+          access_token: page.token,
+        }),
+      }).catch(() => {});
+    }
   }
   convo.status = 'open';
   convo.lastMessageAt = new Date();

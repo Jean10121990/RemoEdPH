@@ -148,33 +148,84 @@
       });
     }
 
+    function accountLine(accounts, platform, fallback) {
+      var row = (accounts || []).filter(function (a) { return a.platform === platform; })[0] || {};
+      if (row.connected) return '<strong>' + esc(row.accountName || platform) + '</strong> · connected';
+      return esc(fallback);
+    }
     async function loadPosts() {
       var data = await api('/api/admin/growth/posts');
+      var social = await api('/api/admin/growth/social-accounts');
       var rows = data.posts || [];
+      var accounts = social.accounts || [];
       var byStatus = ['draft', 'scheduled', 'published', 'failed', 'manual'].map(function (name) {
         return { name: name, count: rows.filter(function (p) { return p.status === name; }).length };
       });
+      var flash = '';
+      try {
+        flash = sessionStorage.getItem('remoed_meta_connect') || '';
+        if (flash) sessionStorage.removeItem('remoed_meta_connect');
+      } catch (e) {}
       document.getElementById('app').innerHTML =
-        '<h1>Posts</h1><p class="muted">Draft a post, then publish. Connected social accounts are required before a post can leave RemoEd.</p>' +
+        '<h1>Posts</h1>' +
+        (flash ? '<p class="muted">' + esc(flash) + '</p>' : '') +
+        '<section class="chart"><h2>Accounts</h2>' +
+        '<p>Facebook · ' + accountLine(accounts, 'facebook', 'not connected') + '</p>' +
+        '<p>Instagram · ' + accountLine(accounts, 'instagram', 'not connected — link it to the Facebook Page first') + '</p>' +
+        '<p>TikTok and X · copy the post and publish it there. Automatic posting waits on their app review.</p>' +
+        '<div class="row-actions"><button type="button" id="meta-connect">Connect Facebook &amp; Instagram</button>' +
+        '<button type="button" class="ghost" id="meta-disconnect">Disconnect</button></div>' +
+        '<p class="muted" id="meta-note">' + (social.facebookAppReady ? 'Sign in as an admin of the RemoEd page. Add https://remoedph.com/api/admin/growth/social/meta/callback as a Facebook Login redirect in the Meta app.' : 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.') + '</p></section>' +
         bars('Posts by status', byStatus) +
         '<section class="chart"><h2>New post</h2><textarea id="post-body" rows="4" placeholder="Write the post"></textarea>' +
-        '<div class="row-actions"><label><input type="checkbox" id="post-kit" style="width:auto;"> Affiliate kit</label><button type="button" id="post-save">Save draft</button></div></section>' +
-        rows.map(function (p) {
+        '<label>Public image URL (required for Instagram)</label><input id="post-image" placeholder="https://…">' +
+        '<div class="row-actions"><label><input type="checkbox" id="post-fb" checked style="width:auto;"> Facebook</label>' +
+        '<label><input type="checkbox" id="post-ig" checked style="width:auto;"> Instagram</label>' +
+        '<label><input type="checkbox" id="post-kit" style="width:auto;"> Affiliate kit</label>' +
+        '<button type="button" id="post-save">Save draft</button></div></section>' +
+        (rows.length ? rows.map(function (p) {
+          var notes = (p.results || []).map(function (r) {
+            return esc(r.platform) + ': ' + esc(r.status) + (r.error ? ' — ' + esc(r.error) : '');
+          }).join('<br>');
           return '<div class="card"><strong>' + esc(p.language || 'en') + '</strong> · ' + esc(p.status) +
             (p.affiliateKit ? ' · kit' : '') + '<br>' + esc(p.body) +
+            (notes ? '<br><span class="muted">' + notes + '</span>' : '') +
             '<div class="row-actions" style="margin-top:8px;"><button type="button" data-pub="' + esc(p._id) + '">Publish</button></div></div>';
-        }).join('') || '<p class="muted">No posts yet.</p>';
+        }).join('') : '<p class="muted">No posts yet.</p>');
+      document.getElementById('meta-connect').addEventListener('click', async function () {
+        var note = document.getElementById('meta-note');
+        note.textContent = 'Opening Facebook…';
+        try {
+          var started = await api('/api/admin/growth/social/meta/start');
+          window.location.href = started.url;
+        } catch (err) { note.textContent = err.message || String(err); }
+      });
+      document.getElementById('meta-disconnect').addEventListener('click', async function () {
+        if (!window.confirm('Disconnect Facebook and Instagram from Marketing Hub?')) return;
+        await api('/api/admin/growth/social-accounts/disconnect', { method: 'POST', body: JSON.stringify({ platform: 'meta' }) });
+        loadPosts().catch(fail);
+      });
       document.getElementById('post-save').addEventListener('click', async function () {
         var body = document.getElementById('post-body').value.trim();
         if (!body) return;
+        var platforms = [];
+        if (document.getElementById('post-fb').checked) platforms.push('facebook');
+        if (document.getElementById('post-ig').checked) platforms.push('instagram');
         await api('/api/admin/growth/posts', {
           method: 'POST',
-          body: JSON.stringify({ body: body, affiliateKit: document.getElementById('post-kit').checked, language: 'en' })
+          body: JSON.stringify({
+            body: body,
+            platforms: platforms,
+            mediaPath: document.getElementById('post-image').value.trim(),
+            affiliateKit: document.getElementById('post-kit').checked,
+            language: 'en'
+          })
         });
         loadPosts().catch(fail);
       });
       document.querySelectorAll('[data-pub]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
+          btn.disabled = true;
           await api('/api/admin/growth/posts/' + encodeURIComponent(btn.getAttribute('data-pub')) + '/publish', { method: 'POST', body: '{}' });
           loadPosts().catch(fail);
         });

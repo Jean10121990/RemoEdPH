@@ -4,6 +4,8 @@ const socialAccountSchema = new mongoose.Schema(
   {
     platform: { type: String, enum: ['facebook', 'instagram', 'linkedin', 'x', 'tiktok'], required: true },
     accountName: { type: String, default: '' },
+    /** Facebook Page id, or Instagram professional account id. Never a token. */
+    externalId: { type: String, default: '' },
     tokenEncrypted: { type: String, default: '' },
     enabled: { type: Boolean, default: false },
   },

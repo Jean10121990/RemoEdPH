@@ -18,6 +18,7 @@ const {
   phYyyymm,
   affiliateMonthlyRecurringPhp,
   affiliateRecurringMonthKeys,
+  affiliateRecurringAnchor,
   affiliatePlanMonths,
 } = require('./affiliateRecurring');
 
@@ -64,27 +65,43 @@ async function resolveReferralOwner(referralCode) {
  * 1-month → 1 month · 3-month → 3 months · 6-month → 6 · 1-year → 12.
  * Amount per month = 2% × (plan total ÷ months). Idempotent per (affiliate, student, yyyymm).
  */
-async function ensureAffiliateRecurringLedger(student, owner, { amountPaid = 0, plan = '' } = {}) {
+async function ensureAffiliateRecurringLedger(student, owner, { amountPaid = 0, plan = '', startYyyymm = '' } = {}) {
   if (!owner || owner.ownerType !== 'affiliate') return null;
   const planId = plan || (student && student.subscriptionPlan) || '';
   const amountPhp = affiliateMonthlyRecurringPhp({ amountPaid, plan: planId });
   if (amountPhp <= 0) return null;
-  const monthKeys = affiliateRecurringMonthKeys(planId, phYyyymm());
+  const affiliateId = String(owner.ownerId);
+  const studentId = String(student._id);
+  const existing = await AffiliateRecurringLedger.find({ affiliateId, studentId }).select('yyyymm').lean();
+  const anchor = affiliateRecurringAnchor(existing.map((row) => row.yyyymm), startYyyymm || phYyyymm());
+  const monthKeys = affiliateRecurringMonthKeys(planId, anchor);
   const planMonths = affiliatePlanMonths(planId);
+  await AffiliateRecurringLedger.deleteMany({
+    affiliateId,
+    studentId,
+    yyyymm: { $nin: monthKeys },
+  });
+  const lastKey = monthKeys[monthKeys.length - 1];
+  if (lastKey && phYyyymm() > lastKey) {
+    await Referral.updateOne(
+      { ownerType: 'affiliate', ownerId: affiliateId, studentId, recurringActive: true },
+      { $set: { recurringActive: false } }
+    );
+  }
   let written = 0;
   for (let i = 0; i < monthKeys.length; i++) {
     const yyyymm = monthKeys[i];
     try {
       const result = await AffiliateRecurringLedger.updateOne(
         {
-          affiliateId: String(owner.ownerId),
-          studentId: String(student._id),
+          affiliateId,
+          studentId,
           yyyymm,
         },
         {
           $setOnInsert: {
-            affiliateId: String(owner.ownerId),
-            studentId: String(student._id),
+            affiliateId,
+            studentId,
             yyyymm,
             amountPhp,
             planType: planId,

@@ -220,7 +220,7 @@ const API_PATH_PERMISSION_RULES = [
   { re: /\/growth\/reports/, key: 'growth.reports' },
   { re: /\/growth\/leads/, key: 'growth.leads' },
   { re: /\/growth\/(inbox|gmail)/, key: 'growth.inbox' },
-  { re: /\/growth\/(posts|social-accounts)/, key: 'growth.posts' },
+  { re: /\/growth\/(posts|social)/, key: 'growth.posts' },
   { re: /\/growth\/campaigns/, key: 'growth.campaigns' },
   { re: /garden-credits/, key: 'nav:reports' },
   { re: /^\/user(\/|$|\?)/, key: 'hr:users_edit' },

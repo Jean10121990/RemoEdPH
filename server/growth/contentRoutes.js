@@ -3,8 +3,8 @@
 const express = require('express');
 const Post = require('../models/Post');
 const SocialAccount = require('../models/SocialAccount');
-const { encryptPiiString } = require('../utils/piiCrypto');
 const { publishPost } = require('./publishPost');
+const { facebookConfigured, connectUrl, publicAccounts } = require('./metaConnect');
 const { queueCampaign } = require('./brevo');
 
 const router = express.Router();
@@ -26,13 +26,19 @@ router.get('/posts', requireGrowth('growth.posts'), async (_req, res) => {
 });
 
 router.post('/posts', requireGrowth('growth.posts'), async (req, res) => {
+  const allowed = ['facebook', 'instagram', 'tiktok', 'x'];
+  const platforms = (Array.isArray(req.body && req.body.platforms) ? req.body.platforms : [])
+    .map((p) => String(p || '').toLowerCase())
+    .filter((p) => allowed.includes(p));
+  const image = String((req.body && req.body.mediaPath) || '').trim();
   const post = await Post.create({
     body: String((req.body && req.body.body) || '').slice(0, 5000),
-    platforms: Array.isArray(req.body && req.body.platforms) ? req.body.platforms : [],
+    platforms,
     language: String((req.body && req.body.language) || 'en'),
     scheduledAt: req.body && req.body.scheduledAt ? new Date(req.body.scheduledAt) : null,
     status: req.body && req.body.scheduledAt ? 'scheduled' : 'draft',
     affiliateKit: !!(req.body && req.body.affiliateKit),
+    mediaPath: /^https:\/\//i.test(image) ? image.slice(0, 2000) : '',
   });
   res.json({ success: true, post });
 });
@@ -54,15 +60,38 @@ router.post('/posts/:id/publish', requireGrowth('growth.posts'), async (req, res
   res.json({ success: true, post });
 });
 
-router.post('/social-accounts', requireGrowth('growth.posts'), async (req, res) => {
+router.get('/social-accounts', requireGrowth('growth.posts'), async (_req, res) => {
+  const rows = await SocialAccount.find({}).select('platform accountName externalId tokenEncrypted enabled').lean();
+  res.json({
+    success: true,
+    facebookAppReady: facebookConfigured(),
+    accounts: publicAccounts(rows),
+  });
+});
+
+router.get('/social/meta/start', requireGrowth('growth.posts'), (req, res) => {
+  if (!facebookConfigured()) {
+    return res.status(503).json({
+      success: false,
+      error: 'Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET, and add the Marketing Hub redirect in the Meta app.',
+    });
+  }
+  const adminId = req.user && (req.user.adminId || req.user.id);
+  if (!adminId) return res.status(403).json({ success: false, error: 'Admin token required' });
+  res.json({ success: true, url: connectUrl(adminId) });
+});
+
+router.post('/social-accounts/disconnect', requireGrowth('growth.posts'), async (req, res) => {
   const platform = String((req.body && req.body.platform) || '');
-  const token = String((req.body && req.body.token) || '');
-  const account = await SocialAccount.findOneAndUpdate(
-    { platform },
-    { platform, accountName: String((req.body && req.body.accountName) || ''), tokenEncrypted: token ? encryptPiiString(token) : '', enabled: true },
-    { upsert: true, new: true }
+  const platforms = platform === 'meta' ? ['facebook', 'instagram'] : [platform];
+  if (!platforms.every((p) => ['facebook', 'instagram', 'tiktok', 'x'].includes(p))) {
+    return res.status(400).json({ success: false, error: 'Unknown account' });
+  }
+  await SocialAccount.updateMany(
+    { platform: { $in: platforms } },
+    { $set: { enabled: false, tokenEncrypted: '', externalId: '', accountName: '' } }
   );
-  res.json({ success: true, account: { platform: account.platform, accountName: account.accountName, enabled: account.enabled } });
+  res.json({ success: true });
 });
 
 router.post('/campaigns/send', requireGrowth('growth.campaigns'), async (req, res) => {

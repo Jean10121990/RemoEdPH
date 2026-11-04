@@ -23,6 +23,15 @@ function affiliatePlanMonths(plan) {
   return Math.max(1, Number((PLAN_CREDITS[id] && PLAN_CREDITS[id].months) || 1));
 }
 
+/**
+ * First ledger month wins. A later dashboard refresh must not start a new
+ * window from "today" (that gave RemoSpark a second 2% month).
+ */
+function affiliateRecurringAnchor(existingMonths, startYyyymm) {
+  const earliest = (existingMonths || []).map((m) => String(m || '')).filter(Boolean).sort()[0];
+  return earliest || startYyyymm || phYyyymm();
+}
+
 /** Add n calendar months to a YYYY-MM string. */
 function addMonthsToYyyymm(yyyymm, n) {
   const m = String(yyyymm || '').match(/^(\d{4})-(\d{2})$/);
@@ -63,6 +72,7 @@ module.exports = {
   AFFILIATE_MONTHLY_PCT,
   phYyyymm,
   affiliatePlanMonths,
+  affiliateRecurringAnchor,
   addMonthsToYyyymm,
   affiliateMonthlyRecurringPhp,
   affiliateRecurringMonthKeys,
