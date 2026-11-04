@@ -80,11 +80,37 @@ router.get('/gmail', requireGrowth('growth.inbox'), (_req, res) => {
 });
 
 router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
-  const leads = await Lead.find({}).select('stage source utm').lean();
+  const leads = await Lead.find({}).select('stage source createdAt').lean();
   const funnel = {};
+  const sourceMap = {};
+  STAGES.forEach((name) => { funnel[name] = 0; });
   leads.forEach((l) => {
-    funnel[l.stage] = (funnel[l.stage] || 0) + 1;
+    const stage = STAGES.includes(l.stage) ? l.stage : 'Inquiry';
+    funnel[stage] = (funnel[stage] || 0) + 1;
+    const source = l.source || 'manual';
+    sourceMap[source] = (sourceMap[source] || 0) + 1;
   });
+  const stages = STAGES.map((name) => ({ name, count: funnel[name] || 0 }));
+  const sources = Object.keys(sourceMap)
+    .map((name) => ({ name, count: sourceMap[name] }))
+    .sort((a, b) => b.count - a.count);
+  const weeks = [];
+  const now = new Date();
+  for (let i = 7; i >= 0; i -= 1) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - (i * 7) - start.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const count = leads.filter((l) => {
+      const t = new Date(l.createdAt || 0).getTime();
+      return t >= start.getTime() && t < end.getTime();
+    }).length;
+    weeks.push({
+      label: start.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }),
+      count,
+    });
+  }
   const { monthlySplit } = require('./moneySplit');
   const grossPhp = Number(req.query.gross) || 0;
   const teachersPhp = Number(req.query.teachers) || 0;
@@ -92,6 +118,9 @@ router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
   res.json({
     success: true,
     funnel,
+    stages,
+    sources,
+    weeks,
     count: leads.length,
     readOnlyAskAi: true,
     split: monthlySplit({ grossPhp, teachersPhp, affiliatesPhp }),

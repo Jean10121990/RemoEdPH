@@ -4,79 +4,238 @@
   <meta charset="UTF-8" />
   <title>Growth</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 16px; color: #1a3a4a; }
-    .col { display: inline-block; vertical-align: top; width: 180px; margin-right: 8px; background: #f8fafc; border-radius: 8px; padding: 8px; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; margin-bottom: 8px; cursor: grab; }
-    select, button, textarea { font: inherit; }
+    :root { --ink:#1a365d; --muted:#64748b; --line:#e2e8f0; --blue:#1ca7e7; --teal:#0f766e; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Segoe UI, Arial, sans-serif; color: var(--ink); background: #f8fafc; }
+    .page { padding: 16px; }
+    h1 { margin: 0 0 4px; font-size: 1.25rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .err { color: #b91c1c; font-weight: 700; }
+    .chart { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+    .chart h2 { margin: 0 0 10px; font-size: 0.95rem; }
+    .bar-row { display: grid; grid-template-columns: 140px 1fr 36px; gap: 8px; align-items: center; margin: 6px 0; font-size: 0.85rem; }
+    .track { height: 14px; background: #e8f4fd; border-radius: 999px; overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, #1ca7e7, #0f766e); border-radius: 999px; min-width: 0; }
+    .fill.soft { background: #94a3b8; }
+    .cols { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
+    .col { flex: 0 0 200px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+    .col h3 { margin: 0 0 8px; font-size: 0.85rem; display: flex; justify-content: space-between; }
+    .count { background: #e8f4fd; color: #0369a1; border-radius: 999px; padding: 0 8px; font-size: 0.75rem; }
+    .card { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+    button, select, input, textarea { font: inherit; }
+    button { background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+    button.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    input, select, textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; margin: 4px 0 8px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .thread { max-height: 280px; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+    .bubble { margin: 6px 0; padding: 8px 10px; border-radius: 10px; max-width: 80%; }
+    .bubble.in { background: #e8f4fd; }
+    .bubble.out { background: #ecfdf5; margin-left: auto; }
+    .row-actions { display: flex; gap: 8px; align-items: center; }
+    @media (max-width: 800px) { .split { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 110px 1fr 28px; } }
   </style>
 </head>
 <body>
-  <div id="app">Loading…</div>
+  <div class="page" id="app">Loading…</div>
+  <script src="js/admin-session.js"></script>
   <script>
     var tab = new URLSearchParams(location.search).get('tab') || 'leads';
     function token() {
+      try {
+        if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) {
+          var t = RemoedAdminSession.getAuthToken();
+          if (t) return t;
+        }
+      } catch (e) {}
       return localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '';
     }
     function esc(s) {
-      return String(s || '').replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]); });
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
     }
     async function api(path, opts) {
-      var res = await fetch(path, Object.assign({ headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' } }, opts || {}));
-      return res.json();
+      var res = await fetch(path, Object.assign({
+        headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }
+      }, opts || {}));
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok || data.success === false) {
+        var err = new Error(data.error || data.message || ('Request failed (' + res.status + ')'));
+        err.status = res.status;
+        throw err;
+      }
+      return data;
     }
+    function bars(title, rows, empty) {
+      var max = rows.reduce(function (m, r) { return Math.max(m, r.count); }, 0);
+      var body = rows.length ? rows.map(function (r) {
+        var pct = max ? Math.round((r.count / max) * 100) : 0;
+        return '<div class="bar-row"><span>' + esc(r.name) + '</span><div class="track"><div class="fill' + (r.count ? '' : ' soft') + '" style="width:' + (r.count ? Math.max(pct, 4) : 0) + '%"></div></div><strong>' + r.count + '</strong></div>';
+      }).join('') : '<p class="muted">' + esc(empty || 'No data yet.') + '</p>';
+      return '<section class="chart"><h2>' + esc(title) + '</h2>' + body + '</section>';
+    }
+    function fail(err) {
+      document.getElementById('app').innerHTML = '<p class="err">' + esc(err.message || err) + '</p>';
+    }
+
     async function loadLeads() {
       var data = await api('/api/admin/growth/leads');
       var stages = data.stages || [];
       var leads = data.leads || [];
-      document.getElementById('app').innerHTML = stages.map(function (stage) {
-        var cards = leads.filter(function (l) { return l.stage === stage; }).map(function (l) {
-          return '<div class="card" draggable="true" data-id="' + l._id + '"><strong>' + esc(l.name || l.email) + '</strong><br>' + esc(l.email) +
-            '<br><select data-move="' + l._id + '">' + stages.map(function (s) {
-              return '<option' + (s === l.stage ? ' selected' : '') + '>' + s + '</option>';
-            }).join('') + '</select></div>';
-        }).join('');
-        return '<div class="col"><h3>' + stage + '</h3>' + cards + '</div>';
-      }).join('');
+      var counts = stages.map(function (stage) {
+        return { name: stage, count: leads.filter(function (l) { return l.stage === stage; }).length };
+      });
+      var sources = {};
+      leads.forEach(function (l) { var k = l.source || 'manual'; sources[k] = (sources[k] || 0) + 1; });
+      var sourceRows = Object.keys(sources).map(function (name) { return { name: name, count: sources[name] }; })
+        .sort(function (a, b) { return b.count - a.count; });
+      document.getElementById('app').innerHTML =
+        '<h1>Leads</h1><p class="muted">' + leads.length + ' people. Move a card with the stage menu.</p>' +
+        bars('Pipeline', counts, 'No leads yet. New assessments and chats land in Inquiry.') +
+        bars('Where they came from', sourceRows, 'Sources appear after the first lead.') +
+        '<div class="cols">' + stages.map(function (stage) {
+          var cards = leads.filter(function (l) { return l.stage === stage; }).map(function (l) {
+            return '<div class="card"><strong>' + esc(l.name || l.email || 'Lead') + '</strong><br><span class="muted">' + esc(l.email || l.source || '') + '</span>' +
+              '<select data-move="' + esc(l._id) + '">' + stages.map(function (s) {
+                return '<option' + (s === l.stage ? ' selected' : '') + '>' + esc(s) + '</option>';
+              }).join('') + '</select></div>';
+          }).join('') || '<p class="muted">Empty</p>';
+          var n = leads.filter(function (l) { return l.stage === stage; }).length;
+          return '<div class="col"><h3>' + esc(stage) + ' <span class="count">' + n + '</span></h3>' + cards + '</div>';
+        }).join('') + '</div>';
       document.querySelectorAll('[data-move]').forEach(function (sel) {
         sel.addEventListener('change', async function () {
-          await api('/api/admin/growth/leads/' + sel.getAttribute('data-move'), {
-            method: 'PATCH', body: JSON.stringify({ stage: sel.value })
-          });
-          loadLeads();
-        });
-      });
-    }
-    if (tab === 'inbox') {
-      api('/api/admin/growth/inbox').then(function (data) {
-        var rows = data.conversations || [];
-        document.getElementById('app').innerHTML = rows.length ? rows.map(function (c) {
-          return '<div class="card"><strong>' + esc(c.channel) + '</strong> ' + esc(c.status) +
-            '<br><button data-reply="' + c._id + '">Reply</button></div>';
-        }).join('') : 'No conversations yet.';
-        document.querySelectorAll('[data-reply]').forEach(function (btn) {
-          btn.addEventListener('click', async function () {
-            var text = prompt('Reply');
-            if (!text) return;
-            await api('/api/admin/growth/inbox/' + btn.getAttribute('data-reply') + '/reply', {
-              method: 'POST', body: JSON.stringify({ text: text })
+          try {
+            await api('/api/admin/growth/leads/' + encodeURIComponent(sel.getAttribute('data-move')), {
+              method: 'PATCH', body: JSON.stringify({ stage: sel.value })
             });
-          });
+            loadLeads().catch(fail);
+          } catch (err) { fail(err); }
         });
       });
     }
-    else if (tab === 'posts') {
-      api('/api/admin/growth/posts').then(function (data) {
-        var rows = (data && data.posts) || [];
-        document.getElementById('app').innerHTML = '<p>' + rows.length + ' posts</p>' + rows.map(function (p) {
-          return '<div class="card">' + esc(p.language) + ' ' + esc(p.status) + '<br>' + esc(p.body) + '</div>';
-        }).join('');
+
+    async function loadInbox() {
+      var data = await api('/api/admin/growth/inbox');
+      var rows = data.conversations || [];
+      document.getElementById('app').innerHTML =
+        '<h1>Inbox</h1><p class="muted">Messenger, Instagram, web chat, and email threads. A reply is saved here and sent to Messenger when that page is connected.</p>' +
+        '<div class="split"><div id="inbox-list">' + (rows.length ? rows.map(function (c) {
+          return '<button type="button" class="ghost" style="display:block;width:100%;text-align:left;margin-bottom:8px;" data-open="' + esc(c._id) + '"><strong>' + esc(c.channel) + '</strong> · ' + esc(c.status) + '<br><span class="muted">' + esc(c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '') + '</span></button>';
+        }).join('') : '<p class="muted">No conversations yet. They show up when someone messages the page or the site chat.</p>') +
+        '</div><div><div class="thread" id="thread"><p class="muted">Choose a conversation.</p></div><textarea id="reply" rows="3" placeholder="Write a reply"></textarea><button type="button" id="send-reply" disabled>Send reply</button></div></div>';
+      var current = '';
+      async function openThread(id) {
+        current = id;
+        document.getElementById('send-reply').disabled = false;
+        var msgs = await api('/api/admin/growth/inbox/' + encodeURIComponent(id) + '/messages');
+        var list = msgs.messages || [];
+        document.getElementById('thread').innerHTML = list.length ? list.map(function (m) {
+          return '<div class="bubble ' + (m.direction === 'out' ? 'out' : 'in') + '">' + esc(m.text) + '</div>';
+        }).join('') : '<p class="muted">No messages in this thread yet.</p>';
+      }
+      document.querySelectorAll('[data-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () { openThread(btn.getAttribute('data-open')).catch(fail); });
       });
-    } else if (tab === 'campaigns') document.getElementById('app').textContent = 'Campaigns send through Brevo. Unsubscribe stays on every message. Daily cap is 300.';
-    else if (tab === 'reports') {
-      api('/api/admin/growth/reports').then(function (data) {
-        document.getElementById('app').textContent = JSON.stringify(data.funnel || {}, null, 2);
+      document.getElementById('send-reply').addEventListener('click', async function () {
+        var text = document.getElementById('reply').value.trim();
+        if (!current || !text) return;
+        await api('/api/admin/growth/inbox/' + encodeURIComponent(current) + '/reply', {
+          method: 'POST', body: JSON.stringify({ text: text })
+        });
+        document.getElementById('reply').value = '';
+        openThread(current).catch(fail);
       });
-    } else loadLeads();
+    }
+
+    async function loadPosts() {
+      var data = await api('/api/admin/growth/posts');
+      var rows = data.posts || [];
+      var byStatus = ['draft', 'scheduled', 'published', 'failed', 'manual'].map(function (name) {
+        return { name: name, count: rows.filter(function (p) { return p.status === name; }).length };
+      });
+      document.getElementById('app').innerHTML =
+        '<h1>Posts</h1><p class="muted">Draft a post, then publish. Connected social accounts are required before a post can leave RemoEd.</p>' +
+        bars('Posts by status', byStatus) +
+        '<section class="chart"><h2>New post</h2><textarea id="post-body" rows="4" placeholder="Write the post"></textarea>' +
+        '<div class="row-actions"><label><input type="checkbox" id="post-kit" style="width:auto;"> Affiliate kit</label><button type="button" id="post-save">Save draft</button></div></section>' +
+        rows.map(function (p) {
+          return '<div class="card"><strong>' + esc(p.language || 'en') + '</strong> · ' + esc(p.status) +
+            (p.affiliateKit ? ' · kit' : '') + '<br>' + esc(p.body) +
+            '<div class="row-actions" style="margin-top:8px;"><button type="button" data-pub="' + esc(p._id) + '">Publish</button></div></div>';
+        }).join('') || '<p class="muted">No posts yet.</p>';
+      document.getElementById('post-save').addEventListener('click', async function () {
+        var body = document.getElementById('post-body').value.trim();
+        if (!body) return;
+        await api('/api/admin/growth/posts', {
+          method: 'POST',
+          body: JSON.stringify({ body: body, affiliateKit: document.getElementById('post-kit').checked, language: 'en' })
+        });
+        loadPosts().catch(fail);
+      });
+      document.querySelectorAll('[data-pub]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          await api('/api/admin/growth/posts/' + encodeURIComponent(btn.getAttribute('data-pub')) + '/publish', { method: 'POST', body: '{}' });
+          loadPosts().catch(fail);
+        });
+      });
+    }
+
+    async function loadCampaigns() {
+      document.getElementById('app').innerHTML =
+        '<h1>Campaigns</h1><p class="muted">Sends through Brevo. Every message keeps the unsubscribe link. The daily cap is 300.</p>' +
+        '<section class="chart"><h2>Send a campaign</h2>' +
+        '<label>Subject</label><input id="c-subject" placeholder="A note from RemoEd">' +
+        '<label>Message</label><textarea id="c-html" rows="5" placeholder="Short email body"></textarea>' +
+        '<label>Parent emails, one per line</label><textarea id="c-emails" rows="4" placeholder="parent@email.com"></textarea>' +
+        '<button type="button" id="c-send">Queue send</button><p id="c-msg" class="muted"></p></section>';
+      document.getElementById('c-send').addEventListener('click', async function () {
+        var msg = document.getElementById('c-msg');
+        var emails = document.getElementById('c-emails').value.split(/[\s,;]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+        if (!emails.length) { msg.textContent = 'Add at least one email.'; return; }
+        msg.textContent = 'Sending…';
+        try {
+          var data = await api('/api/admin/growth/campaigns/send', {
+            method: 'POST',
+            body: JSON.stringify({
+              subject: document.getElementById('c-subject').value.trim() || 'RemoEd',
+              html: document.getElementById('c-html').value.trim(),
+              emails: emails
+            })
+          });
+          msg.textContent = 'Queued ' + (data.queued || 0) + '. Skipped ' + (data.skipped || 0) + '.' + (data.reason ? ' ' + data.reason : '');
+        } catch (err) { msg.textContent = err.message || String(err); }
+      });
+    }
+
+    async function loadReports() {
+      var gross = document.getElementById('r-gross') ? document.getElementById('r-gross').value : '';
+      var teachers = document.getElementById('r-teachers') ? document.getElementById('r-teachers').value : '';
+      var affiliates = document.getElementById('r-affiliates') ? document.getElementById('r-affiliates').value : '';
+      var q = '?gross=' + encodeURIComponent(gross || '0') + '&teachers=' + encodeURIComponent(teachers || '0') + '&affiliates=' + encodeURIComponent(affiliates || '0');
+      var data = await api('/api/admin/growth/reports' + q);
+      var stages = data.stages || [];
+      var sources = data.sources || [];
+      var weeks = (data.weeks || []).map(function (w) { return { name: w.label, count: w.count }; });
+      var split = data.split || {};
+      var splitRows = ['teachers', 'affiliates', 'partners', 'ops', 'growth', 'charity', 'buffer', 'profit'].map(function (k) {
+        return { name: k, count: Math.round(Number(split[k]) || 0) };
+      });
+      document.getElementById('app').innerHTML =
+        '<h1>Reports</h1><p class="muted">' + (data.count || 0) + ' leads in the funnel.</p>' +
+        bars('Funnel', stages, 'The funnel stays at zero until a lead is saved.') +
+        '<div class="split">' + bars('New leads by week', weeks) + bars('Source', sources, 'No source mix yet.') + '</div>' +
+        '<section class="chart"><h2>Monthly money split (PHP)</h2><p class="muted">Partners 2%, growth 5%, charity 5%, buffer 5%, operations ₱6,400. Profit is what remains.</p>' +
+        '<div class="split"><div><label>Gross collected</label><input id="r-gross" type="number" min="0" value="' + esc(gross || split.gross || 0) + '">' +
+        '<label>Teacher pay</label><input id="r-teachers" type="number" min="0" value="' + esc(teachers || split.teachers || 0) + '">' +
+        '<label>Affiliate pay</label><input id="r-affiliates" type="number" min="0" value="' + esc(affiliates || split.affiliates || 0) + '">' +
+        '<button type="button" id="r-go">Update chart</button></div><div id="split-chart"></div></div></section>';
+      document.getElementById('split-chart').innerHTML = bars('Where gross goes', splitRows).replace('<section class="chart">', '<div>').replace('</section>', '</div>');
+      document.getElementById('r-go').addEventListener('click', function () { loadReports().catch(fail); });
+    }
+
+    var runners = { leads: loadLeads, inbox: loadInbox, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
+    (runners[tab] || loadLeads)().catch(fail);
   </script>
 </body>
 </html>

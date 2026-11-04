@@ -42,17 +42,17 @@
         position: 'right',
       },
       {
-        element: '[data-nav="admin-fee"]',
-        title: 'Admin Fee',
-        content:
-          'View 2% of subscription sales per cutoff, attendance eligibility, and print your admin fee payslip. Clock in/out from the top header or Dashboard — not on this page.',
-        position: 'right',
-      },
-      {
         element: '[data-nav="marketing"]',
         title: 'Marketing Hub',
         content:
           'Unique Link Commissions and teacher referral tracking — successful enrollees, plan value, and ₱1,000 commission per conversion.',
+        position: 'right',
+      },
+      {
+        element: '[data-nav="admin-fee"]',
+        title: 'Admin Fee',
+        content:
+          'View 2% of subscription sales per cutoff, attendance eligibility, and print your admin fee payslip. Clock in/out from the top header or Dashboard — not on this page.',
         position: 'right',
       },
       {

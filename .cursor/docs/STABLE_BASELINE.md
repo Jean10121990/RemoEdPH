@@ -172,7 +172,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Admin hubs / Marketing role
 
-- [ ] Sidebar order includes **Accounting Hub** → **Admin Fee** → **Marketing Hub**.
+- [ ] Sidebar order includes **Accounting Hub** → **Marketing Hub** → **Admin Fee**.
 - [ ] Super-Admin **Settings → Admin Roles and Access** is visible and can Save Permissions for a non–Super-Admin role. Non–Super-Admin accounts do **not** see that card (or System Settings / System Monitor in the sidebar).
 - [ ] **System monitor → Live platform** shows Students / Teachers / Admins online (unique `presenceKey` counts; refreshes with other stats).
 - [ ] Student **Virtual Garden** loads at **100% zoom** without horizontal clip (sidebar expanded or collapsed); one centered tree; species stays the same across reloads and Eco-Drop chip clicks; Water / Fertilizer under the tree spend available drops; header chip shows the spendable balance and only opens the garden; month arrows browse past trees (read-only, static scene); gallery / theme fact / Sound off default / Parents earn summary do not change the Kids–Parents toggle.
@@ -392,7 +392,7 @@ RemoEd upholds the biblical distinction of gender (male and female). Profile UIs
 
 ## Admin Marketing Hub — Unique Link Commissions
 
-Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **below Admin Fee** (Admin Fee sits directly under Accounting Hub).
+Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **directly under Accounting Hub** (Admin Fee follows Marketing Hub).
 
 - Hub page: `public/admin-marketing-hub.html` embeds:
   - **Unique Link Commissions** → `admin-unique-link-commission.html?adminEmbed=1`
@@ -407,7 +407,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
   - Earnings: upfront bonuses match teacher Unique Link tiers (`referralCommissionTiers`); plus **2% recurring for each month of the plan pack** (spark 1 · steady 3 · scholar 6 · summit 12) via `AffiliateRecurringLedger` — amount = **2% × (plan total ÷ months)** per YYYY-MM (`AFFILIATE_MONTHLY_PCT` in `server/utils/affiliateRecurring.js`). Do not restore 5%.
   - Credentials email: `sendAffiliateCredentialsEmail` on **first successful login** (sets `credentialsEmailedAt`) and on **password change** (username + password to the affiliate’s email). Non-blocking if mail fails.
   - Admin create/list/patch: `GET/POST/PATCH /api/admin/affiliates*` (`mkt:affiliates_manage`). Pages: `affiliate-login.html`, `affiliate-dashboard.html`. Teacher Unique Links unchanged.
-- Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub`, `admin-unique-link-commission`, `admin-referral-leaderboard`, and `admin-affiliates` → `marketing`; `admin-fee.html` → `admin-fee`.
+- Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Marketing Hub** → Admin Fee. Path highlight maps `admin-marketing-hub`, `admin-unique-link-commission`, `admin-referral-leaderboard`, and `admin-affiliates` → `marketing`; `admin-fee.html` → `admin-fee`.
 - Default seed for **`admin_marketing`** (editable in Settings → Admin Roles and Access): Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings; includes `mkt:commissions_view` + `mkt:affiliates_manage`. Settings / System monitor remain Super-Admin (`nav:settings` / `nav:super_monitor`). Example account: `adminmktg@remoedph.com` (ops: `scripts/ensure-admin-marketing.js`).
 - Visibility is driven by **dynamic RBAC** (`GET /api/admin/me/permissions`); legacy hub-guard still falls back to role slug checks if permissions fail to load.
 
@@ -719,7 +719,7 @@ Surfaces locked in on this date (extend around; do not rewrite). Details above.
 | Landing culture | Full story on `/about` (Who we are → Principles → Pillars → HEART → Vision/Mission); homepage `#who-we-are` is the short block. Icon circles, not culture photos. |
 | UI icons | [Lucide](https://lucide.dev/icons/) for portal chrome; password **eye** / **eye-off**; no emoji toggles (`SKILLS.md`). |
 | Gender | Profile selects Male / Female only; Teacher enum rejects Other. |
-| Marketing Hub | Unique Link Commissions under sidebar **Marketing Hub** (below Accounting); Accounting Hub = Payroll + Subscriptions only. |
+| Marketing Hub | Unique Link Commissions under sidebar **Marketing Hub** (directly under Accounting Hub, before Admin Fee); Accounting Hub = Payroll + Subscriptions only. |
 | `admin_marketing` | Restricted sidebar + hub-guard + `adminRoleGate`; role in Admins dropdown; first-time setup token for blank-password creates. |
 | Teaching Fee Bonus / Incentive | Period-scoped amount on Payroll; read-only on Teaching Fee; in net pay / dispense / payslip. |
 

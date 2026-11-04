@@ -92,7 +92,7 @@ Details: [SKILLS.md](../docs/SKILLS.md) § UI icons and [.cursor/docs/STABLE_BAS
 
 Details: [.cursor/docs/STABLE_BASELINE.md](../docs/STABLE_BASELINE.md) § Admin Marketing Hub and § Admin Roles and Access.
 
-- Sidebar order: **Accounting Hub** → **Admin Fee** → **Marketing Hub**. Marketing Hub owns Unique Link Commissions, Referral Leaderboard, and Affiliates. Do not put commissions back as an Accounting Hub tab.
+- Sidebar order: **Accounting Hub** → **Marketing Hub** → **Admin Fee**. Marketing Hub owns Unique Link Commissions, Referral Leaderboard, and Affiliates. Do not put commissions back as an Accounting Hub tab.
 - Unique Link Commissions UI/API: label **Referrer name** / **All referrers**; show resolved teacher/admin/affiliate names (not Mongo ids).
 - Independent Growth Affiliates are a fourth portal (`Affiliate` model, `remoed_affiliate_token`, `/api/affiliate/*`). Referral links use email or full name via `/enroll?ref=`. Upfront Unique Link tiers + **2%** recurring per plan month (`AFFILIATE_MONTHLY_PCT`); do not restore 5%. Email username + password on first login and password change. Landing footer Account → Affiliate Portal; do not give affiliates teacher tools.
 - Accounting Hub tabs: Payroll Management, **Admin Payroll** (dispense admin fees), Student Subscriptions.
