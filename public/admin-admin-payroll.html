@@ -238,7 +238,6 @@
             '<th>Role</th>' +
             '<th>Hours Worked</th>' +
             '<th>Weekdays 6h+</th>' +
-            '<th>Gross Sales Pool</th>' +
             '<th>Earnings</th>' +
             '<th>Status</th>' +
             '<th>Withdrawn</th>' +
@@ -274,7 +273,6 @@
                     '<td>' + (a.payBasis === 'daily'
                         ? esc(a.paidDays || 0) + ' day(s) × ₱' + esc(a.dailyRate || 350)
                         : esc(a.metDays || 0) + ' / ' + esc(a.requiredDays || 0) + (a.missedDays ? ' <span style="color:#b91c1c">(' + esc(a.missedDays) + ' missed)</span>' : '')) + '</td>' +
-                    '<td>' + peso(meta.grossSales) + '</td>' +
                     '<td style="font-weight:600;color:' + feeColor + ';">' + peso(a.earnings != null ? a.earnings : a.feeAmount) + '</td>' +
                     '<td style="color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
                     '<td>' + withdrawnBadge + '</td>' +
@@ -308,14 +306,10 @@
 
             displayCurrentPeriod();
             document.getElementById('ap-summary').textContent =
-                'Gross subscription sales: ' + peso(data.grossSales) +
-                ' · 2% pool per eligible admin: ' + peso(data.commissionPool) +
+                '2% per eligible admin: ' + peso(data.commissionPool) +
                 ' · Purchases: ' + (data.purchaseCount || 0);
 
-            displayAdminsList(data.admins || [], {
-                grossSales: data.grossSales,
-                commissionPool: data.commissionPool
-            });
+            displayAdminsList(data.admins || [], {});
             document.getElementById('ap-table-wrap').style.display = 'block';
             listLoaded = true;
 

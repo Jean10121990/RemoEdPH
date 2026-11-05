@@ -25,7 +25,7 @@
         }
         .af-card h2 { margin: 0 0 10px; font-size: 1.05rem; color: #0f172a; }
         .af-muted { color: #64748b; font-size: 0.85rem; }
-        .af-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+        .af-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
         @media (max-width: 900px) { .af-stats { grid-template-columns: 1fr 1fr; } }
         .af-stat {
             background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px;
@@ -128,7 +128,6 @@
                 <p id="af-payout-status" class="af-muted" style="margin:0 0 12px;"></p>
 
                 <div class="af-stats" id="af-stats">
-                    <div class="af-stat"><div class="lbl">Gross subscription sales</div><div class="val" id="af-gross">₱0</div></div>
                     <div class="af-stat"><div class="lbl" id="af-share-lbl">2% Admin share</div><div class="val" id="af-share">₱0</div></div>
                     <div class="af-stat"><div class="lbl">Hours worked</div><div class="val" id="af-hours">0</div></div>
                     <div class="af-stat"><div class="lbl" id="af-wallet-label">Pending earnings</div><div class="val" id="af-payout">₱0</div></div>
@@ -329,7 +328,6 @@
         document.getElementById('af-how').innerHTML = daily
             ? 'Employee daily rate of <strong>₱' + esc(d.dailyRate || 350) + '</strong> for each Monday to Friday with at least <strong>' + esc(d.dailyRequiredHours || 3) + ' hours</strong>. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.'
             : '2% of student subscription sales in the selected bi-monthly cutoff when you timed in every Monday to Friday of the cutoff and worked at least 6 hours each day. Accounting <strong>Dispense</strong> releases funds; then use <strong>Withdraw (MariBank)</strong>. Full account details are emailed to Accounting — only a masked reference is stored.';
-        document.getElementById('af-gross').textContent = peso(d.grossSales);
         document.getElementById('af-share').textContent = daily
             ? peso(d.estimatedPayout) + ' · ' + (d.paidDays || 0) + ' day' + ((d.paidDays || 0) === 1 ? '' : 's')
             : peso(d.adminShareAmount);
@@ -429,8 +427,7 @@
               '<div class="payslip-row"><span>Closed weekdays</span><span>' + esc(s.paidDays || 0) + '</span></div>' +
               '<div class="payslip-row"><span>Daily pay</span><span>' + peso(s.dailyPay) + '</span></div>' +
               '<div class="payslip-row"><span>Partner commission</span><span>None</span></div>'
-            : '<div class="payslip-row"><span>Gross subscription sales pool</span><span>' + peso(s.grossSubscriptionSales) + '</span></div>' +
-              '<div class="payslip-row"><span>Purchases counted</span><span>' + esc(s.purchaseCount) + '</span></div>' +
+            : '<div class="payslip-row"><span>Purchases counted</span><span>' + esc(s.purchaseCount) + '</span></div>' +
               '<div class="payslip-row"><span>Commission rate</span><span>' + esc(s.commissionRate) + '%</span></div>' +
               '<div class="payslip-row"><span>2% commission</span><span>' + peso(s.commissionAmount) + '</span></div>';
         document.getElementById('af-payslip-net').innerHTML =
