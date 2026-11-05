@@ -5322,6 +5322,14 @@ router.post('/review-cancellation', async (req, res) => {
         error: 'This request has already been reviewed' 
       });
     }
+
+    const { isEmergencyReason } = require('./utils/emergencyExcuse');
+    if (isEmergencyReason(cancellationRequest.emergencyReason)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Emergency cancellations are approved or declined from open teachers. Mark the proof valid or not valid.',
+      });
+    }
     
     // Update the cancellation request
     cancellationRequest.status = status;
@@ -5333,46 +5341,13 @@ router.post('/review-cancellation', async (req, res) => {
     
     await cancellationRequest.save();
     
-    // If approved, update the booking status to cancelled
     if (status === 'approved') {
-      const booking = await Booking.findById(cancellationRequest.bookingId);
-      if (booking) {
-        booking.status = 'cancelled';
-        if (cancellationRequest.emergencyReason && cancellationRequest.proofPath) {
-          booking.penaltyWaived = true;
-          cancellationRequest.penaltyWaived = true;
-          await cancellationRequest.save();
-        }
-        await releaseReservedCreditForBooking(booking);
-        await booking.save();
-        
-        // MARK THE SLOT AS AVAILABLE AGAIN WHEN BOOKING IS CANCELLED
-        console.log('🔍 Marking slot as available after booking cancellation...');
-        const TeacherSlot = require('./models/TeacherSlot');
-        const slotUpdateResult = await TeacherSlot.updateOne(
-          { teacherId: booking.teacherId, date: booking.date, time: booking.time },
-          { available: true }
-        );
-        console.log('✅ Slot marked as available after cancellation:', slotUpdateResult.modifiedCount > 0);
-
-        try {
-          const { notifyTeacher, notifyStudent } = require('./services/notifyService');
-          const note = adminNotes ? ` Admin notes: ${adminNotes}` : '';
-          await notifyTeacher(
-            booking.teacherId,
-            'cancel',
-            `Your cancellation request for ${booking.date} at ${booking.time} was approved.${note}`,
-            { bookingId: String(booking._id), actionUrl: '/teacher-class-table.html' }
-          );
-          await notifyStudent(
-            booking.studentId,
-            'cancel',
-            `Your class on ${booking.date} at ${booking.time} was cancelled.${note}`,
-            { bookingId: String(booking._id), actionUrl: '/student-book.html' }
-          );
-        } catch (nErr) {
-          console.warn('Cancellation approve notify failed:', nErr.message);
-        }
+      try {
+        const { finishApprovedCancellation } = require('./services/teacherCancellationSettle');
+        await finishApprovedCancellation(cancellationRequest, adminNotes || '');
+      } catch (nErr) {
+        console.warn('Cancellation approve failed:', nErr.message);
+        return res.status(500).json({ success: false, error: 'Failed to finish the approved cancellation' });
       }
     } else if (status === 'rejected') {
       try {
@@ -5407,6 +5382,60 @@ router.post('/review-cancellation', async (req, res) => {
   } catch (err) {
     console.error('Error reviewing cancellation request:', err);
     res.status(500).json({ error: 'Failed to review cancellation request' });
+  }
+});
+
+router.post('/cancellation-proof-validity', async (req, res) => {
+  try {
+    const { requestId, validity } = req.body || {};
+    if (!requestId || !['valid', 'invalid'].includes(validity)) {
+      return res.status(400).json({ success: false, error: 'Request ID and validity are required' });
+    }
+    const cancellationRequest = await CancellationRequest.findById(requestId);
+    if (!cancellationRequest) {
+      return res.status(404).json({ success: false, error: 'Cancellation request not found' });
+    }
+    const { isEmergencyReason } = require('./utils/emergencyExcuse');
+    if (!isEmergencyReason(cancellationRequest.emergencyReason)) {
+      return res.status(400).json({ success: false, error: 'Only an emergency cancellation has proof to check' });
+    }
+    if (!cancellationRequest.proofPath) {
+      return res.status(400).json({ success: false, error: 'This request has no proof to check' });
+    }
+    cancellationRequest.proofValidity = validity;
+    const waive = validity === 'valid' && cancellationRequest.status === 'approved';
+    cancellationRequest.penaltyWaived = waive;
+    cancellationRequest.adminReview = {
+      reviewedBy: 'qa',
+      reviewedAt: new Date(),
+      adminNotes: validity === 'valid'
+        ? 'QA marked the proof valid.'
+        : 'QA marked the proof not valid. The penalty is not waived.',
+    };
+    await cancellationRequest.save();
+    if (cancellationRequest.bookingId) {
+      await Booking.updateOne(
+        { _id: cancellationRequest.bookingId },
+        { $set: { penaltyWaived: waive } }
+      );
+    }
+    try {
+      const { notifyTeacher } = require('./services/notifyService');
+      await notifyTeacher(
+        cancellationRequest.requesterId,
+        'cancellation-request',
+        validity === 'valid'
+          ? 'QA marked your emergency cancellation proof valid.'
+          : 'QA marked your emergency cancellation proof not valid. The penalty is not waived.',
+        { bookingId: String(cancellationRequest.bookingId || ''), actionUrl: '/teacher-class-table.html' }
+      );
+    } catch (nErr) {
+      console.warn('Proof validity notify failed:', nErr.message);
+    }
+    res.json({ success: true, cancellationRequest });
+  } catch (err) {
+    console.error('Error marking cancellation proof:', err);
+    res.status(500).json({ success: false, error: 'Failed to save the proof check' });
   }
 });
 

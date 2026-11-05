@@ -24,6 +24,12 @@ const cancellationRequestSchema = new mongoose.Schema({
   emergencyReason: { type: String, default: '' },
   proofPath: { type: String, default: '' },
   penaltyWaived: { type: Boolean, default: false },
+  /** QA checks the uploaded proof. The system already approved or declined from open teachers. */
+  proofValidity: {
+    type: String,
+    enum: ['pending', 'valid', 'invalid'],
+    default: 'pending',
+  },
   status: { 
     type: String, 
     enum: ['pending', 'approved', 'rejected'], 

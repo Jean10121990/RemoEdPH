@@ -282,6 +282,38 @@ function schedulePeerLeave(room, userType, username) {
 }
 const mediaControlStateByRoom = new Map(); // room -> { audio, video }
 const classroomSettingsByRoom = new Map(); // room -> { videosAllowed, penAllowed }
+const roomPresentationSlide = new Map(); // room -> last teacher slide, replayed when a student rejoins
+
+function presentationSlidePayload(data) {
+  if (!data || !data.room) return null;
+  const idx = data.slideIndex != null ? data.slideIndex : data.currentSlideIndex;
+  if (idx == null || Number.isNaN(Number(idx))) return null;
+  return {
+    currentSlideIndex: data.currentSlideIndex != null ? data.currentSlideIndex : idx,
+    slideIndex: Number(idx),
+    page: data.page != null ? data.page : Number(idx) + 1,
+    materialId: data.materialId,
+    slideUrl: data.slideUrl || null,
+    totalSlides: data.totalSlides != null ? data.totalSlides : null,
+    renderMode: data.renderMode || null,
+    room: data.room,
+    savedAt: Date.now(),
+  };
+}
+
+function broadcastPresentationSlide(socket, data) {
+  const slidePayload = presentationSlidePayload(data);
+  if (!slidePayload) return;
+  const prev = roomPresentationSlide.get(slidePayload.room);
+  const same =
+    prev &&
+    String(prev.materialId || '') === String(slidePayload.materialId || '') &&
+    Number(prev.slideIndex) === Number(slidePayload.slideIndex) &&
+    Date.now() - (prev.savedAt || 0) < 400;
+  roomPresentationSlide.set(slidePayload.room, slidePayload);
+  if (same) return;
+  socket.to(slidePayload.room).emit('presentation-slide-changed', slidePayload);
+}
 const pendingClassroomSettingsBySocket = new Map(); // socketId -> { videosAllowed, penAllowed }
 
 function defaultClassroomSettings() {
@@ -2519,6 +2551,10 @@ io.on('connection', socket => {
         console.log(`  - username: ${socket.username}`);
         
         socket.join(room);
+        const savedSlide = roomPresentationSlide.get(room);
+        if (savedSlide && String(userType || '').toLowerCase() !== 'teacher') {
+            socket.emit('presentation-slide-changed', savedSlide);
+        }
         const clients = io.sockets.adapter.rooms.get(room);
         console.log('👥 Room', room, 'now has', clients.size, 'clients');
         
@@ -2748,6 +2784,10 @@ io.on('connection', socket => {
         console.log(`  - username: ${socket.username}`);
         
         socket.join(room);
+        const savedSlide = roomPresentationSlide.get(room);
+        if (savedSlide && String(userType || '').toLowerCase() !== 'teacher') {
+            socket.emit('presentation-slide-changed', savedSlide);
+        }
         const clients = io.sockets.adapter.rooms.get(room);
         console.log('👥 Room', room, 'now has', clients.size, 'clients');
         
@@ -3098,36 +3138,11 @@ io.on('connection', socket => {
     });
     
     socket.on('presentation-slide-changed', (data) => {
-        console.log('🎬 Presentation slide changed in room:', data.room);
-        const slidePayload = {
-            currentSlideIndex: data.currentSlideIndex,
-            slideIndex: data.slideIndex != null ? data.slideIndex : data.currentSlideIndex,
-            page: data.page != null ? data.page : (data.currentSlideIndex != null ? data.currentSlideIndex + 1 : undefined),
-            materialId: data.materialId,
-            slideUrl: data.slideUrl || null,
-            totalSlides: data.totalSlides != null ? data.totalSlides : null,
-            renderMode: data.renderMode || null,
-            room: data.room
-        };
-        socket.to(data.room).emit('presentation-slide-changed', slidePayload);
-        // Alias for clients that listen for slide-changed
-        socket.to(data.room).emit('slide-changed', slidePayload);
+        broadcastPresentationSlide(socket, data);
     });
 
     socket.on('slide-changed', (data) => {
-        if (!data || !data.room) return;
-        const slidePayload = {
-            currentSlideIndex: data.currentSlideIndex,
-            slideIndex: data.slideIndex != null ? data.slideIndex : data.currentSlideIndex,
-            page: data.page != null ? data.page : (data.currentSlideIndex != null ? data.currentSlideIndex + 1 : undefined),
-            materialId: data.materialId,
-            slideUrl: data.slideUrl || null,
-            totalSlides: data.totalSlides != null ? data.totalSlides : null,
-            renderMode: data.renderMode || null,
-            room: data.room
-        };
-        socket.to(data.room).emit('presentation-slide-changed', slidePayload);
-        socket.to(data.room).emit('slide-changed', slidePayload);
+        broadcastPresentationSlide(socket, data);
     });
     
     socket.on('presentation-ended', (data) => {
@@ -3156,8 +3171,18 @@ io.on('connection', socket => {
             console.warn('⚠️ [SERVER] presenter-sync-update missing room', data);
             return;
         }
-        // Forward sync updates to everyone in the room (including sender for visibility)
-        io.to(room).emit('presenter-sync-update', data);
+        const fromSync = presentationSlidePayload({
+            room,
+            materialId,
+            page,
+            slideIndex: data.slideIndex != null ? data.slideIndex : (page != null ? Number(page) - 1 : undefined),
+            currentSlideIndex: data.slideIndex != null ? data.slideIndex : (page != null ? Number(page) - 1 : undefined),
+            totalSlides: data.totalSlides,
+            slideUrl: data.slideUrl || null,
+            renderMode: data.renderMode || null,
+        });
+        if (fromSync) roomPresentationSlide.set(room, fromSync);
+        socket.to(room).emit('presenter-sync-update', data);
         console.log('📄 [SERVER] presenter-sync-update broadcast', {
             room,
             page,
@@ -4020,15 +4045,21 @@ const startServer = () => {
           console.log(`⏰ Initial absent student check scheduled (in 5 seconds)`);
 
           const { runClassNotificationJobs } = require('./services/classReminderService');
+          const { runEmergencySubstituteJob } = require('./services/emergencySubstituteService');
           setInterval(() => {
             runClassNotificationJobs().catch((e) =>
               console.warn('[class-reminder] interval error:', e.message || e)
             );
+            runEmergencySubstituteJob().catch((e) =>
+              console.warn('[emergency-substitute] interval error:', e.message || e)
+            );
           }, 60 * 1000);
           setTimeout(() => {
             runClassNotificationJobs().catch(() => {});
+            runEmergencySubstituteJob().catch(() => {});
           }, 8000);
           console.log(`⏰ Class reminder + teacher-late jobs scheduled (every minute)`);
+          console.log(`⏰ Approved emergency classes are assigned until 5 minutes before the start`);
 
           const { closeOpenSessions } = require('./services/attendanceExceptionService');
           const runAttendanceClose = () =>

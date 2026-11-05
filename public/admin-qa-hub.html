@@ -843,6 +843,8 @@
             var status = (req.status || 'pending').toUpperCase();
             var stSafe = String(req.status || 'pending').replace(/[^a-z0-9_-]/gi, '');
             var pending = req.status === 'pending';
+            var emergency = !!req.emergencyReason;
+            var proofPending = !req.proofValidity || req.proofValidity === 'pending';
             var rid = String(req._id);
             return (
                 '<div class="issue-card" style="border-left:4px solid #f59e0b;">' +
@@ -882,7 +884,23 @@
                         : ' — proof missing, penalty is not waived') +
                       '</p></div>'
                     : '') +
-                (pending
+                (emergency
+                    ? '<div class="issue-description"><h4>System decision</h4><p>' +
+                      esc((req.adminReview && req.adminReview.adminNotes) || 'The system approved or declined this from open teachers.') +
+                      (req.proofValidity && req.proofValidity !== 'pending'
+                        ? ' Proof: ' + esc(req.proofValidity) + '.'
+                        : '') +
+                      '</p></div>' +
+                      (proofPending && req.proofPath
+                        ? '<div class="issue-actions">' +
+                          '<button type="button" class="btn btn-success" data-crid="' +
+                          esc(rid) +
+                          '" data-cract="valid">Proof valid</button> ' +
+                          '<button type="button" class="btn btn-danger" data-crid="' +
+                          esc(rid) +
+                          '" data-cract="invalid">Proof not valid</button></div>'
+                        : '')
+                    : pending
                     ? '<div class="issue-actions">' +
                       '<button type="button" class="btn btn-success" data-crid="' +
                       esc(rid) +
@@ -983,6 +1001,29 @@
             }
 
             displayCombinedIssueFeed(issues, cancellations);
+        }
+
+        async function markCancellationProof(requestId, validity) {
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
+            try {
+                const r = await fetch('/api/admin/cancellation-proof-validity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + token,
+                    },
+                    body: JSON.stringify({ requestId: requestId, validity: validity }),
+                });
+                const j = await r.json().catch(function () { return {}; });
+                if (j.success) {
+                    showNotification(validity === 'valid' ? 'Proof marked valid' : 'Proof marked not valid', 'success');
+                    loadIssues();
+                } else {
+                    showNotification(j.error || 'Could not save the proof check', 'error');
+                }
+            } catch (e) {
+                showNotification('Error saving the proof check', 'error');
+            }
         }
 
         async function reviewCancellationFromHub(requestId, status) {
@@ -1240,6 +1281,11 @@
                     var act = t.getAttribute('data-cract');
                     if (!rid || !act) return;
                     e.preventDefault();
+                    if (act === 'valid' || act === 'invalid') {
+                        if (!confirm(act === 'valid' ? 'Mark this proof valid?' : 'Mark this proof not valid? The penalty is not waived.')) return;
+                        markCancellationProof(rid, act);
+                        return;
+                    }
                     if (
                         !confirm(
                             act === 'approved'

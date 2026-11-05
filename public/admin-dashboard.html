@@ -2289,7 +2289,7 @@
             var proofHtml = proof.indexOf('/uploads/') === 0
                 ? ' <a href="' + proof.replace(/"/g, '') + '" target="_blank" rel="noopener">Open proof</a>'
                 : ' Proof is missing, so the penalty is not waived.';
-            return '<div style="margin-top:8px;color:#0f766e;"><strong>Emergency:</strong> ' + safe + '.' + proofHtml + ' Approving with proof waives the cancellation penalty.</div>';
+            return '<div style="margin-top:8px;color:#0f766e;"><strong>Emergency:</strong> ' + safe + '.' + proofHtml + ' The system approves this only when another teacher is free. QA marks the proof valid or not valid.</div>';
         }
 
         async function loadCancellationRequests() {
@@ -2351,7 +2351,14 @@
                             Requested on: ${new Date(request.createdAt).toLocaleString()}
                         </div>
                         
-                        ${request.status === 'pending' ? `
+                        ${request.emergencyReason ? `
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                ${request.proofPath && (!request.proofValidity || request.proofValidity === 'pending') ? `
+                                <button type="button" onclick="markCancellationProof('${request._id}', 'valid')" style="background:#0f766e;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;">Proof valid</button>
+                                <button type="button" onclick="markCancellationProof('${request._id}', 'invalid')" style="background:#b45309;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;">Proof not valid</button>
+                                ` : `<span style="color:#64748b;">Proof check: ${request.proofValidity || 'pending'}</span>`}
+                            </div>
+                        ` : request.status === 'pending' ? `
                             <div style="display: flex; gap: 8px;">
                                 <button onclick="reviewCancellation('${request._id}', 'approved')" style="
                                     background: #27ae60;
@@ -2405,6 +2412,30 @@
                         console.error('Error loading booking details:', error);
                     }
                 }
+            }
+        }
+
+        async function markCancellationProof(requestId, validity) {
+            try {
+                const token = localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '';
+                const response = await fetch('/api/admin/cancellation-proof-validity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ requestId: requestId, validity: validity })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(validity === 'valid' ? 'Proof marked valid' : 'Proof marked not valid');
+                    loadCancellationRequests();
+                } else {
+                    alert('Error: ' + (result.error || 'Could not save the proof check'));
+                }
+            } catch (error) {
+                console.error('Error marking proof:', error);
+                alert('Error saving the proof check');
             }
         }
 

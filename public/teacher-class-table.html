@@ -284,7 +284,7 @@
             <div id="cancellation-proof-row" style="display:none;margin-bottom:8px;">
               <label for="cancellation-proof" class="cim-field-label" style="display:block;margin-bottom:6px;">Upload proof</label>
               <input type="file" id="cancellation-proof" accept="image/*" style="width:100%;">
-              <small style="color:#64748b;">This reason is allowed for a cancellation only with proof. The penalty is waived after it is accepted.</small>
+              <small style="color:#64748b;">Emergency cancellation needs proof and is only allowed at least 10 minutes before the class. The system approves it when another teacher is free, and declines it when nobody is. Fewer than 5 minutes left cannot be assigned. QA only checks that the proof is valid.</small>
             </div>
             <label for="cancellation-reason-inline" class="cim-field-label" style="display:block;margin-bottom:6px;">Reason for cancellation</label>
             <textarea id="cancellation-reason-inline" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="3" maxlength="500"></textarea>
@@ -2018,6 +2018,13 @@
         alert('Upload proof for this reason. It is not valid without proof, and the penalty is not waived.');
         return;
       }
+      if (emergencyReason && currentBooking && currentBooking.dateTimeUtc) {
+        const startMs = new Date(currentBooking.dateTimeUtc).getTime();
+        if (Number.isFinite(startMs) && startMs - Date.now() < 10 * 60 * 1000) {
+          alert('Emergency cancellation is only allowed at least 10 minutes before the class.');
+          return;
+        }
+      }
 
       if (!currentBooking) return;
 
@@ -2045,7 +2052,7 @@
         const data = await response.json();
 
         if (response.ok) {
-          alert('Cancellation request submitted successfully! It will be reviewed by admin.');
+          alert(data.message || 'Cancellation request submitted successfully! It will be reviewed by admin.');
           hideCancellationForm();
           closeClassInfo();
           loadScheduleData(); // Refresh schedule

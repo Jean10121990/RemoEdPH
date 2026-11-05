@@ -64,6 +64,12 @@ const bookingSchema = new mongoose.Schema({
   /** Idempotent flags for schedule-presence notifications. */
   teacherJoinedNotifiedAt: { type: Date, default: null },
   teacherLateNotifiedAt: { type: Date, default: null },
+  /** Teacher who held the class before an emergency substitute was assigned. */
+  originalTeacherId: { type: String, default: null },
+  /** Set when this booking was moved to another teacher who had the same time open. */
+  substituteAssignedAt: { type: Date, default: null },
+  /** Set when no other teacher was free, so admin is notified once. */
+  substituteNoCoverNotifiedAt: { type: Date, default: null },
   // Cancellation tracking
   cancellationTime: { type: Date },
   cancellationReason: {

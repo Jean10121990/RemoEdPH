@@ -751,7 +751,12 @@
     }
 
     function emitSlideChanged(index, slideUrl) {
-      if (!socket || !socket.connected || !isTeacher) return;
+      if (!isTeacher) return;
+      state._lastBroadcast = {
+        index: index,
+        slideUrl: slideUrl || currentSlideUrl() || null
+      };
+      if (!socket || !socket.connected) return;
       var payload = {
         room: room,
         materialId: materialId,
@@ -759,19 +764,18 @@
         slideIndex: index,
         page: index + 1,
         totalSlides: state.totalSlides,
-        slideUrl: slideUrl || currentSlideUrl() || null,
+        slideUrl: state._lastBroadcast.slideUrl,
         renderMode: state.renderMode
       };
       socket.emit('presentation-slide-changed', payload);
-      socket.emit('slide-changed', payload);
-      socket.emit('presenter-sync-update', {
-        room: room,
-        materialId: materialId,
-        page: index + 1,
-        slideIndex: index,
-        totalSlides: state.totalSlides
-      });
     }
+
+    function resendSlideAfterReconnect() {
+      if (!isTeacher || !state._lastBroadcast || !socket || !socket.connected) return;
+      emitSlideChanged(state._lastBroadcast.index, state._lastBroadcast.slideUrl);
+    }
+    if (socket && isTeacher) socket.on('connect', resendSlideAfterReconnect);
+    state._resendSlideAfterReconnect = resendSlideAfterReconnect;
 
     function prefetchAdjacentSlides(index) {
       if (state.renderMode !== 'images' || !state.slideImageUrls) return;
@@ -1164,6 +1168,9 @@
         global.removeEventListener('resize', resizeCanvas);
         if (state._onFrameMessage) global.removeEventListener('message', state._onFrameMessage);
         if (state._onTeacherKeyNav) global.removeEventListener('keydown', state._onTeacherKeyNav);
+        if (socket && state._resendSlideAfterReconnect) {
+          socket.off('connect', state._resendSlideAfterReconnect);
+        }
         if (state._resizeObserver) {
           try {
             state._resizeObserver.disconnect();

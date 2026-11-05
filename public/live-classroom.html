@@ -4490,6 +4490,7 @@
               socket.emit('presenter-sync-update', {
                 room,
                 page: pageNum,
+                slideIndex: pageNum - 1,
                 scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                 scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
                 materialId: window.currentPdfMaterialId,
@@ -5109,9 +5110,11 @@
               const syncData = {
                 room,
                 page: pageNumber,
+                slideIndex: pageNumber - 1,
                 scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                 scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                materialId: window.currentPdfMaterialId
+                materialId: window.currentPdfMaterialId,
+                totalSlides: pdfDoc ? pdfDoc.numPages : undefined
               };
               socket.emit('presenter-sync-update', syncData);
               console.log('📄 [TEACHER] presenter-sync-update (pagechanging)', syncData);
@@ -5514,6 +5517,7 @@
               const syncData = {
                 room,
                 page,
+                slideIndex: Number(page) - 1,
                 scrollTop,
                 scrollLeft,
                 zoom,
@@ -5547,9 +5551,11 @@
             const scrollTop = currentPdfContainer.scrollTop;
             const scrollLeft = currentPdfContainer.scrollLeft;
             
-            // Estimate page
-            const estimatedPageHeight = 1100;
-            const page = Math.max(1, Math.floor(scrollTop / estimatedPageHeight) + 1);
+            const knownPage = window.pdfViewerState && window.pdfViewerState.pageNum;
+            const page = knownPage
+              ? Number(knownPage)
+              : Math.max(1, Math.floor(scrollTop / 1100) + 1);
+            if (knownPage && Number(page) !== Number(knownPage)) return;
             
             // Only send if changed significantly
             if (page !== lastSyncState.page || 
@@ -5560,6 +5566,7 @@
               const syncData = {
                 room,
                 page,
+                slideIndex: Number(page) - 1,
                 scrollTop,
                 scrollLeft,
                 materialId: window.currentPdfMaterialId
@@ -6067,9 +6074,17 @@
 
         console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId, slideIndex });
 
+        if (
+          slideIndex == null &&
+          Number(page) === 1 &&
+          window.pdfViewerState &&
+          Number(window.pdfViewerState.pageNum) > 1
+        ) {
+          return;
+        }
         if (window.currentPptOverlay) {
-          // Scroll estimates send a page number only and were pinning students on slide 2.
-          // The slide toolbar sends slideIndex for every Next click; follow that.
+          // A scroll estimate sends a page number only and was pulling students back to slide 1.
+          // Prev/Next always send slideIndex. Follow that.
           if (slideIndex == null || typeof RemoedPresentationOverlay === 'undefined') return;
           RemoedPresentationOverlay.handlePresentationSlideChanged({
             currentSlideIndex: slideIndex,

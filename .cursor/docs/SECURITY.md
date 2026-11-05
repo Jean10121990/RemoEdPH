@@ -123,6 +123,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
+| 2026-11-05 | Emergency cancellation proof check. `POST /api/admin/cancellation-proof-validity` is on the admin router (same auth as `POST /api/admin/review-cancellation`). Body is `requestId` plus `valid` or `invalid`. It does not take a teacher id and does not move the class. |
 | 2026-11-04 | Marketing Hub connect. Public rate-limited `GET /api/admin/growth/social/meta/callback` (signed state). Admin JWT `growth.posts`: `GET /api/admin/growth/social/meta/start`, `GET /api/admin/growth/social-accounts`, `POST /api/admin/growth/social-accounts/disconnect`. Page and Instagram tokens stay encrypted and are not returned. |
 | 2026-11-04 | Affiliate payroll. `POST /api/affiliate/withdraw` (affiliate JWT) emails Accounting with the same MariBank details as admin payroll. `GET /api/admin/affiliate-payroll` (admin JWT, `acct:payroll_view`) lists requests. `POST /api/admin/affiliate-payroll/:affiliateId/:withdrawalId/complete` (admin JWT, `acct:payroll_dispense`) marks the payout sent and emails the affiliate. `POST /api/affiliate/forgot-password` is public and rate limited; it emails a new password only to an active affiliate’s registered address. |
 | 2026-11-04 | Public `POST /api/applications/upload` (no login, rate limited, video/image/PDF, 80 MB) stores teacher-application files. `POST /api/upload/upload` stays behind a portal JWT. |

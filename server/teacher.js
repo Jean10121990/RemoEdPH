@@ -3899,6 +3899,15 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
         error: 'Upload proof for this reason. It is not valid without proof, and the penalty is not waived.',
       });
     }
+    if (excuse) {
+      const { canRequestEmergencyCancellation } = require('./services/emergencySubstituteService');
+      if (!canRequestEmergencyCancellation(classDateTime, now)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Emergency cancellation is only allowed at least 10 minutes before the class.',
+        });
+      }
+    }
 
     // Create cancellation request
     const cancellationRequest = new CancellationRequest({
@@ -3911,6 +3920,25 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
     });
     
     await cancellationRequest.save();
+
+    if (excuse && req.file) {
+      const { finishApprovedCancellation } = require('./services/teacherCancellationSettle');
+      const settled = await finishApprovedCancellation(
+        cancellationRequest,
+        'Checked open teachers for this class time.'
+      );
+      const message = settled.outcome === 'moved'
+        ? 'Emergency cancellation approved. The class was assigned to another available teacher. QA will check that the proof is valid.'
+        : settled.tooLate
+          ? 'Emergency cancellation declined. Fewer than 5 minutes remain, so it cannot be assigned to another teacher. The class stays with you.'
+          : 'Emergency cancellation declined. No other teacher is free for that time. The class stays with you.';
+      return res.json({
+        success: true,
+        message,
+        outcome: settled.outcome,
+        cancellationRequest,
+      });
+    }
     
     // Notify admins (not the teacher) about the pending cancellation request
     try {
