@@ -367,7 +367,7 @@ async function findLeanTeacherForPublicProfile(rawKey) {
   }
   return Teacher.findOne({ ...PUBLIC_TEACHER_FILTER, $or: or })
     .select(
-      'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+      'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language hobbies professionalCertifications documents.certifications'
     )
     .lean();
 }
@@ -410,8 +410,11 @@ function buildPublicTeacherDetailFromRow(t) {
   if (certNames.length === 0) {
     certNames.push('TESOL Certified', 'TEYL Specialist');
   }
-  const lang = t.language ? String(t.language) : 'English';
-  const subjects = ['English for Kids', lang !== 'English' ? `${lang} support` : 'Phonics & Reading'].filter(Boolean);
+  const hobbies = String(t.hobbies || '')
+    .split(/[,;\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 12);
   const bioSnippet =
     introFull.length > 0
       ? introFull.replace(/\s+/g, ' ').slice(0, 140) + (introFull.length > 140 ? '…' : '')
@@ -426,7 +429,7 @@ function buildPublicTeacherDetailFromRow(t) {
     rating: 4.9,
     reviewCount: 0,
     certifications: certNames.slice(0, 8),
-    subjects,
+    hobbies,
     videoIntroduction: t.videoIntroduction || null,
   };
 }
@@ -515,7 +518,7 @@ router.get('/public/directory', async (req, res) => {
   try {
     const rows = await Teacher.find(PUBLIC_TEACHER_FILTER)
       .select(
-        'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+        'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language hobbies professionalCertifications documents.certifications'
       )
       .lean()
       .limit(300);

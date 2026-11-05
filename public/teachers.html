@@ -199,7 +199,7 @@
             const rating = t.rating != null ? Number(t.rating).toFixed(1) : '4.9';
             const intro = (t.intro || t.bioSnippet || '').trim() || 'This teacher loves helping kids grow in confidence and English skills.';
             const certs = Array.isArray(t.certifications) ? t.certifications : [];
-            const subjects = Array.isArray(t.subjects) ? t.subjects : ['English for Kids', 'Phonics'];
+            const hobbies = Array.isArray(t.hobbies) ? t.hobbies.filter(Boolean) : [];
 
             const p = photoUrl(t.photo);
             const leftPhoto = p
@@ -222,7 +222,9 @@
                 ? `<div class="t-modal__pills">${certs.map((c) => `<span class="t-modal__pill">${esc(c)}</span>`).join('')}</div>`
                 : `<div class="t-modal__pills"><span class="t-modal__pill">TESOL</span><span class="t-modal__pill">TEYL</span></div>`;
 
-            const subjHtml = subjects.map((s) => `<span class="t-modal__subject">${esc(s)}</span>`).join('');
+            const hobbyHtml = hobbies.length
+                ? hobbies.map((s) => `<span class="t-modal__subject">${esc(s)}</span>`).join('')
+                : '<span style="color:#64748b;font-size:0.9rem;">Not added yet.</span>';
 
             body.innerHTML = `
                 <div class="t-modal__left">
@@ -241,8 +243,8 @@
                         ${certPills}
                     </div>
                     <div class="t-modal__section">
-                        <h3>Subjects taught</h3>
-                        <div class="t-modal__subjects">${subjHtml}</div>
+                        <h3>Hobbies & interests</h3>
+                        <div class="t-modal__subjects">${hobbyHtml}</div>
                     </div>
                 </div>`;
 
