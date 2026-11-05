@@ -367,7 +367,7 @@ async function findLeanTeacherForPublicProfile(rawKey) {
   }
   return Teacher.findOne({ ...PUBLIC_TEACHER_FILTER, $or: or })
     .select(
-      'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language hobbies professionalCertifications documents.certifications'
+      'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language hobbies professionalCertifications documents.certifications documents.certificates'
     )
     .lean();
 }
@@ -392,24 +392,37 @@ function publicTeacherLabel(t, fallback = 'Teacher') {
   return displayNameFromTeacherRow(t) || fallback;
 }
 
+/** Names the public can see. Uploaded certificate files and saved certification records only. */
+function publicCertificateNames(t) {
+  const names = [];
+  const push = (raw) => {
+    const s = String(raw || '').trim();
+    if (!s) return;
+    if (names.some((n) => n.toLowerCase() === s.toLowerCase())) return;
+    names.push(s);
+  };
+  const fromFile = (fileName) => String(fileName || '')
+    .replace(/^.*[\\/]/, '')
+    .replace(/\.[a-z0-9]{2,5}$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  (t && t.professionalCertifications || []).forEach((c) => {
+    if (c && c.name) push(c.name);
+  });
+  (t && t.documents && t.documents.certifications || []).forEach((x) => {
+    if (typeof x === 'string') push(x);
+  });
+  (t && t.documents && t.documents.certificates || []).forEach((c) => {
+    if (c) push(fromFile(c.fileName));
+  });
+  return names.slice(0, 8);
+}
+
 /** Full public card shape (directory + modal) from a lean Teacher doc */
 function buildPublicTeacherDetailFromRow(t) {
   const displayName = displayNameFromTeacherRow(t);
   const introFull = (t.introduction || t.intro || '').trim();
-  const certNames = [];
-  if (Array.isArray(t.professionalCertifications)) {
-    t.professionalCertifications.forEach((c) => {
-      if (c && c.name) certNames.push(c.name);
-    });
-  }
-  if (t.documents?.certifications?.length) {
-    t.documents.certifications.forEach((x) => {
-      if (x && !certNames.includes(x)) certNames.push(x);
-    });
-  }
-  if (certNames.length === 0) {
-    certNames.push('TESOL Certified', 'TEYL Specialist');
-  }
+  const certNames = publicCertificateNames(t);
   const hobbies = String(t.hobbies || '')
     .split(/[,;\n]/)
     .map((s) => s.trim())
@@ -518,7 +531,7 @@ router.get('/public/directory', async (req, res) => {
   try {
     const rows = await Teacher.find(PUBLIC_TEACHER_FILTER)
       .select(
-        'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language hobbies professionalCertifications documents.certifications'
+        'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language hobbies professionalCertifications documents.certifications documents.certificates'
       )
       .lean()
       .limit(300);
@@ -1745,20 +1758,10 @@ router.get('/available-teachers', async (req, res) => {
       const teachers = await Promise.all(
         candidates.map(async (tid) => {
           const t = await Teacher.findOne({ teacherId: tid }).select(
-            'teacherId username firstName middleName lastName nickname fullname profilePicture professionalCertifications documents.certifications language payoutTierBase hourlyRate'
+            'teacherId username firstName middleName lastName nickname fullname profilePicture professionalCertifications documents.certifications documents.certificates language payoutTierBase hourlyRate'
           );
           const displayName = publicTeacherLabel(t, tid);
-          const certNames = [];
-          if (t?.professionalCertifications?.length) {
-            t.professionalCertifications.forEach((c) => {
-              if (c && c.name) certNames.push(c.name);
-            });
-          }
-          if (t?.documents?.certifications?.length) {
-            t.documents.certifications.forEach((x) => {
-              if (x && !certNames.includes(x)) certNames.push(x);
-            });
-          }
+          const certNames = publicCertificateNames(t);
           const bookingKey = teacherBookingKey(t, tid);
           return {
             teacherId: bookingKey,

@@ -220,7 +220,7 @@
 
             const certPills = certs.length
                 ? `<div class="t-modal__pills">${certs.map((c) => `<span class="t-modal__pill">${esc(c)}</span>`).join('')}</div>`
-                : `<div class="t-modal__pills"><span class="t-modal__pill">TESOL</span><span class="t-modal__pill">TEYL</span></div>`;
+                : '<span style="color:#64748b;font-size:0.9rem;">Not added yet.</span>';
 
             const hobbyHtml = hobbies.length
                 ? hobbies.map((s) => `<span class="t-modal__subject">${esc(s)}</span>`).join('')
