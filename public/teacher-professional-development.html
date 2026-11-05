@@ -451,13 +451,14 @@
     </div>
     
     <!-- Add Certification Modal -->
-    <div id="add-certification-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div id="add-certification-modal" class="remoed-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: var(--z-modal, 9000); align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h2 style="margin: 0; color: #47BC3E;">Add Certification</h2>
+                <h2 id="certification-modal-title" style="margin: 0; color: #47BC3E;">Add Certification</h2>
                 <button onclick="closeAddCertificationModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">&times;</button>
             </div>
             <form id="certification-form" onsubmit="saveCertification(event)">
+                <input type="hidden" id="cert-editing-id" value="">
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #47BC3E;">Certification Name *</label>
                     <input type="text" id="cert-name" required style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
@@ -1188,13 +1189,26 @@
             }
         }
         
+        let loadedCertifications = [];
+
+        function dateInputValue(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
         function displayCertifications(certifications) {
             const tbody = document.getElementById('certifications-tbody');
             const summary = document.getElementById('certification-summary');
             
             if (!tbody) return;
+            loadedCertifications = Array.isArray(certifications) ? certifications : [];
             
-            if (certifications.length === 0) {
+            if (loadedCertifications.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
@@ -1214,7 +1228,7 @@
             let expiringSoon = 0;
             let expiredCount = 0;
             
-            tbody.innerHTML = certifications.map(cert => {
+            tbody.innerHTML = loadedCertifications.map(cert => {
                 const expiryDate = cert.expiryDate ? new Date(cert.expiryDate) : null;
                 let statusClass = 'expiry-valid';
                 let statusText = 'Valid';
@@ -1257,13 +1271,23 @@
         }
         
         function openAddCertificationModal() {
+            const editing = document.getElementById('cert-editing-id');
+            if (editing) editing.value = '';
+            const title = document.getElementById('certification-modal-title');
+            if (title) title.textContent = 'Add Certification';
+            document.getElementById('certification-form').reset();
+            toggleCertNoExpiration(false);
             document.getElementById('add-certification-modal').style.display = 'flex';
         }
         
         function closeAddCertificationModal() {
             document.getElementById('add-certification-modal').style.display = 'none';
+            const editing = document.getElementById('cert-editing-id');
+            if (editing) editing.value = '';
             document.getElementById('certification-form').reset();
             toggleCertNoExpiration(false);
+            const title = document.getElementById('certification-modal-title');
+            if (title) title.textContent = 'Add Certification';
         }
 
         function toggleCertNoExpiration(enabled) {
@@ -1316,9 +1340,12 @@
             
             console.log('Saving certification:', certData);
             
+            const editingId = String(document.getElementById('cert-editing-id')?.value || '').trim();
+            const isEdit = !!editingId;
+
             try {
-                const response = await fetch('/api/teacher/certifications', {
-                    method: 'POST',
+                const response = await fetch(isEdit ? `/api/teacher/certifications/${encodeURIComponent(editingId)}` : '/api/teacher/certifications', {
+                    method: isEdit ? 'PUT' : 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -1331,16 +1358,15 @@
                 if (response.ok) {
                     const data = await response.json();
                     console.log('Certification saved successfully:', data);
-                    alert('Certification added successfully!');
+                    alert(isEdit ? 'Certification updated.' : 'Certification added successfully!');
                     closeAddCertificationModal();
-                    // Add a small delay to ensure the backend has saved
                     setTimeout(() => {
                         loadCertifications();
-                    }, 500);
+                    }, 300);
                 } else {
                     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                    console.error('Failed to add certification:', errorData);
-                    alert(`Failed to add certification: ${errorData.error || 'Please try again.'}`);
+                    console.error('Failed to save certification:', errorData);
+                    alert(`Failed to save certification: ${errorData.error || 'Please try again.'}`);
                 }
             } catch (error) {
                 console.error('Error saving certification:', error);
@@ -1349,8 +1375,26 @@
         }
         
         function editCertification(certId) {
-            alert(`Edit certification ${certId}. This would open an edit modal.`);
-            // In production, load certification data and open edit modal
+            const cert = loadedCertifications.find((c) => String(c._id || c.id) === String(certId));
+            if (!cert) {
+                alert('Could not find that certification. Refresh the page and try again.');
+                return;
+            }
+            document.getElementById('cert-name').value = cert.name || '';
+            document.getElementById('cert-organization').value = cert.organization || '';
+            document.getElementById('cert-issue-date').value = dateInputValue(cert.issueDate);
+            document.getElementById('cert-number').value = cert.certificateNumber || '';
+            const editing = document.getElementById('cert-editing-id');
+            if (editing) editing.value = String(cert._id || cert.id || certId);
+            const title = document.getElementById('certification-modal-title');
+            if (title) title.textContent = 'Edit Certification';
+            if (cert.expiryDate) {
+                toggleCertNoExpiration(false);
+                document.getElementById('cert-expiry-date').value = dateInputValue(cert.expiryDate);
+            } else {
+                toggleCertNoExpiration(true);
+            }
+            document.getElementById('add-certification-modal').style.display = 'flex';
         }
         
         async function deleteCertification(certId) {
