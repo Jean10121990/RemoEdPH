@@ -672,8 +672,10 @@ When a teacher cancels, the booking stays. QA approval moves it to another teach
 - The schedule cell shows the level mark and the student name. Do not put the long substitute remark in the cell label.
 - Emergency proof is still checked after approval with `POST /api/admin/cancellation-proof-validity`. Invalid proof clears the penalty waiver. It does not move the class back.
 - A teacher who already entered the classroom is not replaced.
+- **Approve** moves the class to a substitute. There is no cancellation deduction, because the student still gets the class they paid for.
+- **Reject**, or no substitute and the teacher is then marked absent, keeps the cancellation deduction. Under 1 hour before class that is 100% of the 25-minute rate. There is no second absent deduction on top of it.
 - **Reject** tells that teacher in the bell and on Class Information (**Cancellation rejected**). The class stays with them.
-- If nobody can cover and the teacher cannot attend, an admin opens that class on Teacher Schedule and chooses **Mark teacher absent**. The student keeps the credit and can book again. The teacher is not paid for that class. A teacher who already entered cannot be marked absent this way.
+- If nobody can cover and the teacher cannot attend, an admin opens that class on Teacher Schedule and chooses **Mark teacher absent**. The class is void. The credit is not used and there is no refund. The student is notified and can book again. The next booking stays on that same lesson because it was not finished. They may also repeat an earlier lesson. They cannot skip ahead. A teacher who already entered cannot be marked absent this way.
 
 ## Teacher schedule time — Philippine time
 
@@ -919,5 +921,6 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Teacher session | Teacher accounts are not auto-logged out on the 1–2 hour student timer. A teacher token lasts 18 hours (30 days with Remember me) and renews while Class Schedule or Live Classroom stays open. See § Teacher session. |
 | Teacher schedule time | Teacher and admin schedules use Philippine time. Bookings are placed from `dateTimeUtc`, not the UTC clock stored in `Booking.time`. Students still see their own timezone. See § Teacher schedule time. |
 | Notification pop | New items already stored for that person show as a small toast and one soft pop (`public/js/remoed-notifications.js`). The first list after sign-in does not replay old alerts. Kids mode does not play it. |
+| Teaching fee deductions | A late minute is the teacher’s 25-minute rate divided by 25, not ₱2. An approved cancellation that a substitute covers has no deduction. A rejected cancellation, or a teacher marked absent with no substitute, uses the cancellation schedule (100% of the 25-minute rate under 1 hour) and not a second absent charge. The student keeps the credit and rebooks the same unfinished lesson. |
 | Lesson slides | Teacher Prev/Next sends one `presentation-slide-changed`. The server replays that slide when a student rejoins. A PDF scroll estimate must not send page 1 over a later slide. |
 | Admin payroll display | Admin Payroll and Admin Fee do not show a Gross Sales Pool. Earnings are still 2% of the period’s subscription sales for an eligible partner admin. |

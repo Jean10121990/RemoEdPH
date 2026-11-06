@@ -163,6 +163,12 @@
    * Deduction in pesos for one cancelled class. ratePer25Min = Total Hourly ÷ 2.
    * hoursBeforeClass = hours from cancellation time until class start.
    */
+  function lateMinutePeso(ratePer25Min) {
+    const r = Number(ratePer25Min);
+    if (!isFinite(r) || r <= 0) return 0;
+    return r / 25;
+  }
+
   function tutorCancellationDeductionPeso(hoursBeforeClass, ratePer25Min) {
     const r = Number(ratePer25Min);
     const h = Number(hoursBeforeClass);
@@ -189,6 +195,7 @@
     applyFromServerProfile: applyFromServerProfile,
     applyToHiddenHourly: applyToHiddenHourly,
     ensureInitialized: ensureInitialized,
-    tutorCancellationDeductionPeso: tutorCancellationDeductionPeso
+    tutorCancellationDeductionPeso: tutorCancellationDeductionPeso,
+    lateMinutePeso: lateMinutePeso
   };
 })(typeof window !== 'undefined' ? window : this);

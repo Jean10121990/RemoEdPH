@@ -68,6 +68,7 @@ const { buildTeacherInvitationSignupUrl } = require('./utils/frontendBaseUrl');
 const TeacherSlot = require('./models/TeacherSlot');
 const { normalizeId } = require('./utils/normalizeId');
 const { applyBookingFirstSlotOverlay, padSlotTime } = require('./utils/bookingFirstSlotOverlay');
+const { tutorCancellationDeductionPeso, lateMinutePeso } = require('./utils/tutorCancellationDeduction');
 const { resolveToCanonicalTeacherId } = require('./services/teacherSlotResolve');
 // Allow slight device clock drift during enrollment/verification.
 authenticator.options = { window: 2 };
@@ -3966,9 +3967,13 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
       booking.attendance.teacherEntered &&
       !booking.attendance.studentEntered
   ).length;
-  const teacherAbsentClasses = weekClasses.filter(
-    (booking) => booking.status === 'absent' && booking.attendance && !booking.attendance.teacherEntered
-  ).length;
+  const classRate = ratePer25FromTeacher(teacher, globalRate);
+  const teacherAbsentClasses = weekClasses.filter((booking) => {
+    if (booking.status !== 'absent' || !booking.attendance || booking.attendance.teacherEntered) return false;
+    if (booking.penaltyWaived) return false;
+    if (booking.cancellationTime) return false;
+    return true;
+  }).length;
   const lateClasses = weekClasses.filter(
     (booking) =>
       isPayableCompletedClass(booking) &&
@@ -3977,15 +3982,24 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
       booking.lateMinutes > 0
   );
   const totalLateMinutes = lateClasses.reduce((total, booking) => total + (booking.lateMinutes || 0), 0);
-  const lateDeductions = totalLateMinutes * 2;
-  const classRate = ratePer25FromTeacher(teacher, globalRate);
+  const lateDeductions = totalLateMinutes * lateMinutePeso(classRate);
+  let cancellationDeductions = 0;
+  weekClasses.forEach((booking) => {
+    if (booking.penaltyWaived || !booking.cancellationTime || !booking.date || !booking.time) return;
+    const st = String(booking.status || '').toLowerCase();
+    if (st !== 'cancelled' && !(st === 'absent' && booking.absentType === 'teacher')) return;
+    const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+    const cancellationTime = new Date(booking.cancellationTime);
+    const hours = (classDateTime.getTime() - cancellationTime.getTime()) / (1000 * 60 * 60);
+    cancellationDeductions += tutorCancellationDeductionPeso(hours, classRate);
+  });
   const teacherAbsentDeductions = teacherAbsentClasses * classRate;
   const baseWeeklyFee = completedClasses * classRate;
   const studentAbsentPayment = 0;
   const bonus = Math.max(0, Number(bonusIncentive) || 0);
   const netPayableAmount = Math.max(
     0,
-    baseWeeklyFee + studentAbsentPayment + bonus - lateDeductions - teacherAbsentDeductions
+    baseWeeklyFee + studentAbsentPayment + bonus - lateDeductions - teacherAbsentDeductions - cancellationDeductions
   );
   let paymentStatus = 'Pending';
   let paymentId = null;
@@ -4060,7 +4074,7 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
     const bookingsInPeriod = await Booking.find({
       date: { $gte: startDate, $lte: endDate },
     })
-      .select('teacherId status attendance lateMinutes')
+      .select('teacherId status attendance lateMinutes cancellationTime absentType penaltyWaived date time')
       .lean();
 
     const byTeacherId = new Map();
@@ -4112,7 +4126,7 @@ router.post('/dispense-salaries', async (req, res) => {
     const bookingsInPeriod = await Booking.find({
       date: { $gte: startDate, $lte: endDate },
     })
-      .select('teacherId status attendance lateMinutes')
+      .select('teacherId status attendance lateMinutes cancellationTime absentType penaltyWaived date time')
       .lean();
 
     const byTeacherId = new Map();
@@ -5417,20 +5431,24 @@ router.post('/cancellation-proof-validity', async (req, res) => {
       return res.status(400).json({ success: false, error: 'This request has no proof to check' });
     }
     cancellationRequest.proofValidity = validity;
-    const waive = validity === 'valid' && cancellationRequest.status === 'approved';
-    cancellationRequest.penaltyWaived = waive;
+    const classWasCovered = cancellationRequest.status === 'approved';
+    if (!classWasCovered) {
+      cancellationRequest.penaltyWaived = false;
+    }
     cancellationRequest.adminReview = {
       reviewedBy: 'qa',
       reviewedAt: new Date(),
-      adminNotes: validity === 'valid'
-        ? 'QA marked the proof valid.'
-        : 'QA marked the proof not valid. The penalty is not waived.',
+      adminNotes: classWasCovered
+        ? 'The class was covered by a substitute, so there is no cancellation deduction.'
+        : validity === 'valid'
+          ? 'QA marked the proof valid. The class was not covered, so the cancellation penalty still applies if the teacher does not teach it.'
+          : 'QA marked the proof not valid. The penalty is not waived.',
     };
     await cancellationRequest.save();
-    if (cancellationRequest.bookingId) {
+    if (!classWasCovered && cancellationRequest.bookingId) {
       await Booking.updateOne(
         { _id: cancellationRequest.bookingId },
-        { $set: { penaltyWaived: waive } }
+        { $set: { penaltyWaived: false } }
       );
     }
     try {
@@ -5438,9 +5456,11 @@ router.post('/cancellation-proof-validity', async (req, res) => {
       await notifyTeacher(
         cancellationRequest.requesterId,
         'cancellation-request',
-        validity === 'valid'
-          ? 'QA marked your emergency cancellation proof valid.'
-          : 'QA marked your emergency cancellation proof not valid. The penalty is not waived.',
+        classWasCovered
+          ? 'QA checked your proof. A substitute covered the class, so there is no cancellation deduction.'
+          : validity === 'valid'
+            ? 'QA marked your emergency cancellation proof valid.'
+            : 'QA marked your emergency cancellation proof not valid. The penalty is not waived.',
         { bookingId: String(cancellationRequest.bookingId || ''), actionUrl: '/teacher-class-table.html' }
       );
     } catch (nErr) {
@@ -5550,6 +5570,14 @@ router.post('/booking/:bookingId/teacher-absent', async (req, res) => {
     }
 
     const reason = String((req.body && req.body.reason) || '').trim().slice(0, 300);
+    const priorRequest = await CancellationRequest.findOne({ bookingId: booking._id }).sort({ createdAt: -1 });
+    const cancellationStillDue =
+      priorRequest &&
+      priorRequest.status !== 'approved' &&
+      !priorRequest.penaltyWaived;
+    if (cancellationStillDue && !booking.cancellationTime) {
+      booking.cancellationTime = priorRequest.createdAt;
+    }
     booking.status = 'absent';
     booking.absentType = 'teacher';
     booking.absentMarkedAt = new Date();
@@ -5561,8 +5589,20 @@ router.post('/booking/:bookingId/teacher-absent', async (req, res) => {
 
     const when = manilaClassLabel(booking);
     const { notifyTeacher, notifyStudent } = require('./services/notifyService');
-    const teacherMessage = `You were marked absent${when ? ` for ${when}` : ''}. This class is not paid. The student can book again.`;
-    const studentMessage = `Your teacher could not attend${when ? ` (${when})` : ''}. Your credit was not used. Open Book a Class to choose another time.`;
+    const { parseBookingLessonRef } = require('./lessonResolveFromBooking');
+    const lessonName = String(booking.lesson || '').trim() || 'the same lesson';
+    const parsedLesson = parseBookingLessonRef(booking.lesson);
+    const bookQuery = new URLSearchParams();
+    const lessonLevel = String(booking.studentLevel || (parsedLesson && parsedLesson.level) || '').trim();
+    if (lessonLevel) bookQuery.set('level', lessonLevel);
+    if (parsedLesson && parsedLesson.batch && parsedLesson.lessonNum) {
+      bookQuery.set('lessonNumber', String((parsedLesson.batch - 1) * 22 + parsedLesson.lessonNum));
+    }
+    const bookPath = bookQuery.toString() ? `/student-book.html?${bookQuery.toString()}` : '/student-book.html';
+    const teacherMessage = cancellationStillDue
+      ? `You were marked absent${when ? ` for ${when}` : ''}. The cancellation penalty applies (100% of your 25-minute rate when the request was under 1 hour). There is no extra absent deduction. The student keeps the credit.`
+      : `You were marked absent${when ? ` for ${when}` : ''}. This class is not paid. The student keeps the credit and can book the same lesson again.`;
+    const studentMessage = `Your teacher could not attend${when ? ` (${when})` : ''} and no substitute was available. This class is void. Your credit was not used, so there is no refund. Book again for ${lessonName}. It stays the same lesson because it was not finished. You can also repeat an earlier lesson. You cannot skip ahead.`;
     try {
       await notifyTeacher(booking.teacherId, 'absent', teacherMessage, {
         bookingId: String(booking._id),
@@ -5576,12 +5616,33 @@ router.post('/booking/:bookingId/teacher-absent', async (req, res) => {
     try {
       await notifyStudent(booking.studentId, 'reschedule-available', studentMessage, {
         bookingId: String(booking._id),
-        actionUrl: '/student-book.html',
+        actionUrl: bookPath,
         importance: 'actionable',
         skipDedupe: true,
       });
     } catch (nErr) {
       console.warn('Teacher-absent student notify failed:', nErr.message);
+    }
+    try {
+      const { sendRawEmail } = require('./emailService');
+      const stu = await Student.findOne({
+        $or: [{ username: booking.studentId }, { email: booking.studentId }],
+      })
+        .select('email firstName username')
+        .lean();
+      const to = stu && stu.email ? String(stu.email).trim() : '';
+      if (to) {
+        const greet = (stu.firstName || stu.username || 'there').trim();
+        const link = `https://remoedph.com${bookPath}`;
+        await sendRawEmail(
+          to,
+          'Your class needs a new time',
+          `<p>Hi ${greet},</p><p>${studentMessage}</p><p><a href="${link}">Book the same lesson</a></p><p>— RemoEdPH</p>`,
+          `Hi ${greet},\n\n${studentMessage}\n\nBook the same lesson: ${link}\n\n— RemoEdPH`
+        );
+      }
+    } catch (emErr) {
+      console.warn('Teacher-absent student email failed:', emErr.message);
     }
 
     return res.json({

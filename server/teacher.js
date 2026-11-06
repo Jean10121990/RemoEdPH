@@ -45,7 +45,7 @@ const { generateReferralCode } = require('./utils/referralCode');
 /** Slots cache-aside (Redis): ./services/slotsRedisCache.js → ../utils/redisClient.js */
 const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
-const { tutorCancellationDeductionPeso } = require('./utils/tutorCancellationDeduction');
+const { tutorCancellationDeductionPeso, lateMinutePeso } = require('./utils/tutorCancellationDeduction');
 const { evaluateTeacherBadges } = require('./services/badgeRulesEngine');
 const { buildTeacherPerformanceSummary } = require('./services/teacherPerformanceSummary');
 const { effectivePayoutFields, ratePer25FromTeacher, isFreeTrialTeacher } = require('./utils/teacherPayoutTier');
@@ -4214,19 +4214,21 @@ router.get('/classes', async (req, res) => {
           attendance: booking.attendance || {},
           finishedAt: booking.finishedAt,
           absentMarkedAt: booking.absentMarkedAt,
+          absentType: booking.absentType || '',
           cancellationReason: null,
           cancellationTime: null,
           penaltyWaived: bookingPenaltyWaived(booking, resolvedIssueMap, cancellationMap),
           hasResolvedIssue: (resolvedIssueMap[booking._id.toString()] || []).length > 0,
         };
 
-        if (booking.status === 'cancelled') {
-          const cancellation = cancellationMap[booking._id.toString()];
-          if (cancellation) {
-            classData.cancellationReason = {
-              reason: cancellation.reason,
-              rejected: cancellation.rejected || false,
-            };
+        const cancellation = cancellationMap[booking._id.toString()];
+        if (cancellation) {
+          classData.cancellationStatus = cancellation.status || '';
+          classData.cancellationReason = {
+            reason: cancellation.reason,
+            rejected: cancellation.status === 'rejected' || cancellation.rejected || false,
+          };
+          if (cancellation.status !== 'approved') {
             classData.cancellationTime = cancellation.createdAt;
           }
         }
@@ -4682,7 +4684,13 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
       const cancellationRequest = cancellationRequests.find(
         (req) => req.bookingId.toString() === booking._id.toString()
       );
-      if (cancellationRequest && cancellationRequest.createdAt && !booking.penaltyWaived && !cancellationRequest.penaltyWaived) {
+      if (
+        cancellationRequest &&
+        cancellationRequest.status !== 'approved' &&
+        cancellationRequest.createdAt &&
+        !booking.penaltyWaived &&
+        !cancellationRequest.penaltyWaived
+      ) {
         const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
         const cancellationTime = new Date(cancellationRequest.createdAt);
         const timeDiffHours =
@@ -4691,7 +4699,18 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
       }
     } else if (booking.status === 'absent') {
       const teacherEntered = booking.attendance?.teacherEntered || false;
-      if (!teacherEntered && !booking.penaltyWaived) {
+      const cancellationRequest = cancellationRequests.find(
+        (req) => req.bookingId.toString() === booking._id.toString()
+      );
+      const waived = booking.penaltyWaived || (cancellationRequest && cancellationRequest.penaltyWaived);
+      if (!teacherEntered && cancellationRequest && cancellationRequest.status !== 'approved' && !waived) {
+        const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+        const cancellationTime = new Date(cancellationRequest.createdAt);
+        const timeDiffHours =
+          (classDateTime.getTime() - cancellationTime.getTime()) / (1000 * 60 * 60);
+        cancellationDeductions += tutorCancellationDeductionPeso(timeDiffHours, ratePerClass);
+        cancelledClasses++;
+      } else if (!teacherEntered && !waived) {
         absentClasses++;
       } else if (teacherEntered) {
         studentAbsentClasses++;
@@ -4710,8 +4729,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
     }
 
     if (booking.lateMinutes && booking.lateMinutes > 0) {
-      const lateDeductionPerMinute = ratePerClass * 0.01;
-      lateDeductions += booking.lateMinutes * lateDeductionPerMinute;
+      lateDeductions += booking.lateMinutes * lateMinutePeso(ratePerClass);
     }
   });
 

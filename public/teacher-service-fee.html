@@ -345,7 +345,7 @@
             </div>
             
             <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef;">
-              <div class="service-label" style="color: #495057; font-size: 0.85rem;">Late arrivals (-₱2 per minute)</div>
+              <div class="service-label" style="color: #495057; font-size: 0.85rem;">Late arrivals (25-minute rate ÷ 25, per minute)</div>
               <input type="number" id="late-deductions" class="service-input" value="0.00" step="0.01" min="0" readonly disabled style="background: #fff; border: 1px solid #ced4da; color: #495057; border-radius: 4px; padding: 4px 8px; width: 100px; font-size: 0.9rem;" title="Late arrival deductions are calculated automatically based on teacher entry time">
             </div>
             
@@ -979,6 +979,17 @@
       calculateNetAmount();
     }
     
+    function cancellationDeductionPeso(classItem, ratePer25Minutes) {
+      if (!classItem || classItem.penaltyWaived || !classItem.cancellationTime || !classItem.date || !classItem.time) return 0;
+      const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
+      const cancellationTime = new Date(classItem.cancellationTime);
+      const hours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
+      if (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.tutorCancellationDeductionPeso) {
+        return RemoedTeacherPayout.tutorCancellationDeductionPeso(hours, ratePer25Minutes);
+      }
+      return 0;
+    }
+
     // Calculate deductions for the specified week
     async function calculateDeductions(absentClasses = null, startDate = null, endDate = null) {
       try {
@@ -1056,6 +1067,8 @@
             
             if (!teacherEntered && classItem.penaltyWaived) {
               console.log(`Emergency excuse: teacher absence penalty waived for ${classItem.date} ${classItem.time}`);
+            } else if (!teacherEntered && cancellationDeductionPeso(classItem, ratePer25Minutes) > 0) {
+              console.log(`Teacher absent after a cancellation penalty for ${classItem.date} ${classItem.time} — no second absent deduction`);
             } else if (!teacherEntered) {
               // Teacher was absent - count for deduction
               absentCount++;
@@ -1085,7 +1098,7 @@
             const now = new Date();
             const timeDiffMinutes = (now - classDateTime) / (1000 * 60);
             
-            if (timeDiffMinutes > 15 && !teacherEntered && !classItem.penaltyWaived) {
+            if (timeDiffMinutes > 15 && !teacherEntered && !classItem.penaltyWaived && cancellationDeductionPeso(classItem, ratePer25Minutes) <= 0) {
               // Class is more than 15 minutes past scheduled time and teacher didn't enter
               // Mark as teacher absent
               absentCount++;
@@ -1106,13 +1119,24 @@
             }
           }
           
-          // Late arrival deduction (-₱2 per minute)
+          // Late arrival: one minute is the 25-minute rate divided by 25.
           if (classItem.lateMinutes && classItem.lateMinutes > 0) {
-            lateDeductions += classItem.lateMinutes * 2;
+            const perMinute = (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.lateMinutePeso)
+              ? RemoedTeacherPayout.lateMinutePeso(ratePer25Minutes)
+              : (Number(ratePer25Minutes) > 0 ? Number(ratePer25Minutes) / 25 : 0);
+            lateDeductions += classItem.lateMinutes * perMinute;
           }
           
-          // Cancelled deduction: % of 25-min rate (same as Total Hourly ÷ 2) by hours before class
-          if (classItem.status === 'cancelled' && !classItem.penaltyWaived && classItem.cancellationTime && classItem.date && classItem.time) {
+          // Cancelled deduction: % of 25-min rate by hours before class.
+          // A teacher marked absent after that penalty is not deducted again.
+          const countCancellation =
+            !classItem.penaltyWaived &&
+            classItem.cancellationTime &&
+            classItem.date &&
+            classItem.time &&
+            (classItem.status === 'cancelled' ||
+              (classItem.status === 'absent' && String(classItem.absentType || '') === 'teacher'));
+          if (countCancellation) {
             const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
             const cancellationTime = new Date(classItem.cancellationTime);
             const timeDifferenceHours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
@@ -2819,7 +2843,10 @@
               // Class meets duration requirement - count as completed
               completedClasses++;
               if (classItem.lateMinutes && classItem.lateMinutes > 0) {
-                const lateDeduction = classItem.lateMinutes * 2; // ₱2 per minute
+                const perMinute = (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.lateMinutePeso)
+                  ? RemoedTeacherPayout.lateMinutePeso(ratePer25Minutes)
+                  : (Number(ratePer25Minutes) > 0 ? Number(ratePer25Minutes) / 25 : 0);
+                const lateDeduction = classItem.lateMinutes * perMinute;
                 totalLateMinutes += classItem.lateMinutes;
                 totalLateDeduction += lateDeduction;
                 console.log(`   ✅ Completed with ${classItem.lateMinutes} late minutes = ₱${lateDeduction.toFixed(2)} deduction`);
@@ -2837,6 +2864,8 @@
             const teacherEntered = classItem.attendance?.teacherEntered || false;
             if (!teacherEntered && classItem.penaltyWaived) {
               console.log(`   Emergency excuse: teacher absence penalty waived`);
+            } else if (!teacherEntered && cancellationDeductionPeso(classItem, ratePer25Minutes) > 0) {
+              console.log(`   Teacher absent already covered by the cancellation penalty`);
             } else if (!teacherEntered) {
               absentClasses++;
               totalAbsentDeduction += ratePer25Minutes;

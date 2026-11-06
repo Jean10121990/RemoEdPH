@@ -27,10 +27,8 @@ async function finishApprovedCancellation(cancellationRequest, adminNotes) {
   }
 
   if (isEmergencyReason(cancellationRequest.emergencyReason) && cancellationRequest.proofPath) {
-    cancellationRequest.penaltyWaived = true;
     cancellationRequest.proofValidity = cancellationRequest.proofValidity || 'pending';
     await cancellationRequest.save();
-    await Booking.updateOne({ _id: booking._id }, { $set: { penaltyWaived: true } });
   }
 
   await notifyTeacher(

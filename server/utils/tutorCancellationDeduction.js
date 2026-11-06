@@ -9,6 +9,13 @@
  * 1h–24h (exclusive of 24h band above): 75%  → implemented as >= 1 and < 24
  * < 1h: 100%
  */
+/** One late minute is the 25-minute class rate divided by 25. */
+function lateMinutePeso(ratePer25Min) {
+  const r = Number(ratePer25Min);
+  if (!isFinite(r) || r <= 0) return 0;
+  return r / 25;
+}
+
 function tutorCancellationDeductionPeso(hoursBeforeClass, ratePer25Min) {
   const r = Number(ratePer25Min);
   const h = Number(hoursBeforeClass);
@@ -19,4 +26,4 @@ function tutorCancellationDeductionPeso(hoursBeforeClass, ratePer25Min) {
   return r * 1;
 }
 
-module.exports = { tutorCancellationDeductionPeso };
+module.exports = { tutorCancellationDeductionPeso, lateMinutePeso };
