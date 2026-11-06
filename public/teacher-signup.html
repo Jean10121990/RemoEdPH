@@ -263,10 +263,6 @@
             <input id="middleName" name="middleName" type="text" autocomplete="additional-name" />
           </div>
           <div>
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text" required autocomplete="off" />
-          </div>
-          <div>
             <label for="password">Password</label>
             <input id="password" name="password" type="password" minlength="6" required autocomplete="new-password" />
           </div>
@@ -390,13 +386,12 @@
       const firstName = document.getElementById('firstName').value.trim();
       const middleName = document.getElementById('middleName').value.trim();
       const lastName = document.getElementById('lastName').value.trim();
-      const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
       const contact = document.getElementById('contact').value.trim();
       const address = document.getElementById('address').value.trim();
 
-      if (!username || !password || !firstName || !lastName) {
+      if (!password || !firstName || !lastName) {
         setStatus('Please complete required fields.', 'error');
         return;
       }
@@ -420,7 +415,6 @@
             firstName: firstName,
             middleName: middleName,
             lastName: lastName,
-            username: username,
             password: password,
             contact: contact,
             address: address
@@ -467,7 +461,6 @@
             inviteToken: invitation,
             firstName: String((document.getElementById('firstName') || {}).value || '').trim(),
             lastName: String((document.getElementById('lastName') || {}).value || '').trim(),
-            username: String((document.getElementById('username') || {}).value || '').trim(),
             rememberMe: 'true',
           };
         },

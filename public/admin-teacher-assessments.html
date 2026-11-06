@@ -659,7 +659,7 @@
                 let html = `
                     <div style="margin-bottom: 24px;">
                         <h3 style="color: #667eea; margin-bottom: 8px;">${data.teacher.name}</h3>
-                        <p style="color: #64748b; margin: 0;">${data.teacher.email} | ${data.teacher.username}</p>
+                        <p style="color: #64748b; margin: 0;">${data.teacher.email || ''}</p>
                         <p style="margin-top: 8px;">
                             <span class="status-badge ${data.completed ? 'status-completed' : 'status-pending'}">
                                 ${data.completed ? '✅ Completed' : '⏳ Pending'}

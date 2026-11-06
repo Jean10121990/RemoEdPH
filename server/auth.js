@@ -174,12 +174,11 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
     const firstName = String(req.body && req.body.firstName != null ? req.body.firstName : '').trim();
     const middleName = String(req.body && req.body.middleName != null ? req.body.middleName : '').trim();
     const lastName = String(req.body && req.body.lastName != null ? req.body.lastName : '').trim();
-    const username = String(req.body && req.body.username != null ? req.body.username : '').trim();
     const password = String(req.body && req.body.password != null ? req.body.password : '');
     const contact = String(req.body && req.body.contact != null ? req.body.contact : '').trim();
     const address = String(req.body && req.body.address != null ? req.body.address : '').trim();
 
-    if (!username || !password || !firstName || !lastName) {
+    if (!password || !firstName || !lastName) {
       return res.status(400).json({ success: false, message: 'Please complete required fields.' });
     }
     if (password.length < 6) {
@@ -216,7 +215,8 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
       });
     }
 
-    const teacherId = username;
+    const teacherId = email;
+    const username = email;
     const existingUsername = await Teacher.findOne({ username });
     if (existingUsername) {
       return res.status(409).json({ success: false, message: 'Username already exists.' });
@@ -225,7 +225,7 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
     if (existingTeacherId) {
       return res.status(409).json({
         success: false,
-        message: 'That teacher id is already in use. Choose a different username.',
+        message: 'A teacher account already exists for this email.',
       });
     }
     const existingEmail = await Teacher.findOne({ email });

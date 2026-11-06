@@ -1093,7 +1093,13 @@
                     <div class="issue-details">
                         <div class="issue-detail"><label>Booking ID</label><span>${issue.bookingId}</span></div>
                         <div class="issue-detail"><label>Issue Type</label><span>${issue.issueType}</span></div>
-                        <div class="issue-detail"><label>Teacher ID</label><span>${issue.teacherId}</span></div>
+                        <div class="issue-detail"><label>Teacher</label><span>${(function () {
+                            var t = issue.teacherId;
+                            if (t && typeof t === 'object') return esc(t.email || '');
+                            var s = String(t || '');
+                            if (/^remoedph\.\d+$/i.test(s)) return '—';
+                            return esc(s || '—');
+                        })()}</span></div>
                         <div class="issue-detail"><label>Student ID</label><span>${issue.studentId}</span></div>
                         <div class="issue-detail"><label>Submitted</label><span>${phDateTime(issue.submittedAt)}</span></div>
                         <div class="issue-detail"><label>Payment Impact</label><span>Teacher: ${issue.teacherPaymentImpact}, Student: ${issue.studentPaymentImpact}</span></div>

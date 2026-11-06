@@ -522,14 +522,15 @@ async function createTeacherFromOAuth(profile, state) {
     'RemoEd';
   const middleName = String((application && application.middleName) || '').trim();
 
-  const preferred = String(state.username || '').trim();
-  const base = preferred
-    ? preferred.replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 40) || baseUsernameFromEmail(email, 'teacher')
-    : baseUsernameFromEmail(email, 'teacher');
-  const username = await allocateUsername(Teacher, base.toLowerCase(), async (candidate) => {
-    const idTaken = await Teacher.findOne({ teacherId: candidate }).select('_id').lean();
-    return !!idTaken;
-  });
+  const username = email;
+  const idTaken = await Teacher.findOne({
+    $or: [{ username: email }, { teacherId: email }],
+  })
+    .select('_id')
+    .lean();
+  if (idTaken) {
+    throw new OAuthError(409, 'TEACHER_EXISTS', 'A teacher account already exists for this email.');
+  }
 
   const now = new Date();
   const claimed = await InvitationToken.findOneAndUpdate(

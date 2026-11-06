@@ -307,9 +307,7 @@
                             var trainingDone = Array.isArray(u.trainingProgress)
                                 ? u.trainingProgress.filter(function (t) { return t && (t.status === 'completed' || t.percent >= 100); }).length
                                 : 0;
-                            rows.push(['Username', u.username || '—']);
-                            rows.push(['Email', u.email || '—']);
-                            rows.push(['Teacher ID', u.teacherId || '—']);
+                            rows.push(['Email', u.email || (String(u.username || '').indexOf('@') >= 0 ? u.username : '—')]);
                             rows.push(['Nickname', (u.nickname && String(u.nickname).trim()) || '—']);
                             var tBirthdayStr = '—';
                             if (u.birthday) {

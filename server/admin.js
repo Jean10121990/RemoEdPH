@@ -1129,32 +1129,6 @@ function generateStrongPassword() {
   return password;
 }
 
-// Function to generate temporary username
-async function generateTemporaryUsername() {
-  try {
-    // Find the highest existing username number to avoid conflicts
-    const existingTeachers = await Teacher.find({}).select('username');
-    let maxNumber = 0;
-    
-    existingTeachers.forEach(teacher => {
-      if (teacher.username && teacher.username.startsWith('remoedph.')) {
-        const numberPart = teacher.username.substring(9); // 'remoedph.' is 9 characters
-        const number = parseInt(numberPart, 10);
-        if (!isNaN(number) && number > maxNumber) {
-          maxNumber = number;
-        }
-      }
-    });
-    
-    const nextNumber = maxNumber + 1;
-    return `remoedph.${nextNumber.toString().padStart(3, '0')}`;
-  } catch (error) {
-    console.error('Error generating temporary username:', error);
-    // Fallback: use timestamp
-    return `remoedph.${Date.now().toString().slice(-3)}`;
-  }
-}
-
 // Import GlobalSettings model
 const GlobalSettings = require('./models/GlobalSettings');
 
@@ -4037,7 +4011,7 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
   return {
     teacherId: teacher._id,
     teacherCode: teacher.teacherId,
-    email: teacher.username,
+    email: teacher.email || (String(teacher.username || '').includes('@') ? teacher.username : ''),
     completedClasses,
     studentAbsentClasses,
     teacherAbsentClasses,
@@ -4246,7 +4220,7 @@ router.post('/dispense-salaries', async (req, res) => {
 
       dispensedTeachers.push({
         teacherId: teacher._id,
-        email: teacher.username,
+        email: teacher.email || (String(teacher.username || '').includes('@') ? teacher.username : ''),
         weeklySalary: releaseAmount,
         periodEarned,
         carryForward,
@@ -6017,7 +5991,7 @@ router.post('/user', async (req, res) => {
     if (!userType) {
       return res.status(400).json({ error: 'User type is required' });
     }
-    if (userType === 'teacher' && !email) {
+    if (userType === 'teacher' && !String(email || '').trim()) {
       return res.status(400).json({ error: 'Email is required for teachers' });
     }
     if (userType === 'student' && (!username || !email || !password)) {
@@ -6067,9 +6041,9 @@ router.post('/user', async (req, res) => {
         console.log('LastName:', lastName);
         console.log('Rate:', rate);
         
-        // Generate temporary username and password for teachers
-        generatedUsername = await generateTemporaryUsername();
-        console.log('Generated username:', generatedUsername);
+        // Email is the teacher login and the stored teacher id. Do not mint remoedph.001.
+        generatedUsername = String(email || '').trim().toLowerCase();
+        console.log('Teacher login email:', generatedUsername);
         generatedPassword = generateStrongPassword();
         // Do not log passwords (even temporary ones)
         hashedPassword = await bcrypt.hash(generatedPassword, 10);
@@ -6125,7 +6099,7 @@ router.post('/user', async (req, res) => {
         newUser = new Teacher({
           teacherId: teacherId,
           username: generatedUsername,
-          email,
+          email: generatedUsername,
           password: hashedPassword,
           firstName: firstName || '',
           lastName: lastName || '',
@@ -6433,7 +6407,8 @@ router.put('/user/:userId', async (req, res) => {
     }
 
     // Update fields. Admin username stays the password login; email is the Google address.
-    if (username) user.username = username;
+    // Teachers sign in with email. Do not write a separate username, and do not rewrite Teacher.teacherId.
+    if (username && userType !== 'teacher') user.username = username;
     if (userType === 'admin' && email !== undefined) {
       const nextEmail = String(email || '').trim().toLowerCase();
       if (nextEmail) {
