@@ -15,8 +15,9 @@ const { isCancelledStatus } = require('../utils/bookingStatus');
 const { normalizeId } = require('../utils/normalizeId');
 const {
   resolveToCanonicalTeacherId,
-  getCandidateTeachersForSlotUtc,
-  findOpenSlotsByUtcInstant,
+  getCandidateTeachersForBooking,
+  findOpenSlotsForBooking,
+  slotTimeKeys,
 } = require('./teacherSlotResolve');
 const { notifyTeacher, notifyStudent, notifyAdmin } = require('./notifyService');
 const { formatStudentClassWhen } = require('./classReminderService');
@@ -69,13 +70,18 @@ async function loadTeacher(teacherId) {
   return Teacher.findOne({ teacherId }).select('teacherId nickname fullname firstName lastName username').lean();
 }
 
-async function releaseOriginalSlot(originalTeacherId, start) {
-  const slots = await TeacherSlot.find({
-    available: false,
-    dateTimeUtc: { $gte: new Date(start.getTime() - 2000), $lte: new Date(start.getTime() + 2000) },
-  })
-    .select('_id teacherId')
-    .lean();
+async function releaseOriginalSlot(originalTeacherId, start, booking) {
+  const date = String((booking && booking.date) || '').slice(0, 10);
+  const times = slotTimeKeys(booking && booking.time);
+  const or = [];
+  if (start && !Number.isNaN(start.getTime())) {
+    or.push({
+      dateTimeUtc: { $gte: new Date(start.getTime() - 2000), $lte: new Date(start.getTime() + 2000) },
+    });
+  }
+  if (date && times.length) or.push({ date, time: { $in: times } });
+  if (!or.length) return;
+  const slots = await TeacherSlot.find({ available: false, $or: or }).select('_id teacherId').lean();
   for (const slot of slots) {
     const tid = await resolveToCanonicalTeacherId(slot.teacherId);
     if (tid && normalizeId(tid) === normalizeId(originalTeacherId)) {
@@ -101,7 +107,7 @@ async function assignOne(booking, emergencyKeys, now, opts) {
   if (!force && !teacherCancelled && isCancelledStatus(booking.status)) return 'skip';
 
   const utcIso = start.toISOString();
-  const candidates = await getCandidateTeachersForSlotUtc(utcIso);
+  const candidates = await getCandidateTeachersForBooking(booking, utcIso);
   const substituteId = pickSubstituteTeacher(candidates, [original, ...emergencyKeys]);
   if (!substituteId) {
     if (!booking.substituteNoCoverNotifiedAt) {
@@ -122,7 +128,7 @@ async function assignOne(booking, emergencyKeys, now, opts) {
     return 'no-cover';
   }
 
-  const openSlots = await findOpenSlotsByUtcInstant(utcIso);
+  const openSlots = await findOpenSlotsForBooking(booking, utcIso);
   let slotId = null;
   for (const slot of openSlots) {
     const tid = await resolveToCanonicalTeacherId(slot.teacherId);
@@ -171,7 +177,7 @@ async function assignOne(booking, emergencyKeys, now, opts) {
     return 'skip';
   }
 
-  await releaseOriginalSlot(original, start);
+  await releaseOriginalSlot(original, start, booking);
 
   const [nextTeacher, previousTeacher] = await Promise.all([
     loadTeacher(substituteId),

@@ -3921,21 +3921,67 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
     
     await cancellationRequest.save();
 
-    if (excuse && req.file) {
-      const { finishApprovedCancellation } = require('./services/teacherCancellationSettle');
-      const settled = await finishApprovedCancellation(
-        cancellationRequest,
-        'Checked open teachers for this class time.'
-      );
-      const message = settled.outcome === 'moved'
-        ? 'Emergency cancellation approved. The class was assigned to another available teacher. QA will check that the proof is valid.'
-        : settled.tooLate
-          ? 'Emergency cancellation declined. Fewer than 5 minutes remain, so it cannot be assigned to another teacher. The class stays with you.'
-          : 'Emergency cancellation declined. No other teacher is free for that time. The class stays with you.';
+    const { canAssignSubstitute, assignApprovedEmergency } = require('./services/emergencySubstituteService');
+    const assignResult = canAssignSubstitute(classDateTime, now)
+      ? await assignApprovedEmergency(booking, now)
+      : 'too-late';
+
+    if (assignResult === 'moved') {
+      cancellationRequest.status = 'approved';
+      cancellationRequest.adminReview = {
+        reviewedBy: 'system',
+        reviewedAt: new Date(),
+        adminNotes: 'Assigned to another teacher who is open at this same time.',
+      };
+      if (excuse && req.file) {
+        cancellationRequest.proofValidity = 'pending';
+        cancellationRequest.penaltyWaived = true;
+        await Booking.updateOne({ _id: booking._id }, { $set: { penaltyWaived: true } });
+      }
+      await cancellationRequest.save();
       return res.json({
         success: true,
-        message,
-        outcome: settled.outcome,
+        message: excuse
+          ? 'Emergency cancellation approved. The class was assigned to another available teacher at the same time. QA will check that the proof is valid.'
+          : 'Cancellation approved. The class was assigned to another available teacher at the same time.',
+        outcome: 'moved',
+        cancellationRequest,
+      });
+    }
+
+    if (excuse && req.file) {
+      const tooLate = assignResult === 'too-late';
+      const why = tooLate
+        ? 'Declined because fewer than 5 minutes remain, so the class cannot be assigned to another teacher.'
+        : 'Declined because no other teacher is free for this time.';
+      cancellationRequest.status = 'rejected';
+      cancellationRequest.proofValidity = 'pending';
+      cancellationRequest.penaltyWaived = false;
+      cancellationRequest.adminReview = {
+        reviewedBy: 'system',
+        reviewedAt: new Date(),
+        adminNotes: why,
+      };
+      await cancellationRequest.save();
+      const { notifyTeacher, notifyStudent } = require('./services/notifyService');
+      await notifyTeacher(
+        booking.teacherId,
+        'cancellation-rejected',
+        `Your emergency cancellation was declined. ${why} The class stays with you.`,
+        { bookingId: String(booking._id), actionUrl: '/teacher-class-table.html' }
+      );
+      await notifyStudent(
+        booking.studentId,
+        'booking',
+        `Your class on ${booking.date} at ${booking.time} is still scheduled.`,
+        { bookingId: String(booking._id), actionUrl: '/student-class-table.html' }
+      );
+      return res.json({
+        success: true,
+        message: tooLate
+          ? 'Emergency cancellation declined. Fewer than 5 minutes remain, so it cannot be assigned to another teacher. The class stays with you.'
+          : 'Emergency cancellation declined. No other teacher is free for that time. The class stays with you.',
+        outcome: 'declined',
         cancellationRequest,
       });
     }

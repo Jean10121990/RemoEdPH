@@ -39,6 +39,39 @@ async function resolveToCanonicalTeacherId(rawTeacherId) {
   return null;
 }
 
+function slotTimeKeys(timeStr) {
+  const raw = String(timeStr || '').trim();
+  const keys = new Set();
+  if (raw) keys.add(raw);
+  const m = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (m) {
+    const hh = String(Number(m[1])).padStart(2, '0');
+    const mm = m[2];
+    keys.add(`${hh}:${mm}`);
+    keys.add(`${hh}:${mm}:00`);
+    keys.add(`${Number(m[1])}:${mm}`);
+  }
+  return [...keys];
+}
+
+/** Open slots at this UTC instant, plus any open slot on the same schedule date and time. */
+async function findOpenSlotsForBooking(booking, canonicalUtcIso) {
+  const byId = new Map();
+  const utcSlots = await findOpenSlotsByUtcInstant(canonicalUtcIso);
+  for (const slot of utcSlots) byId.set(String(slot._id), slot);
+  const date = String((booking && booking.date) || '').slice(0, 10);
+  const times = slotTimeKeys(booking && booking.time);
+  if (date && times.length) {
+    const sameCell = await TeacherSlot.find({
+      available: true,
+      date,
+      time: { $in: times },
+    }).lean();
+    for (const slot of sameCell) byId.set(String(slot._id), slot);
+  }
+  return [...byId.values()];
+}
+
 /** Find open slots for a booking instant (handles Date vs ISO string in DB). */
 async function findOpenSlotsByUtcInstant(canonicalUtcIso) {
   const utcInstant = new Date(canonicalUtcIso);
@@ -70,6 +103,30 @@ async function findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtcIso, raw
   return null;
 }
 
+async function teacherHasOtherBooking(tid, booking, canonicalUtcIso) {
+  const ownId = booking && booking._id ? String(booking._id) : '';
+  const notSelf = ownId ? { _id: { $ne: booking._id } } : {};
+  const utcD = new Date(canonicalUtcIso);
+  const date = String((booking && booking.date) || '').slice(0, 10);
+  const times = slotTimeKeys(booking && booking.time);
+  const or = [];
+  if (!Number.isNaN(utcD.getTime())) {
+    or.push({ dateTimeUtc: utcD });
+    or.push({ dateTimeUtc: canonicalUtcIso });
+  }
+  if (date && times.length) or.push({ date, time: { $in: times } });
+  if (!or.length) return false;
+  const existing = await Booking.findOne({
+    teacherId: tid,
+    status: { $ne: 'cancelled' },
+    ...notSelf,
+    $or: or,
+  })
+    .select('_id')
+    .lean();
+  return !!existing;
+}
+
 /** All teachers with an open slot at this UTC instant and no conflicting booking */
 async function getCandidateTeachersForSlotUtc(canonicalUtcIso) {
   const slots = await findOpenSlotsByUtcInstant(canonicalUtcIso);
@@ -95,11 +152,29 @@ async function getCandidateTeachersForSlotUtc(canonicalUtcIso) {
   return [...new Set(candidates.map((x) => String(x)))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }
 
+/** Open teachers for this class, including a slot that shares the schedule date and time. */
+async function getCandidateTeachersForBooking(booking, canonicalUtcIso) {
+  const slots = await findOpenSlotsForBooking(booking, canonicalUtcIso);
+  const candidates = [];
+  for (const slot of slots) {
+    const tid = await resolveToCanonicalTeacherId(slot.teacherId);
+    if (!tid) continue;
+    if (await teacherHasOtherBooking(tid, booking, canonicalUtcIso)) continue;
+    candidates.push(tid);
+  }
+  return [...new Set(candidates.map((x) => String(x)))].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' })
+  );
+}
+
 module.exports = {
   isProbableHexObjectIdForTeacher,
   escapeRegexForTeacherLookup,
   resolveToCanonicalTeacherId,
   findOpenSlotsByUtcInstant,
+  findOpenSlotsForBooking,
   findOpenTeacherSlotByUtcAndNormalizedTeacher,
   getCandidateTeachersForSlotUtc,
+  getCandidateTeachersForBooking,
+  slotTimeKeys,
 };

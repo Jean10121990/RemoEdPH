@@ -74,6 +74,11 @@ async function finishApprovedCancellation(cancellationRequest, adminNotes) {
     return { outcome: 'declined', tooLate };
   }
 
+  if (canAssignSubstitute(start, now)) {
+    const result = await assignApprovedEmergency(booking, now);
+    if (result === 'moved') return { outcome: 'moved', tooLate: false };
+  }
+
   booking.status = 'cancelled';
   if (emergencyOk) {
     booking.penaltyWaived = true;
