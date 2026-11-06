@@ -17,7 +17,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { getJwtSecret } = require('./config/jwtSecret');
 const JWT_SECRET = getJwtSecret();
-const { JWT_EXPIRES_IN, ADMIN_JWT_EXPIRES_IN } = require('./config/authTokens');
+const { JWT_EXPIRES_IN, TEACHER_JWT_EXPIRES_IN, ADMIN_JWT_EXPIRES_IN } = require('./config/authTokens');
 const { blacklistToken, isTokenBlacklisted } = require('./services/jwtBlacklist');
 const {
   isAccountLocked,
@@ -668,7 +668,7 @@ router.post('/login', authLoginLimiter, async (req, res) => {
           role: 'teacher',
         },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { expiresIn: TEACHER_JWT_EXPIRES_IN }
       );
       console.log('Token generated successfully');
       console.log('Sending response:', { success: true, token: token.substring(0, 20) + '...', teacherId: teacher.teacherId });
@@ -899,7 +899,8 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
   const identRe = new RegExp(`^${esc}$`, 'i');
 
   try {
-    const expiresIn = rememberMe ? '30d' : '2h';
+    const studentExpiresIn = rememberMe ? '30d' : '2h';
+    const teacherExpiresIn = rememberMe ? '30d' : TEACHER_JWT_EXPIRES_IN;
 
     // Fast dual-search across separate collections (do not query Admin).
     const [student, teacher] = await Promise.all([
@@ -974,7 +975,7 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
           role: 'teacher',
         },
         JWT_SECRET,
-        { expiresIn }
+        { expiresIn: teacherExpiresIn }
       );
       return res.json({
         success: true,
@@ -1024,7 +1025,7 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
         role: 'student',
       },
       JWT_SECRET,
-      { expiresIn }
+      { expiresIn: studentExpiresIn }
     );
     try {
       const { withRedis } = require('./utils/redisClient');
@@ -1048,6 +1049,50 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
   } catch (err) {
     console.error('Unified login error:', err);
     return res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
+  }
+});
+
+/**
+ * Extend a still-valid teacher session. Identity comes from the JWT.
+ * Teachers stay signed in across back-to-back classes; this does not apply to students.
+ */
+router.post('/teacher-session/refresh', authenticateToken, async (req, res) => {
+  const role = String(req.user.userRole || req.user.userType || req.user.role || '')
+    .trim()
+    .toLowerCase();
+  if (role !== 'teacher') {
+    return res.status(403).json({ success: false, code: 'WRONG_PORTAL_TOKEN', message: 'Teacher session required' });
+  }
+  try {
+    const teacherId = String(req.user.teacherId || '').trim();
+    const username = String(req.user.username || '').trim();
+    const or = [];
+    if (teacherId) or.push({ teacherId });
+    if (username) or.push({ username });
+    if (!or.length) {
+      return res.status(403).json({ success: false, message: 'Teacher session required' });
+    }
+    const teacher = await Teacher.findOne({ $or: or });
+    const status = String(teacher && teacher.status ? teacher.status : '').toLowerCase();
+    if (!teacher || teacher.isApproved === false || status === 'suspended') {
+      return res.status(403).json({ success: false, message: 'Teacher account is not active' });
+    }
+    const token = jwt.sign(
+      {
+        userRole: 'teacher',
+        username: teacher.username,
+        teacherId: teacher.teacherId,
+        teacherMongoId: String(teacher._id),
+        userType: 'teacher',
+        role: 'teacher',
+      },
+      JWT_SECRET,
+      { expiresIn: TEACHER_JWT_EXPIRES_IN }
+    );
+    return res.json({ success: true, token });
+  } catch (err) {
+    console.error('Teacher session refresh error:', err);
+    return res.status(500).json({ success: false, message: 'Could not refresh the teacher session' });
   }
 });
 

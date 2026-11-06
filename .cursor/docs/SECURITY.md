@@ -92,6 +92,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 - Do not log Authorization headers, raw JWTs, decoded token payloads, passwords, or reset tokens. The error handler already masks `user:pass@` in Mongo URIs.
 - Logout blacklists the JWT (`server/services/jwtBlacklist.js`); new auth paths must check `isTokenBlacklisted`.
 - Admin sessions: 2FA required, `sessionVersion` invalidates other sessions, idle logout in `public/js/admin-session.js`.
+- Teacher sessions last 18 hours (`TEACHER_JWT_EXPIRES_IN`), or 30 days with Remember me. They are not on the admin idle timer. `POST /api/auth/teacher-session/refresh` (teacher JWT only) issues a new 18-hour token for that same teacher while the current token is still valid. Students stay on the short session.
 
 ## 7. Uploads and files
 
@@ -123,6 +124,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
+| 2026-11-06 | Teacher sessions are not auto-logged out on the 1–2 hour timer. Password, Google, Facebook, and legacy teacher login use `TEACHER_JWT_EXPIRES_IN` (18 hours; 30 days with Remember me). `POST /api/auth/teacher-session/refresh` requires a still-valid teacher JWT and returns a new token for that teacher. Students stay on the short session. |
 | 2026-11-06 | New teachers use email as `username` and `teacherId`. HR create, invite signup, and teacher Google/Facebook signup no longer mint `remoedph.001`. Existing stored teacher ids are not rewritten. |
 | 2026-11-05 | Emergency cancellation proof check. `POST /api/admin/cancellation-proof-validity` is on the admin router (same auth as `POST /api/admin/review-cancellation`). Body is `requestId` plus `valid` or `invalid`. It does not take a teacher id and does not move the class. |
 | 2026-11-04 | Marketing Hub connect. Public rate-limited `GET /api/admin/growth/social/meta/callback` (signed state). Admin JWT `growth.posts`: `GET /api/admin/growth/social/meta/start`, `GET /api/admin/growth/social-accounts`, `POST /api/admin/growth/social-accounts/disconnect`. Page and Instagram tokens stay encrypted and are not returned. |

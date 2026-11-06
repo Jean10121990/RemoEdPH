@@ -1,10 +1,15 @@
 /**
  * Central auth/session TTL and cookie options.
  * Admin idle / session cookie default: 30 minutes (rolling).
- * Teacher/student JWT default remains 1 hour unless JWT_EXPIRES_IN is set.
+ * Student JWT default remains 1 hour unless JWT_EXPIRES_IN is set.
+ * Teacher JWT covers a full teaching day (18 hours). Do not shorten it:
+ * a mid-shift logout makes a teacher late for the next booked class.
  */
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+
+/** Teacher portal JWT. Remember-me still uses 30 days. Idle logout does not apply. */
+const TEACHER_JWT_EXPIRES_IN = process.env.TEACHER_JWT_EXPIRES_IN || '18h';
 
 /** Admin Bearer JWT lifetime (active work). Idle logout is enforced separately at 30 minutes. */
 const ADMIN_JWT_EXPIRES_IN = process.env.ADMIN_JWT_EXPIRES_IN || '2h';
@@ -46,6 +51,7 @@ function sessionCookieBase() {
 
 module.exports = {
   JWT_EXPIRES_IN,
+  TEACHER_JWT_EXPIRES_IN,
   ADMIN_JWT_EXPIRES_IN,
   ADMIN_IDLE_TIMEOUT_MS,
   SESSION_MAX_AGE_MS,

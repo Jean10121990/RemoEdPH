@@ -9,7 +9,7 @@
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <script src="js/classroom-entry.js?v=session-ended-1"></script>
-  <script src="js/user-session.js"></script>
+  <script src="js/user-session.js?v=teacher-keep-1"></script>
   <script src="js/remoed-auth-token.js?v=1"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <script>
@@ -1345,7 +1345,7 @@
           
           // Set embossed label (indicator + student name + enter cue)
           const studentFirstName = bookingStudentDisplayName(booking, 'Student');
-          const labelPrefix = booking.scheduleRemark || indicator;
+          const labelPrefix = indicator;
           if (!skipDefaultSlotLabel) {
             setEmbossedSlotLabel(slotElement, `${labelPrefix} - ${studentFirstName}`);
           }

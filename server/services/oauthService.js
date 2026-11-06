@@ -9,7 +9,7 @@ const Teacher = require('../models/Teacher');
 const AssessmentTrial = require('../models/AssessmentTrial');
 const InvitationToken = require('../models/InvitationToken');
 const { getJwtSecret } = require('../config/jwtSecret');
-const { JWT_EXPIRES_IN } = require('../config/authTokens');
+const { JWT_EXPIRES_IN, TEACHER_JWT_EXPIRES_IN } = require('../config/authTokens');
 const {
   googleConfigured,
   facebookConfigured,
@@ -169,7 +169,7 @@ function signTeacherToken(teacher, expiresIn) {
       role: 'teacher',
     },
     getJwtSecret(),
-    { expiresIn: expiresIn || JWT_EXPIRES_IN }
+    { expiresIn: expiresIn || TEACHER_JWT_EXPIRES_IN }
   );
 }
 
@@ -582,6 +582,10 @@ function expiresForRemember(rememberMe) {
   return rememberMe ? '30d' : JWT_EXPIRES_IN || '2h';
 }
 
+function expiresForTeacher(rememberMe) {
+  return rememberMe ? '30d' : TEACHER_JWT_EXPIRES_IN;
+}
+
 function redirectWithTicket(req, payload) {
   const ticket = signFinishTicket(payload);
   const url = new URL(finishPageUrl(req));
@@ -630,7 +634,7 @@ async function handleLoginResolve(req, profile, state) {
     }
     linkProvider(teacher, profile.provider, profile.providerId, emailNorm);
     await teacher.save();
-    const token = signTeacherToken(teacher, expiresForRemember(state.rememberMe));
+    const token = signTeacherToken(teacher, expiresForTeacher(state.rememberMe));
     return redirectWithTicket(req, {
       role: 'teacher',
       token,
@@ -673,7 +677,7 @@ async function handleLoginResolve(req, profile, state) {
 
   if (intent === 'teacher_signup') {
     const created = await createTeacherFromOAuth(profile, state);
-    const token = signTeacherToken(created, expiresForRemember(state.rememberMe));
+    const token = signTeacherToken(created, expiresForTeacher(state.rememberMe));
     return redirectWithTicket(req, {
       role: 'teacher',
       token,
@@ -739,7 +743,7 @@ async function handleLink(req, profile, state, role) {
 
   const token =
     role === 'teacher'
-      ? signTeacherToken(user, expiresForRemember(state.rememberMe))
+      ? signTeacherToken(user, expiresForTeacher(state.rememberMe))
       : signStudentToken(user, expiresForRemember(state.rememberMe));
 
   return redirectWithTicket(req, {

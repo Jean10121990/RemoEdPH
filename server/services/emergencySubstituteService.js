@@ -6,6 +6,7 @@
  * 5 minutes remain. The booking, credit, and start time stay the same.
  */
 const Booking = require('../models/Booking');
+const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const TeacherSlot = require('../models/TeacherSlot');
 const CancellationRequest = require('../models/CancellationRequest');
@@ -67,6 +68,22 @@ function teacherDisplayName(teacher) {
 
 async function loadTeacher(teacherId) {
   return Teacher.findOne({ teacherId }).select('teacherId nickname fullname firstName lastName username').lean();
+}
+
+async function studentDisplayName(studentId) {
+  const key = String(studentId || '').trim();
+  if (!key) return 'the student';
+  const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('^' + esc + '$', 'i');
+  const student = await Student.findOne({ $or: [{ username: re }, { email: re }] })
+    .select('firstName middleName lastName username email')
+    .lean();
+  if (!student) return key;
+  const name = [student.firstName, student.middleName, student.lastName]
+    .map((part) => (part != null ? String(part).trim() : ''))
+    .filter(Boolean)
+    .join(' ');
+  return name || student.username || student.email || key;
 }
 
 async function releaseOriginalSlot(originalTeacherId, start, booking) {
@@ -183,6 +200,7 @@ async function assignOne(booking, emergencyKeys, now, opts) {
   const when = formatStudentClassWhen(booking, start, false);
   const nextName = teacherDisplayName(nextTeacher);
   const previousName = teacherDisplayName(previousTeacher);
+  const studentName = await studentDisplayName(booking.studentId);
   const bid = String(booking._id);
 
   await notifyStudent(
@@ -198,18 +216,18 @@ async function assignOne(booking, emergencyKeys, now, opts) {
   await notifyTeacher(
     substituteId,
     'schedule-change',
-    `You are covering ${booking.studentId} at ${when}. ${previousName} has an emergency.`,
+    `You are covering ${studentName} at ${when}. ${previousName} cancelled this class.`,
     { bookingId: bid, actionUrl: '/teacher-class-table.html', importance: 'actionable' }
   );
   await notifyTeacher(
     original,
     'schedule-change',
-    `Your class with ${booking.studentId} at ${when} was moved to ${nextName}.`,
+    `Your class with ${studentName} at ${when} was moved to ${nextName}.`,
     { bookingId: bid, actionUrl: '/teacher-class-table.html', importance: 'actionable' }
   );
   await notifyAdmin(
     'schedule-change',
-    `${booking.studentId} at ${when} moved from ${previousName} to ${nextName} because of an emergency.`,
+    `${studentName} at ${when} moved from ${previousName} to ${nextName}.`,
     { bookingId: bid, actionUrl: '/admin-teacher-schedule.html', importance: 'fyi' }
   );
   return 'moved';

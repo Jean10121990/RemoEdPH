@@ -100,6 +100,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] A teacher can request cancellation only until 10 minutes before the class, and only once for that slot. The button stays disabled after submit. The class stays with that teacher until QA approves or rejects. On approval the original slot opens and the class moves immediately to another teacher who is open at that same time. It is not dropped. A substitute can be assigned only while at least 5 minutes remain. Inside 5 minutes the teacher must take the class. QA marks emergency proof valid or not valid after approval (`POST /api/admin/cancellation-proof-validity`). Invalid proof clears the penalty waiver. A teacher who already entered is not replaced.
 - [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend. In the teacher sidebar it sits **directly under Class Configuration** (`MENU_ITEMS` order in `public/js/teacher-sidebar.js`: Dashboard, Leaderboard, Class Schedule, Class Configuration, Emergency guidelines, Device Check, …).
 - [ ] After submit, schedule refresh does not clear the teacher session.
+- [ ] A teacher who stays on Class Schedule or Live Classroom is not signed out after one or two hours. Teacher tokens last 18 hours (30 days with Remember me) and renew while the page is open. Students still use the short session.
 
 ### Live classroom (teacher Settings + student locks)
 
@@ -644,6 +645,40 @@ After generating or rebuilding RemoEd lesson PPTX decks, always keep a laptop co
 - Sprouts Month 1 lessons **19–22** (Honoring My Friends, Virtual Garden Challenge 1, Virtual Garden Challenge 2, Monthly Celebration) use `build_l2m1_lessons_19_22.py`. Uppercase A, B, and C are drawn in code on the phonics slides so the letter shapes stay correct. PDF footers that say Level 1 still publish as Level 2 – Sprouts.
 - `build_lesson` uses `lesson["footer"]` (default `SPROUTS! MONTH 1`) and the length of `lesson["pages"]` for the page badge. Saplings Month 1 lessons **1–6** (`build_l3m1_lessons_1_3.py`, `build_l3m1_lessons_4_6.py`) are Level 3, footer `SAPLINGS! MONTH 1`, **18** pages, laptop folder `Level 3`, filenames `RemoEd L3M1-Lesson-{N}-….pptx`. Phonics letters and the name badge are drawn in code. Lessons 4–6 cover asking before apps, “God made me unique!”, and honoring each person.
 
+## Substitute teacher — do not drop a cancelled class
+
+When a teacher cancels, the booking stays. QA approval moves it to another teacher who is **Open** at that same schedule time. Do not set the booking to `cancelled`, do not release the credit, and do not leave the slot empty.
+
+| Piece | Location |
+|-------|----------|
+| Teacher request | `POST /api/teacher/request-cancellation` in `server/teacher.js`. Class Information button in `public/teacher-class-table.html`. |
+| QA approve / reject | `POST /api/admin/review-cancellation` in `server/admin.js`. QA Hub and the admin dashboard show **Approve** and **Reject** while the request is pending. |
+| Move | `finishApprovedCancellation` in `server/services/teacherCancellationSettle.js` calls `assignApprovedEmergency` in `server/services/emergencySubstituteService.js`. |
+| Who is free | `getCandidateTeachersForBooking` / `findOpenSlotsForBooking` in `server/services/teacherSlotResolve.js`. Match the same schedule date and time (Manila wall clock), not only an identical UTC timestamp. |
+| Retry | `runEmergencySubstituteJob` in `server/index.js` retries an **approved** request that was not moved yet. It does not move a request that is still pending. |
+
+**Rules:**
+
+- The teacher may request a cancellation only until **10 minutes** before the start. Inside 10 minutes the button says **Cannot cancel within 10 minutes** and the teacher must take the class.
+- One request per booking. After submit, **Request Cancellation** stays disabled (**Waiting for QA**, or **Cancellation already submitted**). The server rejects a second request for that booking.
+- While QA has not decided, the class stays with the original teacher. The slot does not go back to Open yet.
+- **Approve** moves the class immediately. The same booking, student, lesson, start time, and credit stay. `Booking.teacherId` becomes the substitute. `originalTeacherId` and `substituteAssignedAt` are stored. The original teacher’s slot is set **Open**. The substitute’s slot at that time is locked.
+- A substitute can be assigned only while at least **5 minutes** remain. That is a cutoff, not a delay. Do not wait 5 minutes and then move the class. Inside 5 minutes, approval is refused and the original teacher must take the class.
+- If nobody else is **Open** at that time, approval is refused and the class stays. Do not drop it.
+- **Reject** leaves the class with the original teacher.
+- Notices use the student’s name, not the username. The covering teacher is told who cancelled. The student is told the class is now with the new teacher. The original teacher is told who is covering.
+- The schedule cell shows the level mark and the student name. Do not put the long substitute remark in the cell label.
+- Emergency proof is still checked after approval with `POST /api/admin/cancellation-proof-validity`. Invalid proof clears the penalty waiver. It does not move the class back.
+- A teacher who already entered the classroom is not replaced.
+
+## Teacher session — do not auto-logout
+
+Teachers keep back-to-back bookings. A one- or two-hour token expiry signs them out between classes and makes them late. Do not put teachers on the admin 30-minute idle logout, and do not shorten the teacher JWT back to the student default.
+
+- Teacher sign-in (password, Google, Facebook, and legacy `/api/auth/login`) uses `TEACHER_JWT_EXPIRES_IN` in `server/config/authTokens.js` (**18 hours**). Remember-me stays **30 days**. Students stay on the short session (`2h`, or `JWT_EXPIRES_IN`).
+- While a teacher page or the live classroom is open, `public/js/user-session.js` calls `POST /api/auth/teacher-session/refresh` when fewer than 6 hours remain. The route requires a still-valid teacher JWT. The new token is the same teacher from that JWT. It does not accept a student or admin token.
+- Manual logout still ends the session. An already-expired token cannot be extended.
+
 ## Security — do not reopen
 
 Full checklist: [`.cursor/docs/SECURITY.md`](SECURITY.md). Update both files whenever a route, socket room, or auth rule changes.
@@ -868,6 +903,7 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Area | What shipped |
 |------|----------------|
 | Teacher account id | Email is the teacher login and the stored id for new accounts (HR create, invite signup, Google/Facebook). No new `remoedph.001` ids. The teachers list and teacher profile show email. Older stored ids stay so existing bookings are not moved. See § Security and § Admin login. |
-| Emergency cancellation | Allowed only at least 10 minutes before class, with proof. The system assigns another open teacher on that same schedule time when one is free and at least 5 minutes remain. Otherwise the request is declined and the class stays. A regular approval moves the class the same way when someone is open. QA marks proof valid or not valid and does not approve or reject an emergency decision. See the smoke checklist. |
+| Substitute teacher | A teacher cancellation is one request, only until 10 minutes before the class, and waits for QA. Approve moves that same booking immediately to another teacher who is Open at that time and reopens the original slot. The class is not dropped. A substitute can be assigned only while at least 5 minutes remain. See § Substitute teacher. |
+| Teacher session | Teacher accounts are not auto-logged out on the 1–2 hour student timer. A teacher token lasts 18 hours (30 days with Remember me) and renews while Class Schedule or Live Classroom stays open. See § Teacher session. |
 | Lesson slides | Teacher Prev/Next sends one `presentation-slide-changed`. The server replays that slide when a student rejoins. A PDF scroll estimate must not send page 1 over a later slide. |
 | Admin payroll display | Admin Payroll and Admin Fee do not show a Gross Sales Pool. Earnings are still 2% of the period’s subscription sales for an eligible partner admin. |

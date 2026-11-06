@@ -39,7 +39,7 @@ const Admin = require('./models/Admin');
 const Referral = require('./models/Referral');
 const PortalVideo = require('./models/PortalVideo');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
-const { JWT_EXPIRES_IN } = require('./config/authTokens');
+const { TEACHER_JWT_EXPIRES_IN } = require('./config/authTokens');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const { generateReferralCode } = require('./utils/referralCode');
 /** Slots cache-aside (Redis): ./services/slotsRedisCache.js → ../utils/redisClient.js */
@@ -2773,7 +2773,7 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
           teacherId: teacherId 
         },
         process.env.JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { expiresIn: TEACHER_JWT_EXPIRES_IN }
       );
     }
     

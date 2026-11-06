@@ -373,10 +373,79 @@
     };
   })();
 
+  function jwtExpMs(token) {
+    try {
+      var part = String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (part.length % 4) part += '=';
+      var payload = JSON.parse(global.atob(part));
+      var exp = Number(payload.exp);
+      return Number.isFinite(exp) ? exp * 1000 : 0;
+    } catch (_e) {
+      return 0;
+    }
+  }
+
+  function persistTeacherToken(oldToken, nextToken) {
+    var keys = ['remoed_teacher_token', 'remoed_teacher_auth', 'remoed_user_token', 'token'];
+    var stores = [global.localStorage, global.sessionStorage];
+    var wrote = false;
+    for (var s = 0; s < stores.length; s++) {
+      var store = stores[s];
+      if (!store) continue;
+      for (var k = 0; k < keys.length; k++) {
+        try {
+          if (store.getItem(keys[k]) === oldToken) {
+            store.setItem(keys[k], nextToken);
+            wrote = true;
+          }
+        } catch (_e) {}
+      }
+    }
+    if (!wrote) {
+      try {
+        global.localStorage.setItem(LS_TEACHER, nextToken);
+      } catch (_e2) {}
+    }
+    syncMediaAuthCookie(nextToken);
+  }
+
+  /**
+   * Teachers with back-to-back classes must not be dropped by a 1–2 hour token.
+   * While a teacher page is open, replace a still-valid token once fewer than 6 hours remain.
+   * An already-expired token is left alone here so this timer cannot sign them out.
+   */
+  function keepTeacherSession() {
+    if (portalKindFromLocation() !== 'teacher') return;
+    var token = getUserToken();
+    if (!token || !realFetch) return;
+    var exp = jwtExpMs(token);
+    var now = Date.now();
+    if (!exp || exp <= now) return;
+    if (exp - now > 6 * 60 * 60 * 1000) return;
+    realFetch('/api/auth/teacher-session/refresh', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      credentials: 'include',
+    })
+      .then(function (res) {
+        if (!res || !res.ok) return null;
+        return res.json();
+      })
+      .then(function (data) {
+        if (data && data.token) persistTeacherToken(token, data.token);
+      })
+      .catch(function () {});
+  }
+
   // Seed media cookie for <img>/<video> as soon as the script loads.
   try {
     getUserToken();
   } catch (_seed) {}
+
+  try {
+    keepTeacherSession();
+    global.setInterval(keepTeacherSession, 30 * 60 * 1000);
+  } catch (_keep) {}
 
   global.RemoedUserSession = {
     getUserToken: getUserToken,
