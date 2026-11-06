@@ -2351,14 +2351,7 @@
                             Requested on: ${new Date(request.createdAt).toLocaleString()}
                         </div>
                         
-                        ${request.emergencyReason ? `
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                ${request.proofPath && (!request.proofValidity || request.proofValidity === 'pending') ? `
-                                <button type="button" onclick="markCancellationProof('${request._id}', 'valid')" style="background:#0f766e;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;">Proof valid</button>
-                                <button type="button" onclick="markCancellationProof('${request._id}', 'invalid')" style="background:#b45309;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:bold;">Proof not valid</button>
-                                ` : `<span style="color:#64748b;">Proof check: ${request.proofValidity || 'pending'}</span>`}
-                            </div>
-                        ` : request.status === 'pending' ? `
+                        ${request.status === 'pending' ? `
                             <div style="display: flex; gap: 8px;">
                                 <button onclick="reviewCancellation('${request._id}', 'approved')" style="
                                     background: #27ae60;

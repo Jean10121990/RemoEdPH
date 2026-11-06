@@ -884,23 +884,7 @@
                         : ' — proof missing, penalty is not waived') +
                       '</p></div>'
                     : '') +
-                (emergency
-                    ? '<div class="issue-description"><h4>System decision</h4><p>' +
-                      esc((req.adminReview && req.adminReview.adminNotes) || 'The system approved or declined this from open teachers.') +
-                      (req.proofValidity && req.proofValidity !== 'pending'
-                        ? ' Proof: ' + esc(req.proofValidity) + '.'
-                        : '') +
-                      '</p></div>' +
-                      (proofPending && req.proofPath
-                        ? '<div class="issue-actions">' +
-                          '<button type="button" class="btn btn-success" data-crid="' +
-                          esc(rid) +
-                          '" data-cract="valid">Proof valid</button> ' +
-                          '<button type="button" class="btn btn-danger" data-crid="' +
-                          esc(rid) +
-                          '" data-cract="invalid">Proof not valid</button></div>'
-                        : '')
-                    : pending
+                (pending
                     ? '<div class="issue-actions">' +
                       '<button type="button" class="btn btn-success" data-crid="' +
                       esc(rid) +
@@ -908,6 +892,14 @@
                       '<button type="button" class="btn btn-danger" data-crid="' +
                       esc(rid) +
                       '" data-cract="rejected">Reject</button></div>'
+                    : emergency && proofPending && req.proofPath
+                    ? '<div class="issue-actions">' +
+                      '<button type="button" class="btn btn-success" data-crid="' +
+                      esc(rid) +
+                      '" data-cract="valid">Proof valid</button> ' +
+                      '<button type="button" class="btn btn-danger" data-crid="' +
+                      esc(rid) +
+                      '" data-cract="invalid">Proof not valid</button></div>'
                     : req.adminReview && req.adminReview.adminNotes
                       ? '<div class="issue-description"><h4>Admin notes</h4><p>' +
                         esc(req.adminReview.adminNotes) +

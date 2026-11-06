@@ -5297,33 +5297,14 @@ router.post('/review-cancellation', async (req, res) => {
       });
     }
 
-    const { isEmergencyReason } = require('./utils/emergencyExcuse');
-    if (isEmergencyReason(cancellationRequest.emergencyReason)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Emergency cancellations are approved or declined from open teachers. Mark the proof valid or not valid.',
-      });
-    }
-    
-    // Update the cancellation request
-    cancellationRequest.status = status;
-    cancellationRequest.adminReview = {
-      reviewedBy: 'admin', // In a real app, this would be the actual admin username
-      reviewedAt: new Date(),
-      adminNotes: adminNotes || ''
-    };
-    
-    await cancellationRequest.save();
-    
-    if (status === 'approved') {
-      try {
-        const { finishApprovedCancellation } = require('./services/teacherCancellationSettle');
-        await finishApprovedCancellation(cancellationRequest, adminNotes || '');
-      } catch (nErr) {
-        console.warn('Cancellation approve failed:', nErr.message);
-        return res.status(500).json({ success: false, error: 'Failed to finish the approved cancellation' });
-      }
-    } else if (status === 'rejected') {
+    if (status === 'rejected') {
+      cancellationRequest.status = 'rejected';
+      cancellationRequest.adminReview = {
+        reviewedBy: 'admin',
+        reviewedAt: new Date(),
+        adminNotes: adminNotes || ''
+      };
+      await cancellationRequest.save();
       try {
         const booking = await Booking.findById(cancellationRequest.bookingId);
         const { notifyTeacher } = require('./services/notifyService');
@@ -5331,27 +5312,34 @@ router.post('/review-cancellation', async (req, res) => {
         await notifyTeacher(
           cancellationRequest.requesterId || (booking && booking.teacherId),
           'cancellation-rejected',
-          `Your cancellation request was rejected.${note}`,
+          `Your cancellation request was rejected. The class stays with you.${note}`,
           { bookingId: String(cancellationRequest.bookingId || ''), actionUrl: '/teacher-class-table.html' }
         );
-        if (booking) {
-          const { notifyStudent } = require('./services/notifyService');
-          await notifyStudent(
-            booking.studentId,
-            'booking',
-            `Your class on ${booking.date} at ${booking.time} remains scheduled (teacher cancellation was not approved).`,
-            { bookingId: String(booking._id) }
-          );
-        }
       } catch (nErr) {
         console.warn('Cancellation reject notify failed:', nErr.message);
       }
+      return res.json({ success: true, message: 'Cancellation request rejected. The class stays with the teacher.' });
     }
-    
-    res.json({
+
+    const { finishApprovedCancellation } = require('./services/teacherCancellationSettle');
+    const settled = await finishApprovedCancellation(cancellationRequest, adminNotes || '');
+    if (settled.outcome !== 'moved') {
+      const message = settled.outcome === 'too-late'
+        ? 'Fewer than 5 minutes remain, so this class cannot be transferred. The teacher must take it.'
+        : 'No other teacher is open at that time, so the class was not moved. It stays with the teacher.';
+      return res.status(400).json({ success: false, error: message });
+    }
+
+    cancellationRequest.status = 'approved';
+    cancellationRequest.adminReview = {
+      reviewedBy: 'admin',
+      reviewedAt: new Date(),
+      adminNotes: adminNotes || 'Approved. The class was moved to another open teacher and this slot is open again.'
+    };
+    await cancellationRequest.save();
+    return res.json({
       success: true,
-      message: `Cancellation request ${status} successfully`,
-      cancellationRequest
+      message: 'Approved. The class was moved to another available teacher and the slot is open again.',
     });
   } catch (err) {
     console.error('Error reviewing cancellation request:', err);

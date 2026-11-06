@@ -284,7 +284,7 @@
             <div id="cancellation-proof-row" style="display:none;margin-bottom:8px;">
               <label for="cancellation-proof" class="cim-field-label" style="display:block;margin-bottom:6px;">Upload proof</label>
               <input type="file" id="cancellation-proof" accept="image/*" style="width:100%;">
-              <small style="color:#64748b;">Emergency cancellation needs proof and is only allowed at least 10 minutes before the class. The system approves it when another teacher is free, and declines it when nobody is. Fewer than 5 minutes left cannot be assigned. QA only checks that the proof is valid.</small>
+              <small style="color:#64748b;">You can request a cancellation only until 10 minutes before the class. Submit once, then this button stays disabled until QA approves or rejects. If QA approves, your slot opens and the class moves immediately to another teacher who is open at that time. Inside 5 minutes of the start, the class cannot be transferred.</small>
             </div>
             <label for="cancellation-reason-inline" class="cim-field-label" style="display:block;margin-bottom:6px;">Reason for cancellation</label>
             <textarea id="cancellation-reason-inline" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="3" maxlength="500"></textarea>
@@ -1808,6 +1808,40 @@
       
       // Show modal
       document.getElementById('class-info-modal').classList.add('show');
+      syncCancellationButton(booking);
+    }
+
+    async function syncCancellationButton(booking) {
+      const btn = document.getElementById('cancel-btn');
+      if (!btn) return;
+      btn.disabled = false;
+      btn.textContent = 'Request Cancellation';
+      const start = classScheduledStartDate(booking);
+      if (start && start.getTime() - Date.now() < 10 * 60 * 1000) {
+        btn.disabled = true;
+        btn.textContent = 'Cannot cancel within 10 minutes';
+        return;
+      }
+      try {
+        const token = resolveTeacherPortalToken();
+        if (!token || !booking || !booking._id) return;
+        const response = await fetch('/api/teacher/cancellation-requests', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await response.json().catch(function () { return {}; });
+        const rows = data.requests || [];
+        const id = String(booking._id);
+        const existing = rows.find(function (row) {
+          const bid = row && row.bookingId;
+          const key = bid && typeof bid === 'object' ? String(bid._id || '') : String(bid || '');
+          return key === id;
+        });
+        if (!existing) return;
+        btn.disabled = true;
+        btn.textContent = existing.status === 'pending'
+          ? 'Waiting for QA'
+          : 'Cancellation already submitted';
+      } catch (e) { /* leave the button usable if the list cannot load */ }
     }
 
     async function loadClassLessonProgressStatus(booking) {
@@ -2018,10 +2052,11 @@
         alert('Upload proof for this reason. It is not valid without proof, and the penalty is not waived.');
         return;
       }
-      if (emergencyReason && currentBooking && currentBooking.dateTimeUtc) {
-        const startMs = new Date(currentBooking.dateTimeUtc).getTime();
-        if (Number.isFinite(startMs) && startMs - Date.now() < 10 * 60 * 1000) {
-          alert('Emergency cancellation is only allowed at least 10 minutes before the class.');
+      if (currentBooking) {
+        const startMs = classScheduledStartDate(currentBooking);
+        const startAt = startMs ? startMs.getTime() : NaN;
+        if (Number.isFinite(startAt) && startAt - Date.now() < 10 * 60 * 1000) {
+          alert('You can cancel only until 10 minutes before the class. Inside 10 minutes you must take the class.');
           return;
         }
       }
@@ -2052,10 +2087,15 @@
         const data = await response.json();
 
         if (response.ok) {
-          alert(data.message || 'Cancellation request submitted successfully! It will be reviewed by admin.');
+          alert(data.message || 'Cancellation request submitted. Wait for QA.');
+          const cancelBtn = document.getElementById('cancel-btn');
+          if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = 'Waiting for QA';
+          }
           hideCancellationForm();
           closeClassInfo();
-          loadScheduleData(); // Refresh schedule
+          loadScheduleData();
         } else {
           alert(`Cancellation failed: ${data.error || response.statusText}`);
         }

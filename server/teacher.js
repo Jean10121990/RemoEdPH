@@ -3866,25 +3866,20 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
     // Check if class has already started (use same instant as schedule APIs — not naive local Date)
     const classDateTime = getBookingStartAsDate(booking);
     const now = new Date();
-    if (!classDateTime || classDateTime <= now) {
+    if (!classDateTime || classDateTime.getTime() - now.getTime() < 10 * 60 * 1000) {
       return res.status(400).json({
         success: false,
         error: !classDateTime
           ? 'Cannot determine class schedule for cancellation'
-          : 'Cannot cancel a class that has already started',
+          : 'You can cancel only until 10 minutes before the class. Inside 10 minutes you must take the class.',
       });
     }
 
-    // Check if there's already a pending cancellation request
-    const existingRequest = await CancellationRequest.findOne({
-      bookingId,
-      status: 'pending'
-    });
-    
+    const existingRequest = await CancellationRequest.findOne({ bookingId });
     if (existingRequest) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'A cancellation request is already pending for this booking' 
+      return res.status(400).json({
+        success: false,
+        error: 'A cancellation request was already submitted for this class. Wait for QA to approve or reject it.',
       });
     }
     
@@ -3904,12 +3899,11 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
       if (!canRequestEmergencyCancellation(classDateTime, now)) {
         return res.status(400).json({
           success: false,
-          error: 'Emergency cancellation is only allowed at least 10 minutes before the class.',
+          error: 'You can cancel only until 10 minutes before the class. Inside 10 minutes you must take the class.',
         });
       }
     }
 
-    // Create cancellation request
     const cancellationRequest = new CancellationRequest({
       bookingId,
       requesterType: 'teacher',
@@ -3921,72 +3915,6 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
     
     await cancellationRequest.save();
 
-    const { canAssignSubstitute, assignApprovedEmergency } = require('./services/emergencySubstituteService');
-    const assignResult = canAssignSubstitute(classDateTime, now)
-      ? await assignApprovedEmergency(booking, now)
-      : 'too-late';
-
-    if (assignResult === 'moved') {
-      cancellationRequest.status = 'approved';
-      cancellationRequest.adminReview = {
-        reviewedBy: 'system',
-        reviewedAt: new Date(),
-        adminNotes: 'Assigned to another teacher who is open at this same time.',
-      };
-      if (excuse && req.file) {
-        cancellationRequest.proofValidity = 'pending';
-        cancellationRequest.penaltyWaived = true;
-        await Booking.updateOne({ _id: booking._id }, { $set: { penaltyWaived: true } });
-      }
-      await cancellationRequest.save();
-      return res.json({
-        success: true,
-        message: excuse
-          ? 'Emergency cancellation approved. The class was assigned to another available teacher at the same time. QA will check that the proof is valid.'
-          : 'Cancellation approved. The class was assigned to another available teacher at the same time.',
-        outcome: 'moved',
-        cancellationRequest,
-      });
-    }
-
-    if (excuse && req.file) {
-      const tooLate = assignResult === 'too-late';
-      const why = tooLate
-        ? 'Declined because fewer than 5 minutes remain, so the class cannot be assigned to another teacher.'
-        : 'Declined because no other teacher is free for this time.';
-      cancellationRequest.status = 'rejected';
-      cancellationRequest.proofValidity = 'pending';
-      cancellationRequest.penaltyWaived = false;
-      cancellationRequest.adminReview = {
-        reviewedBy: 'system',
-        reviewedAt: new Date(),
-        adminNotes: why,
-      };
-      await cancellationRequest.save();
-      const { notifyTeacher, notifyStudent } = require('./services/notifyService');
-      await notifyTeacher(
-        booking.teacherId,
-        'cancellation-rejected',
-        `Your emergency cancellation was declined. ${why} The class stays with you.`,
-        { bookingId: String(booking._id), actionUrl: '/teacher-class-table.html' }
-      );
-      await notifyStudent(
-        booking.studentId,
-        'booking',
-        `Your class on ${booking.date} at ${booking.time} is still scheduled.`,
-        { bookingId: String(booking._id), actionUrl: '/student-class-table.html' }
-      );
-      return res.json({
-        success: true,
-        message: tooLate
-          ? 'Emergency cancellation declined. Fewer than 5 minutes remain, so it cannot be assigned to another teacher. The class stays with you.'
-          : 'Emergency cancellation declined. No other teacher is free for that time. The class stays with you.',
-        outcome: 'declined',
-        cancellationRequest,
-      });
-    }
-    
-    // Notify admins (not the teacher) about the pending cancellation request
     try {
       const { notifyAdmin } = require('./services/notifyService');
       await notifyAdmin(
@@ -4001,10 +3929,10 @@ router.post('/request-cancellation', verifyToken, requireTeacher, optionalCancel
     } catch (adminNotifErr) {
       console.warn('Admin cancellation-request notify failed:', adminNotifErr.message);
     }
-    
+
     res.json({
       success: true,
-      message: 'Cancellation request submitted successfully. It will be reviewed by admin.',
+      message: 'Cancellation request submitted. It can be sent only once. Wait for QA to approve or reject it. The class stays with you until QA approves.',
       cancellationRequest
     });
   } catch (err) {

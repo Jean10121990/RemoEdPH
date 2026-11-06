@@ -1,6 +1,7 @@
 const Teacher = require('../models/Teacher');
 const TeacherSlot = require('../models/TeacherSlot');
 const Booking = require('../models/Booking');
+const { DateTime } = require('luxon');
 const { normalizeId } = require('../utils/normalizeId');
 
 /** 24-char hex MongoDB ObjectId — use with Teacher.findById */
@@ -54,6 +55,14 @@ function slotTimeKeys(timeStr) {
   return [...keys];
 }
 
+function wallClockKey(utcDate, zone) {
+  const dt = DateTime.fromJSDate(utcDate instanceof Date ? utcDate : new Date(utcDate), { zone: 'utc' }).setZone(
+    zone || 'Asia/Manila'
+  );
+  if (!dt.isValid) return '';
+  return dt.toFormat('yyyy-LL-dd') + '|' + dt.toFormat('HH:mm');
+}
+
 /** Open slots at this UTC instant, plus any open slot on the same schedule date and time. */
 async function findOpenSlotsForBooking(booking, canonicalUtcIso) {
   const byId = new Map();
@@ -68,6 +77,23 @@ async function findOpenSlotsForBooking(booking, canonicalUtcIso) {
       time: { $in: times },
     }).lean();
     for (const slot of sameCell) byId.set(String(slot._id), slot);
+  }
+  const start = new Date(canonicalUtcIso);
+  if (!Number.isNaN(start.getTime())) {
+    const want = wallClockKey(start, 'Asia/Manila');
+    const nearby = await TeacherSlot.find({
+      available: true,
+      dateTimeUtc: {
+        $gte: new Date(start.getTime() - 18 * 60 * 60 * 1000),
+        $lte: new Date(start.getTime() + 18 * 60 * 60 * 1000),
+      },
+    })
+      .select('_id teacherId date time dateTimeUtc available')
+      .lean();
+    for (const slot of nearby) {
+      if (!slot.dateTimeUtc) continue;
+      if (wallClockKey(slot.dateTimeUtc, 'Asia/Manila') === want) byId.set(String(slot._id), slot);
+    }
   }
   return [...byId.values()];
 }
@@ -157,7 +183,7 @@ async function getCandidateTeachersForBooking(booking, canonicalUtcIso) {
   const slots = await findOpenSlotsForBooking(booking, canonicalUtcIso);
   const candidates = [];
   for (const slot of slots) {
-    const tid = await resolveToCanonicalTeacherId(slot.teacherId);
+    const tid = (await resolveToCanonicalTeacherId(slot.teacherId)) || String(slot.teacherId || '').trim();
     if (!tid) continue;
     if (await teacherHasOtherBooking(tid, booking, canonicalUtcIso)) continue;
     candidates.push(tid);

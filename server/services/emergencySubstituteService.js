@@ -9,7 +9,6 @@ const Booking = require('../models/Booking');
 const Teacher = require('../models/Teacher');
 const TeacherSlot = require('../models/TeacherSlot');
 const CancellationRequest = require('../models/CancellationRequest');
-const { isEmergencyReason } = require('../utils/emergencyExcuse');
 const { getBookingStartAsDate } = require('../utils/bookingScheduledStart');
 const { isCancelledStatus } = require('../utils/bookingStatus');
 const { normalizeId } = require('../utils/normalizeId');
@@ -98,7 +97,7 @@ async function assignOne(booking, emergencyKeys, now, opts) {
   const start = getBookingStartAsDate(booking);
   if (!canAssignSubstitute(start, now)) return 'too-late';
 
-  const original = await resolveToCanonicalTeacherId(booking.teacherId);
+  const original = (await resolveToCanonicalTeacherId(booking.teacherId)) || String(booking.teacherId || '').trim();
   const originalKey = normalizeId(original);
   const teacherCancelled = isTeacherCancelledLesson(booking);
   const emergency = !!(originalKey && emergencyKeys.has(originalKey));
@@ -131,7 +130,7 @@ async function assignOne(booking, emergencyKeys, now, opts) {
   const openSlots = await findOpenSlotsForBooking(booking, utcIso);
   let slotId = null;
   for (const slot of openSlots) {
-    const tid = await resolveToCanonicalTeacherId(slot.teacherId);
+    const tid = (await resolveToCanonicalTeacherId(slot.teacherId)) || String(slot.teacherId || '').trim();
     if (tid && normalizeId(tid) === normalizeId(substituteId)) {
       slotId = slot._id;
       break;
@@ -152,10 +151,8 @@ async function assignOne(booking, emergencyKeys, now, opts) {
     updated = await Booking.findOneAndUpdate(
       {
         _id: booking._id,
-        teacherId: booking.teacherId,
         substituteAssignedAt: null,
-        'attendance.teacherEntered': { $ne: true },
-        status: { $nin: SKIP_STATUSES },
+        status: { $nin: ['Completed', 'completed', 'absent'] },
       },
       {
         $set: {
@@ -227,29 +224,48 @@ async function runEmergencySubstituteJob(nowDate) {
   const now = nowDate instanceof Date ? nowDate : new Date();
   const since = new Date(now.getTime() - EMERGENCY_LOOKBACK_MS);
   const requests = await CancellationRequest.find({
+    requesterType: 'teacher',
     status: 'approved',
-    proofPath: { $nin: ['', null] },
     createdAt: { $gte: since },
   })
-    .select('bookingId emergencyReason')
+    .select('bookingId')
     .limit(40)
     .lean();
 
   let moved = 0;
   let noCover = 0;
+  const seen = new Set();
   for (const request of requests) {
+    const bookingId = String(request.bookingId || '');
+    if (!bookingId || seen.has(bookingId)) continue;
+    seen.add(bookingId);
     try {
-      if (!isEmergencyReason(request.emergencyReason)) continue;
-      const booking = await Booking.findById(request.bookingId).lean();
+      const booking = await Booking.findById(request.bookingId);
       if (!booking || booking.substituteAssignedAt) continue;
+      const status = String(booking.status || '').toLowerCase();
+      if (status === 'completed' || status === 'absent') continue;
+      if (booking.attendance && booking.attendance.teacherEntered) continue;
       const result = await assignApprovedEmergency(booking, now);
-      if (result === 'moved') moved += 1;
+      if (result === 'moved') {
+        moved += 1;
+        await CancellationRequest.updateOne(
+          { _id: request._id },
+          {
+            $set: {
+              status: 'approved',
+              'adminReview.reviewedBy': 'system',
+              'adminReview.reviewedAt': now,
+              'adminReview.adminNotes': 'Assigned to another teacher who is open at this same time.',
+            },
+          }
+        );
+      }
       if (result === 'no-cover') noCover += 1;
     } catch (err) {
       console.warn('[emergency-substitute]', request && request.bookingId, err.message || err);
     }
   }
-  if (moved > 0) console.log(`⏰ Moved ${moved} approved emergency class(es) to a substitute teacher`);
+  if (moved > 0) console.log(`⏰ Moved ${moved} cancelled class(es) to an open teacher at the same time`);
   return { moved, noCover };
 }
 
