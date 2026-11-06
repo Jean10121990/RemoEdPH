@@ -92,7 +92,7 @@
         
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=app-shell-13"></script>
-        <script src="js/teacher-page-header.js?v=mark-all-2"></script>
+        <script src="js/teacher-page-header.js?v=pop-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'dashboard');
             TeacherPageHeader.polishExisting('dashboard');
@@ -787,6 +787,9 @@
             } else {
               badge.textContent = String(unread);
               badge.style.display = unread > 0 ? 'flex' : 'none';
+            }
+            if (window.RemoedNotifications && window.RemoedNotifications.announceNotifications) {
+              window.RemoedNotifications.announceNotifications(list, 'teacher');
             }
             if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
               window.RemoedNotifications.renderItems(dropdownContent, list, {

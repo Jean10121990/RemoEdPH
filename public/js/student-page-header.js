@@ -10,7 +10,7 @@
         try {
             if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
                 var s = document.createElement('script');
-                s.src = '/js/remoed-notifications.js?v=mark-all-2';
+                s.src = '/js/remoed-notifications.js?v=pop-1';
                 document.head.appendChild(s);
             }
             if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
@@ -445,6 +445,9 @@
                     window.RemoedNotifications && window.RemoedNotifications.unwrapList
                         ? window.RemoedNotifications.unwrapList(data)
                         : (data && data.notifications) || [];
+                if (window.RemoedNotifications && window.RemoedNotifications.announceNotifications) {
+                    window.RemoedNotifications.announceNotifications(list, 'student');
+                }
                 var unread =
                     window.RemoedNotifications && window.RemoedNotifications.badgeCountFromPayload
                         ? window.RemoedNotifications.badgeCountFromPayload(data, list)

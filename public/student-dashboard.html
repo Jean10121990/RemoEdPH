@@ -779,7 +779,7 @@
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
         <script src="js/student-eco-drops.js?v=garden-v3-1"></script>
         <script src="js/student-sidebar.js?v=claim-both-modes-1"></script>
-        <script src="js/student-page-header.js?v=garden-v3-1"></script>
+        <script src="js/student-page-header.js?v=pop-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
             StudentPageHeader.polishExisting('dashboard');
@@ -1665,6 +1665,9 @@
         } else {
           badge.textContent = String(unread);
           badge.style.display = unread > 0 ? 'flex' : 'none';
+        }
+        if (window.RemoedNotifications && window.RemoedNotifications.announceNotifications) {
+          window.RemoedNotifications.announceNotifications(list, 'student');
         }
         if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
           window.RemoedNotifications.renderItems(dropdownContent, list, {

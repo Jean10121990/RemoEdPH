@@ -6,6 +6,141 @@
   'use strict';
 
   var FILTER_KEY = 'remoed_notif_filter';
+  var SOUND_KEY = 'remoed_notif_sound';
+  var audioCtx = null;
+
+  function soundEnabled() {
+    try {
+      var v = localStorage.getItem(SOUND_KEY);
+      if (v == null) return true;
+      return v !== '0';
+    } catch (_e) {
+      return true;
+    }
+  }
+
+  function setSoundEnabled(on) {
+    try {
+      localStorage.setItem(SOUND_KEY, on ? '1' : '0');
+    } catch (_e) {}
+  }
+
+  function primeNotificationAudio() {
+    try {
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) return null;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  /** One short soft pop. No loop, no file. */
+  function playNotificationPop() {
+    if (!soundEnabled()) return;
+    if (document.body && document.body.classList.contains('student-kids-mode')) return;
+    try {
+      var ctx = primeNotificationAudio();
+      if (!ctx) return;
+      var t = ctx.currentTime;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(784, t);
+      osc.frequency.exponentialRampToValueAtTime(523, t + 0.08);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.045, t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.12);
+    } catch (_e) {}
+  }
+
+  function showNotificationPop(message) {
+    if (document.body && document.body.classList.contains('student-kids-mode')) return;
+    var text = String(message || 'New notification').trim();
+    if (!text) text = 'New notification';
+    var el = document.getElementById('remoed-notif-pop');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'remoed-notif-pop';
+      el.setAttribute('role', 'status');
+      el.style.cssText =
+        'position:fixed;right:16px;bottom:16px;z-index:var(--z-toast,12000);max-width:min(320px,calc(100vw - 32px));' +
+        'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:12px;' +
+        'box-shadow:0 10px 28px rgba(15,23,42,.16);padding:12px 14px;font-size:14px;line-height:1.4;' +
+        'font-family:inherit;cursor:pointer;';
+      el.addEventListener('click', function () {
+        el.style.display = 'none';
+        var bell = document.getElementById('notifications-icon') || document.getElementById('admin-notifications-icon');
+        if (bell) bell.click();
+      });
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.style.display = 'block';
+    clearTimeout(el.__hide);
+    el.__hide = setTimeout(function () {
+      el.style.display = 'none';
+    }, 4200);
+  }
+
+  /**
+   * First list in this browser is remembered quietly.
+   * A later unread row plays one pop and shows a small toast.
+   */
+  function announceNotifications(list, role) {
+    var bucket = String(role || 'portal');
+    var primedKey = 'remoed_notif_primed_' + bucket;
+    var knownKey = 'remoed_notif_known_' + bucket;
+    var ids = [];
+    (list || []).forEach(function (n) {
+      var id = n && (n._id || n.id);
+      if (id) ids.push(String(id));
+    });
+    var known = {};
+    try {
+      JSON.parse(localStorage.getItem(knownKey) || '[]').forEach(function (id) {
+        known[id] = 1;
+      });
+    } catch (_e) {}
+    var primed = false;
+    try {
+      primed = localStorage.getItem(primedKey) === '1';
+    } catch (_e2) {}
+    if (!primed) {
+      ids.forEach(function (id) {
+        known[id] = 1;
+      });
+      try {
+        localStorage.setItem(knownKey, JSON.stringify(Object.keys(known).slice(-80)));
+        localStorage.setItem(primedKey, '1');
+      } catch (_e3) {}
+      return;
+    }
+    var fresh = (list || []).filter(function (n) {
+      var id = n && (n._id || n.id);
+      return id && !known[String(id)] && !n.read;
+    });
+    ids.forEach(function (id) {
+      known[id] = 1;
+    });
+    fresh.forEach(function (n) {
+      known[String(n._id || n.id)] = 1;
+    });
+    try {
+      localStorage.setItem(knownKey, JSON.stringify(Object.keys(known).slice(-80)));
+    } catch (_e4) {}
+    if (!fresh.length) return;
+    playNotificationPop();
+    var msg = String(fresh[0].message || 'New notification');
+    if (fresh.length > 1) msg += ' (+' + (fresh.length - 1) + ' more)';
+    showNotificationPop(msg);
+  }
 
   function unwrapList(data) {
     if (Array.isArray(data)) return data;
@@ -211,6 +346,9 @@
         retention +
         ' days</span>' +
         '<span style="display:flex;gap:12px;align-items:center;">' +
+        '<button type="button" data-notif-sound="1" style="border:none;background:transparent;color:#0f766e;cursor:pointer;padding:0;font-size:12px;font-weight:600;">' +
+        (soundEnabled() ? 'Sound on' : 'Sound off') +
+        '</button>' +
         '<button type="button" data-notif-prefs="1" style="border:none;background:transparent;color:#0f766e;cursor:pointer;padding:0;font-size:12px;font-weight:600;">Preferences</button>' +
         (opts.dashboardHref
           ? '<a class="remoed-notif-dash" href="' + escapeHtml(opts.dashboardHref) + '">Open dashboard</a>'
@@ -493,6 +631,16 @@
     var onRefresh = (opts && opts.onRefresh) || function () {};
 
     dropdown.addEventListener('click', function (e) {
+      var soundBtn = e.target.closest('[data-notif-sound]');
+      if (soundBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSoundEnabled(!soundEnabled());
+        soundBtn.textContent = soundEnabled() ? 'Sound on' : 'Sound off';
+        if (soundEnabled()) playNotificationPop();
+        return;
+      }
+
       var prefsBtn = e.target.closest('[data-notif-prefs]');
       if (prefsBtn) {
         e.preventDefault();
@@ -564,8 +712,18 @@
     });
   }
 
+  try {
+    document.addEventListener('pointerdown', function () {
+      primeNotificationAudio();
+    }, { once: true });
+  } catch (_prime) {}
+
   global.RemoedNotifications = {
     unwrapList: unwrapList,
+    announceNotifications: announceNotifications,
+    playNotificationPop: playNotificationPop,
+    soundEnabled: soundEnabled,
+    setSoundEnabled: setSoundEnabled,
     escapeHtml: escapeHtml,
     authHeaders: authHeaders,
     joinNotificationSocket: joinNotificationSocket,

@@ -9,7 +9,7 @@
         try {
             if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
                 var s = document.createElement('script');
-                s.src = '/js/remoed-notifications.js?v=mark-all-2';
+                s.src = '/js/remoed-notifications.js?v=pop-1';
                 document.head.appendChild(s);
             }
             if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
@@ -245,6 +245,9 @@
                     } else if (badge) {
                         badge.textContent = String(unread);
                         badge.style.display = unread > 0 ? 'flex' : 'none';
+                    }
+                    if (window.RemoedNotifications && window.RemoedNotifications.announceNotifications) {
+                        window.RemoedNotifications.announceNotifications(list, 'teacher');
                     }
                     if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
                         window.RemoedNotifications.renderItems(content, list, {

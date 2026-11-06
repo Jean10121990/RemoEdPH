@@ -80,6 +80,10 @@
                 return;
             }
 
+            if (global.RemoedNotifications && global.RemoedNotifications.announceNotifications) {
+                global.RemoedNotifications.announceNotifications(data.notifications || [], 'admin');
+            }
+
             var unread =
                 typeof data.unreadCount === 'number'
                     ? data.unreadCount
@@ -90,12 +94,21 @@
             badge.style.display = unread > 0 ? 'flex' : 'none';
 
             var list = (data.notifications || []).slice(0, 15);
+            var soundLabel =
+                global.RemoedNotifications && global.RemoedNotifications.soundEnabled && !global.RemoedNotifications.soundEnabled()
+                    ? 'Sound off'
+                    : 'Sound on';
+            var soundRow =
+                '<div class="nav-dropdown-item" style="padding:8px 12px;border-bottom:1px solid #f1f5f9;">' +
+                '<button type="button" data-admin-notif-sound="1" style="border:none;background:transparent;color:#0f766e;cursor:pointer;padding:0;font-size:12px;font-weight:600;">' +
+                soundLabel +
+                '</button></div>';
             if (!list.length) {
-                container.innerHTML = '<div class="nav-dropdown-item">No notifications yet</div>';
+                container.innerHTML = soundRow + '<div class="nav-dropdown-item">No notifications yet</div>';
                 return;
             }
 
-            container.innerHTML = list
+            container.innerHTML = soundRow + list
                 .map(function (n) {
                     var time = n.createdAt ? new Date(n.createdAt).toLocaleString() : '';
                     var type = String(n.type || 'info').replace(/-/g, ' ');
@@ -143,6 +156,12 @@
                         global.__remoedNotifSocket = socket;
                     }
                     socket.emit('join-notifications', { role: 'admin', username: username, token: getAdminToken() });
+                    if (!socket.__remoedAdminNotifRefresh) {
+                        socket.__remoedAdminNotifRefresh = true;
+                        socket.on('notification:new', function () {
+                            loadAdminNotifications();
+                        });
+                    }
                     global.__remoedAdminPresenceJoined = true;
                     return true;
                 } catch (_e) {
@@ -171,7 +190,7 @@
             try {
                 if (!document.querySelector('script[data-remoed-notif-helper]')) {
                     var s = document.createElement('script');
-                    s.src = 'js/remoed-notifications.js?v=mark-all-2';
+                    s.src = 'js/remoed-notifications.js?v=pop-1';
                     s.async = true;
                     s.setAttribute('data-remoed-notif-helper', '1');
                     document.head.appendChild(s);
@@ -194,6 +213,21 @@
                     var item = event.target && event.target.closest
                         ? event.target.closest('.admin-notif-item')
                         : null;
+
+                    var soundToggle = event.target && event.target.closest
+                        ? event.target.closest('[data-admin-notif-sound]')
+                        : null;
+                    if (soundToggle && global.RemoedNotifications) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        var on = global.RemoedNotifications.soundEnabled
+                            ? !global.RemoedNotifications.soundEnabled()
+                            : true;
+                        if (global.RemoedNotifications.setSoundEnabled) global.RemoedNotifications.setSoundEnabled(on);
+                        soundToggle.textContent = on ? 'Sound on' : 'Sound off';
+                        if (on && global.RemoedNotifications.playNotificationPop) global.RemoedNotifications.playNotificationPop();
+                        return;
+                    }
 
                     if (markAll) {
                         event.preventDefault();
