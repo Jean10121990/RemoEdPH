@@ -4474,6 +4474,29 @@ function adminScheduleManilaUtcWindow(start, end) {
   return { startUtc, endUtc };
 }
 
+/** Booking.date/time are UTC wall-clock parts. Teacher grids and this admin grid are Philippine time. */
+function manilaWallFromInstant(value) {
+  if (!value) return null;
+  const { DateTime } = require('luxon');
+  const dt = DateTime.fromJSDate(value instanceof Date ? value : new Date(value), { zone: 'utc' }).setZone(
+    'Asia/Manila'
+  );
+  if (!dt.isValid) return null;
+  return { date: dt.toFormat('yyyy-LL-dd'), time: dt.toFormat('HH:mm') };
+}
+
+function scheduleTeacherName(t) {
+  const nick = String((t && t.nickname) || '').trim();
+  if (nick) return nick;
+  const first = String((t && t.firstName) || '').trim();
+  if (first) return first;
+  const full = String((t && (t.fullname || t.fullName)) || '').trim();
+  if (full && full.indexOf('@') === -1) return full;
+  const user = String((t && t.username) || '').trim();
+  if (user && user.indexOf('@') === -1) return user;
+  return user || (t && t.teacherId) || '';
+}
+
 function serializeAdminScheduleSlot(slot) {
   const available = slot.available !== false && String(slot.slotStatus || '').toLowerCase() !== 'booked';
   return {
@@ -4516,7 +4539,7 @@ router.get('/schedule', async (req, res) => {
       Booking.find(bookingFilter).sort({ date: 1, time: 1 }).lean(),
       TeacherSlot.find(slotFilter).lean(),
       Teacher.find({ username: { $exists: true, $ne: null, $ne: '' } })
-        .select('teacherId username email _id status')
+        .select('teacherId username email firstName nickname fullname fullName _id status')
         .sort({ username: 1 })
         .lean(),
     ]);
@@ -4545,21 +4568,24 @@ router.get('/schedule', async (req, res) => {
       view,
       start,
       end,
-      bookings: bookings.map((b) => ({
-        _id: b._id,
-        teacherId: b.teacherId,
-        studentId: b.studentId,
-        date: String(b.date || '').slice(0, 10),
-        time: padSlotTime(b.time),
-        status: b.status,
-        lesson: b.lesson,
-        classroomId: b.classroomId,
-      })),
+      bookings: bookings.map((b) => {
+        const wall = manilaWallFromInstant(b.dateTimeUtc);
+        return {
+          _id: b._id,
+          teacherId: b.teacherId,
+          studentId: b.studentId,
+          date: wall ? wall.date : String(b.date || '').slice(0, 10),
+          time: wall ? wall.time : padSlotTime(b.time),
+          status: b.status,
+          lesson: b.lesson,
+          classroomId: b.classroomId,
+        };
+      }),
       slots: slots.map(serializeAdminScheduleSlot),
       teachers: teachers.map((t) => ({
         mongoId: String(t._id),
         teacherId: t.teacherId || t.username,
-        name: t.username,
+        name: scheduleTeacherName(t),
         email: t.email,
         status: t.status,
       })),

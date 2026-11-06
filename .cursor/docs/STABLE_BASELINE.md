@@ -100,6 +100,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] A teacher can request cancellation only until 10 minutes before the class, and only once for that slot. The button stays disabled after submit. The class stays with that teacher until QA approves or rejects. On approval the original slot opens and the class moves immediately to another teacher who is open at that same time. It is not dropped. A substitute can be assigned only while at least 5 minutes remain. Inside 5 minutes the teacher must take the class. QA marks emergency proof valid or not valid after approval (`POST /api/admin/cancellation-proof-validity`). Invalid proof clears the penalty waiver. A teacher who already entered is not replaced.
 - [ ] **Emergency guidelines** (`/teacher/emergency-guidelines`) shows the teacher sidebar and top bar, the three tiers, and the SOS status legend. In the teacher sidebar it sits **directly under Class Configuration** (`MENU_ITEMS` order in `public/js/teacher-sidebar.js`: Dashboard, Leaderboard, Class Schedule, Class Configuration, Emergency guidelines, Device Check, …).
 - [ ] After submit, schedule refresh does not clear the teacher session.
+- [ ] Teacher Class Schedule, Class Configuration, and HR Teacher Schedule show Philippine time. A class at 4:00 PM PHT is on the 16:00 row, including after it moves to a substitute. A student in another country still sees that same class in their own timezone.
 - [ ] A teacher who stays on Class Schedule or Live Classroom is not signed out after one or two hours. Teacher tokens last 18 hours (30 days with Remember me) and renew while the page is open. Students still use the short session.
 
 ### Live classroom (teacher Settings + student locks)
@@ -671,6 +672,14 @@ When a teacher cancels, the booking stays. QA approval moves it to another teach
 - Emergency proof is still checked after approval with `POST /api/admin/cancellation-proof-validity`. Invalid proof clears the penalty waiver. It does not move the class back.
 - A teacher who already entered the classroom is not replaced.
 
+## Teacher schedule time — Philippine time
+
+Every teacher is in the Philippines. Teacher Class Schedule, Class Configuration, and the admin Teacher Schedule use **Asia/Manila**. Do not follow the laptop clock or a student’s country.
+
+- A booking stores the real start in `dateTimeUtc`. `Booking.date` and `Booking.time` are UTC wall-clock parts. The admin grid must place that class with `dateTimeUtc` converted to Philippine time. Plotting `Booking.time` directly puts a 3:00 PM class on the 7:00 AM row.
+- Teacher open and close slots treat the cell the teacher clicked as Philippine time (`toUtcFromLocal(..., 'Asia/Manila')` in `server/teacher.js`). `GET /api/teacher/slots` for a teacher also returns `localDate` / `localTime` in Asia/Manila.
+- Students still see the same class in their own timezone. Student booking converts `dateTimeUtc` to the student’s zone. Do not store or match slots using the student’s wall clock.
+
 ## Teacher session — do not auto-logout
 
 Teachers keep back-to-back bookings. A one- or two-hour token expiry signs them out between classes and makes them late. Do not put teachers on the admin 30-minute idle logout, and do not shorten the teacher JWT back to the student default.
@@ -905,5 +914,6 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Teacher account id | Email is the teacher login and the stored id for new accounts (HR create, invite signup, Google/Facebook). No new `remoedph.001` ids. The teachers list and teacher profile show email. Older stored ids stay so existing bookings are not moved. See § Security and § Admin login. |
 | Substitute teacher | A teacher cancellation is one request, only until 10 minutes before the class, and waits for QA. Approve moves that same booking immediately to another teacher who is Open at that time and reopens the original slot. The class is not dropped. A substitute can be assigned only while at least 5 minutes remain. See § Substitute teacher. |
 | Teacher session | Teacher accounts are not auto-logged out on the 1–2 hour student timer. A teacher token lasts 18 hours (30 days with Remember me) and renews while Class Schedule or Live Classroom stays open. See § Teacher session. |
+| Teacher schedule time | Teacher and admin schedules use Philippine time. Bookings are placed from `dateTimeUtc`, not the UTC clock stored in `Booking.time`. Students still see their own timezone. See § Teacher schedule time. |
 | Lesson slides | Teacher Prev/Next sends one `presentation-slide-changed`. The server replays that slide when a student rejoins. A PDF scroll estimate must not send page 1 over a later slide. |
 | Admin payroll display | Admin Payroll and Admin Fee do not show a Gross Sales Pool. Earnings are still 2% of the period’s subscription sales for an eligible partner admin. |

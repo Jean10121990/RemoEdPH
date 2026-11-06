@@ -125,10 +125,7 @@
   const OPEN_CLASS_FIRST_HOUR = OpenClassTZ.REMOED_OPERATING_START_HOUR != null ? OpenClassTZ.REMOED_OPERATING_START_HOUR : 6;
   const OPEN_CLASS_END_HOUR_EXC = OpenClassTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? OpenClassTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
 
-    const teacherTimezone =
-      (OpenClassTZ.getDetectedZone && OpenClassTZ.getDetectedZone()) ||
-      Intl.DateTimeFormat().resolvedOptions().timeZone ||
-      'UTC';
+    const teacherTimezone = 'Asia/Manila';
 
     let openClassLoadSeq = 0;
 
@@ -194,7 +191,7 @@
       const p = document.createElement('p');
       p.id = 'open-class-pht-note';
       p.style.cssText = 'margin:10px 0 0;font-size:0.78rem;color:#475569;font-weight:600;width:100%;';
-      p.textContent = `All times shown in your local timezone (${teacherTimezone}). Slots: 6:00 AM – midnight.`;
+      p.textContent = 'All times shown in Philippine time (Asia/Manila). Slots: 6:00 AM – midnight.';
       host.appendChild(p);
     }
 

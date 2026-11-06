@@ -1119,7 +1119,7 @@ async function handleTeacherOpenSlots(req, res) {
 
     // Save new open slots with available: true (UTC canonical)
     const newSlots = slots.map((s) => {
-      const { utcIso, zoneUsed } = toUtcFromLocal(s.date, s.time, s.timezone || timezone);
+      const { utcIso, zoneUsed } = toUtcFromLocal(s.date, s.time, 'Asia/Manila');
       return {
         teacherId: actualTeacherId,
         date: s.date,
@@ -1198,7 +1198,7 @@ async function handleTeacherCloseSlots(req, res) {
       // Otherwise compute from provided timezone/body timezone
       let dateTimeUtc = null;
       try {
-        const { utcIso } = toUtcFromLocal(s.date, s.time, s.timezone || timezone);
+        const { utcIso } = toUtcFromLocal(s.date, s.time, 'Asia/Manila');
         dateTimeUtc = utcIso;
       } catch (e) {
         // ignore
@@ -1246,6 +1246,15 @@ router.get('/slots', async (req, res) => {
       return res.status(400).json({ error: e.message || 'Invalid week/timezone' });
     }
     
+    // Teacher grids are always Philippine time. Students (no teacherId) keep their own zone.
+    if (teacherId) {
+      try {
+        weekWindow = resolveLocalWeekUtcWindow(week, { tz: 'Asia/Manila' });
+      } catch (e) {
+        return res.status(400).json({ error: e.message || 'Invalid week' });
+      }
+    }
+
     // If no teacherId is provided, return all available slots for the week (for students)
     if (!teacherId) {
       console.log('🔍 Student request: Getting all available slots for week:', week);
@@ -1392,10 +1401,8 @@ router.get('/slots', async (req, res) => {
       }
     }
 
-    // Determine client timezone for convenience conversion (optional)
-    const clientTz =
-      (tz && DateTime.now().setZone(tz).isValid && String(tz)) ||
-      (weekWindow.zoneLabel && weekWindow.zoneLabel !== 'utc' ? String(weekWindow.zoneLabel) : null);
+    // Teacher schedule cells are Philippine time, even when the laptop clock is set somewhere else.
+    const clientTz = 'Asia/Manila';
     const allSlotsFlag =
       String(allSlots || '') === '1' ||
       String(allSlots || '').toLowerCase() === 'true' ||

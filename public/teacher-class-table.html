@@ -473,11 +473,8 @@
     const TEACHER_SLOT_FIRST_HOUR = RemoedTZ.REMOED_OPERATING_START_HOUR != null ? RemoedTZ.REMOED_OPERATING_START_HOUR : 6;
     const TEACHER_SLOT_END_HOUR_EXC = RemoedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? RemoedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
 
-    // Viewer local zone for schedule display (UTC→local), not forced PHT
-    const teacherTimezone =
-      (RemoedTZ.getDetectedZone && RemoedTZ.getDetectedZone()) ||
-      Intl.DateTimeFormat().resolvedOptions().timeZone ||
-      'UTC';
+    // Every teacher is in the Philippines. Do not follow the laptop or a student's timezone.
+    const teacherTimezone = 'Asia/Manila';
 
     let currentWeek = DateTimeLocal.now().setZone(teacherTimezone).startOf('week').toJSDate();
 
@@ -748,7 +745,7 @@
       const p = document.createElement('p');
       p.id = 'teacher-class-table-pht-note';
       p.style.cssText = 'margin:8px 0 0;width:100%;font-size:0.78rem;color:#475569;font-weight:600;';
-      p.textContent = `All times shown in your local timezone (${teacherTimezone}).`;
+      p.textContent = 'All times shown in Philippine time (Asia/Manila).';
       controls.appendChild(p);
     }
 
