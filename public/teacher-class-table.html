@@ -1835,9 +1835,14 @@
         });
         if (!existing) return;
         btn.disabled = true;
-        btn.textContent = existing.status === 'pending'
+        const reqStatus = String(existing.status || '').toLowerCase();
+        btn.textContent = reqStatus === 'pending'
           ? 'Waiting for QA'
-          : 'Cancellation already submitted';
+          : reqStatus === 'rejected'
+            ? 'Cancellation rejected'
+            : reqStatus === 'approved'
+              ? 'Cancellation approved'
+              : 'Cancellation already submitted';
       } catch (e) { /* leave the button usable if the list cannot load */ }
     }
 

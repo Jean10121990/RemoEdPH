@@ -59,6 +59,7 @@
         .as-drawer-actions a { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:10px; font-size:0.85rem; font-weight:700; text-decoration:none; }
         .as-drawer-actions a.primary { background:linear-gradient(90deg,#008fc4,#1ca7e7); color:#fff; }
         .as-drawer-actions a.secondary { background:#f1f5f9; color:#334155; }
+        .as-drawer-actions button.as-danger { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:10px; font-size:0.85rem; font-weight:700; border:none; background:#b91c1c; color:#fff; cursor:pointer; }
         .as-drawer-empty { color:#b91c1c; font-size:0.9rem; margin:0; }
     </style>
 </head>
@@ -292,9 +293,25 @@
             return;
         }
         const b = data.booking || data;
-        const dateStr = String(b.date || '').slice(0, 10);
-        const timeStr = String(b.time || '');
+        let dateStr = String(b.date || '').slice(0, 10);
+        let timeStr = String(b.time || '');
+        if (b.dateTimeUtc) {
+            const utcDt = DateTime.fromISO(String(b.dateTimeUtc), { zone: 'utc' }).setZone(ZONE);
+            if (utcDt.isValid) {
+                dateStr = utcDt.toFormat('yyyy-LL-dd');
+                timeStr = utcDt.toFormat('HH:mm');
+            }
+        }
         const status = String(b.status || 'Booked');
+        const statusKey = status.toLowerCase();
+        const teacherAlreadyIn = !!(b.attendance && b.attendance.teacherEntered);
+        const canMarkTeacherAbsent =
+            statusKey !== 'completed' &&
+            statusKey !== 'pending_feedback' &&
+            statusKey.indexOf('cancelled') !== 0 &&
+            !(statusKey === 'absent' && String(b.absentType || '') === 'teacher') &&
+            !(statusKey === 'absent' && String(b.absentType || '') === 'student') &&
+            !teacherAlreadyIn;
         const studentLabel = b.studentName || b.studentId || '—';
         const teacherDisplay = b.teacherName || teacherLabel(b.teacherId) || b.teacherId || '—';
         const t = teachers.find(x=>normId(x.teacherId)===normId(b.teacherId));
@@ -321,6 +338,9 @@
                 : '')+
             '</div>'+
             '<div class="as-drawer-actions">'+
+            (canMarkTeacherAbsent
+                ? '<button type="button" class="as-danger" id="as-mark-teacher-absent">Mark teacher absent</button>'
+                : '')+
             (studentProfileId
                 ? '<a class="primary" href="/admin/admin-view-user-profile.html?type=student&id='+encodeURIComponent(studentProfileId)+'" target="_blank" rel="noopener">View student profile</a>'
                 : '')+
@@ -330,6 +350,34 @@
                     ? '<a class="secondary" href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(b.teacherId)+'">Filter by this teacher</a>'
                     : ''))+
             '</div>';
+        const absentBtn = document.getElementById('as-mark-teacher-absent');
+        if (absentBtn) {
+            absentBtn.onclick = async function () {
+                const ok = window.confirm('Mark this teacher absent for this class? The student keeps the credit and can book again. The teacher is not paid for this class.');
+                if (!ok) return;
+                absentBtn.disabled = true;
+                try {
+                    const r = await fetch('/api/admin/booking/' + encodeURIComponent(id) + '/teacher-absent', {
+                        method: 'POST',
+                        headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ reason: 'Teacher could not attend. No substitute was available.' })
+                    });
+                    const body = await r.json().catch(function () { return {}; });
+                    if (!r.ok || body.success === false) {
+                        window.alert(body.error || 'Could not mark the teacher absent.');
+                        absentBtn.disabled = false;
+                        return;
+                    }
+                    window.alert(body.message || 'Teacher marked absent.');
+                    document.getElementById('as-drawer').classList.remove('open');
+                    load().catch(console.error);
+                } catch (err) {
+                    window.alert('Could not mark the teacher absent.');
+                    absentBtn.disabled = false;
+                }
+            };
+        }
     }
     document.getElementById('as-view').onchange = e=>{ view=e.target.value; load().catch(console.error); };
     document.getElementById('as-teacher').onchange = ()=> load().catch(console.error);

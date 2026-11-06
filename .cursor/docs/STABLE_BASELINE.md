@@ -672,6 +672,8 @@ When a teacher cancels, the booking stays. QA approval moves it to another teach
 - The schedule cell shows the level mark and the student name. Do not put the long substitute remark in the cell label.
 - Emergency proof is still checked after approval with `POST /api/admin/cancellation-proof-validity`. Invalid proof clears the penalty waiver. It does not move the class back.
 - A teacher who already entered the classroom is not replaced.
+- **Reject** tells that teacher in the bell and on Class Information (**Cancellation rejected**). The class stays with them.
+- If nobody can cover and the teacher cannot attend, an admin opens that class on Teacher Schedule and chooses **Mark teacher absent**. The student keeps the credit and can book again. The teacher is not paid for that class. A teacher who already entered cannot be marked absent this way.
 
 ## Teacher schedule time — Philippine time
 

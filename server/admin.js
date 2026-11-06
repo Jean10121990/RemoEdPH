@@ -4475,6 +4475,18 @@ function adminScheduleManilaUtcWindow(start, end) {
 }
 
 /** Booking.date/time are UTC wall-clock parts. Teacher grids and this admin grid are Philippine time. */
+function manilaClassLabel(booking) {
+  if (!booking) return '';
+  const wall = manilaWallFromInstant(booking.dateTimeUtc);
+  if (!wall) {
+    const raw = `${booking.date || ''} ${booking.time || ''}`.trim();
+    return raw;
+  }
+  const { DateTime } = require('luxon');
+  const dt = DateTime.fromISO(`${wall.date}T${wall.time}`, { zone: 'Asia/Manila' });
+  return dt.isValid ? dt.toFormat('ccc, LLL d · h:mm a') + ' PHT' : `${wall.date} ${wall.time}`;
+}
+
 function manilaWallFromInstant(value) {
   if (!value) return null;
   const { DateTime } = require('luxon');
@@ -5333,14 +5345,28 @@ router.post('/review-cancellation', async (req, res) => {
       await cancellationRequest.save();
       try {
         const booking = await Booking.findById(cancellationRequest.bookingId);
+        if (booking) {
+          booking.cancellationReason = {
+            reason: cancellationRequest.emergencyReason || cancellationRequest.reason || 'Cancellation rejected',
+            rejected: true,
+          };
+          await booking.save();
+        }
         const { notifyTeacher } = require('./services/notifyService');
+        const when = manilaClassLabel(booking);
         const note = adminNotes ? ` Notes: ${adminNotes}` : '';
-        await notifyTeacher(
-          cancellationRequest.requesterId || (booking && booking.teacherId),
-          'cancellation-rejected',
-          `Your cancellation request was rejected. The class stays with you.${note}`,
-          { bookingId: String(cancellationRequest.bookingId || ''), actionUrl: '/teacher-class-table.html' }
-        );
+        const message = `Your cancellation was rejected${when ? ` for ${when}` : ''}. The class stays with you.${note}`;
+        const ids = new Set();
+        if (cancellationRequest.requesterId) ids.add(String(cancellationRequest.requesterId));
+        if (booking && booking.teacherId) ids.add(String(booking.teacherId));
+        for (const id of ids) {
+          await notifyTeacher(id, 'cancellation-rejected', message, {
+            bookingId: String(cancellationRequest.bookingId || ''),
+            actionUrl: '/teacher-class-table.html',
+            importance: 'actionable',
+            skipDedupe: true,
+          });
+        }
       } catch (nErr) {
         console.warn('Cancellation reject notify failed:', nErr.message);
       }
@@ -5495,6 +5521,76 @@ router.get('/booking/:bookingId', async (req, res) => {
   } catch (err) {
     console.error('Error fetching booking details:', err);
     res.status(500).json({ error: 'Failed to fetch booking details' });
+  }
+});
+
+// Admin marks the current teacher absent when nobody can cover and the teacher cannot attend.
+// Auth: admin JWT (same router as the schedule). Does not spend the student's credit.
+router.post('/booking/:bookingId/teacher-absent', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+    const status = String(booking.status || '').toLowerCase();
+    if (status === 'completed' || status === 'pending_feedback') {
+      return res.status(400).json({ success: false, error: 'This class is already finished.' });
+    }
+    if (status.startsWith('cancelled')) {
+      return res.status(400).json({ success: false, error: 'This class is already cancelled.' });
+    }
+    if (booking.absentType === 'student' || (status === 'absent' && booking.absentType !== 'teacher')) {
+      return res.status(400).json({ success: false, error: 'This class is already marked student absent.' });
+    }
+    if (booking.attendance && booking.attendance.teacherEntered) {
+      return res.status(400).json({ success: false, error: 'This teacher already entered the class.' });
+    }
+    if (status === 'absent' && booking.absentType === 'teacher') {
+      return res.json({ success: true, message: 'This teacher is already marked absent for this class.' });
+    }
+
+    const reason = String((req.body && req.body.reason) || '').trim().slice(0, 300);
+    booking.status = 'absent';
+    booking.absentType = 'teacher';
+    booking.absentMarkedAt = new Date();
+    booking.absentReason = reason || 'Teacher could not attend. Marked absent by admin.';
+    if (!booking.attendance) booking.attendance = {};
+    booking.attendance.teacherEntered = false;
+    booking.attendance.absentChecked = true;
+    await booking.save();
+
+    const when = manilaClassLabel(booking);
+    const { notifyTeacher, notifyStudent } = require('./services/notifyService');
+    const teacherMessage = `You were marked absent${when ? ` for ${when}` : ''}. This class is not paid. The student can book again.`;
+    const studentMessage = `Your teacher could not attend${when ? ` (${when})` : ''}. Your credit was not used. Open Book a Class to choose another time.`;
+    try {
+      await notifyTeacher(booking.teacherId, 'absent', teacherMessage, {
+        bookingId: String(booking._id),
+        actionUrl: '/teacher-class-table.html',
+        importance: 'actionable',
+        skipDedupe: true,
+      });
+    } catch (nErr) {
+      console.warn('Teacher-absent teacher notify failed:', nErr.message);
+    }
+    try {
+      await notifyStudent(booking.studentId, 'reschedule-available', studentMessage, {
+        bookingId: String(booking._id),
+        actionUrl: '/student-book.html',
+        importance: 'actionable',
+        skipDedupe: true,
+      });
+    } catch (nErr) {
+      console.warn('Teacher-absent student notify failed:', nErr.message);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Teacher marked absent. The student keeps the credit and can book again.',
+    });
+  } catch (err) {
+    console.error('Mark teacher absent error:', err);
+    return res.status(500).json({ success: false, error: 'Could not mark the teacher absent.' });
   }
 });
 

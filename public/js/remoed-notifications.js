@@ -183,6 +183,7 @@
       t === 'teacher-late' ||
       t === 'peer-message' ||
       t === 'cancellation-request' ||
+      t === 'cancellation-rejected' ||
       t === 'profile-reminder' ||
       t === 'tos-reminder' ||
       t === 'privacy-reminder'
