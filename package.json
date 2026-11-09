@@ -25,6 +25,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@sentry/browser": "^10.49.0",
     "@sentry/node": "^10.49.0",
     "adm-zip": "^0.6.0",

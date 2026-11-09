@@ -60,6 +60,10 @@ const app = express();
 // Reduce fingerprinting: hide Express signature header.
 app.disable('x-powered-by');
 
+// marketingAI routes
+const marketingAiRoutes = require('./routes/marketingAi');
+app.use(marketingAiRoutes);
+
 // Reverse proxies (nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
 // trust proxy is enabled when that header is present, or it throws ValidationError (see ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
 const trustProxyRaw = process.env.TRUST_PROXY;

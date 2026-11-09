@@ -41,8 +41,127 @@
 <body>
   <div class="page" id="app">Loading…</div>
   <script src="js/admin-session.js"></script>
+  <!-- RemoEdPH AI Marketing Specialist Panel -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+      <h5 class="fw-bold mb-1">🤖 RemoEdPH AI Marketing Specialist</h5>
+      <p class="text-muted small mb-3">Gemini Powered</p>
+  
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Content Type</label>
+          <select id="aiContentType" class="form-select">
+            <option value="Facebook Group Post">Facebook Group Post</option>
+            <option value="Parent Email Outreach">Parent Email Outreach</option>
+            <option value="Social Media Ad Copy">Social Media Ad Copy</option>
+          </select>
+        </div>
+  
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Target Region / Country</label>
+          <select id="aiTargetMarket" class="form-select">
+            <option value="Taiwan">Taiwan</option>
+            <option value="Japan">Japan</option>
+            <option value="South Korea">South Korea</option>
+            <option value="General International (Asia)">General International (Asia)</option>
+          </select>
+        </div>
+  
+        <div class="col-md-12">
+          <label class="form-label fw-semibold">Key Topic / Highlights to Include</label>
+          <textarea id="aiTopicDetails" class="form-control" rows="3" placeholder="e.g., Highlight our free level assessment, 1-on-1 live lesson with Remo the robot, and friendly teachers."></textarea>
+        </div>
+  
+        <div class="col-md-12 d-flex justify-content-end">
+          <button id="btnGenerateAi" type="button" onclick="generateMarketingCopy()" class="btn btn-primary px-4">
+            ✨ Generate Marketing Copy
+          </button>
+        </div>
+      </div>
+  
+      <hr class="my-4">
+  
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label fw-bold mb-0">Generated Copy Variations</label>
+        <button id="btnCopyText" type="button" onclick="copyAiOutput()" class="btn btn-sm btn-outline-secondary">
+          📋 Copy to Clipboard
+        </button>
+      </div>
+  
+      <textarea id="aiOutputBox" class="form-control p-3 bg-light rounded" rows="8" readonly placeholder="Pumili ng options sa itaas at i-click ang 'Generate Marketing Copy' para makagawa ng custom marketing post o email reply."></textarea>
+    </div>
+  </div>
   <script>
-    var tab = new URLSearchParams(location.search).get('tab') || 'leads';
+    // RemoEdPH AI Marketing Specialist Functions
+    async function generateMarketingCopy() {
+  const contentTypeEl = document.getElementById('aiContentType');
+  const targetMarketEl = document.getElementById('aiTargetMarket');
+  const topicDetailsEl = document.getElementById('aiTopicDetails');
+  const outputBox = document.getElementById('aiOutputBox');
+  const btn = document.getElementById('btnGenerateAi');
+
+  const topicDetails = topicDetailsEl ? topicDetailsEl.value : '';
+
+  if (!topicDetails.trim()) {
+    alert('Please enter a key topic or details for the post.');
+    return;
+  }
+
+  if (btn) {
+
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating...';
+  }
+  if (outputBox) {
+    outputBox.value = 'Generating marketing copy options... Please wait.';
+  }
+
+  try {
+    const res = await fetch('/api/admin/marketing/ai-generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contentType: contentTypeEl ? contentTypeEl.value : 'Facebook Group Post',
+        targetMarket: targetMarketEl ? targetMarketEl.value : 'Taiwan',
+        topicDetails: topicDetails
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      if (outputBox) outputBox.value = data.content;
+    } else {
+      if (outputBox) outputBox.value = '❌ Error: ' + (data.message || 'Failed to generate content.');
+    }
+  } catch (err) {
+    if (outputBox) outputBox.value = '❌ Network Error: Could not reach server.';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '✨ Generate Marketing Copy';
+    }
+  }
+}
+
+function copyAiOutput() {
+  const outputBox = document.getElementById('aiOutputBox');
+  if (!outputBox || !outputBox.value.trim()) return;
+
+  navigator.clipboard.writeText(outputBox.value).then(() => {
+    const btn = document.getElementById('btnCopyText');
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '✅ Copied!';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 2000);
+    }
+  });
+}
+    var tab = new URLSearchParams(location.search).get('tab') || 'leads';  
     function token() {
       try {
         if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) {
