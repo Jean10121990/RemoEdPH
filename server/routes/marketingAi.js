@@ -23,10 +23,10 @@ router.post('/api/admin/marketing/ai-generate', async (req, res) => {
 Your tone is warm, professional, encouraging, and highly converting for parents. 
 RemoEdPH features interactive AI character-led lessons with characters Remo the Robot, Ed, and Sophia.`;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: systemInstruction
-    });
+  const model = genAI.getGenerativeModel({
+  model: 'gemini-pro', // Palitan ng gemini-pro
+  systemInstruction: systemInstruction
+});
 
     const prompt = `
 Task: Create ${contentType}
