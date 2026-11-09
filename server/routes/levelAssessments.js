@@ -130,6 +130,35 @@ function esc(value) {
   }[c]));
 }
 
+function scoreOutOf100(score) {
+  const n = Number(score);
+  if (!Number.isFinite(n)) return '—/100';
+  return Math.round(n) + '/100';
+}
+
+function recommendedLearningLevel(cefrLevel, score) {
+  const c = String(cefrLevel || '').trim().toUpperCase();
+  if (c === 'PRE-A1' || c === 'PRE A1') return 'Pre-Beginner';
+  if (c === 'A2') return 'Elementary';
+  if (c === 'B1') return 'Intermediate';
+  if (c === 'B2') return 'Upper Intermediate';
+  if (c === 'A1') {
+    const s = Number(score);
+    if (Number.isFinite(s) && s < 50) return 'Pre-Beginner';
+    return 'Beginner';
+  }
+  if (!c) return 'Beginner';
+  return 'Beginner';
+}
+
+function displayCefrLevel(cefrLevel, score) {
+  const c = String(cefrLevel || '').trim();
+  if (c) return c;
+  const s = Number(score);
+  if (Number.isFinite(s) && s < 50) return 'Pre-A1';
+  return 'A1';
+}
+
 function trialInviteFor(lead) {
   const to = String(lead.parentEmail || '').trim();
   const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').replace(/\/$/, '');
@@ -139,25 +168,77 @@ function trialInviteFor(lead) {
     encodeURIComponent(lead.token) +
     '&email=' +
     encodeURIComponent(to);
-  const child = String(lead.childName || 'your child').trim() || 'your child';
-  const subject = 'Sign up to claim your free trial lessons';
-  const shareText =
-    'Sign up to claim free trial lessons for ' + child + ' at no cost. Use the same email from the level assessment: ' + registerUrl;
+  const homeUrl = base + '/';
+  const child = String(lead.childName || '').trim();
+  const scoreLine = scoreOutOf100(lead.score);
+  const cefr = displayCefrLevel(lead.cefrLevel, lead.score);
+  const recommended = recommendedLearningLevel(lead.cefrLevel, lead.score);
+  const subject = "RemoEdPH — Your child's level assessment results and free registration";
+  const thanksChild = child
+    ? 'Thank you for letting ' + child + ' complete the RemoEdPH Free English Level Assessment!'
+  : 'Thank you for letting your child complete the RemoEdPH Free English Level Assessment!';
   const text =
-    'Hello,\n\n' +
-    'Sign up to claim free trial lessons for ' + child + ' at no cost. Use the same email you used for the level assessment:\n\n' +
-    registerUrl + '\n\n— RemoEdPH';
+    'Dear Parent/Guardian,\n\n' +
+    thanksChild +
+    " We're excited to be part of your child's English-learning journey.\n\n" +
+    "🌟 Your Child's Assessment Results\n\n" +
+    '- Assessment Score: ' + scoreLine + '\n' +
+    '- CEFR Level: ' + cefr + '\n' +
+    '- Recommended Learning Level: ' + recommended + '\n\n' +
+    "These results help us understand your child's current English abilities and recommend suitable learning activities.\n\n" +
+    "🎉 What's Next?\n\n" +
+    'Your child can continue learning English with RemoEdPH by creating a FREE parent account!\n\n' +
+    'With free registration, you can:\n\n' +
+    "- Access your child's learning dashboard.\n" +
+    '- Explore age-appropriate English learning activities.\n' +
+    '- Try our FREE Interactive Lesson.\n' +
+    '- Discover a fun, encouraging English-learning environment.\n\n' +
+    '👉 Register for FREE:\n' +
+    registerUrl + '\n\n' +
+    '✅ No registration fee\n' +
+    '✅ No payment required to get started\n' +
+    '✅ Free interactive lesson\n\n' +
+    'We look forward to welcoming your family to RemoEdPH, where children can develop English confidence, curiosity, and good character!\n\n' +
+    'Warm regards,\n' +
+    'RemoEdPH Team\n' +
+    'Learning English with Confidence and Character\n' +
+    homeUrl;
+  const shareText = text;
   const html =
-    '<p>Hello,</p>' +
-    '<p>Sign up to claim <strong>free trial lessons</strong> for <strong>' + esc(child) + '</strong> at no cost. Use the same email you used for the level assessment.</p>' +
-    '<p><a href="' + esc(registerUrl) + '">Sign up and claim free trial lessons</a></p>' +
-    '<p>— RemoEdPH</p>';
-  return { to, child, subject, text, shareText, html, registerUrl };
+    '<p>Dear Parent/Guardian,</p>' +
+    '<p>' + esc(thanksChild) + " We're excited to be part of your child's English-learning journey.</p>" +
+    '<p><strong>🌟 Your Child\'s Assessment Results</strong></p>' +
+    '<ul>' +
+    '<li><strong>Assessment Score:</strong> ' + esc(scoreLine) + '</li>' +
+    '<li><strong>CEFR Level:</strong> ' + esc(cefr) + '</li>' +
+    '<li><strong>Recommended Learning Level:</strong> ' + esc(recommended) + '</li>' +
+    '</ul>' +
+    "<p>These results help us understand your child's current English abilities and recommend suitable learning activities.</p>" +
+    "<p><strong>🎉 What's Next?</strong></p>" +
+    '<p>Your child can continue learning English with RemoEdPH by creating a <strong>FREE parent account</strong>!</p>' +
+    '<p>With free registration, you can:</p>' +
+    '<ul>' +
+    "<li>Access your child's learning dashboard.</li>" +
+    '<li>Explore age-appropriate English learning activities.</li>' +
+    '<li>Try our <strong>FREE Interactive Lesson</strong>.</li>' +
+    '<li>Discover a fun, encouraging English-learning environment.</li>' +
+    '</ul>' +
+    '<p><strong>👉 Register for FREE:</strong><br><a href="' + esc(registerUrl) + '">' + esc(registerUrl) + '</a></p>' +
+    '<p>✅ No registration fee<br>✅ No payment required to get started<br>✅ Free interactive lesson</p>' +
+    '<p>We look forward to welcoming your family to RemoEdPH, where children can develop English confidence, curiosity, and good character!</p>' +
+    '<p>Warm regards,<br><strong>RemoEdPH Team</strong><br><em>Learning English with Confidence and Character</em><br><a href="' +
+    esc(homeUrl) +
+    '">' +
+    esc(homeUrl) +
+    '</a></p>';
+  return { to, child: child || 'your child', subject, text, shareText, html, registerUrl };
 }
 
 async function loadUnregisteredLead(id) {
   if (!mongoose.isValidObjectId(id)) return { error: 'Invalid lead.', status: 400 };
-  const lead = await AssessmentTrial.findById(id).select('parentEmail childName token redeemedByStudentId');
+  const lead = await AssessmentTrial.findById(id).select(
+    'parentEmail childName token redeemedByStudentId cefrLevel score'
+  );
   if (!lead || lead.redeemedByStudentId) return { error: 'This lead is already registered.', status: 404 };
   if (!String(lead.parentEmail || '').trim()) return { error: 'This lead has no email.', status: 400 };
   return { lead };
