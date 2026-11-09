@@ -2,17 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Siguraduhing nababasa ang JSON body sa route na ito
+// Middleware para masigurong mababasa ang JSON body
 router.use(express.json());
 
+// Kunin ang API Key mula sa .env
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.post('/api/admin/marketing/ai-generate', async (req, res) => {
   try {
-    // Maglagay ng default empty object {} para maiwasan ang destructuring error
     const { contentType, targetMarket, topicDetails } = req.body || {};
 
-    if (!topicDetails) {
+    if (!topicDetails || !topicDetails.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Topic details are required.'
@@ -23,10 +23,11 @@ router.post('/api/admin/marketing/ai-generate', async (req, res) => {
 Your tone is warm, professional, encouraging, and highly converting for parents. 
 RemoEdPH features interactive AI character-led lessons with characters Remo the Robot, Ed, and Sophia.`;
 
-  const model = genAI.getGenerativeModel({
-  model: 'gemini-pro', // Palitan ng gemini-pro
-  systemInstruction: systemInstruction
-});
+    // Standard Gemini model name
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: systemInstruction
+    });
 
     const prompt = `
 Task: Create ${contentType}
@@ -45,10 +46,10 @@ Please generate 2 distinct variations of the copy with emojis, clear formatting,
     });
 
   } catch (error) {
-    console.error('Error generating AI marketing content:', error);
+    console.error('Error generating AI marketing content:', error.message || error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to generate content. Please check server logs or API key setup.'
+      message: error.message || 'Failed to generate content. Please check server logs or API key setup.'
     });
   }
 });
