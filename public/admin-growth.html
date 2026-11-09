@@ -32,6 +32,9 @@
     .bubble.in { background: #e8f4fd; }
     .bubble.out { background: #ecfdf5; margin-left: auto; }
     .row-actions { display: flex; gap: 8px; align-items: center; }
+    .interactive-count { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0 0; font-size: 1rem; }
+    .interactive-count strong { display: block; font-size: 0.95rem; }
+    .interactive-count span { font-size: 1.75rem; font-weight: 800; color: var(--teal); }
     @media (max-width: 800px) { .split { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 110px 1fr 28px; } }
   </style>
 </head>
@@ -273,8 +276,11 @@
       var splitRows = ['teachers', 'affiliates', 'partners', 'ops', 'growth', 'charity', 'buffer', 'profit'].map(function (k) {
         return { name: k, count: Math.round(Number(split[k]) || 0) };
       });
+      var interactiveDone = Number(data.interactiveLessonsCompleted);
+      if (!isFinite(interactiveDone) || interactiveDone < 0) interactiveDone = 0;
       document.getElementById('app').innerHTML =
         '<h1>Reports</h1><p class="muted">' + esc(data.note || '') + '</p>' +
+        '<p class="interactive-count"><strong>Free interactive lessons completed</strong><span>' + interactiveDone + '</span></p>' +
         bars('Funnel', stages, 'No level assessments yet. They show up here when a family finishes the quiz in HR Hub → Level Assessment.') +
         '<div class="split">' + bars('New assessments by week', weeks) + bars('Source', sources, 'No source mix yet.') + '</div>' +
         '<section class="chart"><h2>Monthly money split (PHP)</h2><p class="muted">Partners 2%, growth 5%, charity 5%, buffer 5%, operations ₱6,400. Profit is what remains.</p>' +

@@ -4,6 +4,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const Lead = require('../models/Lead');
 const AssessmentTrial = require('../models/AssessmentTrial');
+const TrialBooking = require('../models/TrialBooking');
 const Student = require('../models/Student');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
@@ -160,9 +161,10 @@ router.get('/gmail', requireGrowth('growth.inbox'), (_req, res) => {
 });
 
 router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
-  const [chatLeads, trials] = await Promise.all([
+  const [chatLeads, trials, interactiveLessonsCompleted] = await Promise.all([
     Lead.find({}).select('stage source createdAt').lean(),
     AssessmentTrial.find({}).select('redeemedByStudentId createdAt').lean(),
+    TrialBooking.countDocuments({ status: 'completed' }),
   ]);
   const studentIds = trials.map((t) => t.redeemedByStudentId).filter(Boolean);
   const students = studentIds.length
@@ -247,7 +249,8 @@ router.get('/reports', requireGrowth('growth.reports'), async (req, res) => {
     sources,
     weeks,
     count: trials.length,
-    note: 'Assessment done is the same list as HR Hub → Level Assessment. Registered means they created a student account. Paid plan means that account has a paid subscription.',
+    interactiveLessonsCompleted: Number(interactiveLessonsCompleted) || 0,
+    note: 'Assessment done is the same list as HR Hub → Level Assessment. Registered means they created a student account. Paid plan means that account has a paid subscription. Free interactive lessons completed counts families who finished the free interactive lesson, not a live class.',
     readOnlyAskAi: true,
     split: monthlySplit({ grossPhp, teachersPhp, affiliatesPhp }),
   });
