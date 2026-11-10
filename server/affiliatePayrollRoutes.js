@@ -31,6 +31,11 @@ function maskAccount(value) {
   return '•'.repeat(Math.max(0, s.length - 4)) + s.slice(-4);
 }
 
+function hasAccountNumber(row) {
+  const n = String((row && row.accountNumber) || '').trim();
+  return !!n && n.toUpperCase() !== 'QR';
+}
+
 async function requirePayroll(req, res, key) {
   const role = req.user && (req.user.adminRole || 'super_admin');
   if (await roleHas(role, key)) return true;
@@ -60,6 +65,7 @@ router.get('/', async (req, res) => {
           bankName: w.bankName || '',
           accountName: w.accountName || '',
           accountNumber: w.accountNumber || '',
+          hasQr: !!w.qrCode,
           status: w.status,
           requestedAt: w.requestedAt || null,
           paidAt: w.paidAt || null,
@@ -72,6 +78,26 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('GET affiliate payroll:', err);
     res.status(500).json({ success: false, message: 'Could not load affiliate payroll' });
+  }
+});
+
+// Admin-only: returns the QR image the affiliate uploaded for this payout.
+router.get('/:affiliateId/:withdrawalId/qr', async (req, res) => {
+  try {
+    if (!(await requirePayroll(req, res, 'acct:payroll_view'))) return;
+    const affiliate = await Affiliate.findById(req.params.affiliateId).select('withdrawals');
+    if (!affiliate) return res.status(404).json({ success: false, message: 'Affiliate not found' });
+    const row = (affiliate.withdrawals || []).id(req.params.withdrawalId);
+    if (!row || !row.qrCode) return res.status(404).json({ success: false, message: 'No QR code on file' });
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(row.qrCode);
+    if (!m) return res.status(404).json({ success: false, message: 'QR code is invalid' });
+    res.set('Content-Type', m[1]);
+    res.set('Cache-Control', 'private, no-store');
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.send(Buffer.from(m[2], 'base64'));
+  } catch (err) {
+    console.error('GET affiliate payroll qr:', err);
+    res.status(500).json({ success: false, message: 'Could not load the QR code' });
   }
 });
 
@@ -96,7 +122,7 @@ router.post('/:affiliateId/:withdrawalId/complete', async (req, res) => {
         '',
         `Your affiliate payout of ${amount} was sent on ${when}.`,
         `Method: ${row.method || ''} ${row.bankName || ''}`.trim(),
-        `Account: ${maskAccount(row.accountNumber)}`,
+        hasAccountNumber(row) ? `Account: ${maskAccount(row.accountNumber)}` : 'Sent to the QR code you uploaded.',
         '',
         'It now appears in Transaction history on your affiliate dashboard.',
       ].join('\n');
@@ -104,7 +130,7 @@ router.post('/:affiliateId/:withdrawalId/complete', async (req, res) => {
         <h2 style="margin:0 0 12px;">Affiliate payout sent</h2>
         <p>Hello ${escHtml(affiliate.name)},</p>
         <p>Your payout of <strong style="color:#15803d;">${escHtml(amount)}</strong> was sent on ${escHtml(when)}.</p>
-        <p>Account ending ${escHtml(maskAccount(row.accountNumber))}. It is now in Transaction history on your affiliate dashboard.</p>
+        <p>${hasAccountNumber(row) ? 'Account ending ' + escHtml(maskAccount(row.accountNumber)) : 'Sent to the QR code you uploaded'}. It is now in Transaction history on your affiliate dashboard.</p>
       </div>`;
       try {
         await sendRawEmail(affiliate.email, `RemoEd affiliate payout sent — ${amount}`, html, text);

@@ -31,9 +31,10 @@ const affiliateSchema = new mongoose.Schema(
       {
         amountPhp: { type: Number, required: true, min: 0 },
         method: { type: String, default: '' },
-        accountName: { type: String, default: '' },
-        accountNumber: { type: String, default: '' },
-        bankName: { type: String, default: '' },
+        accountName: String,
+        accountNumber: String,
+        bankName: String,
+        qrCode: String,
         status: { type: String, enum: ['requested', 'paid'], default: 'requested' },
         requestedAt: { type: Date, default: Date.now },
         paidAt: { type: Date, default: null },
