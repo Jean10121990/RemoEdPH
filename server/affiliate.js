@@ -418,8 +418,15 @@ router.post('/withdraw', verifyToken, requireAffiliate, async (req, res) => {
     if (method !== 'gcash' && method !== 'bank') {
       return res.status(400).json({ success: false, message: 'Choose GCash or bank' });
     }
-    if (!accountName || !accountNumber || (method === 'bank' && !bankName)) {
-      return res.status(400).json({ success: false, message: 'Account name and number are required' });
+    const qrCode = String((req.body && req.body.qrCode) || '');
+    if (!accountName) {
+      return res.status(400).json({ success: false, message: 'Account name is required' });
+    }
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(qrCode)) {
+      return res.status(400).json({ success: false, message: 'Please upload a valid QR code image.' });
+    }
+    if (qrCode.length > 3 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'QR image is too large.' });
     }
     const balance = await affiliateBalancePhp(affiliate);
     if (amount > balance.availablePhp) {
@@ -440,6 +447,7 @@ router.post('/withdraw', verifyToken, requireAffiliate, async (req, res) => {
       accountName,
       accountNumber,
       bankName: method === 'bank' ? bankName : 'GCash',
+      qrCode,
       status: 'requested',
       requestedAt: new Date(),
       payoutDate,

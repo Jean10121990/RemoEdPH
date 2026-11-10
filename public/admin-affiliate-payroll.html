@@ -50,6 +50,25 @@
     </div>
     <script src="js/admin-session.js"></script>
     <script>
+        document.addEventListener('click', async function (ev) {
+            var b = ev.target && ev.target.closest ? ev.target.closest('.qr-btn') : null;
+            if (!b) return;
+            ev.stopPropagation();
+            ev.preventDefault();
+            var w = window.open('', '_blank');
+            try {
+                var res = await fetch('/api/admin/affiliate-payroll/' + encodeURIComponent(b.getAttribute('data-qaff')) + '/' + encodeURIComponent(b.getAttribute('data-qid')) + '/qr', {
+                    headers: { Authorization: 'Bearer ' + token() }
+                });
+                if (!res.ok) throw new Error('No QR code on file');
+                var url = URL.createObjectURL(await res.blob());
+                if (w) w.location = url; else window.open(url, '_blank');
+            } catch (e) {
+                if (w) w.close();
+                alert(e.message || 'Could not load the QR code');
+            }
+        }, true);
+
         function token() {
             try {
                 if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) return RemoedAdminSession.getAuthToken() || '';
@@ -91,7 +110,7 @@
                     var action = r.status === 'paid'
                         ? '<span class="muted">Sent ' + esc(when(r.paidAt)) + '</span>'
                         : '<button type="button" class="ok" data-aff="' + esc(r.affiliateId) + '" data-id="' + esc(r.withdrawalId) + '">Mark Completed</button>';
-                    return '<tr><td>' + esc(when(r.requestedAt)) + '</td><td><strong>' + esc(r.name) + '</strong><br><span class="muted">' + esc(r.email) + '</span></td><td><strong>' + esc(peso(r.amountPhp)) + '</strong></td><td>' + esc(r.bankName || r.method) + '</td><td>' + esc(r.accountName) + '</td><td><code>' + esc(r.accountNumber) + '</code></td><td>' + esc(r.payoutDate) + '</td><td>' + esc(r.status === 'paid' ? 'Sent' : 'Waiting') + '</td><td>' + action + '</td></tr>';
+                    return '<tr><td>' + esc(when(r.requestedAt)) + '</td><td><strong>' + esc(r.name) + '</strong><br><span class="muted">' + esc(r.email) + '</span></td><td><strong>' + esc(peso(r.amountPhp)) + '</strong></td><td>' + esc(r.bankName || r.method) + '</td><td>' + esc(r.accountName) + '</td><td>' + (r.hasQr ? '<button type="button" class="qr-btn" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-weight:700;" data-qaff="' + esc(r.affiliateId) + '" data-qid="' + esc(r.withdrawalId) + '">View QR</button>' : '<code>' + esc(r.accountNumber) + '</code>') + '</td><td>' + esc(r.payoutDate) + '</td><td>' + esc(r.status === 'paid' ? 'Sent' : 'Waiting') + '</td><td>' + action + '</td></tr>';
                 }).join('');
             }
             msg.textContent = rows.length + ' row' + (rows.length === 1 ? '' : 's');
