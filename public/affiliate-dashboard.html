@@ -79,6 +79,7 @@
     .pw-grid input {
       width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px;
     }
+    .pw-grid input[type="file"] { padding: 8px; background: #fff; }
     .pw-msg { margin: 10px 0 0; font-size: 0.85rem; font-weight: 600; display: none; }
     .pw-msg.ok { color: #166534; display: block; }
     .pw-msg.err { color: #991b1b; display: block; }
@@ -133,8 +134,11 @@
             <select id="wd-method"><option value="gcash">GCash</option><option value="bank">Bank</option></select>
           </div>
           <div><label for="wd-name">Account name</label><input id="wd-name" required /></div>
-          <div><label for="wd-number">Account number</label><input id="wd-number" required /></div>
-          <div><label for="wd-bank">Bank name</label><input id="wd-bank" /></div>
+          <div>
+            <label for="wd-qr">Upload your QR code</label>
+            <input id="wd-qr" type="file" accept="image/png,image/jpeg,image/webp" required />
+            <img id="wd-qr-preview" alt="QR preview" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e2e8f0;border-radius:8px;" />
+          </div>
         </div>
         <div style="margin-top:12px;"><button type="submit" class="btn">Request withdrawal</button></div>
         <p id="wd-msg" class="pw-msg"></p>
@@ -455,13 +459,75 @@
         }
       }
 
+      // ---- QR upload helpers ----
+      var wdQr = document.getElementById('wd-qr');
+      var wdQrPreview = document.getElementById('wd-qr-preview');
+      var QR_MAX_BYTES = 5 * 1024 * 1024; // reject originals over 5MB
+      var QR_MAX_SIDE = 1000;             // downscale big images to keep upload small
+
+      function fileToQrDataUrl(file) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onerror = function () { reject(new Error('Could not read the image.')); };
+          reader.onload = function () {
+            var img = new Image();
+            img.onerror = function () { reject(new Error('That file is not a valid image.')); };
+            img.onload = function () {
+              var scale = Math.min(1, QR_MAX_SIDE / Math.max(img.width, img.height));
+              var w = Math.round(img.width * scale);
+              var h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              var ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, w, h);
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.9));
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (wdQr) {
+        wdQr.addEventListener('change', function () {
+          var f = wdQr.files && wdQr.files[0];
+          var msg = document.getElementById('wd-msg');
+          if (!f) { wdQrPreview.style.display = 'none'; return; }
+          if (['image/png', 'image/jpeg', 'image/webp'].indexOf(f.type) === -1) {
+            msg.className = 'pw-msg err';
+            msg.textContent = 'Please upload a PNG, JPG or WEBP image.';
+            wdQr.value = '';
+            wdQrPreview.style.display = 'none';
+            return;
+          }
+          if (f.size > QR_MAX_BYTES) {
+            msg.className = 'pw-msg err';
+            msg.textContent = 'QR image is too large (max 5MB).';
+            wdQr.value = '';
+            wdQrPreview.style.display = 'none';
+            return;
+          }
+          msg.className = 'pw-msg';
+          msg.textContent = '';
+          wdQrPreview.src = URL.createObjectURL(f);
+          wdQrPreview.style.display = 'block';
+        });
+      }
+
       var wdForm = document.getElementById('wd-form');
       if (wdForm) {
         wdForm.addEventListener('submit', async function (ev) {
           ev.preventDefault();
           var msg = document.getElementById('wd-msg');
+          msg.className = 'pw-msg';
           msg.textContent = 'Sending…';
           try {
+            var file = wdQr.files && wdQr.files[0];
+            if (!file) throw new Error('Please upload your QR code.');
+            var qrCode = await fileToQrDataUrl(file);
             var res = await fetch('/api/affiliate/withdraw', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
@@ -469,15 +535,21 @@
                 amountPhp: Number(document.getElementById('wd-amount').value),
                 method: document.getElementById('wd-method').value,
                 accountName: document.getElementById('wd-name').value,
-                accountNumber: document.getElementById('wd-number').value,
-                bankName: document.getElementById('wd-bank').value,
+                qrCode: qrCode, // data URL (image/jpeg, base64)
+                // kept for backward compatibility with the current API
+                accountNumber: 'QR',
+                bankName: '',
               }),
             });
             var body = await res.json();
             if (!res.ok || !body.success) throw new Error(body.message || 'Request failed');
+            msg.className = 'pw-msg ok';
             msg.textContent = 'Requested. Next payout ' + (body.nextPayoutDate || '') + '.';
+            wdForm.reset();
+            wdQrPreview.style.display = 'none';
             load();
           } catch (err) {
+            msg.className = 'pw-msg err';
             msg.textContent = err.message || String(err);
           }
         });
