@@ -158,7 +158,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-28" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-29" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
 
@@ -371,11 +371,13 @@
       </ol>
       <div class="home-media" id="live-class-visuals" aria-label="What a live class looks like">
         <div class="home-media__video" id="live-class-video"></div>
-        <div class="home-media__shots">
-          <div class="home-media__shot" id="live-class-shot-1"></div>
-          <div class="home-media__shot" id="live-class-shot-2"></div>
-          <div class="home-media__shot" id="live-class-shot-3"></div>
-          <div class="home-media__shot" id="live-class-shot-4"></div>
+        <div class="home-shot-carousel" id="home-shot-carousel" hidden>
+          <button type="button" class="home-shot-carousel__arrow" id="home-shot-prev" aria-label="Previous picture">‹</button>
+          <div class="home-shot-carousel__viewport" id="home-shot-viewport" tabindex="0" aria-label="RemoEd pictures">
+            <div class="home-media__shots" id="home-shot-track"></div>
+          </div>
+          <button type="button" class="home-shot-carousel__arrow" id="home-shot-next" aria-label="Next picture">›</button>
+          <p class="home-shot-carousel__count" id="home-shot-count" aria-live="polite"></p>
         </div>
       </div>
       <p class="home-how__cta">
@@ -795,7 +797,7 @@
     </div>
 
     <a class="home-chat-float" id="home-chat-float" hidden>Chat</a>
-    <script src="/js/landing-config.js?v=landing-5"></script>
+    <script src="/js/landing-config.js?v=landing-6"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
     <script src="/js/plan-pricing.js?v=pricing-3"></script>
@@ -1399,14 +1401,68 @@
           if (picture) picture.removeAttribute("src");
           document.body.classList.remove("home-shot-open");
         }
+        function renderShotCarousel(media) {
+          var carousel = document.getElementById("home-shot-carousel");
+          var track = document.getElementById("home-shot-track");
+          var viewport = document.getElementById("home-shot-viewport");
+          var prev = document.getElementById("home-shot-prev");
+          var next = document.getElementById("home-shot-next");
+          var count = document.getElementById("home-shot-count");
+          if (!carousel || !track || !viewport) return;
+          var shots = [];
+          if (media && Array.isArray(media.screenshots)) shots = media.screenshots;
+          shots = shots.filter(function (shot) { return shot && shot.src; });
+          track.textContent = "";
+          if (!shots.length) {
+            carousel.hidden = true;
+            return;
+          }
+          shots.forEach(function (shot) {
+            var card = document.createElement("div");
+            card.className = "home-media__shot";
+            track.appendChild(card);
+            fillMediaSlot(card, shot.src, "", shot.alt || "RemoEd");
+          });
+          carousel.hidden = false;
+          function stepSize() {
+            var card = track.querySelector(".home-media__shot");
+            if (!card) return viewport.clientWidth;
+            return card.getBoundingClientRect().width + 16;
+          }
+          function visibleCount() {
+            return window.innerWidth <= 768 ? 1 : 2;
+          }
+          function sync() {
+            var max = viewport.scrollWidth - viewport.clientWidth;
+            if (prev) prev.disabled = viewport.scrollLeft <= 4;
+            if (next) next.disabled = viewport.scrollLeft >= max - 4;
+            if (!count) return;
+            var size = stepSize() || 1;
+            var start = Math.round(viewport.scrollLeft / size) + 1;
+            var end = Math.min(shots.length, start + visibleCount() - 1);
+            count.textContent = start + (end > start ? "–" + end : "") + " of " + shots.length;
+          }
+          function move(direction) {
+            viewport.scrollBy({ left: direction * stepSize(), behavior: "smooth" });
+          }
+          if (!carousel.dataset.ready) {
+            carousel.dataset.ready = "1";
+            if (prev) prev.addEventListener("click", function () { move(-1); });
+            if (next) next.addEventListener("click", function () { move(1); });
+            viewport.addEventListener("scroll", sync, { passive: true });
+            viewport.addEventListener("keydown", function (event) {
+              if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
+              if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
+            });
+            window.addEventListener("resize", sync);
+          }
+          sync();
+        }
         function applyMediaAndTrust() {
           var cfg = landingCfg();
           var media = cfg.media || {};
           fillMediaSlot(document.getElementById("live-class-video"), media.videoUrl || "", "Class video coming");
-          fillMediaSlot(document.getElementById("live-class-shot-1"), media.screenshot1 || "", "Screenshot coming", "A RemoEd live classroom, with the lesson on screen and the teacher connected");
-          fillMediaSlot(document.getElementById("live-class-shot-2"), media.screenshot2 || "", "Screenshot coming", "A free interactive lesson: drag the cookie to the mouth");
-          fillMediaSlot(document.getElementById("live-class-shot-3"), media.screenshot3 || "", "Screenshot coming", "Parent report after the free lesson");
-          fillMediaSlot(document.getElementById("live-class-shot-4"), media.screenshot4 || "", "Screenshot coming", "Play and Learn vocabulary games");
+          renderShotCarousel(media);
           var trust = cfg.trust || {};
           var body = document.getElementById("home-trust-body");
           var section = document.getElementById("home-trust");

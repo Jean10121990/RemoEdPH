@@ -26,10 +26,18 @@ window.RemoEdLanding = {
   foundingSeats: null,
   media: {
     videoUrl: "",
-    screenshot1: "/images/live-classroom-welcome.jpg?v=1",
-    screenshot2: "/images/free-lesson-cookie.jpg?v=1",
-    screenshot3: "/images/free-lesson-report.jpg?v=1",
-    screenshot4: "/images/play-learn-vocabulary.jpg?v=1",
+    screenshots: [
+      { src: "/images/live-classroom-welcome.jpg?v=1", alt: "A RemoEd live classroom, with the lesson on screen and the teacher connected" },
+      { src: "/images/free-lesson-cookie.jpg?v=1", alt: "A free interactive lesson: drag the cookie to the mouth" },
+      { src: "/images/free-lesson-report.jpg?v=1", alt: "Parent report after the free lesson" },
+      { src: "/images/play-learn-vocabulary.jpg?v=1", alt: "Play and Learn vocabulary games" },
+      { src: "/images/virtual-garden.jpg?v=1", alt: "Virtual Garden with a Narra seed" },
+      { src: "/images/kids-dashboard.jpg?v=1", alt: "Kids home with the next class, stars, and current lesson" },
+      { src: "/images/book-a-class.jpg?v=1", alt: "Booking a class time and level" },
+      { src: "/images/lesson-hello-red.jpg?v=1", alt: "Lesson video for Hello, Red" },
+      { src: "/images/learning-journey.jpg?v=1", alt: "Little Seeds learning journey map" },
+      { src: "/images/class-information.jpg?v=1", alt: "Class information before entering the live classroom" }
+    ]
   },
   contact: {
     messenger: "",

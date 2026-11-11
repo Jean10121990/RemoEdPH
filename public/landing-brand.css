@@ -2449,7 +2449,6 @@ body.page-index .hero-lesson-link {
   font-weight: 700;
 }
 body.page-index .home-ages__grid,
-body.page-index .home-media__shots,
 body.page-index .home-affiliate {
   display: grid;
   gap: 16px;
@@ -2494,6 +2493,69 @@ body.page-index .home-media__zoom {
 body.page-index .home-media__zoom:focus-visible {
   outline: 3px solid #0a7fd4;
   outline-offset: 3px;
+}
+body.page-index .home-shot-carousel {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-template-areas: "prev view next" "count count count";
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 16px;
+}
+body.page-index .home-shot-carousel[hidden] {
+  display: none;
+}
+body.page-index .home-shot-carousel__arrow {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 2px solid #0a7fd4;
+  background: #fff;
+  color: #0a7fd4;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+body.page-index .home-shot-carousel__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+body.page-index #home-shot-prev { grid-area: prev; }
+body.page-index .home-shot-carousel__viewport {
+  grid-area: view;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+body.page-index .home-shot-carousel__viewport::-webkit-scrollbar {
+  display: none;
+}
+body.page-index #home-shot-next { grid-area: next; }
+body.page-index .home-shot-carousel__count {
+  grid-area: count;
+  margin: 0;
+  text-align: center;
+  color: #4a6575;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+body.page-index .home-shot-carousel .home-media__shots {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+}
+body.page-index .home-shot-carousel .home-media__shot {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  box-sizing: border-box;
+}
+@media (min-width: 769px) {
+  body.page-index .home-shot-carousel .home-media__shot {
+    flex-basis: calc(50% - 8px);
+  }
 }
 body.page-index .home-shot-lightbox {
   position: fixed;
@@ -2601,8 +2663,7 @@ body.page-index .home-affiliate__actions {
   margin: 14px 0 0;
 }
 @media (min-width: 768px) {
-  body.page-index .home-ages__grid,
-  body.page-index .home-media__shots {
+  body.page-index .home-ages__grid {
     grid-template-columns: 1fr 1fr;
   }
 }
