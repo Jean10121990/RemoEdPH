@@ -19,7 +19,11 @@
     button.side { min-height: 34px; font-size: 0.82rem; white-space: nowrap; }
     button.ghost { background: #fff; color: #0A7FD4; border: 2px solid #0A7FD4; }
     button:disabled { opacity: 0.55; cursor: default; }
-    .err { color: #991b1b; min-height: 1.2em; }
+    .err { color: #991b1b; min-height: 1.2em; font-weight: 600; }
+    .err.ok { color: #047857; }
+    .toast { position: fixed; right: 16px; bottom: 16px; max-width: min(360px, calc(100vw - 32px)); background: #047857; color: #fff; font-weight: 700; padding: 12px 16px; border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25); z-index: 30; }
+    .toast.err { background: #b91c1c; }
+    .toast[hidden] { display: none; }
     .preview { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20; }
     .preview[hidden] { display: none; }
     .sheet { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2); }
@@ -36,7 +40,8 @@
     <p>Leads who finished the free level assessment, including people who have not registered.</p>
     <button type="button" id="level-invite">Level assessment invite</button>
     <button type="button" id="invite">Send subscription invite</button>
-    <p class="err" id="err"></p>
+    <p class="err" id="err" role="status" aria-live="polite"></p>
+    <p class="toast" id="toast" hidden role="status" aria-live="polite"></p>
     <table>
       <thead>
         <tr>
@@ -80,6 +85,21 @@
         return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
           return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
         });
+      }
+      var toastTimer = null;
+      function showToast(message, isError) {
+        var toast = document.getElementById('toast');
+        var err = document.getElementById('err');
+        if (!toast) return;
+        toast.textContent = message || '';
+        toast.classList.toggle('err', !!isError);
+        toast.hidden = !message;
+        if (err) {
+          err.textContent = message || '';
+          err.classList.toggle('ok', !isError && !!message);
+        }
+        if (toastTimer) clearTimeout(toastTimer);
+        if (message) toastTimer = setTimeout(function () { toast.hidden = true; }, isError ? 8000 : 6000);
       }
       function load() {
         fetch('/api/admin/level-assessments', { headers: { Authorization: 'Bearer ' + token() }, credentials: 'include' })
@@ -243,14 +263,30 @@
         });
       });
       document.getElementById('invite').addEventListener('click', function () {
+        var btn = document.getElementById('invite');
         var ids = Array.prototype.map.call(document.querySelectorAll('input[data-id]:checked'), function (el) { return el.getAttribute('data-id'); });
+        if (!ids.length) {
+          showToast('Select at least one lead who is not registered yet.', true);
+          return;
+        }
+        btn.disabled = true;
+        showToast('Sending subscription invites…', false);
         fetch('/api/admin/level-assessments/invite', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ ids: ids })
         }).then(function (r) { return r.json(); }).then(function (body) {
-          document.getElementById('err').textContent = body && body.success ? ('Sent ' + body.sent + ' invite(s).') : ((body && body.error) || 'Could not send.');
+          btn.disabled = false;
+          if (body && body.success) {
+            var n = Number(body.sent) || 0;
+            showToast(n ? ('Subscription invite sent to ' + n + ' parent' + (n === 1 ? '' : 's') + '.') : 'No invites were sent. Check that each lead has an email and is not registered.', n ? false : true);
+          } else {
+            showToast((body && body.error) || 'Could not send subscription invites.', true);
+          }
+        }).catch(function () {
+          btn.disabled = false;
+          showToast('Could not send subscription invites.', true);
         });
       });
       load();
