@@ -4042,7 +4042,7 @@ const startServer = () => {
             );
             autoEndOverlongClasses().catch(() => {});
           }, 12000);
-          console.log(`⏰ Live classes auto-end 40 minutes after the scheduled start`);
+          console.log(`⏰ Live classes auto-end 30 minutes after the scheduled start`);
           
           // Run initial check for any students who should already be marked as absent
           setTimeout(checkAndMarkAbsentStudents, 5000); // Run after 5 seconds

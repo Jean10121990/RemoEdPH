@@ -1,5 +1,5 @@
 /**
- * End live classes 40 minutes after the scheduled start.
+ * End live classes 30 minutes after the scheduled start.
  * Closing the classroom tab does not mark anyone absent and does not consume a credit.
  * Credits still move only when the teacher submits wrap-up feedback.
  */
@@ -41,7 +41,7 @@ async function forgetRoom(booking) {
     realtime.emitToRoom(room, 'class-finished', {
       room,
       userType: 'teacher',
-      reason: 'forty-minutes',
+      reason: 'thirty-minutes',
     });
   } catch (_e) {
     /* socket optional */
@@ -49,8 +49,8 @@ async function forgetRoom(booking) {
 }
 
 /**
- * Bookings still marked live after start + 40 minutes become pending feedback.
- * End timestamps are the hard stop, not "now", so duration stays 40 minutes.
+ * Bookings still marked live after start + 30 minutes become pending feedback.
+ * End timestamps are the hard stop, not "now", so duration stays 30 minutes.
  */
 async function autoEndOverlongClasses(nowMs = Date.now()) {
   const maxMs = CLASS_MAX_MINUTES * 60 * 1000;
@@ -85,7 +85,7 @@ async function autoEndOverlongClasses(nowMs = Date.now()) {
 }
 
 /**
- * Shorten stored end times that ran past the 40-minute mark (tab left open).
+ * Shorten stored end times that ran past the 30-minute mark (tab left open).
  * Does not change status, credits, or attendance.
  */
 async function capStoredClassDuration() {

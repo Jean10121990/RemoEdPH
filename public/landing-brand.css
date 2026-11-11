@@ -2474,8 +2474,12 @@ body.page-index .home-media__empty {
 body.page-index .home-media__video iframe,
 body.page-index .home-media__shot img {
   width: 100%;
+  height: auto;
+  display: block;
   border: 0;
   border-radius: 12px;
+  object-fit: contain;
+  background: #f8fafc;
 }
 body.page-index .plan-per-class {
   font-size: 1.35rem;

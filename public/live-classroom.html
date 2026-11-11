@@ -9111,7 +9111,7 @@
         });
 
         if (userType === 'teacher' && absentRuleStartMs != null) {
-          const CLASS_MAX_MS = 40 * 60 * 1000;
+          const CLASS_MAX_MS = 30 * 60 * 1000;
           const delay = absentRuleStartMs + CLASS_MAX_MS - Date.now();
           const autoEndLiveClass = async () => {
             if (window.__lcSessionAutoEnded) return;
@@ -9128,7 +9128,7 @@
                   }
                 });
               } catch (endErr) {
-                console.warn('40-minute end-session:', endErr);
+                console.warn('30-minute end-session:', endErr);
               }
             }
             if (socket && socket.connected) {
@@ -9136,7 +9136,7 @@
                 room,
                 userType: 'teacher',
                 teacherId: userId || username,
-                reason: 'forty-minutes'
+                reason: 'thirty-minutes'
               });
             }
             if (peerConnection) {
@@ -9149,7 +9149,7 @@
             }
             if (socket) socket.disconnect();
             showPostClassFeedbackLayer();
-            alert('This class has ended (40 minutes). Please leave class feedback before you close this page.');
+            alert('This class has ended (30 minutes). Please leave class feedback before you close this page.');
           };
           if (delay <= 0) autoEndLiveClass();
           else setTimeout(autoEndLiveClass, delay);
@@ -9401,8 +9401,8 @@
           alert(
             data.reason === 'student-absent'
               ? 'This class was marked absent. The classroom will close now.'
-              : data.reason === 'forty-minutes'
-                ? 'This class has ended (40 minutes). The classroom will close now.'
+              : data.reason === 'thirty-minutes' || data.reason === 'forty-minutes'
+                ? 'This class has ended (30 minutes). The classroom will close now.'
                 : 'The teacher has finished the class. The classroom will close now.'
           );
           

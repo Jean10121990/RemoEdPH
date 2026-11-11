@@ -26,8 +26,10 @@ window.RemoEdLanding = {
   foundingSeats: null,
   media: {
     videoUrl: "",
-    screenshot1: "",
-    screenshot2: "",
+    screenshot1: "/images/live-classroom-welcome.jpg?v=1",
+    screenshot2: "/images/free-lesson-cookie.jpg?v=1",
+    screenshot3: "/images/free-lesson-report.jpg?v=1",
+    screenshot4: "/images/play-learn-vocabulary.jpg?v=1",
   },
   contact: {
     messenger: "",

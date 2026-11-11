@@ -158,7 +158,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-26" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-27" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
 
@@ -374,6 +374,8 @@
         <div class="home-media__shots">
           <div class="home-media__shot" id="live-class-shot-1"></div>
           <div class="home-media__shot" id="live-class-shot-2"></div>
+          <div class="home-media__shot" id="live-class-shot-3"></div>
+          <div class="home-media__shot" id="live-class-shot-4"></div>
         </div>
       </div>
       <p class="home-how__cta">
@@ -426,10 +428,10 @@
       <h2 class="visually-hidden" id="affiliate-join-title">Independent Growth Affiliate</h2>
       <a class="home-affiliate__frame" href="/affiliate-apply.html">
         <img
-          src="/images/affiliate-preregistration.jpg?v=landscape-1"
+          src="/images/affiliate-preregistration.jpg?v=hq-1"
           alt="Affiliate pre-registration is open. Join as an Independent Growth Affiliate."
-          width="1600"
-          height="500"
+          width="3072"
+          height="1143"
         />
       </a>
       <p class="home-affiliate__actions">
@@ -793,7 +795,7 @@
     </div>
 
     <a class="home-chat-float" id="home-chat-float" hidden>Chat</a>
-    <script src="/js/landing-config.js?v=landing-2"></script>
+    <script src="/js/landing-config.js?v=landing-5"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
     <script src="/js/plan-pricing.js?v=pricing-3"></script>
@@ -1321,7 +1323,7 @@
           var sticky = document.getElementById("home-sticky-cta");
           if (sticky) sticky.setAttribute("aria-label", primary);
         }
-        function fillMediaSlot(el, url, emptyLabel) {
+        function fillMediaSlot(el, url, emptyLabel, altText) {
           if (!el) return;
           el.textContent = "";
           if (!url) {
@@ -1334,7 +1336,8 @@
           if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)) {
             var img = document.createElement("img");
             img.src = url;
-            img.alt = "";
+            img.alt = altText || "RemoEd live class";
+            img.decoding = "async";
             el.appendChild(img);
             return;
           }
@@ -1354,8 +1357,10 @@
           var cfg = landingCfg();
           var media = cfg.media || {};
           fillMediaSlot(document.getElementById("live-class-video"), media.videoUrl || "", "Class video coming");
-          fillMediaSlot(document.getElementById("live-class-shot-1"), media.screenshot1 || "", "Screenshot coming");
-          fillMediaSlot(document.getElementById("live-class-shot-2"), media.screenshot2 || "", "Screenshot coming");
+          fillMediaSlot(document.getElementById("live-class-shot-1"), media.screenshot1 || "", "Screenshot coming", "A RemoEd live classroom, with the lesson on screen and the teacher connected");
+          fillMediaSlot(document.getElementById("live-class-shot-2"), media.screenshot2 || "", "Screenshot coming", "A free interactive lesson: drag the cookie to the mouth");
+          fillMediaSlot(document.getElementById("live-class-shot-3"), media.screenshot3 || "", "Screenshot coming", "Parent report after the free lesson");
+          fillMediaSlot(document.getElementById("live-class-shot-4"), media.screenshot4 || "", "Screenshot coming", "Play and Learn vocabulary games");
           var trust = cfg.trust || {};
           var body = document.getElementById("home-trust-body");
           var section = document.getElementById("home-trust");
