@@ -36,7 +36,11 @@ window.RemoEdLanding = {
       { src: "/images/book-a-class.jpg?v=1", alt: "Booking a class time and level" },
       { src: "/images/lesson-hello-red.jpg?v=1", alt: "Lesson video for Hello, Red" },
       { src: "/images/learning-journey.jpg?v=1", alt: "Little Seeds learning journey map" },
-      { src: "/images/class-information.jpg?v=1", alt: "Class information before entering the live classroom" }
+      { src: "/images/class-information.jpg?v=1", alt: "Class information before entering the live classroom" },
+      { src: "/images/parents-mode.jpg?v=1", alt: "Parents mode asks for the parent PIN" },
+      { src: "/images/my-classes.jpg?v=1", alt: "My Classes list of booked lessons" },
+      { src: "/images/trophy-cabinet.jpg?v=1", alt: "Trophy cabinet of skill, character, and habit badges" },
+      { src: "/images/my-level.jpg?v=1", alt: "My Level explains the child's English level" }
     ]
   },
   contact: {
