@@ -33,9 +33,7 @@
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-leaderboard" aria-selected="false" aria-controls="mkt-panel-leaderboard" data-tab="leaderboard">Referral Leaderboard</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-affiliates" aria-selected="false" aria-controls="mkt-panel-affiliates" data-tab="affiliates">Affiliates</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-leads" data-tab="leads">Leads</button>
-                    <button type="button" class="hub-tab" role="tab" id="mkt-tab-inbox" data-tab="inbox">Inbox</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-posts" data-tab="posts">Posts</button>
-                    <button type="button" class="hub-tab" role="tab" id="mkt-tab-campaigns" data-tab="campaigns">Campaigns</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-reports" data-tab="reports">Reports</button>
                 </div>
 
@@ -49,9 +47,7 @@
                     <iframe id="iframe-mkt-affiliates" class="hub-iframe" title="Affiliates"></iframe>
                 </div>
                 <div id="mkt-panel-leads" class="hub-panel" hidden><iframe id="iframe-mkt-leads" class="hub-iframe" title="Leads"></iframe></div>
-                <div id="mkt-panel-inbox" class="hub-panel" hidden><iframe id="iframe-mkt-inbox" class="hub-iframe" title="Inbox"></iframe></div>
                 <div id="mkt-panel-posts" class="hub-panel" hidden><iframe id="iframe-mkt-posts" class="hub-iframe" title="Posts"></iframe></div>
-                <div id="mkt-panel-campaigns" class="hub-panel" hidden><iframe id="iframe-mkt-campaigns" class="hub-iframe" title="Campaigns"></iframe></div>
                 <div id="mkt-panel-reports" class="hub-panel" hidden><iframe id="iframe-mkt-reports" class="hub-iframe" title="Reports"></iframe></div>
             </div>
         </div>
@@ -63,9 +59,7 @@
                 leaderboard: { id: 'iframe-mkt-leaderboard', src: '/admin/admin-referral-leaderboard.html?adminEmbed=1&embedVer=1' },
                 affiliates: { id: 'iframe-mkt-affiliates', src: '/admin/admin-affiliates.html?adminEmbed=1&embedVer=1' },
                 leads: { id: 'iframe-mkt-leads', src: '/admin/admin-growth.html?tab=leads&embedVer=2' },
-                inbox: { id: 'iframe-mkt-inbox', src: '/admin/admin-growth.html?tab=inbox&embedVer=2' },
                 posts: { id: 'iframe-mkt-posts', src: '/admin/admin-growth.html?tab=posts&embedVer=4' },
-                campaigns: { id: 'iframe-mkt-campaigns', src: '/admin/admin-growth.html?tab=campaigns&embedVer=2' },
                 reports: { id: 'iframe-mkt-reports', src: '/admin/admin-growth.html?tab=reports&embedVer=4' }
             };
 
@@ -112,15 +106,13 @@
                 var key = 'commissions';
                 if (tab === 'leaderboard') key = 'leaderboard';
                 else if (tab === 'affiliates') key = 'affiliates';
-                else if (['leads', 'inbox', 'posts', 'campaigns', 'reports'].indexOf(tab) >= 0) key = tab;
+                else if (['leads', 'posts', 'reports'].indexOf(tab) >= 0) key = tab;
                 var map = [
                     { key: 'commissions', t: 'mkt-tab-commissions', p: 'mkt-panel-commissions' },
                     { key: 'leaderboard', t: 'mkt-tab-leaderboard', p: 'mkt-panel-leaderboard' },
                     { key: 'affiliates', t: 'mkt-tab-affiliates', p: 'mkt-panel-affiliates' },
                     { key: 'leads', t: 'mkt-tab-leads', p: 'mkt-panel-leads' },
-                    { key: 'inbox', t: 'mkt-tab-inbox', p: 'mkt-panel-inbox' },
                     { key: 'posts', t: 'mkt-tab-posts', p: 'mkt-panel-posts' },
-                    { key: 'campaigns', t: 'mkt-tab-campaigns', p: 'mkt-panel-campaigns' },
                     { key: 'reports', t: 'mkt-tab-reports', p: 'mkt-panel-reports' }
                 ];
                 map.forEach(function (row) {
@@ -141,7 +133,8 @@
                 var h = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
                 if (h === 'leaderboard') return 'leaderboard';
                 if (h === 'affiliates') return 'affiliates';
-                if (['leads', 'inbox', 'posts', 'campaigns', 'reports'].indexOf(h) >= 0) return h;
+                if (h === 'inbox' || h === 'campaigns') return 'commissions';
+                if (['leads', 'posts', 'reports'].indexOf(h) >= 0) return h;
                 return 'commissions';
             }
 
