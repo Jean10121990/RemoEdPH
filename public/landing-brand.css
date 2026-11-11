@@ -320,9 +320,9 @@ body.page-index .hero.japandi-hero.hero-fullbleed {
   overflow: hidden;
   width: 100%;
   max-width: none !important;
-  min-height: min(92vh, 900px);
+  min-height: min(78vh, 760px);
   margin: 0 !important;
-  padding: clamp(48px, 8vh, 96px) 0 !important;
+  padding: clamp(28px, 4vh, 56px) 0 !important;
   display: flex;
   align-items: center;
   text-align: left !important;
@@ -373,8 +373,8 @@ body.page-index .hero-fullbleed .hero-grid {
   margin: 0;
   padding: 0 clamp(20px, 5vw, 72px);
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(280px, 1.05fr);
-  gap: clamp(24px, 4vw, 56px);
+  grid-template-columns: minmax(340px, 1.12fr) minmax(280px, 0.88fr);
+  gap: clamp(16px, 2.5vw, 36px);
   align-items: center;
   text-align: left;
 }
@@ -386,7 +386,7 @@ body.page-index .hero-fullbleed .hero-copy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 34rem;
+  max-width: 40rem;
   padding: clamp(20px, 3vw, 36px) clamp(18px, 2.5vw, 32px);
   border-radius: 20px;
   background: linear-gradient(
@@ -424,13 +424,14 @@ body.page-index .hero-fullbleed .hero-copy .brand-kicker {
 }
 
 body.page-index .hero-fullbleed .hero-copy h1 {
-  font-size: clamp(1.5rem, 2.2vw, 1.85rem) !important;
-  font-weight: 700;
+  font-size: clamp(2rem, 3vw, 2.55rem) !important;
+  font-weight: 800;
   color: var(--remo-ink) !important;
-  max-width: 36rem;
-  margin: 0 0 16px !important;
-  line-height: 1.3 !important;
+  max-width: 14em;
+  margin: 0 0 14px !important;
+  line-height: 1.15 !important;
   text-align: left !important;
+  text-wrap: balance;
   text-shadow: none !important;
 }
 
@@ -460,16 +461,34 @@ body.page-index .cta-buttons {
   width: 100%;
 }
 
-body.page-index .assessment-cta-wrap {
+body.page-index .hero-fullbleed .assessment-cta-wrap {
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start !important;
-  width: auto;
+  gap: 10px;
+  width: 100%;
   margin: 0;
 }
 
-body.page-index .assessment-cta-cluster {
-  gap: 0;
+body.page-index .hero-fullbleed .assessment-cta-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   padding: 0;
   margin: 0;
+}
+
+body.page-index .hero-fullbleed .assessment-cta-cluster .cta-btn {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 12px 22px;
+  font-size: 1rem;
+  line-height: 1.2;
+  box-sizing: border-box;
 }
 
 body.page-index .assessment-cta-cluster .hero-mascot-picture {
@@ -493,7 +512,7 @@ body.page-index .hero-fullbleed .hero-media {
 
 body.page-index .hero-fullbleed .hero-media__frame {
   position: relative;
-  width: min(100%, 640px);
+  width: min(100%, 720px);
   overflow: hidden;
   border-radius: 0;
   background: transparent;
@@ -1140,6 +1159,15 @@ body.page-index .assessment-cta-cluster .cta-btn.primary {
   font-size: 1.05rem;
 }
 
+body.page-index .hero-fullbleed .assessment-cta-cluster .cta-btn.primary,
+body.page-index .hero-fullbleed .assessment-cta-cluster .cta-btn.secondary {
+  min-width: 0;
+  min-height: 52px;
+  padding: 12px 22px;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
 body.page-index .assessment-cta-cluster .hero-mascot-picture {
   display: none !important;
 }
@@ -1252,7 +1280,8 @@ body.page-index .hero-illustration {
     padding: 36px 0 48px !important;
   }
 
-  body.page-index .assessment-cta-cluster .cta-btn.primary {
+  body.page-index .assessment-cta-cluster .cta-btn.primary,
+  body.page-index .hero-fullbleed .assessment-cta-cluster .cta-btn {
     width: 100%;
     max-width: 320px;
     text-align: center;
@@ -1278,8 +1307,13 @@ body.page-index .hero-illustration {
 
   body.page-index .hero-fullbleed .cta-buttons,
   body.page-index .hero-fullbleed .assessment-cta-wrap {
+    align-items: center;
     justify-content: center !important;
     width: 100%;
+  }
+
+  body.page-index .hero-fullbleed .assessment-cta-cluster {
+    justify-content: center;
   }
 }
 

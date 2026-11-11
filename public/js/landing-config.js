@@ -12,7 +12,7 @@ window.RemoEdLanding = {
   subcopy:
     "Take the free 2-minute assessment, get your child's English level, and try a free interactive lesson. No card needed.",
   headlineAngles: {
-    default: "Help your 3–6 year old speak English with confidence, from home",
+    default: "Help your 3\u20136\u00a0year\u00a0old speak English with confidence, from home",
     phonics: "Your child's first English words, with a live teacher",
     busy: "Short live English classes for little learners, 25 minutes at a time",
   },
