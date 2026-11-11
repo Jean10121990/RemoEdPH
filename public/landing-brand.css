@@ -424,11 +424,12 @@ body.page-index .hero-fullbleed .hero-copy .brand-kicker {
 }
 
 body.page-index .hero-fullbleed .hero-copy h1 {
-  font-size: clamp(2.25rem, 4.6vw, 3.5rem) !important;
+  font-size: clamp(1.5rem, 2.2vw, 1.85rem) !important;
+  font-weight: 700;
   color: var(--remo-ink) !important;
-  max-width: 14ch;
+  max-width: 36rem;
   margin: 0 0 16px !important;
-  line-height: 1.12 !important;
+  line-height: 1.3 !important;
   text-align: left !important;
   text-shadow: none !important;
 }
