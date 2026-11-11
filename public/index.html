@@ -158,31 +158,42 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-29" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-30" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
 
   <body class="page-index">
     <!-- Navigation -->
-    <nav class="navbar">
+    <header class="navbar">
       <a class="logo-section" href="/" aria-label="RemoEdPH home">
-        <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="180" height="56" />
+        <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="220" height="84" />
       </a>
-      <div class="nav-buttons" id="nav-buttons">
-        <a href="#benefits" class="nav-btn">Why Learn at Home</a>
-        <a href="#our-teachers" class="nav-btn" data-i18n="nav_teachers">Our Teachers</a>
-        <a href="#plans" class="nav-btn" data-i18n="nav_plans">Plans</a>
-        <a href="#who-we-are" class="nav-btn">About</a>
-        <a href="/login/" class="nav-btn" data-i18n="nav_login">Login</a>
+      <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-buttons">
+        <span class="nav-menu-toggle__bars" aria-hidden="true"></span>
+      </button>
+      <nav class="nav-buttons" id="nav-buttons" aria-label="Main">
+        <a href="#benefits" class="nav-btn" data-nav-section="benefits">Why RemoEd</a>
+        <a href="#how-it-works" class="nav-btn" data-nav-section="how-it-works">How It Works</a>
+        <a href="#plans" class="nav-btn" data-nav-section="plans" data-i18n="nav_plans">Plans</a>
+        <a href="/teachers" class="nav-btn" data-i18n="nav_teachers">Our Teachers</a>
+        <a href="/about" class="nav-btn">About</a>
+        <a href="/site-faq.html" class="nav-btn">FAQ</a>
+        <a href="/login/" class="nav-btn nav-btn--login" data-i18n="nav_login">Login</a>
+        <div class="nav-lang">
+          <button type="button" class="nav-lang__btn" id="nav-lang-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="nav-lang-list">
+            <svg class="nav-lang__globe" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+              <path d="M3 12h18M12 3c2.5 2.8 3.8 5.8 3.8 9s-1.3 6.2-3.8 9c-2.5-2.8-3.8-5.8-3.8-9s1.3-6.2 3.8-9z" fill="none" stroke="currentColor" stroke-width="1.8"></path>
+            </svg>
+            <span class="nav-lang__code" id="nav-lang-code">EN</span>
+            <span class="nav-lang__chev" aria-hidden="true"></span>
+          </button>
+          <select class="site-lang-switcher" id="nav-lang-switcher" aria-label="Language" tabindex="-1"></select>
+          <ul class="nav-lang__list" id="nav-lang-list" role="listbox" hidden></ul>
+        </div>
         <a href="/student-assessment.html?guest=1" class="nav-btn primary" id="nav-primary-cta" data-track="nav_cta">Take the Free Assessment</a>
-        <select
-          class="site-lang-switcher"
-          id="nav-lang-switcher"
-          aria-label="Language"
-        ></select>
-      </div>
-      <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
-    </nav>
+      </nav>
+    </header>
     <a href="/student-assessment.html?guest=1" class="home-sticky-cta" id="home-sticky-cta" hidden aria-label="Take the Free Assessment" data-track="sticky_cta">Take the Free Assessment</a>
 
     <!-- Hero: full-bleed visual plane + left copy band -->
@@ -1184,17 +1195,166 @@
       (function () {
         var btn = document.getElementById("nav-menu-toggle");
         var links = document.getElementById("nav-buttons");
+        var header = document.querySelector("body.page-index .navbar");
+        var select = document.getElementById("nav-lang-switcher");
+        var langBtn = document.getElementById("nav-lang-btn");
+        var langList = document.getElementById("nav-lang-list");
+        var langCode = document.getElementById("nav-lang-code");
+
+        function setMenu(open) {
+          if (!btn || !links) return;
+          links.classList.toggle("is-open", open);
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+          btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+          document.body.classList.toggle("nav-menu-open", open);
+        }
+
+        function shortCode(value) {
+          var map = {
+            en: "EN", tl: "TL", "zh-CN": "简", "zh-TW": "繁", ja: "JA", ko: "KO",
+            es: "ES", pt: "PT", fr: "FR", de: "DE", ar: "AR", hi: "HI", id: "ID",
+            ms: "MS", vi: "VI", th: "TH"
+          };
+          if (map[value]) return map[value];
+          return String(value || "en").slice(0, 2).toUpperCase();
+        }
+
+        function closeLang() {
+          if (!langBtn || !langList) return;
+          langList.hidden = true;
+          langBtn.setAttribute("aria-expanded", "false");
+        }
+
+        function openLang() {
+          if (!langList || !langBtn) return;
+          langList.hidden = false;
+          langBtn.setAttribute("aria-expanded", "true");
+        }
+
+        function buildLang() {
+          if (!select || !langList) return;
+          langList.textContent = "";
+          Array.prototype.forEach.call(select.options, function (opt) {
+            var item = document.createElement("li");
+            item.setAttribute("role", "option");
+            item.tabIndex = -1;
+            item.dataset.value = opt.value;
+            item.textContent = opt.textContent;
+            if (opt.value === select.value) item.setAttribute("aria-selected", "true");
+            item.addEventListener("click", function () {
+              select.value = opt.value;
+              select.dispatchEvent(new Event("change", { bubbles: true }));
+              if (langCode) langCode.textContent = shortCode(opt.value);
+              closeLang();
+              langBtn.focus();
+            });
+            langList.appendChild(item);
+          });
+          if (langCode) langCode.textContent = shortCode(select.value);
+          var selected = select.options[select.selectedIndex];
+          langBtn.setAttribute(
+            "aria-label",
+            "Language: " + (selected ? selected.textContent : shortCode(select.value))
+          );
+        }
+
+        window.addEventListener("resize", function () {
+          if (window.matchMedia("(min-width: 1025px)").matches) setMenu(false);
+        });
+
         if (btn && links) {
           btn.addEventListener("click", function () {
-            var open = links.classList.toggle("is-open");
-            btn.setAttribute("aria-expanded", open ? "true" : "false");
-            btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+            setMenu(!links.classList.contains("is-open"));
           });
           links.addEventListener("click", function (event) {
             if (!event.target.closest("a")) return;
-            links.classList.remove("is-open");
-            btn.setAttribute("aria-expanded", "false");
-            btn.setAttribute("aria-label", "Open menu");
+            setMenu(false);
+          });
+        }
+
+        document.addEventListener("keydown", function (event) {
+          if (event.key !== "Escape") return;
+          if (langBtn && langBtn.getAttribute("aria-expanded") === "true") {
+            closeLang();
+            langBtn.focus();
+            return;
+          }
+          setMenu(false);
+        });
+
+        document.addEventListener("click", function (event) {
+          if (langBtn && langList && !langBtn.contains(event.target) && !langList.contains(event.target)) {
+            closeLang();
+          }
+          if (!header || header.contains(event.target)) return;
+          setMenu(false);
+        });
+
+        function onScroll() {
+          if (!header) return;
+          header.classList.toggle("is-scrolled", window.scrollY > 8);
+        }
+        window.addEventListener("scroll", onScroll, { passive: true });
+        onScroll();
+
+        if (langBtn && select && langList) {
+          buildLang();
+          window.addEventListener("sitei18n:languagechanged", buildLang);
+          langBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+            if (langList.hidden) openLang();
+            else closeLang();
+          });
+          langBtn.addEventListener("keydown", function (event) {
+            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            event.preventDefault();
+            openLang();
+            var opts = langList.querySelectorAll('[role="option"]');
+            if (!opts.length) return;
+            (event.key === "ArrowUp" ? opts[opts.length - 1] : opts[0]).focus();
+          });
+          langList.addEventListener("keydown", function (event) {
+            var opts = Array.prototype.slice.call(langList.querySelectorAll('[role="option"]'));
+            var index = opts.indexOf(document.activeElement);
+            if (event.key === "ArrowDown" && opts[index + 1]) {
+              event.preventDefault();
+              opts[index + 1].focus();
+            } else if (event.key === "ArrowUp" && opts[index - 1]) {
+              event.preventDefault();
+              opts[index - 1].focus();
+            } else if (event.key === "Home" && opts[0]) {
+              event.preventDefault();
+              opts[0].focus();
+            } else if (event.key === "End" && opts.length) {
+              event.preventDefault();
+              opts[opts.length - 1].focus();
+            } else if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              if (document.activeElement && document.activeElement.click) document.activeElement.click();
+            }
+          });
+        }
+
+        if ("IntersectionObserver" in window) {
+          var sectionLinks = document.querySelectorAll("[data-nav-section]");
+          var byId = {};
+          Array.prototype.forEach.call(sectionLinks, function (link) {
+            byId[link.getAttribute("data-nav-section")] = link;
+          });
+          var sectionObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              var link = byId[entry.target.id];
+              if (!link) return;
+              Array.prototype.forEach.call(sectionLinks, function (item) {
+                item.removeAttribute("aria-current");
+              });
+              link.setAttribute("aria-current", "true");
+            });
+          }, { rootMargin: "-28% 0px -55% 0px", threshold: 0.01 });
+          ["benefits", "how-it-works", "plans"].forEach(function (id) {
+            var section = document.getElementById(id);
+            if (section) sectionObserver.observe(section);
           });
         }
         var stickyCta = document.getElementById("home-sticky-cta");

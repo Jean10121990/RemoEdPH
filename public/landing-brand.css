@@ -21,8 +21,18 @@ body.page-teachers {
 }
 
 body.page-index {
+  --brand-blue: var(--remo-logo-blue);
+  --brand-green: var(--remo-logo-green);
+  --brand-yellow: var(--remo-logo-yellow);
+  --brand-cta: #006a94;
+  --header-height: 108px;
+  --header-radius: 999px;
   background: var(--remo-surface) !important;
   color: var(--remo-ink);
+}
+
+html:has(body.page-index) {
+  scroll-padding-top: 108px;
 }
 
 body.page-teachers {
@@ -50,7 +60,6 @@ body.page-teachers .navbar {
   z-index: 1100;
   width: 100%;
   box-sizing: border-box;
-  box-shadow: 0 8px 24px rgba(0, 174, 239, 0.1);
   border-bottom: 1px solid rgba(26, 58, 74, 0.08);
   background: rgba(255, 255, 255, 0.96) !important;
   backdrop-filter: blur(8px);
@@ -66,6 +75,7 @@ body.page-teachers .navbar {
   justify-content: space-between;
   gap: 16px;
   padding: 20px 40px;
+  box-shadow: 0 8px 24px rgba(0, 174, 239, 0.1);
 }
 
 /* Logo block — match index (.page-index .logo-section img / span) */
@@ -124,8 +134,7 @@ body.page-teachers .logo-section span {
   }
 }
 
-/* Nav + hero CTAs: full pill corners (match .site-lang-switcher), overrides flatter japandi radius */
-body.page-index .nav-btn,
+/* Teachers keep pill corners. Homepage text links are plain; the assessment button is the pill. */
 body.page-teachers .nav-btn,
 body.page-index .cta-btn,
 body.page-index a.cta-btn {
@@ -190,7 +199,6 @@ body.page-teachers .navbar .site-lang-switcher {
  * Header pills stay fixed size/position on hover, focus, and click.
  * (style.css used translateY + scale(1.05), which made neighbors jump.)
  */
-body.page-index .navbar .nav-btn,
 body.page-teachers .navbar .nav-btn {
   flex: 0 0 auto;
   white-space: nowrap;
@@ -199,10 +207,6 @@ body.page-teachers .navbar .nav-btn {
     box-shadow 0.2s ease, filter 0.2s ease !important;
 }
 
-body.page-index .navbar .nav-btn:hover,
-body.page-index .navbar .nav-btn:focus,
-body.page-index .navbar .nav-btn:active,
-body.page-index .navbar .nav-btn:focus-visible,
 body.page-teachers .navbar .nav-btn:hover,
 body.page-teachers .navbar .nav-btn:focus,
 body.page-teachers .navbar .nav-btn:active,
@@ -210,8 +214,7 @@ body.page-teachers .navbar .nav-btn:focus-visible {
   transform: none !important;
 }
 
-/* Outline nav — readable + brand hover (same on index + teachers) */
-body.page-index .nav-btn:not(.primary),
+/* Outline nav pills — teachers directory only */
 body.page-teachers .nav-btn:not(.primary) {
   border: 2px solid var(--remo-logo-blue) !important;
   color: var(--remo-ink) !important;
@@ -219,8 +222,6 @@ body.page-teachers .nav-btn:not(.primary) {
   box-shadow: inset 0 -3px 0 rgba(0, 168, 45, 0.28);
 }
 
-body.page-index .nav-btn:not(.primary):hover,
-body.page-index .nav-btn:not(.primary):focus-visible,
 body.page-teachers .nav-btn:not(.primary):hover,
 body.page-teachers .nav-btn:not(.primary):focus-visible {
   background: linear-gradient(
@@ -234,8 +235,7 @@ body.page-teachers .nav-btn:not(.primary):focus-visible {
   transform: none !important;
 }
 
-/* Primary nav CTA: same 2px border box as outline pills; yellow rim via shadow */
-body.page-index .nav-btn.primary,
+/* Primary nav CTA on the teachers directory */
 body.page-teachers .nav-btn.primary {
   background: linear-gradient(
     135deg,
@@ -247,8 +247,6 @@ body.page-teachers .nav-btn.primary {
   box-shadow: 0 0 0 2px rgba(253, 216, 53, 0.55), 0 6px 20px rgba(0, 143, 196, 0.35);
 }
 
-body.page-index .nav-btn.primary:hover,
-body.page-index .nav-btn.primary:focus-visible,
 body.page-teachers .nav-btn.primary:hover,
 body.page-teachers .nav-btn.primary:focus-visible {
   filter: brightness(1.05);
@@ -306,11 +304,279 @@ body.page-teachers .logo-section span {
   display: none !important;
 }
 
-body.page-index .logo-section img,
 body.page-teachers .logo-section img {
   height: 56px;
   width: auto;
   max-height: 56px;
+}
+
+body.page-index .logo-section img {
+  height: 84px;
+  width: auto;
+  max-height: 84px;
+  display: block;
+  object-fit: contain;
+}
+
+/* Homepage header: plain links, quiet Login, one filled assessment button. */
+body.page-index .navbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: var(--header-height);
+  padding: 8px 32px;
+  box-shadow: 0 1px 0 rgba(26, 58, 74, 0.04);
+}
+
+body.page-index .navbar.is-scrolled {
+  box-shadow: 0 8px 24px rgba(26, 58, 74, 0.1);
+}
+
+body.page-index .logo-section {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  line-height: 0;
+  text-decoration: none;
+}
+
+body.page-index .nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+body.page-index .navbar .nav-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  transform: none !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 8px 0 !important;
+  color: var(--remo-ink) !important;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  position: relative;
+}
+
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--brand-blue);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.18s ease;
+}
+
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login):hover,
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login):focus-visible,
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login)[aria-current="true"] {
+  color: var(--brand-blue) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login):hover::after,
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login):focus-visible::after,
+body.page-index .navbar .nav-btn:not(.primary):not(.nav-btn--login)[aria-current="true"]::after {
+  transform: scaleX(1);
+}
+
+body.page-index .navbar .nav-btn--login {
+  border: 1px solid var(--brand-blue) !important;
+  color: var(--remo-logo-blue-deep) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 10px !important;
+  padding: 8px 16px !important;
+  font-weight: 600;
+}
+
+body.page-index .navbar .nav-btn--login:hover,
+body.page-index .navbar .nav-btn--login:focus-visible {
+  color: #fff !important;
+  background: var(--brand-blue) !important;
+}
+
+body.page-index .navbar .nav-btn.primary {
+  background: var(--brand-cta) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: var(--header-radius) !important;
+  padding: 12px 22px !important;
+  font-weight: 700;
+}
+
+body.page-index .navbar .nav-btn.primary:hover,
+body.page-index .navbar .nav-btn.primary:focus-visible {
+  filter: brightness(1.08);
+  color: #fff !important;
+  background: var(--brand-cta) !important;
+}
+
+body.page-index .nav-lang {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+body.page-index #nav-lang-switcher {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+}
+
+body.page-index .nav-lang__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--remo-ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+body.page-index .nav-lang__btn:hover,
+body.page-index .nav-lang__btn[aria-expanded="true"] {
+  color: var(--brand-blue);
+  background: var(--remo-tint-blue);
+}
+
+body.page-index .nav-lang__globe {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+body.page-index .nav-lang__chev {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+}
+
+body.page-index .nav-lang__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 2;
+  min-width: 180px;
+  max-height: 280px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid rgba(26, 58, 74, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(26, 58, 74, 0.12);
+}
+
+body.page-index .nav-lang__list[hidden] {
+  display: none;
+}
+
+body.page-index .nav-lang__list [role="option"] {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--remo-ink);
+}
+
+body.page-index .nav-lang__list [role="option"]:hover,
+body.page-index .nav-lang__list [role="option"]:focus,
+body.page-index .nav-lang__list [role="option"][aria-selected="true"] {
+  background: var(--remo-tint-blue);
+  color: var(--brand-cta);
+  outline: none;
+}
+
+body.page-index .nav-menu-toggle__bars,
+body.page-index .nav-menu-toggle__bars::before,
+body.page-index .nav-menu-toggle__bars::after {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--remo-ink);
+  border-radius: 2px;
+}
+
+body.page-index .nav-menu-toggle__bars {
+  position: relative;
+}
+
+body.page-index .nav-menu-toggle__bars::before,
+body.page-index .nav-menu-toggle__bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  transition: transform 0.18s ease, top 0.18s ease;
+}
+
+body.page-index .nav-menu-toggle__bars::before {
+  top: -6px;
+}
+
+body.page-index .nav-menu-toggle__bars::after {
+  top: 6px;
+}
+
+body.page-index .nav-menu-toggle[aria-expanded="true"] .nav-menu-toggle__bars {
+  background: transparent;
+}
+
+body.page-index .nav-menu-toggle[aria-expanded="true"] .nav-menu-toggle__bars::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+body.page-index .nav-menu-toggle[aria-expanded="true"] .nav-menu-toggle__bars::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+body.page-index.nav-menu-open {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-index .navbar .nav-btn::after,
+  body.page-index .nav-menu-toggle__bars::before,
+  body.page-index .nav-menu-toggle__bars::after {
+    transition: none;
+  }
 }
 
 /* Hero: full-bleed visual plane + left copy band */
@@ -905,7 +1171,7 @@ body.page-index #core-cultural-pillars,
 body.page-index #heart-framework,
 body.page-index #vision-mission,
 body.page-index #final-cta {
-  scroll-margin-top: 88px;
+  scroll-margin-top: 108px;
 }
 
 /* Site footer — multi-column (index + teachers) */
@@ -1830,17 +2096,22 @@ body.page-index .home-teachers-actions {
 
 body.page-index .nav-menu-toggle {
   display: none;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
+  margin-left: auto;
   border-radius: 12px;
-  border: 2px solid #1ca7e7;
+  border: 1px solid rgba(26, 58, 74, 0.16);
   background: #fff;
-  font-size: 1.25rem;
   cursor: pointer;
+  flex: 0 0 auto;
 }
 
 body.page-index .nav-menu-toggle:focus-visible,
 body.page-index .nav-btn:focus-visible,
+body.page-index .nav-lang__btn:focus-visible,
+body.page-index .nav-lang__list [role="option"]:focus-visible,
 body.page-index .home-sticky-cta:focus-visible {
   outline: 3px solid #1a3a4a;
   outline-offset: 3px;
@@ -1876,28 +2147,69 @@ body.page-index .navbar .site-lang-switcher {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   body.page-index .navbar {
     flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
   }
+
   body.page-index .nav-menu-toggle {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: auto;
   }
+
   body.page-index .nav-buttons {
     display: none;
     width: 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     order: 3;
+    margin-left: 0;
+    padding: 8px 0 12px;
   }
+
   body.page-index .nav-buttons.is-open {
     display: flex;
   }
+
+  body.page-index .navbar .nav-btn,
+  body.page-index .navbar .nav-btn--login {
+    width: 100%;
+    min-height: 48px;
+    justify-content: flex-start;
+    padding: 12px 8px !important;
+  }
+
+  body.page-index .navbar .nav-btn--login {
+    align-self: flex-start;
+    padding: 8px 16px !important;
+  }
+
+  body.page-index .nav-lang,
+  body.page-index .nav-lang__btn {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  body.page-index .nav-lang__list {
+    position: static;
+    width: 100%;
+    max-height: 220px;
+    box-shadow: none;
+  }
+
+  body.page-index .navbar .nav-btn.primary {
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 900px) {
   body.page-index .home-sticky-cta {
     display: flex;
     align-items: center;
