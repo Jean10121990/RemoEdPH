@@ -21,8 +21,35 @@
       var perClass = toPhp(p.usdPerClass, rate);
       var discountPhp = toPhp(p.usdFounderDiscount, rate);
 
+      var perClassEl = card.querySelector('[data-price-role="per-class"]');
+      if (perClassEl) perClassEl.textContent = php(perClass) + ' per class';
+
+      var exact = Number(p.phpTotal);
+      var rounded = Math.round(exact);
       var price = card.querySelector('.plan-price');
-      if (price) price.textContent = php(p.phpTotal);
+      if (price) {
+        price.textContent = '₱' + rounded.toLocaleString('en-PH');
+      }
+      var exactEl = card.querySelector('[data-price-role="exact"]');
+      if (exactEl) {
+        var differs = Math.abs(exact - rounded) >= 0.005;
+        exactEl.hidden = !differs;
+        exactEl.textContent = differs ? ('Checkout ' + php(exact)) : '';
+      }
+
+      var listPhp = Number(p.phpList);
+      if (!(listPhp > 0) && Number(p.usdList) > 0) listPhp = toPhp(p.usdList, rate);
+      var founderLine = card.querySelector('[data-price-line="founder"]');
+      if (founderLine && p.usdFounderDiscount > 0) {
+        founderLine.textContent = '';
+        if (listPhp > exact) {
+          var struck = document.createElement('s');
+          struck.textContent = php(listPhp);
+          founderLine.appendChild(struck);
+          founderLine.appendChild(document.createTextNode(' '));
+        }
+        founderLine.appendChild(document.createTextNode('Founder discount: −' + php(discountPhp)));
+      }
 
       var badge = card.querySelector('.plan-badge');
       if (badge && p.usdFounderDiscount > 0) badge.textContent = 'Save ' + php(discountPhp);
@@ -47,10 +74,6 @@
           (p.usdFounderDiscount > 0 ? '' : ' = ' + php(p.phpTotal));
       }
 
-      var founderLine = card.querySelector('[data-price-line="founder"]');
-      if (founderLine && p.usdFounderDiscount > 0) {
-        founderLine.textContent = 'Founder discount: −' + php(discountPhp);
-      }
     });
   }
 

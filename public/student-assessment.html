@@ -8,6 +8,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=2"></script>
+    <script src="/js/landing-config.js?v=landing-1"></script>
+    <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="js/referral-tracking.js?v=ref-3"></script>
     <title>My Level Assessment - RemoEdPH</title>
 <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
@@ -963,6 +965,7 @@
                     answers: guestResult.answers
                 });
                 showGuestResult(guestResult);
+                if (window.RemoEdLandingTrack) RemoEdLandingTrack.lead();
                 return;
             }
 
@@ -1079,14 +1082,22 @@
                 var emailResponse = await fetch('/api/student/send-assessment-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: JSON.stringify((function () {
+                        var attr = (window.RemoEdLandingTrack && RemoEdLandingTrack.attr) ? RemoEdLandingTrack.attr() : {};
+                        return {
                         email: email,
                         childName: names.childName,
                         parentEmail: email,
                         cefrLevel: guestResult.cefrLevel,
                         score: guestResult.score,
-                        assessmentAnswers: (guestResult.answers || []).slice(0, 5)
-                    })
+                        assessmentAnswers: (guestResult.answers || []).slice(0, 5),
+                        utm_source: attr.utm_source || '',
+                        utm_medium: attr.utm_medium || '',
+                        utm_campaign: attr.utm_campaign || '',
+                        utm_content: attr.utm_content || '',
+                        fbclid: attr.fbclid || ''
+                        };
+                    })())
                 });
                 var emailResult = await emailResponse.json().catch(function () { return {}; });
                 var trialToken = emailResult.trialToken || '';
@@ -1121,6 +1132,7 @@
                     var regBody = await regResponse.json().catch(function () { return {}; });
                     if (regResponse.ok && regBody.success) {
                         registered = true;
+                        if (window.RemoEdLandingTrack) RemoEdLandingTrack.completeRegistration();
                         break;
                     }
                     var regMessage = regBody.message || 'Could not create the account.';

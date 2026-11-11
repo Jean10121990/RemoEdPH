@@ -2402,7 +2402,96 @@ body.page-index .remo-vm-card__statement {
   }
 }
 
+body.page-index .cta-btn.secondary {
+  background: #fff;
+  color: #0a7fd4;
+  border: 2px solid #0a7fd4;
+}
+body.page-index .hero-lesson-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: #0a7fd4;
+  font-weight: 700;
+}
+body.page-index .home-ages__grid,
+body.page-index .home-media__shots,
+body.page-index .home-affiliate {
+  display: grid;
+  gap: 16px;
+}
+body.page-index .home-ages__card,
+body.page-index .home-media__video,
+body.page-index .home-media__shot,
+body.page-index .home-affiliate {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+}
+body.page-index .home-media__empty {
+  margin: 0;
+  color: #64748b;
+  border: 1px dashed #94a3b8;
+  border-radius: 12px;
+  padding: 28px 12px;
+  text-align: center;
+}
+body.page-index .home-media__video iframe,
+body.page-index .home-media__shot img {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+}
+body.page-index .plan-per-class {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+body.page-index .plan-exact {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+body.page-index .home-trust__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+body.page-index .site-footer__chats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+body.page-index .home-chat-float {
+  display: none;
+}
+body.page-index .home-affiliate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+@media (min-width: 768px) {
+  body.page-index .home-ages__grid,
+  body.page-index .home-media__shots {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 @media (max-width: 768px) {
+  body.page-index .home-chat-float:not([hidden]) {
+    display: inline-flex;
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
+    z-index: 30;
+    background: #0a7fd4;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 999px;
+    padding: 12px 16px;
+  }
   body.page-index .remo-culture {
     padding: 52px 16px;
   }

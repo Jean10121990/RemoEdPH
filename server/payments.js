@@ -408,6 +408,7 @@ router.get('/plans', async (req, res) => {
       usdFounderDiscount: t.usdFounderDiscount,
       usdTotal: t.usdTotal,
       phpTotal: t.phpTotal,
+      phpList: Number((t.usdList * rate).toFixed(2)),
     }));
   res.set('Cache-Control', 'public, max-age=60');
   res.json({

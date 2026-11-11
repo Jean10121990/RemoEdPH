@@ -174,7 +174,7 @@
         <a href="#plans" class="nav-btn" data-i18n="nav_plans">Plans</a>
         <a href="#who-we-are" class="nav-btn">About</a>
         <a href="/login/" class="nav-btn" data-i18n="nav_login">Login</a>
-        <a href="#assessment" class="nav-btn primary" data-i18n="nav_assessment" data-track="nav_cta">Free Assessment</a>
+        <a href="/student-assessment.html?guest=1" class="nav-btn primary" id="nav-primary-cta" data-track="nav_cta">Take the Free Assessment</a>
         <select
           class="site-lang-switcher"
           id="nav-lang-switcher"
@@ -183,7 +183,7 @@
       </div>
       <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
     </nav>
-    <a href="/student-assessment.html?guest=1" class="home-sticky-cta" id="home-sticky-cta" hidden aria-label="Take the free assessment" data-track="sticky_cta">Free Assessment</a>
+    <a href="/student-assessment.html?guest=1" class="home-sticky-cta" id="home-sticky-cta" hidden aria-label="Take the Free Assessment" data-track="sticky_cta">Take the Free Assessment</a>
 
     <!-- Hero: full-bleed visual plane + left copy band -->
     <section class="hero japandi-hero hero-fullbleed" aria-label="RemoEdPH introduction">
@@ -193,19 +193,19 @@
       <div class="hero-grid">
         <div class="hero-copy">
           <p class="brand-kicker">RemoEdPH</p>
-          <h1 data-i18n="hero_title">Learn English at Home!</h1>
-          <p data-i18n="hero_lead">
-            Calm, engaging English lessons for children ages 3–6. Live classes designed for busy Filipino families.
+          <h1 id="hero-title">Help your 3–6 year old speak English with confidence, from home</h1>
+          <p id="hero-lead">
+            Take the free 2-minute assessment, get your child's English level, and try a free interactive lesson. No card needed.
           </p>
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
               <div class="assessment-cta-cluster">
-                <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-i18n="hero_cta" data-track="hero_cta"
-                  >Take Free Assessment</a
-                >
+                <a href="/student-assessment.html?guest=1" class="cta-btn primary" id="hero-primary-cta" data-track="hero_cta">Take the Free Assessment</a>
+                <a href="#how-it-works" class="cta-btn secondary" id="hero-secondary-cta" data-track="how_live_classes">See How Live Classes Work</a>
               </div>
+              <a href="/student-assessment.html?guest=1" class="hero-lesson-link" id="hero-lesson-cta" data-track="free_lesson">Try a free lesson</a>
             </div>
-            <p class="hero-trust">Live classes · Ages 3–6 · Free assessment, no card needed</p>
+            <p class="hero-trust">Live classes are 25 minutes with a teacher. The free lesson is separate. No card needed.</p>
           </div>
         </div>
         <div class="hero-media">
@@ -351,9 +351,32 @@
           <p>Pick a time that fits your family and meet a real teacher.</p>
         </li>
       </ol>
+      <div class="home-media" id="live-class-visuals" aria-label="What a live class looks like">
+        <div class="home-media__video" id="live-class-video"></div>
+        <div class="home-media__shots">
+          <div class="home-media__shot" id="live-class-shot-1"></div>
+          <div class="home-media__shot" id="live-class-shot-2"></div>
+        </div>
+      </div>
       <p class="home-how__cta">
-        <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-track="how_it_works_cta">Take Free Assessment</a>
+        <a href="/student-assessment.html?guest=1" class="cta-btn primary" id="how-primary-cta" data-track="how_it_works_cta">Take the Free Assessment</a>
       </p>
+    </section>
+
+    <section class="section home-ages" id="ages" aria-labelledby="ages-title">
+      <h2 class="section-title" id="ages-title">English for each age</h2>
+      <div class="home-ages__grid">
+        <article class="home-ages__card">
+          <h3>Ages 3–4</h3>
+          <p>Listening, first words, and short songs with a teacher who keeps the pace slow.</p>
+          <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-track="age_3_4">Take the Free Assessment</a>
+        </article>
+        <article class="home-ages__card">
+          <h3>Ages 5–6</h3>
+          <p>Speaking in short sentences and sounding out simple words, still in a 25-minute live class.</p>
+          <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-track="age_5_6">Try a free lesson</a>
+        </article>
+      </div>
     </section>
 
     <!-- Free Assessment Section -->
@@ -399,7 +422,12 @@
       </div>
     </section>
     <!-- TODO: paste real parent quotes into HOME_TESTIMONIALS before launch. Example: { quote: "", parentName: "", childAge: "" } -->
-    <section class="section home-testimonials" id="testimonials" aria-labelledby="testimonials-title">
+    <section class="section home-trust" id="home-trust" hidden aria-labelledby="home-trust-title">
+      <h2 class="section-title" id="home-trust-title">How we look after your child</h2>
+      <div id="home-trust-body"></div>
+    </section>
+
+    <section class="section home-testimonials" id="testimonials" hidden aria-labelledby="testimonials-title">
       <h2 class="section-title" id="testimonials-title">Parents Testimonials</h2>
       <div id="home-testimonials" class="home-testimonials">
         <p class="home-testimonials__empty">no testimonials yet</p>
@@ -442,7 +470,9 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSpark</div>
+            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱9,244.62</div>
+            <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle">Starter Bundle</div>
           <div class="plan-price-local" data-usd="154">$154.00 USD</div>
@@ -473,7 +503,9 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSteady</div>
+            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱23,951.97</div>
+            <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle">Progress Bundle</div>
           <div class="plan-price-local" data-usd="399">$399.00 USD</div>
@@ -506,7 +538,9 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoScholar</div>
+            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱47,903.94</div>
+            <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle">Mastery Bundle</div>
           <div class="plan-price-local" data-usd="798">$798.00 USD</div>
@@ -538,7 +572,9 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSummit</div>
+            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱95,807.88</div>
+            <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle">Ultimate Bundle</div>
           <div class="plan-price-local" data-usd="1596">$1,596.00 USD</div>
@@ -588,6 +624,34 @@
           <summary>How do credits and validity work?</summary>
           <p>Plans are 1, 3, 6, or 12 months. RemoSpark is 22 lessons for 1 month. RemoSteady is 3 months, RemoScholar 6, and RemoSummit 12. Unused lesson credits expire when that month ends. Classes you have already booked are not cancelled. If lessons are still unfinished, a parent can contact the teacher. The teacher may offer one 3-month extension after a one-on-one video call about the student's progress.</p>
         </details>
+        <details class="home-faq__item">
+          <summary>How is a live class different from a learning app?</summary>
+          <p>A live class is 25 minutes with a real teacher. It is not a recording or an app the child taps through alone.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>What if the first live class is not a fit?</summary>
+          <p>We will confirm this before launch.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>How are teachers checked, and can a parent sit in?</summary>
+          <p>Teachers are reviewed before they join the schedule. A parent may sit with the child during a live class.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>How do we pay?</summary>
+          <p>Pay from any country by scanning the MariBank QR on the Credits page. We will confirm any other payment methods before launch.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>What is the cancellation and refund policy?</summary>
+          <p>The exact cancellation window and refund rule are still being confirmed. We will confirm this before launch.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>What's the difference between the free lesson and a live class?</summary>
+          <p>The free lesson is a short interactive lesson on the site after the assessment. A live class is 25 minutes with a teacher, booked after you choose a plan.</p>
+        </details>
+        <details class="home-faq__item">
+          <summary>Is the free lesson really free?</summary>
+          <p>Yes. The assessment and the free interactive lesson do not need a card. A live class is a separate paid plan.</p>
+        </details>
       </div>
       <p class="home-faq__more"><a href="/site-faq.html">See all FAQs</a></p>
     </section>
@@ -610,6 +674,17 @@
       </div>
     </section>
 
+    <section class="section home-affiliate" id="affiliate-join" aria-labelledby="affiliate-join-title">
+      <div class="home-affiliate__copy">
+        <h2 class="section-title" id="affiliate-join-title">Independent Growth Affiliate</h2>
+        <p>Earn an upfront bonus for each enrolled student, plus a monthly commission. Flexible schedule. No quotas.</p>
+        <p class="home-affiliate__actions">
+          <a class="cta-btn primary" href="/affiliate-apply.html">Join now</a>
+          <a class="hero-lesson-link" href="/affiliate-login.html">Already an affiliate? Log in</a>
+        </p>
+      </div>
+    </section>
+
     <section class="section home-final-cta" id="final-cta" aria-labelledby="final-cta-title">
       <h2 class="section-title" id="final-cta-title">Ready to see your child's level?</h2>
       <p class="home-final-cta__note">The quiz is free. No card needed.</p>
@@ -627,6 +702,7 @@
           </a>
           <p class="site-footer__tagline">Live English for ages 3–6</p>
           <a class="site-footer__contact" href="mailto:remoedph@gmail.com">remoedph@gmail.com</a>
+          <div class="site-footer__chats" id="site-footer-chats"></div>
           <a
             class="site-footer__social"
             href="https://www.facebook.com/remoed"
@@ -711,8 +787,11 @@
       </div>
     </div>
 
+    <a class="home-chat-float" id="home-chat-float" hidden>Chat</a>
+    <script src="/js/landing-config.js?v=landing-1"></script>
+    <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
-    <script src="/js/plan-pricing.js?v=pricing-2"></script>
+    <script src="/js/plan-pricing.js?v=pricing-3"></script>
     <script src="/js/plan-currency-converter.js?v=fx-4"></script>
     <script>
       let selectedPlan = "";
@@ -1192,6 +1271,157 @@
           .then(function (body) { paintTestimonials((body && body.testimonials) || []); })
           .catch(function () { paintTestimonials([]); });
 
+        function landingCfg() {
+          return window.RemoEdLanding || {};
+        }
+        function applyLandingCopy() {
+          var cfg = landingCfg();
+          var angles = cfg.headlineAngles || {};
+          var angle = "";
+          try { angle = new URLSearchParams(window.location.search).get("angle") || ""; } catch (e) {}
+          var title = angles[angle] || angles.default || "";
+          var titleEl = document.getElementById("hero-title");
+          var leadEl = document.getElementById("hero-lead");
+          if (title && titleEl) titleEl.textContent = title;
+          if (cfg.subcopy && leadEl) leadEl.textContent = cfg.subcopy;
+          var primary = cfg.primaryCta || "Take the Free Assessment";
+          var secondary = cfg.secondaryCta || "See How Live Classes Work";
+          var lesson = cfg.lessonCta || "Try a free lesson";
+          var url = cfg.assessmentUrl || "/student-assessment.html?guest=1";
+          ["hero-primary-cta", "how-primary-cta", "nav-primary-cta", "home-sticky-cta"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (id !== "home-sticky-cta" || el.id === "home-sticky-cta") el.textContent = id === "home-sticky-cta" ? primary : (id.indexOf("how-") === 0 || id.indexOf("hero-") === 0 || id.indexOf("nav-") === 0 ? primary : primary);
+            if (el.tagName === "A") el.setAttribute("href", url);
+          });
+          var ageLinks = document.querySelectorAll(".home-ages__card a");
+          if (ageLinks[0]) {
+            ageLinks[0].textContent = primary;
+            ageLinks[0].setAttribute("href", url);
+          }
+          if (ageLinks[1]) {
+            ageLinks[1].textContent = lesson;
+            ageLinks[1].setAttribute("href", url);
+          }
+          var secondaryEl = document.getElementById("hero-secondary-cta");
+          if (secondaryEl) {
+            secondaryEl.textContent = secondary;
+            secondaryEl.setAttribute("href", "#how-it-works");
+          }
+          var lessonEl = document.getElementById("hero-lesson-cta");
+          if (lessonEl) {
+            lessonEl.textContent = lesson;
+            lessonEl.setAttribute("href", url);
+          }
+          var sticky = document.getElementById("home-sticky-cta");
+          if (sticky) sticky.setAttribute("aria-label", primary);
+        }
+        function fillMediaSlot(el, url, emptyLabel) {
+          if (!el) return;
+          el.textContent = "";
+          if (!url) {
+            var note = document.createElement("p");
+            note.className = "home-media__empty";
+            note.textContent = emptyLabel;
+            el.appendChild(note);
+            return;
+          }
+          if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)) {
+            var img = document.createElement("img");
+            img.src = url;
+            img.alt = "";
+            el.appendChild(img);
+            return;
+          }
+          var frame = document.createElement("iframe");
+          frame.src = url;
+          frame.title = "Live class video";
+          frame.setAttribute("loading", "lazy");
+          frame.setAttribute("allowfullscreen", "");
+          el.appendChild(frame);
+          var fallback = document.createElement("a");
+          fallback.href = url;
+          fallback.textContent = "Open the video";
+          fallback.rel = "noopener";
+          el.appendChild(fallback);
+        }
+        function applyMediaAndTrust() {
+          var cfg = landingCfg();
+          var media = cfg.media || {};
+          fillMediaSlot(document.getElementById("live-class-video"), media.videoUrl || "", "Class video coming");
+          fillMediaSlot(document.getElementById("live-class-shot-1"), media.screenshot1 || "", "Screenshot coming");
+          fillMediaSlot(document.getElementById("live-class-shot-2"), media.screenshot2 || "", "Screenshot coming");
+          var trust = cfg.trust || {};
+          var body = document.getElementById("home-trust-body");
+          var section = document.getElementById("home-trust");
+          if (!body || !section) return;
+          var rows = [];
+          if (trust.credentials) rows.push(trust.credentials);
+          if (trust.safety) rows.push(trust.safety);
+          var seats = cfg.foundingSeats;
+          if (typeof seats === "number" && isFinite(seats)) rows.push(String(seats) + " founding-family seats left");
+          body.textContent = "";
+          rows.forEach(function (text) {
+            var p = document.createElement("p");
+            p.textContent = text;
+            body.appendChild(p);
+          });
+          var links = document.createElement("p");
+          links.className = "home-trust__links";
+          [["Privacy", trust.privacyHref], ["Terms", trust.termsHref], ["Student privacy", trust.studentPrivacyHref]].forEach(function (pair) {
+            if (!pair[1]) return;
+            var a = document.createElement("a");
+            a.href = pair[1];
+            a.textContent = pair[0];
+            links.appendChild(a);
+          });
+          if (rows.length && links.childNodes.length) body.appendChild(links);
+          section.hidden = rows.length === 0;
+        }
+        function applyContact() {
+          var contact = (landingCfg().contact) || {};
+          var items = [
+            ["Messenger", contact.messenger],
+            ["WhatsApp", contact.whatsapp],
+            ["Viber", contact.viber],
+            ["Instagram", contact.instagram]
+          ].filter(function (row) { return row[1]; });
+          var box = document.getElementById("site-footer-chats");
+          if (box) {
+            box.textContent = "";
+            items.forEach(function (row) {
+              var a = document.createElement("a");
+              a.href = row[1];
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+              a.textContent = row[0];
+              box.appendChild(a);
+            });
+          }
+          var floatEl = document.getElementById("home-chat-float");
+          var sticky = document.getElementById("home-sticky-cta");
+          if (!floatEl) return;
+          if (!items.length) {
+            floatEl.hidden = true;
+            return;
+          }
+          floatEl.href = items[0][1];
+          floatEl.target = "_blank";
+          floatEl.rel = "noopener noreferrer";
+          floatEl.textContent = items[0][0];
+          function placeFloat() {
+            var stickyOn = sticky && !sticky.hidden;
+            floatEl.hidden = stickyOn;
+          }
+          placeFloat();
+          if (sticky && window.MutationObserver) {
+            new MutationObserver(placeFloat).observe(sticky, { attributes: true, attributeFilter: ["hidden"] });
+          }
+        }
+        applyLandingCopy();
+        applyMediaAndTrust();
+        applyContact();
+
         document.addEventListener("click", function (event) {
           var el = event.target.closest("[data-track]");
           if (!el || el.id === "signup-form" || typeof gtag !== "function") return;
@@ -1210,18 +1440,25 @@
           });
         }
 
-        fetch("/api/teachers/landing?limit=4&offset=0")
+        var teachersSection = document.getElementById("our-teachers");
+        function hideTeachers() {
+          if (teachersSection) teachersSection.hidden = true;
+        }
+        var teachersFetch = fetch("/api/teachers/landing?limit=4&offset=0");
+        var teachersTimeout = new Promise(function (_, reject) {
+          setTimeout(function () { reject(new Error("timeout")); }, 8000);
+        });
+        Promise.race([teachersFetch, teachersTimeout])
           .then(function (r) {
-            if (!r.ok) throw new Error("teachers");
+            if (!r || !r.ok) throw new Error("teachers");
             return r.json();
           })
           .then(function (data) {
             var grid = document.getElementById("home-teachers-grid");
             var status = document.getElementById("home-teachers-status");
             var list = (data && data.teachers) || [];
-            if (!grid) return;
-            if (!list.length) {
-              if (status) status.textContent = "Teachers will appear here soon.";
+            if (!grid || !list.length) {
+              hideTeachers();
               return;
             }
             grid.hidden = false;
@@ -1250,8 +1487,7 @@
               .join("");
           })
           .catch(function () {
-            var status = document.getElementById("home-teachers-status");
-            if (status) status.textContent = "Could not load teachers right now.";
+            hideTeachers();
           });
       })();
     </script>
