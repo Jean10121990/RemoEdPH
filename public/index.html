@@ -158,7 +158,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-27" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-28" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
 
@@ -1338,7 +1338,15 @@
             img.src = url;
             img.alt = altText || "RemoEd live class";
             img.decoding = "async";
-            el.appendChild(img);
+            var zoom = document.createElement("button");
+            zoom.type = "button";
+            zoom.className = "home-media__zoom";
+            zoom.setAttribute("aria-label", "View larger: " + img.alt);
+            zoom.appendChild(img);
+            zoom.addEventListener("click", function () {
+              openShotLightbox(url, img.alt);
+            });
+            el.appendChild(zoom);
             return;
           }
           var frame = document.createElement("iframe");
@@ -1352,6 +1360,44 @@
           fallback.textContent = "Open the video";
           fallback.rel = "noopener";
           el.appendChild(fallback);
+        }
+        function openShotLightbox(url, altText) {
+          var box = document.getElementById("home-shot-lightbox");
+          if (!box) {
+            box = document.createElement("div");
+            box.id = "home-shot-lightbox";
+            box.className = "home-shot-lightbox";
+            box.hidden = true;
+            box.innerHTML =
+              '<button type="button" class="home-shot-lightbox__backdrop" aria-label="Close"></button>' +
+              '<figure class="home-shot-lightbox__frame">' +
+              '<button type="button" class="home-shot-lightbox__close" aria-label="Close">Close</button>' +
+              '<img alt="">' +
+              "</figure>";
+            document.body.appendChild(box);
+            box.addEventListener("click", function (event) {
+              if (event.target.closest(".home-shot-lightbox__frame") && !event.target.closest(".home-shot-lightbox__close")) return;
+              closeShotLightbox();
+            });
+            document.addEventListener("keydown", function (event) {
+              if (event.key === "Escape") closeShotLightbox();
+            });
+          }
+          var picture = box.querySelector("img");
+          picture.src = url;
+          picture.alt = altText || "RemoEd";
+          box.hidden = false;
+          document.body.classList.add("home-shot-open");
+          var closeBtn = box.querySelector(".home-shot-lightbox__close");
+          if (closeBtn) closeBtn.focus();
+        }
+        function closeShotLightbox() {
+          var box = document.getElementById("home-shot-lightbox");
+          if (!box || box.hidden) return;
+          box.hidden = true;
+          var picture = box.querySelector("img");
+          if (picture) picture.removeAttribute("src");
+          document.body.classList.remove("home-shot-open");
         }
         function applyMediaAndTrust() {
           var cfg = landingCfg();
