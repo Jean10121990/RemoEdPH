@@ -1035,6 +1035,10 @@ body.page-index .home-how__cta {
   }
 }
 
+body.page-index #testimonials[hidden] {
+  display: none !important;
+}
+
 body.page-index #testimonials {
   text-align: center;
 }
@@ -1050,12 +1054,6 @@ body.page-index .home-testimonials {
   max-width: 980px;
   margin: 0 auto;
   text-align: center;
-}
-
-body.page-index .home-testimonials__empty {
-  margin: 12px 0 0;
-  color: #4a6fa5;
-  font-weight: 600;
 }
 
 body.page-index .home-testimonial {
@@ -2920,11 +2918,6 @@ body.page-index .home-shot-lightbox__close {
 }
 body.home-shot-open {
   overflow: hidden;
-}
-body.page-index .plan-per-class {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #0f172a;
 }
 body.page-index .plan-exact {
   margin: 0;

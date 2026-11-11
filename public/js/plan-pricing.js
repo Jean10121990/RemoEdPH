@@ -21,9 +21,6 @@
       var perClass = toPhp(p.usdPerClass, rate);
       var discountPhp = toPhp(p.usdFounderDiscount, rate);
 
-      var perClassEl = card.querySelector('[data-price-role="per-class"]');
-      if (perClassEl) perClassEl.textContent = php(perClass) + ' per class';
-
       var exact = Number(p.phpTotal);
       var rounded = Math.round(exact);
       var price = card.querySelector('.plan-price');

@@ -158,7 +158,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-30" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-31" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
 
@@ -478,9 +478,7 @@
 
     <section class="section home-testimonials" id="testimonials" hidden aria-labelledby="testimonials-title">
       <h2 class="section-title" id="testimonials-title">Parents Testimonials</h2>
-      <div id="home-testimonials" class="home-testimonials">
-        <p class="home-testimonials__empty">no testimonials yet</p>
-      </div>
+      <div id="home-testimonials" class="home-testimonials"></div>
     </section>
 
     <!-- Subscription Plans -->
@@ -519,7 +517,6 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSpark</div>
-            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱9,244.62</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
@@ -552,7 +549,6 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSteady</div>
-            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱23,951.97</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
@@ -587,7 +583,6 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoScholar</div>
-            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱47,903.94</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
@@ -621,7 +616,6 @@
           </div>
           <div class="plan-headline">
             <div class="plan-name">RemoSummit</div>
-            <div class="plan-per-class" data-price-role="per-class"></div>
             <div class="plan-price">₱95,807.88</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
@@ -811,7 +805,7 @@
     <script src="/js/landing-config.js?v=landing-7"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
-    <script src="/js/plan-pricing.js?v=pricing-3"></script>
+    <script src="/js/plan-pricing.js?v=pricing-4"></script>
     <script src="/js/plan-currency-converter.js?v=fx-4"></script>
     <script>
       let selectedPlan = "";
@@ -1418,8 +1412,12 @@
         var testimonialsGrid = document.getElementById("home-testimonials");
         function paintTestimonials(items) {
           if (!testimonialsRoot || !testimonialsGrid) return;
+          items = (items || []).filter(function (item) {
+            return item && String(item.quote || "").trim();
+          });
           if (!items.length) {
             testimonialsRoot.hidden = true;
+            testimonialsGrid.textContent = "";
             return;
           }
           testimonialsRoot.hidden = false;
