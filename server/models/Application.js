@@ -32,6 +32,13 @@ const applicationSchema = new mongoose.Schema(
       default: '',
       trim: true
     },
+    /** Optional name typed on the affiliate application. Not required. */
+    referrerName: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 120
+    },
     currentStage: {
       type: String,
       enum: ['applied', 'testing', 'interviewing', 'demo', 'documentation', 'passed', 'failed'],

@@ -94,6 +94,11 @@
             <label for="phone">Contact <span class="req">*</span></label>
             <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="e.g. +63 9xx xxx xxxx" required />
           </div>
+          <div class="span-2">
+            <label for="referrer">Referrer's name</label>
+            <input id="referrer" name="referrerName" type="text" maxlength="120" autocomplete="off" />
+            <p class="hint">Optional. The person who invited you to apply.</p>
+          </div>
         </div>
         <div class="file-box">
           <label for="id">National ID <span class="req">*</span></label>
@@ -137,6 +142,7 @@
       var name = document.getElementById('name').value.trim();
       var email = document.getElementById('email').value.trim();
       var phone = document.getElementById('phone').value.trim();
+      var referrerName = document.getElementById('referrer').value.trim();
       var video = document.getElementById('video').files[0];
       var idFile = document.getElementById('id').files[0];
       var digits = phone.replace(/\D/g, '');
@@ -160,6 +166,7 @@
       body.append('fullName', name);
       body.append('email', email);
       body.append('phone', phone);
+      if (referrerName) body.append('referrerName', referrerName);
       body.append('englishVideo', video);
       body.append('nationalId', idFile);
       button.disabled = true;

@@ -194,6 +194,7 @@ router.post(
       const name = String((req.body && req.body.fullName) || '').trim();
       const email = String((req.body && req.body.email) || '').trim().toLowerCase();
       const phone = String((req.body && req.body.phone) || '').trim();
+      const referrerName = String((req.body && req.body.referrerName) || '').trim().slice(0, 120);
       const video = req.files && req.files.englishVideo && req.files.englishVideo[0];
       const idFile = req.files && req.files.nationalId && req.files.nationalId[0];
       if (!name || !email || !phone || !video || !idFile) {
@@ -217,6 +218,7 @@ router.post(
         fullName: name,
         email,
         contactNo: phone,
+        referrerName,
         applicantType: 'affiliate',
         currentStage: 'applied',
         status: true,

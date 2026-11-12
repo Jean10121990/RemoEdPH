@@ -422,7 +422,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 ## Growth program
 
 - `GET /healthz` returns 200 when Mongo answers a ping and 503 otherwise. It does not return secrets. `GET /api/health` is unchanged.
-- Affiliate apply: public `POST /api/applications/affiliate` (rate limited). HR Pass on `applicantType: affiliate` creates the affiliate account.
+- Affiliate apply: public `POST /api/applications/affiliate` (rate limited). Optional `referrerName` (max 120 characters) is stored on the application and shown in HR review when present. HR Pass on `applicantType: affiliate` creates the affiliate account.
 - Growth admin API is ` /api/admin/growth/*` (admin JWT). Keys: `growth.inbox`, `growth.leads`, `growth.posts`, `growth.campaigns`, `growth.automations`, `growth.ai_settings`, `growth.reports`. `admin_assistant` may open inbox and leads only. Reports → Funnel counts **level assessments** (the same `AssessmentTrial` rows as HR Hub → Level Assessment): Assessment done, Registered (account created), Paid plan. Inquiry is only site chat / Messenger. Renewal due, At-risk, and Lost are subsets of paid accounts.
 - Public web chat: `POST /api/public/chat` (rate limited, no token). Meta webhook: `GET/POST /api/webhooks/meta` (verify token and `X-Hub-Signature-256`).
 - Brevo events: `POST /api/webhooks/brevo` (no token; stores open/click/unsubscribe only).

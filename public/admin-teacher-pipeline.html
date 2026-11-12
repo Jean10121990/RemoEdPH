@@ -83,6 +83,8 @@
         <div class="panel">
           <div class="muted">Contact no.</div>
           <div id="applicant-contact" style="margin-top: 8px;">—</div>
+          <div class="muted" id="applicant-referrer-label" style="margin-top: 12px; display: none;">Referrer's name</div>
+          <div id="applicant-referrer" style="margin-top: 8px; display: none;"></div>
         </div>
         <div class="panel">
           <div class="muted">Lesson demo video</div>
@@ -273,6 +275,14 @@
 
         modalName.textContent = `Review: ${applicant.fullName || applicant.email || 'Applicant'}`;
         if (applicantContact) applicantContact.textContent = applicant.contactNo || '—';
+        var referrerEl = document.getElementById('applicant-referrer');
+        var referrerLabel = document.getElementById('applicant-referrer-label');
+        var referrerName = String(applicant.referrerName || '').trim();
+        if (referrerEl && referrerLabel) {
+          referrerEl.textContent = referrerName;
+          referrerEl.style.display = referrerName ? '' : 'none';
+          referrerLabel.style.display = referrerName ? '' : 'none';
+        }
 
         const demoUrl = applicant.demoVideoUrl || '';
         demoVideo.src = demoUrl;
