@@ -64,6 +64,8 @@ const PERMISSION_CATALOG = [
   { key: 'growth.ai_settings', module: 'Growth', label: 'Growth AI settings', sortOrder: 625 },
   { key: 'growth.reports', module: 'Growth', label: 'Growth reports', sortOrder: 626 },
   { key: 'mkt:announcements_create', module: 'Marketing Hub', label: 'Create / Edit Announcements', sortOrder: 610 },
+  { key: 'content:homepage', module: 'Marketing Hub', label: 'Homepage content', sortOrder: 630 },
+  { key: 'content:faq', module: 'Marketing Hub', label: 'FAQ content', sortOrder: 631 },
   // System
   { key: 'system:settings', module: 'System', label: 'System Settings APIs', sortOrder: 700 },
   { key: 'system:maintenance', module: 'System', label: 'Maintenance / Cleanup', sortOrder: 710 },
@@ -140,6 +142,8 @@ const ROLE_SEED_PERMISSIONS = {
     'mkt:commissions_view',
     'mkt:affiliates_manage',
     'mkt:announcements_create',
+    'content:homepage',
+    'content:faq',
     'growth.inbox',
     'growth.leads',
     'growth.posts',
@@ -302,6 +306,10 @@ async function seedAdminRbac() {
         existing.permissions.indexOf('mkt:affiliates_manage') === -1
       ) {
         await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'mkt:affiliates_manage' } });
+      }
+      if (slug === 'admin_marketing' && existing && Array.isArray(existing.permissions)) {
+        const add = ['content:homepage', 'content:faq'].filter((key) => existing.permissions.indexOf(key) === -1);
+        if (add.length) await AdminRole.updateOne({ slug }, { $addToSet: { permissions: { $each: add } } });
       }
     }
     return true;

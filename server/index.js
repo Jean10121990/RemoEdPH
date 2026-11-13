@@ -723,6 +723,7 @@ adminApiCombined.use('/training', adminTrainingRoutes);
 adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
 adminApiCombined.use('/affiliate-payroll', require('./affiliatePayrollRoutes'));
 adminApiCombined.use(require('./adminRbacRoutes'));
+adminApiCombined.use(require('./siteSettingsRoutes'));
 adminApiCombined.use(require('./classroomSosRoutes').adminSosRouter);
 adminApiCombined.use('/level-assessments', require('./routes/levelAssessments'));
 adminApiCombined.use(adminRoutes);

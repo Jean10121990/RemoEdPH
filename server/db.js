@@ -131,6 +131,14 @@ async function connectWithUri(label, uri) {
 
   await dropLegacyAdminIndexes();
   try {
+    const siteSettings = require('./services/siteSettings');
+    const inserted = await siteSettings.seedSiteSettings();
+    await siteSettings.loadSnapshot();
+    if (inserted) console.log(`Site settings seeded: ${inserted} new key(s).`);
+  } catch (err) {
+    console.warn('Site settings seed:', err && err.message);
+  }
+  try {
     const TrialBooking = require('./models/TrialBooking');
     await TrialBooking.syncIndexes();
   } catch (err) {

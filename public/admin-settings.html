@@ -102,6 +102,16 @@
                     <p id="test-plan-status" class="muted" style="font-size:0.85rem;margin:10px 0 0;">Loading…</p>
                 </div>
 
+                <div class="setting-card" id="site-settings-card">
+                    <div class="setting-title">Site settings</div>
+                    <div class="setting-description">These values are saved and audited. Checkout, booking, class length, and the homepage still use the code, so a change here does not change a price or a class yet. There is no daily class cap. Do not add one. Facebook on the login page stays off until you turn that flag on. The peso exchange rate is not on this screen.</div>
+                    <div style="display:flex;gap:8px;align-items:center;margin:10px 0;">
+                        <button type="button" class="btn btn-secondary" id="site-settings-refresh">Reload from database</button>
+                        <span id="site-settings-status" class="muted" style="font-size:0.85rem;"></span>
+                    </div>
+                    <div id="site-settings-list"></div>
+                </div>
+
                 <div class="setting-card">
                     <div class="setting-title">👤 Profile settings</div>
                     <div class="setting-description">Profile photo, password, personal and professional details, ID upload, and NBI clearance status.</div>
@@ -266,6 +276,145 @@
 
         function escapeHtml(s) {
             return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function siteSettingInput(row) {
+            var id = 'site-value-' + row.key;
+            if (row.type === 'boolean') {
+                return '<label style="display:flex;align-items:center;gap:8px;"><input id="' + id + '" type="checkbox"' + (row.value ? ' checked' : '') + '> On</label>';
+            }
+            if (row.type === 'json') {
+                var text = Array.isArray(row.value) ? row.value.join(', ') : '';
+                return '<input id="' + id + '" type="text" value="' + escapeHtml(text) + '" style="min-width:180px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;">';
+            }
+            var inputType = row.type === 'number' ? 'number' : 'text';
+            var step = row.key === 'treeEligibilityRatio' ? ' step="0.01"' : '';
+            return '<input id="' + id + '" type="' + inputType + '"' + step + ' value="' + escapeHtml(row.value) + '" style="min-width:180px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;">';
+        }
+
+        function readSiteSettingValue(row) {
+            var el = document.getElementById('site-value-' + row.key);
+            if (!el) return row.value;
+            if (row.type === 'boolean') return !!el.checked;
+            if (row.type === 'number') return Number(el.value);
+            if (row.type === 'json') return String(el.value || '').split(',').map(function (part) { return Number(part.trim()); }).filter(function (n) { return Number.isFinite(n); });
+            return el.value;
+        }
+
+        function renderSiteSettings(rows) {
+            var host = document.getElementById('site-settings-list');
+            if (!host) return;
+            var groups = {};
+            (rows || []).forEach(function (row) {
+                if (!groups[row.group]) groups[row.group] = [];
+                groups[row.group].push(row);
+            });
+            host.innerHTML = Object.keys(groups).map(function (group) {
+                var body = groups[group].map(function (row) {
+                    var confirmBox = row.confirm
+                        ? '<input data-confirm="' + escapeHtml(row.key) + '" type="text" placeholder="Type ' + escapeHtml(row.key) + '" style="min-width:180px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;" autocomplete="off">'
+                        : '';
+                    var warn = row.key === 'privacyConsentVersion'
+                        ? '<div style="color:#9a3412;font-size:0.8rem;margin-top:4px;">A new date makes every parent accept the privacy terms again.</div>'
+                        : '';
+                    return '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e2e8f0;">' +
+                        '<div style="flex:1 1 220px;"><strong>' + escapeHtml(row.label) + '</strong><div style="color:#64748b;font-size:0.78rem;">' + escapeHtml(row.key) + '</div>' + warn + '</div>' +
+                        siteSettingInput(row) + confirmBox +
+                        '<button type="button" class="btn btn-primary" data-site-save="' + escapeHtml(row.key) + '">Save</button>' +
+                        '<button type="button" class="btn btn-secondary" data-site-restore="' + escapeHtml(row.key) + '">Restore default</button>' +
+                        '</div>';
+                }).join('');
+                return '<h3 style="margin:16px 0 4px;font-size:0.95rem;text-transform:capitalize;">' + escapeHtml(group) + '</h3>' + body;
+            }).join('');
+            window.__siteSettings = rows || [];
+        }
+
+        async function loadSiteSettings() {
+            var status = document.getElementById('site-settings-status');
+            if (status) status.textContent = 'Loading…';
+            try {
+                var r = await fetch('/api/admin/site-settings', { credentials: 'include', headers: adminAuthHeaders(false) });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    if (status) status.textContent = j.error || 'Could not load settings.';
+                    return;
+                }
+                renderSiteSettings(j.settings || []);
+                if (status) status.textContent = '';
+            } catch (e) {
+                if (status) status.textContent = 'Network error.';
+            }
+        }
+
+        async function sendSiteSetting(key, path, value) {
+            var status = document.getElementById('site-settings-status');
+            var row = (window.__siteSettings || []).filter(function (item) { return item.key === key; })[0];
+            var body = {};
+            if (value !== undefined) body.value = value;
+            if (row && row.confirm) {
+                var box = document.querySelector('[data-confirm="' + key + '"]');
+                body.confirmKey = box ? box.value : '';
+            }
+            if (status) status.textContent = 'Saving…';
+            try {
+                var r = await fetch(path, {
+                    method: value === undefined ? 'POST' : 'PUT',
+                    credentials: 'include',
+                    headers: adminAuthHeaders(true),
+                    body: JSON.stringify(body)
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    if (status) status.textContent = j.error || 'Save failed.';
+                    return;
+                }
+                if (status) status.textContent = j.unchanged ? 'No change.' : 'Saved.';
+                await loadSiteSettings();
+            } catch (e) {
+                if (status) status.textContent = 'Network error.';
+            }
+        }
+
+        var siteList = document.getElementById('site-settings-list');
+        if (siteList) {
+            siteList.addEventListener('click', function (event) {
+                var save = event.target.closest('[data-site-save]');
+                var restore = event.target.closest('[data-site-restore]');
+                if (save) {
+                    var key = save.getAttribute('data-site-save');
+                    var row = (window.__siteSettings || []).filter(function (item) { return item.key === key; })[0];
+                    if (!row) return;
+                    sendSiteSetting(key, '/api/admin/site-settings/' + encodeURIComponent(key), readSiteSettingValue(row));
+                } else if (restore) {
+                    var restoreKey = restore.getAttribute('data-site-restore');
+                    sendSiteSetting(restoreKey, '/api/admin/site-settings/' + encodeURIComponent(restoreKey) + '/restore');
+                }
+            });
+        }
+        var siteRefresh = document.getElementById('site-settings-refresh');
+        if (siteRefresh) {
+            siteRefresh.addEventListener('click', async function () {
+                var status = document.getElementById('site-settings-status');
+                if (status) status.textContent = 'Reloading…';
+                try {
+                    var r = await fetch('/api/admin/site-settings/refresh', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: adminAuthHeaders(true),
+                        body: '{}'
+                    });
+                    var j = await r.json().catch(function () { return {}; });
+                    if (!r.ok) {
+                        if (status) status.textContent = j.error || 'Reload failed.';
+                        return;
+                    }
+                    renderSiteSettings(j.settings || []);
+                    if (status) status.textContent = 'Reloaded.';
+                } catch (e) {
+                    if (status) status.textContent = 'Network error.';
+                }
+            });
+            loadSiteSettings();
         }
 
         document.getElementById('btn-logout-other-sessions').addEventListener('click', async function () {

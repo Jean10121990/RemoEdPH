@@ -124,6 +124,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
+| 2026-11-13 | Site settings. `GET /api/admin/site-settings`, `PUT /api/admin/site-settings/:key`, `POST /api/admin/site-settings/:key/restore`, and `POST /api/admin/site-settings/refresh` require an admin JWT, an authenticator session, and `nav:settings` (Super-Admin). Price keys and `privacyConsentVersion` must retype the key name. Writes append `AdminAuditLog`. Checkout and booking do not read these values yet. `content:homepage` and `content:faq` are grantable Marketing permissions and are not Super-Admin-only. |
 | 2026-11-06 | `POST /api/admin/booking/:bookingId/teacher-absent` is an admin JWT route. It marks that booking’s current teacher absent, does not spend the student credit, and does not take a teacher id from the body. |
 | 2026-11-06 | Teacher sessions are not auto-logged out on the 1–2 hour timer. Password, Google, Facebook, and legacy teacher login use `TEACHER_JWT_EXPIRES_IN` (18 hours; 30 days with Remember me). `POST /api/auth/teacher-session/refresh` requires a still-valid teacher JWT and returns a new token for that teacher. Students stay on the short session. |
 | 2026-11-06 | New teachers use email as `username` and `teacherId`. HR create, invite signup, and teacher Google/Facebook signup no longer mint `remoedph.001`. Existing stored teacher ids are not rewritten. |

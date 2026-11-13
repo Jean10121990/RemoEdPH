@@ -511,6 +511,7 @@ Super-Admin configures page/feature permissions per role instead of hardcoded de
 - System roles (`super_admin`, `admin_hr`, `admin_qa`, `admin_accounting`, `admin_marketing`) are seeded once; their permissions are editable (except Super-Admin). Custom roles can be created from Settings.
 - Prefer extending the permission catalog + seeds when adding new admin pages — do not reintroduce hard-only role checks without also adding a permission key.
 - JWT still carries `adminRole` slug; permissions are resolved from DB on each request (not frozen in the token).
+- **Site settings** (`#site-settings-card` on `admin-settings.html`) are Super-Admin only (`nav:settings`). Keys live in `site_settings` and are seeded once from the current code constants. Checkout, booking, and class length do not read them yet. `content:homepage` and `content:faq` are on the Marketing seed and are grantable. They are not `nav:settings`. There is no daily class cap field.
 
 ## Admin login path (obfuscated) + first-time setup
 
