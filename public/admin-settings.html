@@ -209,6 +209,8 @@
         </div>
     </div>
 
+    <script src="js/lucide-icons.js?v=help-1"></script>
+    <script src="js/site-setting-help.js?v=help-1"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -319,7 +321,9 @@
                         ? '<div style="color:#9a3412;font-size:0.8rem;margin-top:4px;">A new date makes every parent accept the privacy terms again.</div>'
                         : '';
                     return '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e2e8f0;">' +
-                        '<div style="flex:1 1 220px;"><strong>' + escapeHtml(row.label) + '</strong><div style="color:#64748b;font-size:0.78rem;">' + escapeHtml(row.key) + '</div>' + warn + '</div>' +
+                        '<div style="flex:1 1 220px;"><strong>' + escapeHtml(row.label) + '</strong>' +
+                        (window.RemoedSiteHelp ? RemoedSiteHelp.button(row.key) : '') +
+                        '<div style="color:#64748b;font-size:0.78rem;">' + escapeHtml(row.key) + '</div>' + warn + '</div>' +
                         siteSettingInput(row) + confirmBox +
                         '<button type="button" class="btn btn-primary" data-site-save="' + escapeHtml(row.key) + '">Save</button>' +
                         '<button type="button" class="btn btn-secondary" data-site-restore="' + escapeHtml(row.key) + '">Restore default</button>' +
@@ -376,6 +380,7 @@
             }
         }
 
+        if (window.RemoedSiteHelp) RemoedSiteHelp.bind();
         var siteList = document.getElementById('site-settings-list');
         if (siteList) {
             siteList.addEventListener('click', function (event) {
