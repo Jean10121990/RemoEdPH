@@ -701,6 +701,28 @@ body.page-index .hero-fullbleed .hero-copy h1 {
   text-shadow: none !important;
 }
 
+body.page-index .hero-fullbleed .hero-copy h1.hero-typing::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.85em;
+  margin-left: 3px;
+  background: currentColor;
+  vertical-align: -0.05em;
+  animation: hero-caret 0.85s steps(1) infinite;
+}
+
+@keyframes hero-caret {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-index .hero-fullbleed .hero-copy h1.hero-typing::after {
+    content: none;
+    animation: none;
+  }
+}
+
 body.page-index .hero-fullbleed .hero-copy > p,
 body.page-index .hero-fullbleed .hero-copy p[data-i18n="hero_lead"] {
   color: var(--remo-ink-muted) !important;
