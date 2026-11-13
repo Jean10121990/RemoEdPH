@@ -12,7 +12,14 @@
  * summit Ultimate — 264 lessons, $1,596, Save $252, 12 months
  */
 
+const { readSetting } = require('../services/siteSettings');
+
 const CREDITS_PER_MONTH = 22;
+
+function creditsPerMonth() {
+  const n = Number(readSetting('creditsPerMonth'));
+  return Number.isInteger(n) && n > 0 ? n : CREDITS_PER_MONTH;
+}
 
 /** months is both the credit pack and the subscription window */
 const PLAN_DEFINITIONS = {
@@ -22,18 +29,24 @@ const PLAN_DEFINITIONS = {
   summit: { months: 12, validityMonths: 12, label: 'RemoSummit', bundleName: 'Ultimate Bundle' },
 };
 
-const PLAN_CREDITS = Object.fromEntries(
-  Object.entries(PLAN_DEFINITIONS).map(([id, def]) => [
-    id,
-    {
-      months: def.months,
-      validityMonths: def.validityMonths,
-      label: def.label,
-      bundleName: def.bundleName,
-      credits: def.months * CREDITS_PER_MONTH,
-    },
-  ])
-);
+function planCreditsMap() {
+  const perMonth = creditsPerMonth();
+  return Object.fromEntries(
+    Object.entries(PLAN_DEFINITIONS).map(([id, def]) => [
+      id,
+      {
+        months: def.months,
+        validityMonths: def.validityMonths,
+        label: def.label,
+        bundleName: def.bundleName,
+        credits: def.months * perMonth,
+      },
+    ])
+  );
+}
+
+/** Fallback map at 22 credits. Live readers use planCreditsMap(). */
+const PLAN_CREDITS = planCreditsMap();
 
 function normalizePlanId(plan) {
   const p = String(plan || '').toLowerCase();
@@ -47,14 +60,14 @@ function normalizePlanId(plan) {
 /** Calendar months for subscription / credit validity window. */
 function getPlanDurationMonths(planRaw) {
   const id = normalizePlanId(planRaw);
-  const row = PLAN_CREDITS[id];
+  const row = planCreditsMap()[id];
   if (!row) return 1;
   return row.validityMonths != null ? row.validityMonths : row.months;
 }
 
 function creditsForPlan(plan) {
   const id = normalizePlanId(plan);
-  const row = PLAN_CREDITS[id];
+  const row = planCreditsMap()[id];
   return row
     ? {
         planId: id,
@@ -69,8 +82,10 @@ function creditsForPlan(plan) {
 
 module.exports = {
   CREDITS_PER_MONTH,
+  creditsPerMonth,
   PLAN_DEFINITIONS,
   PLAN_CREDITS,
+  planCreditsMap,
   normalizePlanId,
   creditsForPlan,
   getPlanDurationMonths,

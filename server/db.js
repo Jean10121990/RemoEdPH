@@ -135,6 +135,10 @@ async function connectWithUri(label, uri) {
     const inserted = await siteSettings.seedSiteSettings();
     await siteSettings.loadSnapshot();
     if (inserted) console.log(`Site settings seeded: ${inserted} new key(s).`);
+    const copy = await require('./services/siteContent').seedSiteContent();
+    if (copy.blocks || copy.faqs) console.log(`Site copy seeded: ${copy.blocks} block(s), ${copy.faqs} FAQ row(s).`);
+    const mailSeed = await require('./emailService').seedEmailTemplates();
+    if (mailSeed) console.log(`Email templates seeded: ${mailSeed} new letter(s).`);
   } catch (err) {
     console.warn('Site settings seed:', err && err.message);
   }

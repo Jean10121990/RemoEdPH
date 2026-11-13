@@ -2,7 +2,7 @@ const { GardenError } = require('./errors');
 const domain = require('./domain');
 const config = require('./garden.config');
 const math = require('./rewardMath');
-const { MIN_SHARE_AGE, ANONYMOUS_NAME } = require('./share.config');
+const { minShareAge, ANONYMOUS_NAME } = require('./share.config');
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
@@ -22,7 +22,7 @@ function sharingOn(student) {
   if (student.sharingEnabled === true) return true;
   if (student.sharingEnabled === false) return false;
   const age = Number(student.age);
-  return Number.isFinite(age) && age >= MIN_SHARE_AGE;
+  return Number.isFinite(age) && age >= minShareAge();
 }
 
 function displayNameOf(student) {

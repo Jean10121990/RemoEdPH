@@ -3,8 +3,16 @@
  * Stage art lives in public/images/garden/ (placeholder SVGs; swap files, keep names).
  */
 
+const { readSetting } = require('../services/siteSettings');
+
 /** Months are YYYY-MM in this timezone (rollover at local midnight on the 1st). */
-const GARDEN_TIMEZONE = process.env.GARDEN_TIMEZONE || 'Asia/Manila';
+const GARDEN_TIMEZONE_FALLBACK = 'Asia/Manila';
+
+function gardenTimezone() {
+  if (process.env.GARDEN_TIMEZONE) return process.env.GARDEN_TIMEZONE;
+  const zone = readSetting('gardenTimezone');
+  return typeof zone === 'string' && zone ? zone : GARDEN_TIMEZONE_FALLBACK;
+}
 
 /**
  * How often a Play & Learn game can pay a drop:
@@ -16,7 +24,12 @@ const GARDEN_TIMEZONE = process.env.GARDEN_TIMEZONE || 'Asia/Manila';
 const GAME_REWARD_MODE = 'once-per-month';
 
 /** Used when the student has no lessons scheduled in the month (nothing to count). */
-const DEFAULT_MONTHLY_TARGET = 22;
+const DEFAULT_MONTHLY_TARGET_FALLBACK = 22;
+
+function gardenMonthlyTarget() {
+  const n = Number(readSetting('gardenMonthlyTarget'));
+  return Number.isFinite(n) && n >= 1 ? n : DEFAULT_MONTHLY_TARGET_FALLBACK;
+}
 
 /** Lowest stage first. minPercent is of this month’s care growthPoints / monthlyTarget. */
 const STAGES = [
@@ -43,9 +56,11 @@ const SPECIES = [
 ];
 
 module.exports = {
-  GARDEN_TIMEZONE,
+  get GARDEN_TIMEZONE() { return gardenTimezone(); },
+  gardenTimezone,
   GAME_REWARD_MODE,
-  DEFAULT_MONTHLY_TARGET,
+  get DEFAULT_MONTHLY_TARGET() { return gardenMonthlyTarget(); },
+  gardenMonthlyTarget,
   STAGES,
   SPECIES,
 };

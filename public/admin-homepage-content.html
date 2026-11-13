@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="js/security-guard.js?v=2"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage content - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js?v=pop-1"></script>
+        <script src="js/admin-access-guard.js?v=content-1"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-18"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'marketing');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="setting-card">
+                    <div class="setting-title">Homepage and About</div>
+                    <div class="setting-description">Marketing can edit this copy. Prices stay on the server. The About page keeps Who we are, Principles, Pillars, HEART, then Vision and Mission. This screen cannot reorder those blocks. If a line is hidden, the page shows the original HTML.</div>
+                    <p id="copy-status" class="muted" style="font-size:0.85rem;"></p>
+                    <div id="copy-fields"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/admin-copy-editor.js?v=content-1"></script>
+    <script>
+        RemoedCopyEditor.mount(document.getElementById('copy-fields'), {
+            statusId: 'copy-status',
+            listUrl: '/api/admin/content/blocks',
+            saveUrl: '/api/admin/content/blocks',
+            pages: ['home', 'about', 'register']
+        });
+    </script>
+</body>
+</html>

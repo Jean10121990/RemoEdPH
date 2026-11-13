@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="js/security-guard.js?v=2"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand and legal - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js?v=pop-1"></script>
+        <script src="js/admin-access-guard.js?v=content-1"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-18"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'settings');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="setting-card">
+                    <div class="setting-title">Brand, login, and legal</div>
+                    <div class="setting-description">Super-Admin only. Legal text is limited to headings, paragraphs, lists, and links. Leave “Show on the site” off to keep the page that is already in the file. The support email and Facebook address are on System Settings. Changing the privacy consent date is there too, and it makes every parent accept again.</div>
+                    <p id="copy-status" class="muted" style="font-size:0.85rem;"></p>
+                    <div id="copy-fields"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/admin-copy-editor.js?v=content-1"></script>
+    <script>
+        RemoedCopyEditor.mount(document.getElementById('copy-fields'), {
+            statusId: 'copy-status',
+            listUrl: '/api/admin/content/legal',
+            saveUrl: '/api/admin/content/legal',
+            pages: ['brand', 'login', 'privacy', 'terms', 'parent-terms', 'teacher-privacy', 'teacher-terms']
+        });
+    </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
  * Site settings cache. One Node process (PM2 fork, remoed-api).
  * Reads come from memory. A save writes Mongo, audits, then replaces the snapshot.
  * A snapshot older than 5 minutes reloads before the next read.
- * Checkout and booking do not read this yet.
+ * Checkout, booking, payouts, and garden read this memory. A missing row uses the catalog constant.
  */
 const SiteSetting = require('../models/SiteSetting');
 
@@ -16,11 +16,18 @@ const CATALOG = [
   { key: 'sparkFounderDiscount', group: 'pricing', type: 'number', value: 0, label: 'Spark founder discount (USD)', confirm: true },
   { key: 'adminFeePercent', group: 'pricing', type: 'number', value: 2, label: 'Admin fee percent', confirm: true },
   { key: 'referralRewardCredits', group: 'pricing', type: 'number', value: 3, label: 'Referral reward credits' },
+  { key: 'commissionSpark', group: 'pricing', type: 'number', value: 1000, label: 'Unique Link commission, Spark (PHP)', confirm: true },
+  { key: 'commissionSteady', group: 'pricing', type: 'number', value: 1500, label: 'Unique Link commission, Steady (PHP)', confirm: true },
+  { key: 'commissionScholar', group: 'pricing', type: 'number', value: 2000, label: 'Unique Link commission, Scholar (PHP)', confirm: true },
+  { key: 'commissionSummit', group: 'pricing', type: 'number', value: 2500, label: 'Unique Link commission, Summit (PHP)', confirm: true },
+  { key: 'payoutPaidHourly', group: 'pricing', type: 'json', value: [180, 230, 280, 330], label: 'Paid tier hourly rates (PHP). Not the fallback global rate.', confirm: true },
+  { key: 'payoutCredentialAddon', group: 'pricing', type: 'number', value: 10, label: 'Credential add-on (PHP per hour)', confirm: true },
+  { key: 'payoutTrialRate', group: 'pricing', type: 'number', value: 45, label: 'Free-trial class rate (PHP, flat)', confirm: true },
   { key: 'emergencyCancelMinutes', group: 'booking', type: 'number', value: 30, label: 'Emergency cancel window (minutes)' },
   { key: 'earlyEntryMinutes', group: 'booking', type: 'number', value: 10, label: 'Early join (minutes)' },
   { key: 'classMaxMinutes', group: 'booking', type: 'number', value: 30, label: 'Class hard stop (minutes)' },
   { key: 'classLengthMinutes', group: 'booking', type: 'number', value: 25, label: 'Scheduled class length (minutes)' },
-  { key: 'creditNoticeDays', group: 'booking', type: 'json', value: [14, 7], label: 'Credit expiry notice days' },
+  { key: 'creditNoticeDays', group: 'booking', type: 'json', value: [14, 7], label: 'Credit expiry notice days (14 and 7)' },
   { key: 'freePlanLessonCount', group: 'booking', type: 'number', value: 3, label: 'Free-plan lesson count' },
   { key: 'gardenMonthlyTarget', group: 'garden', type: 'number', value: 22, label: 'Garden monthly target' },
   { key: 'gardenTimezone', group: 'garden', type: 'string', value: 'Asia/Manila', label: 'Garden timezone' },
@@ -28,11 +35,12 @@ const CATALOG = [
   { key: 'treeCreditExpiryDays', group: 'garden', type: 'number', value: 60, label: 'Tree credit expiry (days)' },
   { key: 'treeReminderDays', group: 'garden', type: 'number', value: 7, label: 'Tree credit reminder (days)' },
   { key: 'treeEligibilityRatio', group: 'garden', type: 'number', value: 0.8, label: 'Tree eligibility ratio' },
-  { key: 'gardenCreditsEnabled', group: 'flags', type: 'boolean', value: true, label: 'Garden credits enabled' },
+  { key: 'gardenCreditsEnabled', group: 'flags', type: 'boolean', value: true, label: 'Garden lesson credits (off pauses rewards)' },
   { key: 'minShareAge', group: 'garden', type: 'number', value: 13, label: 'Minimum share age' },
   { key: 'loginFacebookEnabled', group: 'flags', type: 'boolean', value: false, label: 'Facebook on the login page' },
   { key: 'privacyConsentVersion', group: 'legal', type: 'string', value: '2026-10-01', label: 'Privacy consent version', confirm: true },
   { key: 'supportEmail', group: 'brand', type: 'string', value: 'support@remoedph.com', label: 'Support email' },
+  { key: 'facebookUrl', group: 'brand', type: 'string', value: 'https://www.facebook.com/remoed', label: 'Facebook page URL' },
 ];
 
 const BY_KEY = Object.fromEntries(CATALOG.map((row) => [row.key, row]));
@@ -66,6 +74,9 @@ function validateValue(key, raw) {
     if (key === 'adminFeePercent' && (n < 0 || n > 100)) return { ok: false, error: 'Percent must be from 0 to 100.' };
     if (key === 'treeEligibilityRatio' && (n <= 0 || n > 1)) return { ok: false, error: 'Ratio must be greater than 0 and at most 1.' };
     if (key === 'sparkFounderDiscount' && n < 0) return { ok: false, error: 'Discount cannot be negative.' };
+    if (key === 'referralRewardCredits' && (!Number.isInteger(n) || n < 1 || n > 5)) {
+      return { ok: false, error: 'Referral credits must be a whole number from 1 to 5.' };
+    }
     if (key !== 'sparkFounderDiscount' && key !== 'adminFeePercent' && n <= 0) {
       return { ok: false, error: 'Value must be greater than 0.' };
     }
@@ -81,6 +92,9 @@ function validateValue(key, raw) {
       return { ok: false, error: 'Consent version must be YYYY-MM-DD.' };
     }
     if (key === 'gardenTimezone' && !isIanaZone(s)) return { ok: false, error: 'Timezone must be an IANA name.' };
+    if (key === 'facebookUrl' && !/^https:\/\/(www\.)?facebook\.com\/[A-Za-z0-9.\-_/]+$/.test(s)) {
+      return { ok: false, error: 'Use an https://facebook.com/ page address.' };
+    }
     return { ok: true, value: s.slice(0, 320) };
   }
   if (spec.type === 'json') {
@@ -90,6 +104,13 @@ function validateValue(key, raw) {
           .split(',')
           .map((part) => Number(String(part).trim()))
           .filter((n) => Number.isFinite(n));
+    if (key === 'payoutPaidHourly') {
+      const tiers = list.filter((n) => Number.isInteger(n) && n > 0);
+      if (!tiers.includes(180) || tiers.length < 4) {
+        return { ok: false, error: 'Keep 180 and three other whole hourly rates, separated by commas.' };
+      }
+      return { ok: true, value: tiers };
+    }
     if (!list.length || list.some((n) => !Number.isInteger(n) || n <= 0)) {
       return { ok: false, error: 'Enter whole days greater than 0, separated by commas.' };
     }
@@ -104,7 +125,7 @@ function publicRow(row) {
     key: row.key,
     group: row.group,
     type: row.type,
-    label: row.label || spec.label || row.key,
+    label: spec.label || row.label || row.key,
     value: row.value,
     defaultValue: row.defaultValue,
     confirm: !!spec.confirm,
@@ -168,6 +189,18 @@ async function getSetting(key) {
   return row ? row.value : spec.value;
 }
 
+/** Sync read for checkout and booking. Missing or unloaded cache uses the catalog constant. */
+function readSetting(key) {
+  const spec = BY_KEY[key];
+  if (!spec) return undefined;
+  if (snapshot && Date.now() - loadedAt > TTL_MS) {
+    loadSnapshot().catch(() => {});
+  }
+  const row = snapshot && snapshot[key];
+  if (!row || row.value == null || row.value === '') return spec.value;
+  return row.value;
+}
+
 function needsConfirm(key) {
   return !!(BY_KEY[key] && BY_KEY[key].confirm);
 }
@@ -204,8 +237,10 @@ module.exports = {
   CATALOG,
   seedSiteSettings,
   loadSnapshot,
+  ensureFresh,
   listSettings,
   getSetting,
+  readSetting,
   needsConfirm,
   writeValue,
   restoreDefault,

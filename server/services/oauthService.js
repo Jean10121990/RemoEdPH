@@ -183,8 +183,19 @@ function assertProviderConfigured(provider) {
 }
 
 async function buildAuthUrl(req, provider, query) {
-  assertProviderConfigured(provider);
   const intent = String(query.intent || 'student_login').trim();
+  if (provider === 'facebook' && intent === 'student_login') {
+    let facebookOn = false;
+    try {
+      facebookOn = require('./siteSettings').readSetting('loginFacebookEnabled') === true;
+    } catch (_err) {
+      facebookOn = false;
+    }
+    if (!facebookOn) {
+      throw new OAuthError(403, 'FACEBOOK_DISABLED', 'Facebook sign-in is turned off on the login page.');
+    }
+  }
+  assertProviderConfigured(provider);
   if (!INTENTS.has(intent)) {
     throw new OAuthError(400, 'INVALID_INTENT', 'Invalid OAuth intent.');
   }

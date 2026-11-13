@@ -1,8 +1,8 @@
 const { DateTime } = require('luxon');
 const config = require('./garden.config');
 const {
-  MAX_TREE_CREDITS_PER_STUDENT_PER_MONTH,
-  LESSON_ELIGIBILITY_RATIO,
+  treeCreditCap,
+  treeEligibilityRatio,
   TIER_RANGES,
   TIERS,
 } = require('./rewards.config');
@@ -10,7 +10,7 @@ const { GARDEN_BADGES } = require('./badges.config');
 
 function lessonsRequired(target) {
   const n = Math.max(1, Math.floor(Number(target) || 1));
-  return Math.ceil(LESSON_ELIGIBILITY_RATIO * n);
+  return Math.ceil(treeEligibilityRatio() * n);
 }
 
 /**
@@ -73,7 +73,7 @@ function decideCredits({
     };
   }
   const rolled = rollWeighted(TIERS[tier], rngInt);
-  const room = Math.max(0, MAX_TREE_CREDITS_PER_STUDENT_PER_MONTH - Math.max(0, alreadyGranted));
+  const room = Math.max(0, treeCreditCap() - Math.max(0, alreadyGranted));
   const granted = Math.min(rolled, room);
   return {
     ...base,

@@ -10,7 +10,14 @@ const Booking = require('../models/Booking');
 const Student = require('../models/Student');
 const { PRE_LEVEL, normalizeCurriculumDocLevel } = require('../config/curriculumLevels');
 
+const { readSetting } = require('./siteSettings');
+
 const FREE_PLAN_LESSON_COUNT = 3;
+
+function freePlanLessonCount() {
+  const n = Number(readSetting('freePlanLessonCount'));
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : FREE_PLAN_LESSON_COUNT;
+}
 const PAID_PLAN_IDS = ['spark', 'steady', 'scholar', 'summit'];
 /**
  * Super-Admin Settings may force free/paid for these accounts only.
@@ -105,7 +112,7 @@ function isPaidSubscriber(student) {
 function completedCountOf(student) {
   const n = Number(student && student.freeLessonCompletedCount) || 0;
   if (n < 0) return 0;
-  if (n > FREE_PLAN_LESSON_COUNT) return FREE_PLAN_LESSON_COUNT;
+  if (n > freePlanLessonCount()) return freePlanLessonCount();
   return n;
 }
 
@@ -148,7 +155,7 @@ async function bookingAdvancesFreePlan(booking) {
   const lesson = await Lesson.findById(booking.lessonId).select('lessonNumber curriculumId isActive').lean();
   if (!lesson || lesson.isActive === false) return false;
   const n = Number(lesson.lessonNumber);
-  if (!(n >= 1 && n <= FREE_PLAN_LESSON_COUNT)) return false;
+  if (!(n >= 1 && n <= freePlanLessonCount())) return false;
   if (!lesson.curriculumId) return false;
   const cur = await Curriculum.findById(lesson.curriculumId).select('level isActive').lean();
   if (!cur || cur.isActive === false) return false;
@@ -184,7 +191,7 @@ async function loadStudent(studentOrId, session) {
 async function assertFreePlanLesson({ student, studentId, studentLevel, lessonId, lessonTitle, zone, session }) {
   const current = await loadStudent(student || studentId, session);
   const completed = completedCountOf(current);
-  if (completed >= FREE_PLAN_LESSON_COUNT) {
+  if (completed >= freePlanLessonCount()) {
     return {
       ok: false,
       error: httpError(
@@ -237,10 +244,10 @@ async function assertFreePlanLesson({ student, studentId, studentLevel, lessonId
 async function freePlanProfile(student, zone) {
   const paid = isPaidSubscriber(student);
   const completed = completedCountOf(student);
-  const sequenceDone = completed >= FREE_PLAN_LESSON_COUNT;
+  const sequenceDone = completed >= freePlanLessonCount();
   const upcoming = paid ? null : await upcomingFreeBooking(student, null);
   const isFree = !paid;
-  const nextLessonNumber = sequenceDone ? FREE_PLAN_LESSON_COUNT : completed + 1;
+  const nextLessonNumber = sequenceDone ? freePlanLessonCount() : completed + 1;
   return {
     isFree,
     nextLessonNumber,
@@ -248,12 +255,13 @@ async function freePlanProfile(student, zone) {
     completedCount: completed,
     periodKey: currentPeriodKey(zone),
     sequenceDone,
-    lessonCount: FREE_PLAN_LESSON_COUNT,
+    lessonCount: freePlanLessonCount(),
   };
 }
 
 module.exports = {
   FREE_PLAN_LESSON_COUNT,
+  freePlanLessonCount,
   PRE_LEVEL,
   TEST_PLAN_STUDENTS,
   TEST_PLAN_STUDENT_USERNAME,

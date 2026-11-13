@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const emailTemplateStore = require('./services/emailTemplateStore');
 
 /** Hostinger: envelope From must match the SMTP login mailbox (support@remoedph.com). */
 const SMTP_FROM_LITERAL = 'RemoEd Support <support@remoedph.com>';
@@ -778,12 +779,19 @@ async function sendEmail(to, template, data) {
       };
     }
 
-    const emailContent = emailTemplates[template](
+    let emailContent = emailTemplates[template](
       data.username,
       data.newPassword,
       data.userType,
       data.resetLink
     );
+    if (template === 'passwordReset') {
+      emailContent = emailTemplateStore.resolve('passwordReset', emailContent, {
+        username: data.username || '',
+        userType: data.userType || '',
+        resetLink: data.resetLink || '',
+      });
+    }
     
     console.log(`📧 Attempting to send email to: ${to} via ${activeEmailService.toUpperCase()}`);
     
@@ -898,7 +906,19 @@ async function sendTeacherRegistrationEmail(email, username, password, firstName
       };
     }
 
-    const template = emailTemplates.teacherRegistration(email, username, password, firstName, lastName);
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/login/`;
+    const template = emailTemplateStore.resolve(
+      'teacherRegistration',
+      emailTemplates.teacherRegistration(email, username, password, firstName, lastName),
+      {
+        email: email || '',
+        username: username || '',
+        password: password || '',
+        firstName: firstName || '',
+        lastName: lastName || '',
+        loginUrl,
+      }
+    );
     
     console.log(`📧 Attempting to send teacher registration email to: ${email} via ${activeEmailService.toUpperCase()}`);
     
@@ -980,7 +1000,11 @@ async function sendSubscriptionEmail(email, username, plan, planPrice) {
       };
     }
 
-    const template = emailTemplates.subscriptionConfirmation(email, username, plan, planPrice);
+    const template = emailTemplateStore.resolve(
+      'subscriptionConfirmation',
+      emailTemplates.subscriptionConfirmation(email, username, plan, planPrice),
+      subscriptionTemplateVars(email, username, plan, planPrice)
+    );
     console.log(`📧 Attempting to send subscription confirmation email to: ${email} via ${activeEmailService.toUpperCase()}`);
 
     let result;
@@ -1039,7 +1063,16 @@ async function sendAssessmentEmail(email, childName, cefrLevel, score, registerU
       };
     }
 
-    const template = emailTemplates.assessmentResults(childName, cefrLevel, score, registerUrl);
+    const template = emailTemplateStore.resolve(
+      'assessmentResults',
+      emailTemplates.assessmentResults(childName, cefrLevel, score, registerUrl),
+      {
+        childName: childName || '',
+        cefrLevel: cefrLevel || '',
+        score: score == null ? '' : String(score),
+        registerUrl: registerUrl || '',
+      }
+    );
     console.log(`📧 Attempting to send assessment email to: ${targetEmail} via ${activeEmailService.toUpperCase()}`);
 
     let result;
@@ -1104,7 +1137,11 @@ async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink, firs
       return { success: false, error: 'Email service not configured', fallback: true };
     }
 
-    const template = emailTemplates.teacherPipelineWelcome(firstName, fullName, signupLink);
+    const template = emailTemplateStore.resolve(
+      'teacherPipelineWelcome',
+      emailTemplates.teacherPipelineWelcome(firstName, fullName, signupLink),
+      welcomeTemplateVars(firstName, fullName, signupLink)
+    );
     let result;
 
     if (activeEmailService === 'mailgun') {
@@ -1146,7 +1183,11 @@ async function sendTeacherPipelineFailEmail(email, fullName, reapplyEligibleAt, 
       return { success: false, error: 'Email service not configured', fallback: true };
     }
 
-    const template = emailTemplates.teacherPipelineFail(firstName, reapplyLine);
+    const template = emailTemplateStore.resolve(
+      'teacherPipelineFail',
+      emailTemplates.teacherPipelineFail(firstName, reapplyLine),
+      failTemplateVars(firstName, reapplyLine)
+    );
     let result;
 
     if (activeEmailService === 'mailgun') {
@@ -1577,6 +1618,101 @@ Do not share these credentials.`;
   }
 }
 
+function loginPageUrl() {
+  return `${process.env.FRONTEND_URL || 'http://localhost:5000'}/login/`;
+}
+
+function subscriptionTemplateVars(email, username, plan, planPrice) {
+  const planLabel =
+    plan === '1month' ? 'RemoSpark — Starter Bundle (3 Months)' :
+    plan === '3months' ? 'RemoSteady — Progress Bundle (6 Months)' :
+    plan === '6months' ? 'RemoScholar — Mastery Bundle (12 Months)' :
+    plan === '1year' ? 'RemoSummit — Ultimate Bundle (24 Months)' :
+    String(plan || 'Subscription');
+  const amount = Number(planPrice || 0) || 0;
+  return {
+    greetingName: username || (email ? String(email).split('@')[0] : 'Student'),
+    planLabel,
+    amountText: amount ? `₱${amount.toLocaleString()}` : '₱0',
+    loginUrl: loginPageUrl(),
+  };
+}
+
+function welcomeTemplateVars(firstName, fullName, signupLink) {
+  const trimmedFirst = firstName && String(firstName).trim() ? String(firstName).trim() : '';
+  const fullTrim = fullName && String(fullName).trim() ? String(fullName).trim() : '';
+  return {
+    firstName: trimmedFirst || 'Teacher',
+    fullNameClause: fullTrim ? `, <strong>${escapeHtml(fullTrim)}</strong>` : '',
+    fullNameClauseText: fullTrim ? `, ${fullTrim}` : '',
+    signupLink: String(signupLink || '').trim(),
+  };
+}
+
+function failTemplateVars(firstName, reapplyLine) {
+  const name = firstName && String(firstName).trim() ? String(firstName).trim() : 'Teacher';
+  const line = reapplyLine ? String(reapplyLine) : '';
+  return {
+    firstName: name,
+    reapplyBlock: line ? `<p><strong>${line}</strong></p>` : '',
+    reapplyText: line ? `\n${line}` : '',
+  };
+}
+
+function buildSeedBodies() {
+  const loginUrl = loginPageUrl();
+  const teacher = emailTemplates.teacherRegistration('{{email}}', '{{username}}', '{{password}}', '{{firstName}}', '{{lastName}}');
+  teacher.html = teacher.html.split(loginUrl).join('{{loginUrl}}');
+  teacher.text = teacher.text.split(loginUrl).join('{{loginUrl}}');
+
+  const sub = emailTemplates.subscriptionConfirmation('parent@example.com', '{{greetingName}}', '{{planLabel}}', 0);
+  sub.html = sub.html.split('₱0').join('{{amountText}}').split(loginUrl).join('{{loginUrl}}');
+  sub.text = sub.text.split('₱0').join('{{amountText}}').split(loginUrl).join('{{loginUrl}}');
+
+  const welcome = emailTemplates.teacherPipelineWelcome('{{firstName}}', 'SAMPLE_FULL', '{{signupLink}}');
+  welcome.html = welcome.html.split(', <strong>SAMPLE_FULL</strong>').join('{{fullNameClause}}');
+  welcome.text = welcome.text.split(', SAMPLE_FULL').join('{{fullNameClauseText}}');
+
+  const fail = emailTemplates.teacherPipelineFail('{{firstName}}', 'SAMPLE_REAPPLY');
+  fail.html = fail.html.split('<p><strong>SAMPLE_REAPPLY</strong></p>').join('{{reapplyBlock}}');
+  fail.text = fail.text.split('\nSAMPLE_REAPPLY').join('{{reapplyText}}');
+
+  return {
+    teacherRegistration: teacher,
+    subscriptionConfirmation: sub,
+    assessmentResults: emailTemplates.assessmentResults('{{childName}}', '{{cefrLevel}}', '{{score}}', '{{registerUrl}}'),
+    passwordReset: emailTemplates.passwordReset('{{username}}', '', '{{userType}}', '{{resetLink}}'),
+    teacherPipelineWelcome: welcome,
+    teacherPipelineFail: fail,
+  };
+}
+
+async function seedEmailTemplates() {
+  return emailTemplateStore.seedMissing(buildSeedBodies());
+}
+
+function sampleFileLetter(key) {
+  if (key === 'teacherRegistration') {
+    return emailTemplates.teacherRegistration('ana@example.com', 'ana.reyes', 'TempPass1', 'Ana', 'Reyes');
+  }
+  if (key === 'subscriptionConfirmation') {
+    return emailTemplates.subscriptionConfirmation('parent@example.com', 'Ana', '1month', 9244.62);
+  }
+  if (key === 'assessmentResults') {
+    return emailTemplates.assessmentResults('Sofie', 'A1', 4, 'https://remoedph.com/trial.html');
+  }
+  if (key === 'passwordReset') {
+    return emailTemplates.passwordReset('ana.reyes', '', 'student', 'https://remoedph.com/reset-password.html?token=sample');
+  }
+  if (key === 'teacherPipelineWelcome') {
+    return emailTemplates.teacherPipelineWelcome('Ana', 'Ana Reyes', 'https://remoedph.com/teacher-signup?invite=sample');
+  }
+  if (key === 'teacherPipelineFail') {
+    return emailTemplates.teacherPipelineFail('Ana', 'You may submit a new application on or after January 1, 2027.');
+  }
+  return null;
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
@@ -1592,5 +1728,8 @@ module.exports = {
   sendEmail,
   sendRawEmail,
   getEmailConfigStatus,
+  seedEmailTemplates,
+  buildSeedBodies,
+  sampleFileLetter,
   testEmailSending
 };

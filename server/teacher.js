@@ -95,7 +95,7 @@ const {
   isBookingSessionFinalized,
   finalizeBookingAfterTeacherFeedbackWrap,
 } = require('./services/teacherClassFinalize');
-const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
+const { getClassroomEntryGate, currentEarlyEntryMinutes, currentClassMaxMinutes } = require('./services/classroomEntryWindow');
 const realtime = require('./realtime');
 const { withRedis } = require('./utils/redisClient');
 const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
@@ -3261,13 +3261,13 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
     let meetsDurationRequirement = false;
     
     try {
-      const { getScheduledStartMs, CLASS_MAX_MINUTES } = require('./services/classroomEntryWindow');
+      const { getScheduledStartMs } = require('./services/classroomEntryWindow');
       const startMs = getScheduledStartMs(booking);
       if (startMs != null) {
         durationMinutes = (Date.now() - startMs) / (1000 * 60);
         meetsDurationRequirement = durationMinutes >= 15;
         console.log(
-          `Class duration: ${durationMinutes.toFixed(2)} minutes (finish from 15, hard stop ${CLASS_MAX_MINUTES})`
+          `Class duration: ${durationMinutes.toFixed(2)} minutes (finish from 15, hard stop ${currentClassMaxMinutes()})`
         );
       }
     } catch (e) {
@@ -3385,7 +3385,7 @@ router.post('/mark-user-entered', verifyToken, async (req, res) => {
         code: entryGate.code,
         opensAt: entryGate.opensAt,
         scheduledStart: entryGate.scheduledStart,
-        earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+        earlyEntryMinutes: currentEarlyEntryMinutes(),
       });
     }
     

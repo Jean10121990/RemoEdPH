@@ -3,10 +3,24 @@
  * Uses the same zone convention as bookings (Asia/Manila default) when only date+time exist.
  */
 const { DateTime } = require('luxon');
+const { readSetting } = require('./siteSettings');
 
 const EARLY_ENTRY_MINUTES = 10;
 /** Live class hard stop. A closed tab must not leave the session open for hours. */
 const CLASS_MAX_MINUTES = 30;
+
+function positiveMinutes(key, fallback) {
+  const n = Number(readSetting(key));
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function currentEarlyEntryMinutes() {
+  return positiveMinutes('earlyEntryMinutes', EARLY_ENTRY_MINUTES);
+}
+
+function currentClassMaxMinutes() {
+  return positiveMinutes('classMaxMinutes', CLASS_MAX_MINUTES);
+}
 
 function getScheduledStartMs(booking) {
   if (!booking) return null;
@@ -69,14 +83,15 @@ function getClassroomEntryGate(booking, nowMs = Date.now()) {
   if (startMs == null) {
     return { allowed: true, reason: 'no_schedule' };
   }
-  const earliestMs = startMs - EARLY_ENTRY_MINUTES * 60 * 1000;
+  const early = currentEarlyEntryMinutes();
+  const earliestMs = startMs - early * 60 * 1000;
   if (nowMs < earliestMs) {
     return {
       allowed: false,
       code: 'TOO_EARLY',
       opensAt: new Date(earliestMs).toISOString(),
       scheduledStart: new Date(startMs).toISOString(),
-      message: `Class opens ${EARLY_ENTRY_MINUTES} minutes before the start time.`,
+      message: `Class opens ${early} minutes before the start time.`,
     };
   }
   return {
@@ -90,7 +105,7 @@ function getClassroomEntryGate(booking, nowMs = Date.now()) {
 function classHardEndDate(booking) {
   const startMs = getScheduledStartMs(booking);
   if (startMs == null) return null;
-  return new Date(startMs + CLASS_MAX_MINUTES * 60 * 1000);
+  return new Date(startMs + currentClassMaxMinutes() * 60 * 1000);
 }
 
 /**
@@ -106,6 +121,8 @@ function cappedClassEndDate(booking, now = new Date()) {
 module.exports = {
   EARLY_ENTRY_MINUTES,
   CLASS_MAX_MINUTES,
+  currentEarlyEntryMinutes,
+  currentClassMaxMinutes,
   getScheduledStartMs,
   isClassroomSessionEnded,
   getClassroomEntryGate,

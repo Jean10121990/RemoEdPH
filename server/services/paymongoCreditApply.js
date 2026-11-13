@@ -4,7 +4,7 @@
  */
 const Student = require('../models/Student');
 const {
-  PLAN_CREDITS,
+  creditsForPlan,
   normalizePlanId,
   getPlanDurationMonths,
 } = require('../config/planCredits');
@@ -148,7 +148,7 @@ async function applyExistingStudentPurchase({
   }
 
   const normalizedPlanId = normalizePlanId(planId || pending.plan);
-  const planCreditConfig = PLAN_CREDITS[normalizedPlanId] || { credits: 0, label: pending.plan || 'Plan' };
+  const planCreditConfig = creditsForPlan(normalizedPlanId) || { credits: 0, label: pending.plan || 'Plan' };
   const creditsToAdd = Number(planCreditConfig.credits || 0);
   const amountPaid = Number(pending.amount || 0);
   const creditTimestamp = new Date();
@@ -402,6 +402,6 @@ module.exports = {
   isPaymongoCheckoutPaid,
   summarizeCheckoutPaymentsForLog,
   extractPaymentIdFromCheckout,
-  PLAN_CREDITS,
+  creditsForPlan,
   normalizePlanId,
 };

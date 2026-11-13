@@ -8,7 +8,7 @@ const {
   computeSubscriptionDates,
   applyExistingStudentPurchase,
   normalizePlanId,
-  PLAN_CREDITS,
+  creditsForPlan,
 } = require('./services/paymongoCreditApply');
 
 const router = express.Router();
@@ -454,7 +454,7 @@ async function handlePaymongoWebhook(req, res) {
     });
 
     const normalizedPlanId = normalizePlanId(planId || pending.plan);
-    const planCreditConfig = PLAN_CREDITS[normalizedPlanId] || { credits: 0, label: pending.plan || 'Plan' };
+    const planCreditConfig = creditsForPlan(normalizedPlanId) || { credits: 0, label: pending.plan || 'Plan' };
     const creditsToAdd = Number(planCreditConfig.credits || 0);
     const amountPaid = Number(pending.amount || 0);
     const { startDate, endDate, lotExpiresAt } = computeSubscriptionDates(normalizedPlanId || pending.plan);

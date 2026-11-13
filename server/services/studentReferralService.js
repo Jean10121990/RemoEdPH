@@ -5,7 +5,7 @@ const { buildCreditLot } = require('./creditLots');
 const StudentReferralReward = require('../models/StudentReferralReward');
 const StudentReferralBadge = require('../models/StudentReferralBadge');
 const {
-  REFERRAL_REWARD_CREDITS,
+  referralRewardCredits,
   REFERRAL_BADGES,
   PAID_PLAN_IDS,
 } = require('../config/studentReferral');
@@ -112,7 +112,7 @@ async function applyRewardInSession(session, referred, paymentId) {
   const mine = new Set(emailsOf(referred));
   if (emailsOf(referrer).some((e) => mine.has(e))) return null;
 
-  const creditsAwarded = REFERRAL_REWARD_CREDITS;
+  const creditsAwarded = referralRewardCredits();
   const [reward] = await StudentReferralReward.create(
     [
       {
@@ -289,7 +289,7 @@ async function getDashboard(studentId) {
   return {
     code,
     link: appOrigin() + '/signup?ref=' + encodeURIComponent(code),
-    shareText: 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns ' + REFERRAL_REWARD_CREDITS + ' free lessons.',
+    shareText: 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns ' + referralRewardCredits() + ' free lessons.',
     stats: {
       linkClicks,
       signups: signups.length,

@@ -200,6 +200,8 @@ const PATH_PERMISSION_RULES = [
   { re: /admin-accounting-hub|admin-payroll|admin-affiliate-payroll|admin-student-subscriptions/, key: 'nav:accounting_hub' },
   { re: /admin-fee/, key: 'nav:admin_fee' },
   { re: /admin-marketing-hub|admin-unique-link-commission|admin-referral-leaderboard|admin-affiliates/, key: 'nav:marketing' },
+  { re: /admin-homepage-content/, key: 'content:homepage' },
+  { re: /admin-faq-content/, key: 'content:faq' },
   { re: /admin-announcements/, key: 'nav:announcements' },
   { re: /admin-videos/, key: 'nav:videos' },
   { re: /admin-reports|garden-credits/, key: 'nav:reports' },

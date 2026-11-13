@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="js/security-guard.js?v=2"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email letters - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js?v=pop-1"></script>
+        <script src="js/admin-access-guard.js?v=content-1"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-18"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'settings');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="setting-card">
+                    <div class="setting-title">Email letters</div>
+                    <div class="setting-description">Super-Admin only. These six letters are the teacher account, subscription receipt, assessment results, password reset, and the two teacher-pipeline notes. Preview with sample names before you save. A blank letter is not saved. Clear the letter to keep the built-in one, so a missing row still sends. Mail passwords stay on the server. They are not stored with these letters.</div>
+                    <p id="mail-status" class="muted" style="font-size:0.85rem;"></p>
+                    <label for="mail-key" style="font-weight:700;display:block;margin-top:8px;">Letter</label>
+                    <select id="mail-key" style="width:100%;max-width:420px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;"></select>
+                    <p id="mail-source" class="muted" style="font-size:0.85rem;"></p>
+                    <label for="mail-subject" style="font-weight:700;display:block;">Subject</label>
+                    <input id="mail-subject" type="text" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                    <label for="mail-html" style="font-weight:700;display:block;margin-top:10px;">HTML</label>
+                    <textarea id="mail-html" rows="12" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-family:Consolas,monospace;"></textarea>
+                    <label for="mail-text" style="font-weight:700;display:block;margin-top:10px;">Plain text</label>
+                    <textarea id="mail-text" rows="6" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-family:Consolas,monospace;"></textarea>
+                    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-secondary" id="mail-preview">Preview</button>
+                        <button type="button" class="btn btn-primary" id="mail-save" disabled>Save</button>
+                        <button type="button" class="btn btn-secondary" id="mail-restore">Use the built-in letter</button>
+                    </div>
+                    <iframe id="mail-frame" title="Letter preview" sandbox="" style="width:100%;height:420px;margin-top:14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var status = document.getElementById('mail-status');
+        var select = document.getElementById('mail-key');
+        var subject = document.getElementById('mail-subject');
+        var html = document.getElementById('mail-html');
+        var text = document.getElementById('mail-text');
+        var source = document.getElementById('mail-source');
+        var saveBtn = document.getElementById('mail-save');
+        var frame = document.getElementById('mail-frame');
+        var rows = [];
+        var token = '';
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function headers(json) {
+            var tokenValue = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken)
+                ? RemoedAdminSession.getAuthToken()
+                : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || '');
+            var h = {};
+            if (json) h['Content-Type'] = 'application/json';
+            if (tokenValue) h.Authorization = 'Bearer ' + tokenValue;
+            return h;
+        }
+
+        function say(message) { status.textContent = message || ''; }
+
+        function current() {
+            return rows.find(function (row) { return row.key === select.value; }) || null;
+        }
+
+        function paint(row) {
+            if (!row) return;
+            subject.value = row.subject || '';
+            html.value = row.html || '';
+            text.value = row.text || '';
+            source.textContent = row.usingFile
+                ? 'This box shows the built-in letter. Saving it stores your copy. Clearing it keeps the built-in letter.'
+                : 'A saved copy is in use. Use the built-in letter to send the original again.';
+            token = '';
+            saveBtn.disabled = true;
+            frame.srcdoc = '';
+        }
+
+        function body() {
+            return { key: select.value, subject: subject.value, html: html.value, text: text.value };
+        }
+
+        function markDirty() {
+            token = '';
+            saveBtn.disabled = true;
+        }
+
+        subject.addEventListener('input', markDirty);
+        html.addEventListener('input', markDirty);
+        text.addEventListener('input', markDirty);
+        select.addEventListener('change', function () { paint(current()); say(''); });
+
+        document.getElementById('mail-preview').addEventListener('click', function () {
+            say('Previewing…');
+            var payload = body();
+            fetch('/api/admin/email-templates/preview', {
+                method: 'POST',
+                credentials: 'include',
+                headers: headers(true),
+                body: JSON.stringify(payload)
+            }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok) { say(res.j.error || 'Preview failed.'); token = ''; saveBtn.disabled = true; return; }
+                    token = res.j.previewToken || '';
+                    saveBtn.disabled = !token;
+                    frame.srcdoc = (res.j.preview && res.j.preview.html) || '';
+                    say(res.j.usingFile ? 'Preview shows the built-in letter. You can save to keep it.' : 'Preview is ready. Save uses this exact letter.');
+                })
+                .catch(function () { say('Network error.'); });
+        });
+
+        saveBtn.addEventListener('click', function () {
+            if (!token) { say('Preview this letter before saving it.'); return; }
+            say('Saving…');
+            var payload = body();
+            payload.previewToken = token;
+            fetch('/api/admin/email-templates/' + encodeURIComponent(select.value), {
+                method: 'PUT',
+                credentials: 'include',
+                headers: headers(true),
+                body: JSON.stringify(payload)
+            }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok) { say(res.j.error || 'Save failed.'); return; }
+                    var idx = rows.findIndex(function (row) { return row.key === select.value; });
+                    if (idx >= 0 && res.j.template) rows[idx] = res.j.template;
+                    paint(current());
+                    say(res.j.template && res.j.template.usingFile ? 'Cleared. The built-in letter will send.' : 'Saved.');
+                })
+                .catch(function () { say('Network error.'); });
+        });
+
+        document.getElementById('mail-restore').addEventListener('click', function () {
+            say('Restoring…');
+            fetch('/api/admin/email-templates/' + encodeURIComponent(select.value) + '/restore', {
+                method: 'POST',
+                credentials: 'include',
+                headers: headers(true),
+                body: '{}'
+            }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok) { say(res.j.error || 'Could not restore.'); return; }
+                    var idx = rows.findIndex(function (row) { return row.key === select.value; });
+                    if (idx >= 0 && res.j.template) rows[idx] = res.j.template;
+                    paint(current());
+                    say('The built-in letter will send.');
+                })
+                .catch(function () { say('Network error.'); });
+        });
+
+        say('Loading…');
+        fetch('/api/admin/email-templates', { credentials: 'include', headers: headers(false) })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (res) {
+                if (!res.ok) { say(res.j.error || 'Could not load letters.'); return; }
+                rows = res.j.templates || [];
+                select.innerHTML = rows.map(function (row) {
+                    return '<option value="' + esc(row.key) + '">' + esc(row.label) + '</option>';
+                }).join('');
+                paint(current());
+                say('');
+            })
+            .catch(function () { say('Network error.'); });
+    })();
+    </script>
+</body>
+</html>

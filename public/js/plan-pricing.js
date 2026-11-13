@@ -1,6 +1,6 @@
 /**
  * Plan prices from the server (GET /api/payments/plans, same totals as checkout).
- * Fills plan cards marked with data-plan / data-price-line. The static HTML numbers stay as the no-JS fallback.
+ * Fills plan cards marked with data-plan / data-price-line. The homepage does not embed a peso amount.
  * window.RemoEdPlanPricing.ready resolves with { exchangeRatePhp, plans: { [planId]: plan } } or null.
  */
 (function () {

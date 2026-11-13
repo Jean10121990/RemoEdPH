@@ -7,6 +7,7 @@
  * Unknown or blank plan falls back to the lowest tier so a referral is never left at ₱0.
  */
 const { normalizePlanId } = require('../config/planCredits');
+const { readSetting } = require('../services/siteSettings');
 
 const REFERRAL_COMMISSION_BY_PLAN = {
   spark: 1000,
@@ -17,9 +18,18 @@ const REFERRAL_COMMISSION_BY_PLAN = {
 
 const DEFAULT_REFERRAL_COMMISSION = REFERRAL_COMMISSION_BY_PLAN.spark;
 
+const COMMISSION_KEYS = {
+  spark: 'commissionSpark',
+  steady: 'commissionSteady',
+  scholar: 'commissionScholar',
+  summit: 'commissionSummit',
+};
+
 function referralCommissionForPlan(plan) {
   const id = normalizePlanId(plan);
-  const amount = REFERRAL_COMMISSION_BY_PLAN[id];
+  const key = COMMISSION_KEYS[id];
+  const live = key ? Number(readSetting(key)) : NaN;
+  const amount = Number.isFinite(live) && live > 0 ? live : REFERRAL_COMMISSION_BY_PLAN[id];
   return Number.isFinite(amount) ? amount : DEFAULT_REFERRAL_COMMISSION;
 }
 

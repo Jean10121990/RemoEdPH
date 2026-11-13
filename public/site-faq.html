@@ -122,12 +122,12 @@
           return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
         }
 
-        var data = window.RemoedFaqData;
         var root = document.getElementById("faq-root");
-        if (!data || !root) {
-          if (root) root.innerHTML = '<p class="site-doc__muted">FAQ data could not be loaded.</p>';
-          return;
-        }
+        function paint(data) {
+          if (!data || !root) {
+            if (root) root.innerHTML = '<p class="site-doc__muted">FAQ data could not be loaded.</p>';
+            return;
+          }
 
         var html = "";
         html += '<p class="site-doc__intro">' + escapeHtml(data.intro || "") + "</p>";
@@ -161,6 +161,15 @@
             target.scrollIntoView({ behavior: "smooth", block: "start" });
           }
         }
+        }
+
+        fetch("/api/public/faq", { credentials: "omit" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (body) {
+            if (body && body.faq && body.faq.sections && body.faq.sections.length) paint(body.faq);
+            else paint(window.RemoedFaqData);
+          })
+          .catch(function () { paint(window.RemoedFaqData); });
 
         var toggle = document.getElementById("nav-menu-toggle");
         var buttons = document.getElementById("nav-buttons");
@@ -172,5 +181,6 @@
         }
       })();
     </script>
+    <script src="/js/site-content.js?v=content-2"></script>
   </body>
 </html>

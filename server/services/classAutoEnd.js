@@ -8,7 +8,7 @@ const classroomChatStore = require('./classroomChatStore');
 const realtime = require('../realtime');
 const {
   getScheduledStartMs,
-  CLASS_MAX_MINUTES,
+  currentClassMaxMinutes,
   cappedClassEndDate,
 } = require('./classroomEntryWindow');
 const { emitBookingsUpdatedForTeacher } = require('./teacherClassFinalize');
@@ -53,7 +53,7 @@ async function forgetRoom(booking) {
  * End timestamps are the hard stop, not "now", so duration stays 30 minutes.
  */
 async function autoEndOverlongClasses(nowMs = Date.now()) {
-  const maxMs = CLASS_MAX_MINUTES * 60 * 1000;
+  const maxMs = currentClassMaxMinutes() * 60 * 1000;
   const horizon = new Date(nowMs - maxMs);
   const lookback = new Date(nowMs - 21 * 24 * 60 * 60 * 1000);
   const bookings = await Booking.find({
@@ -80,7 +80,7 @@ async function autoEndOverlongClasses(nowMs = Date.now()) {
     }
     ended += 1;
   }
-  if (ended) console.log(`⏰ Auto-ended ${ended} class(es) at ${CLASS_MAX_MINUTES} minutes`);
+  if (ended) console.log(`⏰ Auto-ended ${ended} class(es) at ${currentClassMaxMinutes()} minutes`);
   return ended;
 }
 
@@ -109,7 +109,7 @@ async function capStoredClassDuration() {
     await booking.save();
     capped += 1;
   }
-  if (capped) console.log(`⏰ Capped ${capped} class duration(s) to ${CLASS_MAX_MINUTES} minutes`);
+  if (capped) console.log(`⏰ Capped ${capped} class duration(s) to ${currentClassMaxMinutes()} minutes`);
   return capped;
 }
 

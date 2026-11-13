@@ -83,18 +83,28 @@ function redirectFromToken(token) {
     note.style.display = 'block';
     note.textContent = params.get('msg');
   }
-  RemoEdOAuth.mountButtons('remoed-oauth-login', {
-    providers: ['google'],
-    title: 'Or continue with',
-    hint: 'New students: take the level assessment first. Social sign-in here is for existing accounts.',
-    query: function () {
-      var remember = !!(document.getElementById('remember-me') && document.getElementById('remember-me').checked);
-      return {
-        intent: 'student_login',
-        rememberMe: remember ? 'true' : 'false',
-      };
-    },
-  });
+  var providers = ['google'];
+  function mount() {
+    RemoEdOAuth.mountButtons('remoed-oauth-login', {
+      providers: providers,
+      title: 'Or continue with',
+      hint: 'New students: take the level assessment first. Social sign-in here is for existing accounts.',
+      query: function () {
+        var remember = !!(document.getElementById('remember-me') && document.getElementById('remember-me').checked);
+        return {
+          intent: 'student_login',
+          rememberMe: remember ? 'true' : 'false',
+        };
+      },
+    });
+  }
+  fetch('/api/public/login-options', { credentials: 'same-origin' })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      if (data && data.facebook === true) providers = ['google', 'facebook'];
+    })
+    .catch(function () {})
+    .then(mount);
 })();
 
 document.getElementById('unified-login-form').addEventListener('submit', async function (e) {

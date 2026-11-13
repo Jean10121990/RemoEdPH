@@ -68,7 +68,7 @@ const { normalizeIntlMobile } = require('./utils/intlMobile');
 const { getBookingStartAsDate } = require('./utils/bookingScheduledStart');
 const {
   getClassroomEntryGate,
-  EARLY_ENTRY_MINUTES,
+  currentEarlyEntryMinutes,
 } = require('./services/classroomEntryWindow');
 const {
   processImage,
@@ -911,11 +911,13 @@ router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => 
     }
 
     const minutesUntilStart = (classDateTime.getTime() - now.getTime()) / 60000;
-    if (minutesUntilStart <= 30) {
+    const cancelWindow = Number(require('./services/siteSettings').readSetting('emergencyCancelMinutes'));
+    const cancelMinutes = Number.isFinite(cancelWindow) && cancelWindow > 0 ? cancelWindow : 30;
+    if (minutesUntilStart <= cancelMinutes) {
       return res.status(400).json({
         success: false,
         error:
-          'The 30-minute emergency cancellation window has closed. Credits will be forfeited if you do not attend.',
+          'The ' + cancelMinutes + '-minute emergency cancellation window has closed. Credits will be forfeited if you do not attend.',
       });
     }
 
@@ -2330,7 +2332,7 @@ router.get('/class-access/:bookingId', verifyToken, requireStudent, async (req, 
         scheduledStart: gate.scheduledStart || null,
         accessStartTime: gate.opensAt || null,
         classStartTime: gate.scheduledStart || null,
-        earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+        earlyEntryMinutes: currentEarlyEntryMinutes(),
       });
     }
 
@@ -2343,7 +2345,7 @@ router.get('/class-access/:bookingId', verifyToken, requireStudent, async (req, 
       scheduledStart: gate.scheduledStart || null,
       accessStartTime: gate.opensAt || null,
       classStartTime: gate.scheduledStart || null,
-      earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+      earlyEntryMinutes: currentEarlyEntryMinutes(),
       booking: {
         id: booking._id,
         date: booking.date,

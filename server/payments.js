@@ -13,7 +13,8 @@ const router = express.Router();
 const { getJwtSecret } = require('./config/jwtSecret');
 const JWT_SECRET = getJwtSecret();
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
-const { normalizePlanId, PLAN_CREDITS } = require('./config/planCredits');
+const { normalizePlanId, planCreditsMap } = require('./config/planCredits');
+const { ensureFresh, readSetting } = require('./services/siteSettings');
 const {
   applyExistingStudentPurchase,
   isPaymongoCheckoutPaid,
@@ -107,31 +108,47 @@ async function currentPhpRate() {
   return EXCHANGE_RATE_PHP;
 }
 
-/** Base rate: $7 per 25-minute class. Founder Discount: $21/mo (not applied to Starter/spark). */
+/** Fallback when the settings cache is empty. Seeded values are $7 and $21. */
 const USD_PER_CLASS = 7;
 const FOUNDER_DISCOUNT_PER_MONTH = 21;
 
+function usdPerClass() {
+  const n = Number(readSetting('usdPerClass'));
+  return Number.isFinite(n) && n > 0 ? n : USD_PER_CLASS;
+}
+
+function founderDiscountPerMonth() {
+  const n = Number(readSetting('founderDiscountPerMonth'));
+  return Number.isFinite(n) && n > 0 ? n : FOUNDER_DISCOUNT_PER_MONTH;
+}
+
+function sparkFounderDiscount() {
+  const n = Number(readSetting('sparkFounderDiscount'));
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 function planDescription(plan) {
   const planKey = normalizePlanId(plan);
-  const row = PLAN_CREDITS[planKey];
+  const row = planCreditsMap()[planKey];
   if (!row) return 'RemoEd Subscription Plan';
   return `${row.label} Plan`;
 }
 
 function computePlanTotals(planId, rate) {
   const planKey = normalizePlanId(planId);
-  const row = PLAN_CREDITS[planKey];
+  const row = planCreditsMap()[planKey];
   if (!row) return null;
 
   const lessonCredits = row.credits;
   const months = row.months;
-  const usdList = Number((lessonCredits * USD_PER_CLASS).toFixed(2));
-  // Starter (spark) has no founder discount so checkout stays $154.
+  const perClass = usdPerClass();
+  const usdList = Number((lessonCredits * perClass).toFixed(2));
+  // Seeded Spark discount is $0, so checkout stays $154 until a Super-Admin changes it.
   const usdFounderDiscount =
     planKey === 'spark'
-      ? 0
-      : Number((FOUNDER_DISCOUNT_PER_MONTH * months).toFixed(2));
-  const usdTotal = Number((usdList - usdFounderDiscount).toFixed(2));
+      ? Number(sparkFounderDiscount().toFixed(2))
+      : Number((founderDiscountPerMonth() * months).toFixed(2));
+  const usdTotal = Number(Math.max(0, usdList - usdFounderDiscount).toFixed(2));
   const phpRate = Number(rate) > 0 ? Number(rate) : EXCHANGE_RATE_PHP;
   const phpTotal = Number((usdTotal * phpRate).toFixed(2));
   const amountCentavos = Math.round(phpTotal * 100);
@@ -144,7 +161,7 @@ function computePlanTotals(planId, rate) {
     validityMonths: row.validityMonths,
     lessonCredits,
     credits: lessonCredits,
-    usdPerClass: USD_PER_CLASS,
+    usdPerClass: perClass,
     usdList,
     usdFounderDiscount,
     usdTotal,
@@ -197,6 +214,7 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       return res.status(400).json({ success: false, error: 'planId is required' });
     }
 
+    try { await ensureFresh(); } catch (_e) { /* catalog constants */ }
     const totals = computePlanTotals(selectedPlanId, await currentPhpRate());
     if (!totals) {
       return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
@@ -392,8 +410,9 @@ function normalizeInstapayReference(raw) {
 
 /** Public price list for the landing / plan pages. Same totals as checkout (`computePlanTotals`). No input. */
 router.get('/plans', async (req, res) => {
+  try { await ensureFresh(); } catch (_e) { /* catalog constants */ }
   const rate = await currentPhpRate();
-  const plans = Object.keys(PLAN_CREDITS)
+  const plans = Object.keys(planCreditsMap())
     .map((id) => computePlanTotals(id, rate))
     .filter(Boolean)
     .map((t) => ({
@@ -410,18 +429,19 @@ router.get('/plans', async (req, res) => {
       phpTotal: t.phpTotal,
       phpList: Number((t.usdList * rate).toFixed(2)),
     }));
-  res.set('Cache-Control', 'public, max-age=60');
+  res.set('Cache-Control', 'no-store');
   res.json({
     success: true,
     exchangeRatePhp: rate,
-    usdPerClass: USD_PER_CLASS,
-    founderDiscountPerMonth: FOUNDER_DISCOUNT_PER_MONTH,
+    usdPerClass: usdPerClass(),
+    founderDiscountPerMonth: founderDiscountPerMonth(),
     plans,
   });
 });
 
 router.get('/plan-quote', async (req, res) => {
   const selectedPlanId = normalizePlanId(req.query.planId || req.query.plan);
+  try { await ensureFresh(); } catch (_e) { /* catalog constants */ }
   const totals = selectedPlanId ? computePlanTotals(selectedPlanId, await currentPhpRate()) : null;
   if (!totals) {
     return res.status(400).json({ success: false, error: 'Invalid planId. Use spark, steady, scholar, or summit.' });
@@ -435,7 +455,7 @@ router.get('/plan-quote', async (req, res) => {
       usd_total: totals.usdTotal,
       php_total: totals.phpTotal,
       exchange_rate_used: totals.exchangeRatePhp,
-      credits: (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].credits) || 0,
+      credits: totals.lessonCredits || 0,
     },
   });
 });
@@ -466,6 +486,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     }
 
     const selectedPlanId = normalizePlanId(req.body && (req.body.planId || req.body.plan));
+    try { await ensureFresh(); } catch (_e) { /* catalog constants */ }
     const rate = await currentPhpRate();
     const totals = selectedPlanId ? computePlanTotals(selectedPlanId, rate) : null;
     if (!totals) {
@@ -531,7 +552,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
 
     try {
       const { notifyAdmin, notifyStudent } = require('./services/notifyService');
-      const planLabel = (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].label) || totals.planId;
+      const planLabel = totals.planName || totals.planId;
       await notifyAdmin(
         'qr-payment',
         `InstaPay payment to confirm: ${student.username} · ${planLabel} · ₱${totals.phpTotal.toFixed(2)} · ref ${referenceNormalized}`,
@@ -554,7 +575,7 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
       pricing: {
         planId: totals.planId,
         php_total: totals.phpTotal,
-        credits: (PLAN_CREDITS[totals.planId] && PLAN_CREDITS[totals.planId].credits) || 0,
+        credits: totals.lessonCredits || 0,
       },
     });
   } catch (error) {
@@ -821,4 +842,5 @@ router.post('/confirm-checkout', requireVerifyStudent, async (req, res) => {
   }
 });
 
+router.computePlanTotals = computePlanTotals;
 module.exports = router;

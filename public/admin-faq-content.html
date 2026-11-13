@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="js/security-guard.js?v=2"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ content - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js?v=pop-1"></script>
+        <script src="js/admin-access-guard.js?v=content-1"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-18"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'marketing');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="setting-card">
+                    <div class="setting-title">FAQ</div>
+                    <div class="setting-description">Questions and answers for the public FAQ page. If nothing is published, the page keeps the FAQ file.</div>
+                    <p id="faq-status" class="muted" style="font-size:0.85rem;"></p>
+                    <div id="faq-fields"></div>
+                    <button type="button" class="btn btn-secondary" id="faq-add">Add question</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var host = document.getElementById('faq-fields');
+            var status = document.getElementById('faq-status');
+            function headers(json) {
+                var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken)
+                    ? RemoedAdminSession.getAuthToken()
+                    : (localStorage.getItem('remoed_admin_token') || '');
+                var h = {};
+                if (json) h['Content-Type'] = 'application/json';
+                if (token) h.Authorization = 'Bearer ' + token;
+                return h;
+            }
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+            function paint(rows) {
+                host.innerHTML = (rows || []).map(function (row) {
+                    return '<div style="padding:12px 0;border-top:1px solid #e2e8f0;">' +
+                        '<input data-id="' + esc(row.id) + '" data-field="sectionTitle" value="' + esc(row.sectionTitle) + '" style="width:100%;margin-bottom:6px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;" placeholder="Section">' +
+                        '<input data-id="' + esc(row.id) + '" data-field="question" value="' + esc(row.question) + '" style="width:100%;margin-bottom:6px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;">' +
+                        '<textarea data-id="' + esc(row.id) + '" data-field="answer" rows="4" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">' + esc(row.answer) + '</textarea>' +
+                        '<label style="display:inline-flex;gap:6px;align-items:center;margin-top:6px;"><input type="checkbox" data-id="' + esc(row.id) + '" data-field="published"' + (row.published ? ' checked' : '') + '> Show</label>' +
+                        '<button type="button" class="btn btn-primary" data-save-faq="' + esc(row.id) + '" style="margin-left:8px;">Save</button>' +
+                        '</div>';
+                }).join('');
+            }
+            function load() {
+                status.textContent = 'Loading…';
+                fetch('/api/admin/content/faq', { credentials: 'include', headers: headers(false) })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) { status.textContent = res.j.error || 'Could not load.'; return; }
+                        paint(res.j.entries || []);
+                        status.textContent = '';
+                    })
+                    .catch(function () { status.textContent = 'Network error.'; });
+            }
+            host.addEventListener('click', function (event) {
+                var btn = event.target.closest('[data-save-faq]');
+                if (!btn) return;
+                var id = btn.getAttribute('data-save-faq');
+                function val(field) {
+                    var el = host.querySelector('[data-id="' + id + '"][data-field="' + field + '"]');
+                    if (!el) return '';
+                    return el.type === 'checkbox' ? el.checked : el.value;
+                }
+                status.textContent = 'Saving…';
+                fetch('/api/admin/content/faq', {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: headers(true),
+                    body: JSON.stringify({
+                        id: id.indexOf('new-') === 0 ? '' : id,
+                        sectionTitle: val('sectionTitle'),
+                        question: val('question'),
+                        answer: val('answer'),
+                        published: val('published')
+                    })
+                }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        status.textContent = res.ok ? 'Saved.' : (res.j.error || 'Save failed.');
+                        if (res.ok) load();
+                    })
+                    .catch(function () { status.textContent = 'Network error.'; });
+            });
+            document.getElementById('faq-add').addEventListener('click', function () {
+                host.insertAdjacentHTML('beforeend', '<div style="padding:12px 0;border-top:1px solid #e2e8f0;">' +
+                    '<input data-id="new-1" data-field="sectionTitle" value="FAQ" style="width:100%;margin-bottom:6px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;">' +
+                    '<input data-id="new-1" data-field="question" placeholder="Question" style="width:100%;margin-bottom:6px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;">' +
+                    '<textarea data-id="new-1" data-field="answer" rows="4" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;"></textarea>' +
+                    '<label style="display:inline-flex;gap:6px;align-items:center;margin-top:6px;"><input type="checkbox" data-id="new-1" data-field="published" checked> Show</label>' +
+                    '<button type="button" class="btn btn-primary" data-save-faq="new-1" style="margin-left:8px;">Save</button></div>');
+            });
+            load();
+        })();
+    </script>
+</body>
+</html>

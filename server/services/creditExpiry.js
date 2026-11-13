@@ -16,8 +16,18 @@ const {
   sortLotsFifo,
 } = require('./creditLots');
 
+const { readSetting } = require('./siteSettings');
+
 const MANILA = 'Asia/Manila';
 const NOTICE_MILESTONES = [14, 7];
+
+function noticeMilestones() {
+  const raw = readSetting('creditNoticeDays');
+  const list = (Array.isArray(raw) ? raw : NOTICE_MILESTONES)
+    .map(Number)
+    .filter((n) => n === 14 || n === 7);
+  return list.length ? list.slice().sort((a, b) => a - b) : NOTICE_MILESTONES.slice().sort((a, b) => a - b);
+}
 const NOTICE_FIELD = {
   14: 'creditExpiryNotices.d14',
   7: 'creditExpiryNotices.d7',
@@ -139,8 +149,10 @@ function emptyNoticeFlags() {
 
 function pickNoticeMilestone(daysLeft, expired) {
   if (expired || daysLeft == null || daysLeft < 0) return null;
-  if (daysLeft <= 7) return 7;
-  if (daysLeft <= 14) return 14;
+  const days = noticeMilestones();
+  for (let i = 0; i < days.length; i++) {
+    if (daysLeft <= days[i]) return days[i];
+  }
   return null;
 }
 

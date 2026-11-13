@@ -50,7 +50,7 @@ const SOCKET_AUTH_JWT_SECRET = getJwtSecret();
 const {
   getClassroomEntryGate,
   getScheduledStartMs,
-  EARLY_ENTRY_MINUTES,
+  currentEarlyEntryMinutes,
   cappedClassEndDate,
 } = require('./services/classroomEntryWindow');
 const { primeRedisConnection } = require('./utils/redisClient');
@@ -724,6 +724,7 @@ adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
 adminApiCombined.use('/affiliate-payroll', require('./affiliatePayrollRoutes'));
 adminApiCombined.use(require('./adminRbacRoutes'));
 adminApiCombined.use(require('./siteSettingsRoutes'));
+adminApiCombined.use(require('./siteContentRoutes').adminRouter);
 adminApiCombined.use(require('./classroomSosRoutes').adminSosRouter);
 adminApiCombined.use('/level-assessments', require('./routes/levelAssessments'));
 adminApiCombined.use(adminRoutes);
@@ -744,6 +745,7 @@ app.post('/api/webhooks/brevo', async (req, res) => {
 app.use('/api/public', growthInbox.chatRouter);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
+app.use('/api/public', require('./siteContentRoutes').publicRouter);
 app.use('/api/public', require('./fxRatesRoutes'));
 app.use('/api/public', publicAssessmentRoutes);
 app.use('/api/public', require('./routes/referralClickPublic'));
@@ -2106,7 +2108,7 @@ app.post('/api/class/check-time-access', async (req, res) => {
       tooEarly,
       sessionEnded,
       code: gate.code || null,
-      earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+      earlyEntryMinutes: currentEarlyEntryMinutes(),
       opensAt: gate.opensAt || null,
       scheduledStart: gate.scheduledStart || null,
       classStartTime: classStartTime.toISOString(),
@@ -2526,7 +2528,7 @@ io.on('connection', socket => {
                                 opensAt: gate.opensAt,
                                 scheduledStart: gate.scheduledStart,
                                 message: gate.message || 'Classroom entry is not allowed.',
-                                earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+                                earlyEntryMinutes: currentEarlyEntryMinutes(),
                             });
                             console.log(`🚫 Socket join blocked (${gate.code}) room=${room} socket=${socket.id}`);
                             return;
@@ -2760,7 +2762,7 @@ io.on('connection', socket => {
                                 opensAt: gate.opensAt,
                                 scheduledStart: gate.scheduledStart,
                                 message: gate.message || 'Classroom entry is not allowed.',
-                                earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+                                earlyEntryMinutes: currentEarlyEntryMinutes(),
                             });
                             return;
                         }

@@ -37,6 +37,11 @@ const router = express.Router();
 router.use(verifyAdminApiAuth, requireAdmin, requireAdminTwoFactorSatisfied, requireAdminSessionValid);
 
 const COMMISSION_RATE = 2; // percent of subscription gross, for partner admin roles
+
+function adminFeePercent() {
+  const n = Number(require('./services/siteSettings').readSetting('adminFeePercent'));
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : COMMISSION_RATE;
+}
 /** Admin QA is an employee (daily rate), not a 2% business-partner fee. */
 const QA_EMPLOYEE_ROLE = 'admin_qa';
 const QA_DAILY_RATE = 350;
@@ -62,7 +67,7 @@ function quoteAdminFee(role, stats, attendance, startYmd, endYmd, commissionPool
   }
   return {
     payBasis: 'commission',
-    commissionRate: COMMISSION_RATE,
+    commissionRate: adminFeePercent(),
     dailyRate: 0,
     dailyRequiredHours: REQUIRED_SHIFT_HOURS,
     paidDays: 0,
@@ -209,7 +214,7 @@ router.get('/summary', async (req, res) => {
     await ensureAttendanceFromTimeLogs(username, startYmd, endYmd);
 
     const { grossSales, purchaseCount } = await sumSubscriptionGross(bounds.start, bounds.end);
-    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+    const commissionPool = Math.round(grossSales * (adminFeePercent() / 100) * 100) / 100;
 
     const attendance = await AdminAttendance.find({
       adminUsername: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
@@ -357,7 +362,7 @@ router.get('/payslip', async (req, res) => {
     await ensureAttendanceFromTimeLogs(username, startYmd, endYmd);
 
     const { grossSales, purchaseCount } = await sumSubscriptionGross(bounds.start, bounds.end);
-    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+    const commissionPool = Math.round(grossSales * (adminFeePercent() / 100) * 100) / 100;
 
     const attendance = await AdminAttendance.find({
       adminUsername: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
@@ -433,7 +438,7 @@ router.post('/record-payout', async (req, res) => {
     await ensureAttendanceFromTimeLogs(username, startYmd, endYmd);
 
     const { grossSales } = await sumSubscriptionGross(bounds.start, bounds.end);
-    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+    const commissionPool = Math.round(grossSales * (adminFeePercent() / 100) * 100) / 100;
     const attendance = await AdminAttendance.find({
       adminUsername: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
       date: { $gte: startYmd, $lte: endYmd },
@@ -491,7 +496,7 @@ router.get('/payroll', async (req, res) => {
     const startYmd = ymd(bounds.start);
     const endYmd = ymd(bounds.end);
     const { grossSales, purchaseCount } = await sumSubscriptionGross(bounds.start, bounds.end);
-    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+    const commissionPool = Math.round(grossSales * (adminFeePercent() / 100) * 100) / 100;
 
     const admins = await Admin.find({ status: { $ne: 'suspended' } })
       .select('_id username email firstName lastName adminRole status')
@@ -595,7 +600,7 @@ router.post('/dispense', async (req, res) => {
     const startYmd = ymd(bounds.start);
     const endYmd = ymd(bounds.end);
     const { grossSales } = await sumSubscriptionGross(bounds.start, bounds.end);
-    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+    const commissionPool = Math.round(grossSales * (adminFeePercent() / 100) * 100) / 100;
     const paidBy = String(req.user.username || '');
 
     const admins = await Admin.find({ status: { $ne: 'suspended' } })

@@ -88,11 +88,11 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
   if (booking.isFreePlanBooking) {
     booking.creditConsumedAt = now;
     booking.creditsFinalized = true;
-    const { bookingAdvancesFreePlan, FREE_PLAN_LESSON_COUNT } = require('./freePlanAccess');
+    const { bookingAdvancesFreePlan, freePlanLessonCount } = require('./freePlanAccess');
     const advances = await bookingAdvancesFreePlan(booking);
     const update = advances
       ? Student.updateOne(
-          { _id: student._id, freeLessonCompletedCount: { $lt: FREE_PLAN_LESSON_COUNT } },
+          { _id: student._id, freeLessonCompletedCount: { $lt: freePlanLessonCount() } },
           {
             $inc: { freeLessonCompletedCount: 1 },
             $set: { freeLessonActiveBookingId: null },

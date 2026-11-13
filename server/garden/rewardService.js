@@ -3,9 +3,9 @@ const { GARDEN_BADGES } = require('./badges.config');
 const { DECORATIONS, decorationByKey } = require('./decorations.config');
 const {
   MAX_TREES_PER_MONTH,
-  CREDIT_EXPIRY_DAYS,
-  EXPIRY_REMINDER_DAYS,
-  REWARDS,
+  treeCreditExpiryDays,
+  treeReminderDays,
+  gardenCreditsEnabled,
 } = require('./rewards.config');
 const math = require('./rewardMath');
 const domain = require('./domain');
@@ -15,8 +15,13 @@ function seqOf(tree) {
   return tree && tree.sequence ? tree.sequence : 1;
 }
 
-function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEnabled, timeZone }) {
-  const zone = timeZone || require('./garden.config').GARDEN_TIMEZONE;
+function createRewardService({ repo, garden, creditsEnabled, timeZone }) {
+  function zoneOf() {
+    return timeZone || require('./garden.config').GARDEN_TIMEZONE;
+  }
+  function creditsOn() {
+    return typeof creditsEnabled === 'boolean' ? creditsEnabled : gardenCreditsEnabled();
+  }
 
   async function lessonCount(studentId, monthKey) {
     if (!repo.countLedger) return 0;
@@ -52,7 +57,7 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
     for (const badge of badges) {
       if (!badge.credits || !repo.grantLessonCredits) continue;
       const claimId = 'badge:' + badge.key + ':' + studentId;
-      const expiresAt = new Date(now.getTime() + CREDIT_EXPIRY_DAYS * 86400000);
+      const expiresAt = new Date(now.getTime() + treeCreditExpiryDays() * 86400000);
       const result = await repo.grantLessonCredits({
         studentId,
         claimId,
@@ -66,7 +71,7 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
           const source = badge.key === 'evergreen' ? 'evergreen' : 'streak';
           await repo.recordCreditGrant({
             studentId,
-            monthKey: domain.monthKeyOf(now, zone),
+            monthKey: domain.monthKeyOf(now, zoneOf()),
             source,
             credits: badge.credits,
           });
@@ -84,7 +89,7 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
       completedCount: completed.length,
       perfect: completed.some((tree) => tree.perfectMonth),
       speciesCount: new Set(completed.map((tree) => tree.species)).size,
-      early: !!(focus && focus.completedAt && math.dayOfMonth(focus.completedAt, zone) < 25),
+      early: !!(focus && focus.completedAt && math.dayOfMonth(focus.completedAt, zoneOf()) < 25),
       streak: math.completionStreak(completed.map((tree) => tree.monthKey)),
     };
     const fresh = math.newlyEarnedBadges(state, owned);
@@ -124,11 +129,11 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
       monthlyTarget: tree.monthlyTarget,
       perfectMonth,
       alreadyGranted,
-      creditsEnabled,
+      creditsEnabled: creditsOn(),
       rngInt: rngInt || math.cryptoTicket,
     });
     const expiresAt = decision.grantedCredits > 0
-      ? new Date(now.getTime() + CREDIT_EXPIRY_DAYS * 86400000)
+      ? new Date(now.getTime() + treeCreditExpiryDays() * 86400000)
       : null;
     const doc = {
       studentId,
@@ -174,7 +179,7 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
       const profile = repo.profile ? await repo.profile(studentId) : null;
       const name = (profile && profile.firstName) || 'Your child';
       const badgeNames = newBadges.map((badge) => badge.name).join(', ') || 'none new';
-      const exp = expiresAt ? expiresAt.toLocaleDateString('en-PH', { timeZone: zone }) : 'none';
+      const exp = expiresAt ? expiresAt.toLocaleDateString('en-PH', { timeZone: zoneOf() }) : 'none';
       await repo.notify(studentId, {
         type: 'garden_tree_complete',
         message: name + ' finished a ' + tree.species + ' tree. Lessons done: ' + lessonsDone
@@ -186,7 +191,7 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
 
   async function plantBonus(studentId, now = new Date(), view) {
     assertWritable(view);
-    const monthKey = domain.monthKeyOf(now, zone);
+    const monthKey = domain.monthKeyOf(now, zoneOf());
     const trees = repo.listAllTrees ? await repo.listAllTrees(studentId) : [];
     const mine = trees.filter((tree) => tree.monthKey === monthKey);
     if (mine.length >= MAX_TREES_PER_MONTH) {
@@ -300,7 +305,7 @@ function createRewardService({ repo, garden, creditsEnabled = REWARDS.creditsEna
 
   async function remindExpiring(studentId, now = new Date()) {
     if (!repo.listClaims || !repo.markReminder) return [];
-    const soon = now.getTime() + EXPIRY_REMINDER_DAYS * 86400000;
+    const soon = now.getTime() + treeReminderDays() * 86400000;
     const due = (await repo.listClaims(studentId)).filter((row) => {
       if (!row.expiresAt || row.reminderSentAt || !(row.grantedCredits > 0)) return false;
       const at = new Date(row.expiresAt).getTime();

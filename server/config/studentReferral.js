@@ -1,4 +1,6 @@
 /** Credits granted once, when a referred student buys their first paid plan. */
+const { readSetting } = require('../services/siteSettings');
+
 const REFERRAL_REWARD_CREDITS = 3;
 /** Older rewards were a 1–5 roll. Keep that span so those rows can still be reversed. */
 const REFERRAL_REWARD_MIN = 1;
@@ -14,8 +16,15 @@ const REFERRAL_BADGES = [
 
 const PAID_PLAN_IDS = new Set(['spark', 'steady', 'scholar', 'summit']);
 
+function referralRewardCredits() {
+  const n = Number(readSetting('referralRewardCredits'));
+  if (!Number.isInteger(n) || n < REFERRAL_REWARD_MIN || n > REFERRAL_REWARD_MAX) return REFERRAL_REWARD_CREDITS;
+  return n;
+}
+
 module.exports = {
   REFERRAL_REWARD_CREDITS,
+  referralRewardCredits,
   REFERRAL_REWARD_MIN,
   REFERRAL_REWARD_MAX,
   REFERRAL_BADGES,

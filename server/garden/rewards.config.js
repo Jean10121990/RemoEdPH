@@ -1,3 +1,5 @@
+const { readSetting } = require('../services/siteSettings');
+
 /** Tree completion rewards. Change weights and caps here. The roll stays on the server. */
 const MAX_TREES_PER_MONTH = 2;
 const MAX_TREE_CREDITS_PER_STUDENT_PER_MONTH = 4;
@@ -29,12 +31,42 @@ const TIERS = {
   ],
 };
 
+function treeCreditCap() {
+  const n = Number(readSetting('treeCreditCap'));
+  return Number.isFinite(n) && n > 0 ? n : MAX_TREE_CREDITS_PER_STUDENT_PER_MONTH;
+}
+
+function treeCreditExpiryDays() {
+  const n = Number(readSetting('treeCreditExpiryDays'));
+  return Number.isFinite(n) && n > 0 ? n : CREDIT_EXPIRY_DAYS;
+}
+
+function treeReminderDays() {
+  const n = Number(readSetting('treeReminderDays'));
+  return Number.isFinite(n) && n > 0 ? n : EXPIRY_REMINDER_DAYS;
+}
+
+function treeEligibilityRatio() {
+  const n = Number(readSetting('treeEligibilityRatio'));
+  return n > 0 && n <= 1 ? n : LESSON_ELIGIBILITY_RATIO;
+}
+
+function gardenCreditsEnabled() {
+  const value = readSetting('gardenCreditsEnabled');
+  return typeof value === 'boolean' ? value : REWARDS.creditsEnabled;
+}
+
 module.exports = {
   MAX_TREES_PER_MONTH,
   MAX_TREE_CREDITS_PER_STUDENT_PER_MONTH,
+  treeCreditCap,
   CREDIT_EXPIRY_DAYS,
+  treeCreditExpiryDays,
   EXPIRY_REMINDER_DAYS,
+  treeReminderDays,
   LESSON_ELIGIBILITY_RATIO,
+  treeEligibilityRatio,
+  gardenCreditsEnabled,
   REWARDS,
   TIER_RANGES,
   TIERS,
