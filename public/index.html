@@ -165,19 +165,19 @@
   <body class="page-index">
     <!-- Navigation -->
     <header class="navbar">
-      <a class="logo-section" href="/" aria-label="RemoEdPH home">
+      <a class="logo-section" href="/" data-i18n-aria-label="home_aria">
         <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="220" height="84" />
       </a>
-      <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-buttons">
+      <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" data-i18n-aria-label="nav_open" aria-expanded="false" aria-controls="nav-buttons">
         <span class="nav-menu-toggle__bars" aria-hidden="true"></span>
       </button>
-      <nav class="nav-buttons" id="nav-buttons" aria-label="Main">
-        <a href="#benefits" class="nav-btn" data-nav-section="benefits">Why RemoEd</a>
-        <a href="#how-it-works" class="nav-btn" data-nav-section="how-it-works">How It Works</a>
+      <nav class="nav-buttons" id="nav-buttons" data-i18n-aria-label="nav_main">
+        <a href="#benefits" class="nav-btn" data-nav-section="benefits" data-i18n="nav_why">Why RemoEd</a>
+        <a href="#how-it-works" class="nav-btn" data-nav-section="how-it-works" data-i18n="nav_how">How It Works</a>
         <a href="#plans" class="nav-btn" data-nav-section="plans" data-i18n="nav_plans">Plans</a>
         <a href="/teachers" class="nav-btn" data-i18n="nav_teachers">Our Teachers</a>
-        <a href="/about" class="nav-btn">About</a>
-        <a href="/site-faq.html" class="nav-btn">FAQ</a>
+        <a href="/about" class="nav-btn" data-i18n="nav_about">About</a>
+        <a href="/site-faq.html" class="nav-btn" data-i18n="nav_faq">FAQ</a>
         <a href="/login/" class="nav-btn nav-btn--login" data-i18n="nav_login">Login</a>
         <div class="nav-lang">
           <button type="button" class="nav-lang__btn" id="nav-lang-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="nav-lang-list">
@@ -191,39 +191,39 @@
           <select class="site-lang-switcher" id="nav-lang-switcher" aria-label="Language" tabindex="-1"></select>
           <ul class="nav-lang__list" id="nav-lang-list" role="listbox" hidden></ul>
         </div>
-        <a href="/student-assessment.html?guest=1" class="nav-btn primary" id="nav-primary-cta" data-track="nav_cta">Take the Free Assessment</a>
+        <a href="/student-assessment.html?guest=1" class="nav-btn primary" id="nav-primary-cta" data-i18n="hero_cta" data-track="nav_cta">Take the Free Assessment</a>
       </nav>
     </header>
-    <a href="/student-assessment.html?guest=1" class="home-sticky-cta" id="home-sticky-cta" hidden aria-label="Take the Free Assessment" data-track="sticky_cta">Take the Free Assessment</a>
+    <a href="/student-assessment.html?guest=1" class="home-sticky-cta" id="home-sticky-cta" hidden data-i18n="hero_cta" data-i18n-aria-label="hero_cta" data-track="sticky_cta">Take the Free Assessment</a>
 
     <!-- Hero: full-bleed visual plane + left copy band -->
-    <section class="hero japandi-hero hero-fullbleed" aria-label="RemoEdPH introduction">
+    <section class="hero japandi-hero hero-fullbleed" data-i18n-aria-label="hero_aria">
       <div class="hero-fullbleed__stage" aria-hidden="true">
         <div class="hero-fullbleed__glow"></div>
       </div>
       <div class="hero-grid">
         <div class="hero-copy">
           <p class="brand-kicker">RemoEdPH</p>
-          <h1 id="hero-title">Help your 3–6&nbsp;year&nbsp;old speak English with confidence, from home</h1>
-          <p id="hero-lead">
+          <h1 id="hero-title" data-i18n="hero_title">Help your 3–6 year old speak English with confidence, from home</h1>
+          <p id="hero-lead" data-i18n="hero_lead">
             Take the free 2-minute assessment, get your child's English level, and try a free interactive lesson. No card needed.
           </p>
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
               <div class="assessment-cta-cluster">
-                <a href="/student-assessment.html?guest=1" class="cta-btn primary" id="hero-primary-cta" data-track="hero_cta">Take the Free Assessment</a>
-                <a href="#how-it-works" class="cta-btn secondary" id="hero-secondary-cta" data-track="how_live_classes">See How Live Classes Work</a>
+                <a href="/student-assessment.html?guest=1" class="cta-btn primary" id="hero-primary-cta" data-i18n="hero_cta" data-track="hero_cta">Take the Free Assessment</a>
+                <a href="#how-it-works" class="cta-btn secondary" id="hero-secondary-cta" data-i18n="hero_secondary" data-track="how_live_classes">See How Live Classes Work</a>
               </div>
-              <a href="/student-assessment.html?guest=1" class="hero-lesson-link" id="hero-lesson-cta" data-track="free_lesson">Try a free lesson</a>
+              <a href="/student-assessment.html?guest=1" class="hero-lesson-link" id="hero-lesson-cta" data-i18n="hero_lesson" data-track="free_lesson">Try a free lesson</a>
             </div>
-            <p class="hero-trust">Live classes are 25 minutes with a teacher. The free lesson is separate. No card needed.</p>
+            <p class="hero-trust" data-i18n="hero_trust">Live classes are 25 minutes with a teacher. The free lesson is separate. No card needed.</p>
           </div>
         </div>
         <div class="hero-media">
           <div class="hero-media__frame">
             <img
               src="/images/hero-remoed-family.png"
-              alt="RemoEdPH teacher and students with Remo mascot waving hello"
+              data-i18n-alt="hero_img_alt"
               class="hero-illustration"
               width="960"
               height="720"
@@ -238,7 +238,7 @@
 
     <!-- Benefits Section -->
     <section class="section" id="benefits">
-      <h2 class="section-title">Why Learn at Home?</h2>
+      <h2 class="section-title" data-i18n="benefits_title">Why Learn at Home?</h2>
       <div class="benefits-grid">
         <article class="benefit-card">
           <div class="benefit-card__layout">
@@ -249,8 +249,8 @@
               <i class="fa-solid fa-house-lock"></i>
             </div>
             <div class="benefit-bubble">
-              <h3>Safe & Comfortable</h3>
-              <p>
+              <h3 data-i18n="b_safe_t">Safe & Comfortable</h3>
+              <p data-i18n="b_safe_p">
                 Learn in the safety and comfort of your own home. No commute needed or worry about safety!
               </p>
             </div>
@@ -265,8 +265,8 @@
               <i class="fa-solid fa-calendar-days"></i>
             </div>
             <div class="benefit-bubble">
-              <h3>Flexible Schedule</h3>
-              <p>
+              <h3 data-i18n="b_flex_t">Flexible Schedule</h3>
+              <p data-i18n="b_flex_p">
                 Choose class times that work for your family. Book sessions that fit your family's routine.
               </p>
             </div>
@@ -281,8 +281,8 @@
               <i class="fa-solid fa-people-roof"></i>
             </div>
             <div class="benefit-bubble">
-              <h3>Family Involvement</h3>
-              <p>
+              <h3 data-i18n="b_fam_t">Family Involvement</h3>
+              <p data-i18n="b_fam_p">
                 Parents can watch and support their child's learning journey
                 together!
               </p>
@@ -298,8 +298,8 @@
               <i class="fa-solid fa-puzzle-piece"></i>
             </div>
             <div class="benefit-bubble">
-              <h3>Fun & Interactive</h3>
-              <p>
+              <h3 data-i18n="b_fun_t">Fun & Interactive</h3>
+              <p data-i18n="b_fun_p">
                 Play games, do activities, and learn through fun interactive
                 lessons!
               </p>
@@ -315,8 +315,8 @@
               <i class="fa-solid fa-chalkboard-user"></i>
             </div>
             <div class="benefit-bubble">
-              <h3>Expert Teachers</h3>
-              <p>
+              <h3 data-i18n="b_teach_t">Expert Teachers</h3>
+              <p data-i18n="b_teach_p">
                 Learn from experienced, friendly teachers who love teaching
                 kids!
               </p>
@@ -332,8 +332,8 @@
               <i class="fa-solid fa-mobile-screen-button"></i>
             </div>
             <div class="benefit-bubble">
-              <h3>Easy to Use</h3>
-              <p>
+              <h3 data-i18n="b_easy_t">Easy to Use</h3>
+              <p data-i18n="b_easy_p">
                 Simple platform designed for kids. Easy for parents to manage
                 too!
               </p>
@@ -346,68 +346,68 @@
     <!-- Who we are (short homepage block; full story is /about) -->
     <section class="section remo-culture remo-culture--who" id="who-we-are" aria-labelledby="who-we-are-title">
       <div class="remo-culture__inner">
-        <p class="remo-culture__eyebrow">About RemoEd</p>
-        <h2 class="section-title" id="who-we-are-title">Who we are</h2>
-        <p class="remo-culture__lead">
+        <p class="remo-culture__eyebrow" data-i18n="who_eye">About RemoEd</p>
+        <h2 class="section-title" id="who-we-are-title" data-i18n="who_title">Who we are</h2>
+        <p class="remo-culture__lead" data-i18n="who_p1">
           RemoEd is a Filipino ESL start-up empowering kids across Asia with an accessible,
           God-centered online education that fosters English proficiency, moral integrity, and
           environmental stewardship—investing our grace-given success back into local communities.
         </p>
-        <p class="remo-culture__lead remo-culture__lead--narrow">
+        <p class="remo-culture__lead remo-culture__lead--narrow" data-i18n="who_p2">
           Our principles emphasize a Christian worldview, honoring each person, and uphold the
           biblical distinction of gender in all conduct.
         </p>
-        <p class="home-about-more"><a href="/about">Learn more about RemoEd</a></p>
+        <p class="home-about-more"><a href="/about" data-i18n="who_more">Learn more about RemoEd</a></p>
       </div>
     </section>
 
     <section class="section home-how" id="how-it-works" aria-labelledby="how-it-works-title">
-      <h2 class="section-title" id="how-it-works-title">How It Works</h2>
+      <h2 class="section-title" id="how-it-works-title" data-i18n="how_title">How It Works</h2>
       <ol class="home-how__steps">
         <li>
           <div class="benefit-icon-circle benefit-icon-circle--blue" aria-hidden="true">1</div>
-          <h3>Take the 2-minute quiz</h3>
-          <p>A few questions about your child. No card needed.</p>
+          <h3 data-i18n="how_1_t">Take the 2-minute quiz</h3>
+          <p data-i18n="how_1_p">A few questions about your child. No card needed.</p>
         </li>
         <li>
           <div class="benefit-icon-circle benefit-icon-circle--green" aria-hidden="true">2</div>
-          <h3>Get your child's English level</h3>
-          <p>See the level that fits how they speak today.</p>
+          <h3 data-i18n="how_2_t">Get your child's English level</h3>
+          <p data-i18n="how_2_p">See the level that fits how they speak today.</p>
         </li>
         <li>
           <div class="benefit-icon-circle benefit-icon-circle--yellow" aria-hidden="true">3</div>
-          <h3>Choose a plan and book live classes</h3>
-          <p>Pick a time that fits your family and meet a real teacher.</p>
+          <h3 data-i18n="how_3_t">Choose a plan and book live classes</h3>
+          <p data-i18n="how_3_p">Pick a time that fits your family and meet a real teacher.</p>
         </li>
       </ol>
-      <div class="home-media" id="live-class-visuals" aria-label="What a live class looks like">
+      <div class="home-media" id="live-class-visuals" data-i18n-aria-label="how_media_label">
         <div class="home-media__video" id="live-class-video"></div>
         <div class="home-shot-carousel" id="home-shot-carousel" hidden>
-          <button type="button" class="home-shot-carousel__arrow" id="home-shot-prev" aria-label="Previous picture">‹</button>
-          <div class="home-shot-carousel__viewport" id="home-shot-viewport" tabindex="0" aria-label="RemoEd pictures">
+          <button type="button" class="home-shot-carousel__arrow" id="home-shot-prev" data-i18n-aria-label="shot_prev">‹</button>
+          <div class="home-shot-carousel__viewport" id="home-shot-viewport" tabindex="0" data-i18n-aria-label="shot_region">
             <div class="home-media__shots" id="home-shot-track"></div>
           </div>
-          <button type="button" class="home-shot-carousel__arrow" id="home-shot-next" aria-label="Next picture">›</button>
+          <button type="button" class="home-shot-carousel__arrow" id="home-shot-next" data-i18n-aria-label="shot_next">›</button>
           <p class="home-shot-carousel__count" id="home-shot-count" aria-live="polite"></p>
         </div>
       </div>
       <p class="home-how__cta">
-        <a href="/student-assessment.html?guest=1" class="cta-btn primary" id="how-primary-cta" data-track="how_it_works_cta">Take the Free Assessment</a>
+        <a href="/student-assessment.html?guest=1" class="cta-btn primary" id="how-primary-cta" data-i18n="hero_cta" data-track="how_it_works_cta">Take the Free Assessment</a>
       </p>
     </section>
 
     <section class="section home-ages" id="ages" aria-labelledby="ages-title">
-      <h2 class="section-title" id="ages-title">English for each age</h2>
+      <h2 class="section-title" id="ages-title" data-i18n="ages_title">English for each age</h2>
       <div class="home-ages__grid">
         <article class="home-ages__card">
-          <h3>Ages 3–4</h3>
-          <p>Listening, first words, and short songs with a teacher who keeps the pace slow.</p>
-          <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-track="age_3_4">Take the Free Assessment</a>
+          <h3 data-i18n="age_34_t">Ages 3–4</h3>
+          <p data-i18n="age_34_p">Listening, first words, and short songs with a teacher who keeps the pace slow.</p>
+          <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-i18n="hero_cta" data-track="age_3_4">Take the Free Assessment</a>
         </article>
         <article class="home-ages__card">
-          <h3>Ages 5–6</h3>
-          <p>Speaking in short sentences and sounding out simple words, still in a 25-minute live class.</p>
-          <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-track="age_5_6">Try a free lesson</a>
+          <h3 data-i18n="age_56_t">Ages 5–6</h3>
+          <p data-i18n="age_56_p">Speaking in short sentences and sounding out simple words, still in a 25-minute live class.</p>
+          <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-i18n="hero_lesson" data-track="age_5_6">Try a free lesson</a>
         </article>
       </div>
     </section>
@@ -419,11 +419,11 @@
       <div class="assessment-layout">
         <div class="sophia-guide assessment-guide--robot">
           <div class="speech-bubble">
-            Hi! I'm Remo. Let's find your child's perfect level!
+            <span data-i18n="assess_bubble">Hi! I'm Remo. Let's find your child's perfect level!</span>
           </div>
           <img
             src="/images/remo-green.png"
-            alt="Remo, the RemoEd guide mascot"
+            data-i18n-alt="remo_alt"
             class="robot-float"
             width="300"
             height="300"
@@ -438,18 +438,18 @@
     </section>
 
     <section class="section home-affiliate" id="affiliate-join" aria-labelledby="affiliate-join-title">
-      <h2 class="visually-hidden" id="affiliate-join-title">Independent Growth Affiliate</h2>
+      <h2 class="visually-hidden" id="affiliate-join-title" data-i18n="aff_title">Independent Growth Affiliate</h2>
       <a class="home-affiliate__frame" href="/affiliate-apply.html">
         <img
           src="/images/affiliate-preregistration.jpg?v=hq-1"
-          alt="Affiliate pre-registration is open. Join as an Independent Growth Affiliate."
+          data-i18n-alt="aff_img_alt"
           width="3072"
           height="1143"
         />
       </a>
       <p class="home-affiliate__actions">
-        <a class="cta-btn primary" href="/affiliate-apply.html">Join now</a>
-        <a class="hero-lesson-link" href="/affiliate-login.html">Already an affiliate? Log in</a>
+        <a class="cta-btn primary" href="/affiliate-apply.html" data-i18n="aff_join">Join now</a>
+        <a class="hero-lesson-link" href="/affiliate-login.html" data-i18n="aff_login">Already an affiliate? Log in</a>
       </p>
     </section>
 
@@ -463,7 +463,7 @@
         <span class="home-teachers-skeleton" aria-hidden="true"></span>
         <span class="home-teachers-skeleton" aria-hidden="true"></span>
         <span class="home-teachers-skeleton" aria-hidden="true"></span>
-        Loading teachers…
+        <span data-i18n="teachers_loading">Loading teachers…</span>
       </div>
       <div id="home-teachers-grid" class="home-teachers-grid" hidden></div>
       <div class="home-teachers-actions">
@@ -472,43 +472,43 @@
     </section>
     <!-- TODO: paste real parent quotes into HOME_TESTIMONIALS before launch. Example: { quote: "", parentName: "", childAge: "" } -->
     <section class="section home-trust" id="home-trust" hidden aria-labelledby="home-trust-title">
-      <h2 class="section-title" id="home-trust-title">How we look after your child</h2>
+      <h2 class="section-title" id="home-trust-title" data-i18n="trust_title">How we look after your child</h2>
       <div id="home-trust-body"></div>
     </section>
 
     <section class="section home-testimonials" id="testimonials" hidden aria-labelledby="testimonials-title">
-      <h2 class="section-title" id="testimonials-title">Parents Testimonials</h2>
+      <h2 class="section-title" id="testimonials-title" data-i18n="testimonials_title">Parents Testimonials</h2>
       <div id="home-testimonials" class="home-testimonials"></div>
     </section>
 
     <!-- Subscription Plans -->
     <section class="section" id="plans">
       <h2 class="section-title" data-i18n="plans_title">Choose Your Learning Plan</h2>
-      <p class="section-lead">One-time bundles. No automatic renewals.</p>
+      <p class="section-lead" data-i18n="plans_lead">One-time bundles. No automatic renewals.</p>
       <div id="cefr-level-banner" class="cefr-level-banner" role="status" aria-live="polite" hidden>
         <strong id="cefr-level-banner-title"></strong>
-        <p id="cefr-level-banner-text">You have taken the assessment. Register now to create your account and claim your free trial.</p>
-        <a id="cefr-register-now-btn" class="cefr-register-now-btn" href="/student-register.html">Register Now</a>
+        <p id="cefr-level-banner-text" data-i18n="plans_post_assessment">You have taken the assessment. Register now to create your account and claim your free trial.</p>
+        <a id="cefr-register-now-btn" class="cefr-register-now-btn" href="/student-register.html" data-i18n="plans_register_cta">Register Now</a>
       </div>
       <p class="plans-register-note" id="plans-register-note" data-i18n="plans_register_note">
         Take the free assessment first and we'll recommend the best plan for your child.
       </p>
-      <p class="plans-assessment-taken-note" id="plans-assessment-taken-note" hidden>
+      <p class="plans-assessment-taken-note" id="plans-assessment-taken-note" data-i18n="assessment_already_taken" hidden>
         Assessment already taken. Please check your email for your results and registration link.
       </p>
       <div class="plan-currency-bar">
-        <label for="plan-currency">Also show in</label>
+        <label for="plan-currency" data-i18n="currency_label">Also show in</label>
         <select id="plan-currency" aria-describedby="plan-currency-note">
-          <option value="USD">USD — US Dollar</option>
+          <option value="USD" data-i18n="currency_usd">USD — US Dollar</option>
         </select>
-        <p class="plan-currency-note" id="plan-currency-note" aria-live="polite">Dollar prices stay fixed. Peso amounts follow the current conversion.</p>
+        <p class="plan-currency-note" id="plan-currency-note" data-i18n="currency_note" aria-live="polite">Dollar prices stay fixed. Peso amounts follow the current conversion.</p>
       </div>
       <div class="plans-grid">
         <div class="plan-card plan-spark" data-plan="spark">
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-spark-robot.png"
-              alt="Remo, RemoEd green mascot"
+              data-i18n-alt="spark_alt"
               width="112"
               height="110"
               decoding="async"
@@ -520,17 +520,17 @@
             <div class="plan-price">₱9,244.62</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
-          <div class="plan-bundle">Starter Bundle</div>
+          <div class="plan-bundle" data-i18n="plan_spark_bundle">Starter Bundle</div>
           <div class="plan-price-local" data-usd="154">$154.00 USD</div>
           <div class="plan-period"><strong>22 Lessons</strong> · Good for 1 month</div>
-          <p class="plan-tagline">Spark their curiosity.</p>
+          <p class="plan-tagline" data-i18n="plan_spark_tag">Spark their curiosity.</p>
           <ul class="plan-features">
             <li data-price-line="class">22 classes × ₱420.21 = ₱9,244.62</li>
-            <li>1 month of classes. Credits last for that month.</li>
-            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
-            <li>Access to digital and video library</li>
+            <li data-i18n="plan_credit_1">1 month of classes. Credits last for that month.</li>
+            <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
+            <li data-i18n="plan_library">Access to digital and video library</li>
           </ul>
-          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('spark', this)">
+          <button class="plan-btn" data-i18n="plan_choose" data-track="plan_subscribe" onclick="selectPlan('spark', this)">
             Choose plan
           </button>
         </div>
@@ -540,7 +540,7 @@
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-steady-boy.png"
-              alt="Ed, RemoEd student mascot"
+              data-i18n-alt="ed_alt"
               width="112"
               height="110"
               decoding="async"
@@ -552,29 +552,29 @@
             <div class="plan-price">₱23,951.97</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
-          <div class="plan-bundle">Progress Bundle</div>
+          <div class="plan-bundle" data-i18n="plan_steady_bundle">Progress Bundle</div>
           <div class="plan-price-local" data-usd="399">$399.00 USD</div>
           <div class="plan-period"><strong>66 Lessons</strong> · Good for 3 months</div>
-          <p class="plan-tagline">Building a routine.</p>
+          <p class="plan-tagline" data-i18n="plan_steady_tag">Building a routine.</p>
           <ul class="plan-features">
             <li data-price-line="class">66 classes × ₱420.21</li>
             <li data-price-line="founder">Founder discount: −₱3,781.89</li>
-            <li>3 months of classes. Credits last for those months.</li>
-            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
-            <li>Digital print outs</li>
+            <li data-i18n="plan_credit_3">3 months of classes. Credits last for those months.</li>
+            <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
+            <li data-i18n="plan_print">Digital print outs</li>
           </ul>
-          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('steady', this)">
+          <button class="plan-btn" data-i18n="plan_choose" data-track="plan_subscribe" onclick="selectPlan('steady', this)">
             Choose plan
           </button>
         </div>
 
         <div class="plan-card plan-scholar plan-recommended" data-plan="scholar">
-          <div class="plan-recommended-ribbon">Recommended</div>
+          <div class="plan-recommended-ribbon" data-i18n="plan_recommended">Recommended</div>
           <div class="plan-badge">Save ₱7,563.78</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-scholar-sophia.png"
-              alt="Grace, RemoEd teacher mascot"
+              data-i18n-alt="grace_alt"
               width="112"
               height="110"
               decoding="async"
@@ -586,18 +586,18 @@
             <div class="plan-price">₱47,903.94</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
-          <div class="plan-bundle">Mastery Bundle</div>
+          <div class="plan-bundle" data-i18n="plan_scholar_bundle">Mastery Bundle</div>
           <div class="plan-price-local" data-usd="798">$798.00 USD</div>
           <div class="plan-period"><strong>132 Lessons</strong> · Good for 6 months</div>
-          <p class="plan-tagline">Mastering the basics.</p>
+          <p class="plan-tagline" data-i18n="plan_scholar_tag">Mastering the basics.</p>
           <ul class="plan-features">
             <li data-price-line="class">132 classes × ₱420.21</li>
             <li data-price-line="founder">Founder discount: −₱7,563.78</li>
-            <li>6 months of classes. Credits last for those months.</li>
-            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
-            <li>Mid-term progress report</li>
+            <li data-i18n="plan_credit_6">6 months of classes. Credits last for those months.</li>
+            <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
+            <li data-i18n="plan_report">Mid-term progress report</li>
           </ul>
-          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('scholar', this)">
+          <button class="plan-btn" data-i18n="plan_choose" data-track="plan_subscribe" onclick="selectPlan('scholar', this)">
             Choose plan
           </button>
         </div>
@@ -607,7 +607,7 @@
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-summit-sophia.png"
-              alt="Sofie, RemoEd student mascot"
+              data-i18n-alt="sofie_alt"
               width="112"
               height="110"
               decoding="async"
@@ -619,18 +619,18 @@
             <div class="plan-price">₱95,807.88</div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
-          <div class="plan-bundle">Ultimate Bundle</div>
+          <div class="plan-bundle" data-i18n="plan_summit_bundle">Ultimate Bundle</div>
           <div class="plan-price-local" data-usd="1596">$1,596.00 USD</div>
           <div class="plan-period"><strong>264 Lessons</strong> · Good for 12 months</div>
-          <p class="plan-tagline">Reaching the peak.</p>
+          <p class="plan-tagline" data-i18n="plan_summit_tag">Reaching the peak.</p>
           <ul class="plan-features">
             <li data-price-line="class">264 classes × ₱420.21</li>
             <li data-price-line="founder">Founder discount: −₱15,127.56</li>
-            <li>12 months of classes. Credits last for those months.</li>
-            <li>Unfinished lessons: parents can ask for a 3-month extension.</li>
-            <li>End-of-year certificate</li>
+            <li data-i18n="plan_credit_12">12 months of classes. Credits last for those months.</li>
+            <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
+            <li data-i18n="plan_cert">End-of-year certificate</li>
           </ul>
-          <button class="plan-btn" data-track="plan_subscribe" onclick="selectPlan('summit', this)">
+          <button class="plan-btn" data-i18n="plan_choose" data-track="plan_subscribe" onclick="selectPlan('summit', this)">
             Choose plan
           </button>
         </div>
@@ -638,72 +638,69 @@
     </section>
 
     <section class="section home-faq" id="faq" aria-labelledby="faq-title">
-      <h2 class="section-title" id="faq-title">Questions parents ask</h2>
+      <h2 class="section-title" id="faq-title" data-i18n="faq_title">Questions parents ask</h2>
       <div class="home-faq__list">
         <details class="home-faq__item">
-          <summary>How long is a class?</summary>
-          <p>Live RemoEd classes are 25 minutes, designed for children ages 3–6.</p>
+          <summary data-i18n="faq_q1">How long is a class?</summary>
+          <p data-i18n="faq_a1">Live RemoEd classes are 25 minutes, designed for children ages 3–6.</p>
         </details>
         <details class="home-faq__item">
-          <summary>Is it too much screen time for a young child?</summary>
-          <!-- TODO: owner to confirm or edit this wording -->
-          <p>Classes are short, 25 minutes with a live teacher, and parents are welcome to sit in and take part.</p>
+          <summary data-i18n="faq_q2">Is it too much screen time for a young child?</summary>
+          <p data-i18n="faq_a2">Classes are short, 25 minutes with a live teacher, and parents are welcome to sit in and take part.</p>
         </details>
         <details class="home-faq__item">
-          <summary>Can we pick a time that fits our family?</summary>
-          <p>Yes. You choose and book class times that fit your family's routine after you pick a plan.</p>
+          <summary data-i18n="faq_q3">Can we pick a time that fits our family?</summary>
+          <p data-i18n="faq_a3">Yes. You choose and book class times that fit your family's routine after you pick a plan.</p>
         </details>
         <details class="home-faq__item">
-          <summary>What do we need to join a class?</summary>
-          <!-- TODO-KRISTINE: minimum internet speed and whether a phone is enough -->
-          <p>A browser on a phone, tablet, or computer, plus a camera and microphone. Pay from any country by scanning the MariBank QR on the Credits page.</p>
+          <summary data-i18n="faq_q4">What do we need to join a class?</summary>
+          <p data-i18n="faq_a4">A browser on a phone, tablet, or computer, plus a camera and microphone. Pay from any country by scanning the MariBank QR on the Credits page.</p>
         </details>
         <details class="home-faq__item">
-          <summary>What if we need to reschedule or cancel a class?</summary>
-          <!-- TODO-KRISTINE: cancellation window and whether a credit returns -->
-          <p>Email remoedph@gmail.com before the class. The exact cancellation window is still being confirmed.</p>
+          <summary data-i18n="faq_q5">What if we need to reschedule or cancel a class?</summary>
+          <p data-i18n="faq_a5">Email remoedph@gmail.com before the class. The exact cancellation window is still being confirmed.</p>
         </details>
         <details class="home-faq__item">
-          <summary>How do credits and validity work?</summary>
-          <p>Plans are 1, 3, 6, or 12 months. RemoSpark is 22 lessons for 1 month. RemoSteady is 3 months, RemoScholar 6, and RemoSummit 12. Unused lesson credits expire when that month ends. Classes you have already booked are not cancelled. If lessons are still unfinished, a parent can contact the teacher. The teacher may offer one 3-month extension after a one-on-one video call about the student's progress.</p>
+          <summary data-i18n="faq_q6">How do credits and validity work?</summary>
+          <p data-i18n="faq_a6">Plans are 1, 3, 6, or 12 months. RemoSpark is 22 lessons for 1 month. RemoSteady is 3 months, RemoScholar 6, and RemoSummit 12. Unused lesson credits expire when that month ends. Classes you have already booked are not cancelled. If lessons are still unfinished, a parent can contact the teacher. The teacher may offer one 3-month extension after a one-on-one video call about the student's progress.</p>
         </details>
         <details class="home-faq__item">
-          <summary>How is a live class different from a learning app?</summary>
-          <p>A live class is 25 minutes with a real teacher. It is not a recording or an app the child taps through alone.</p>
+          <summary data-i18n="faq_q7">How is a live class different from a learning app?</summary>
+          <p data-i18n="faq_a7">A live class is 25 minutes with a real teacher. It is not a recording or an app the child taps through alone.</p>
         </details>
         <details class="home-faq__item">
-          <summary>What if the first live class is not a fit?</summary>
-          <p>We will confirm this before launch.</p>
+          <summary data-i18n="faq_q8">What if the first live class is not a fit?</summary>
+          <p data-i18n="faq_a8">We will confirm this before launch.</p>
         </details>
         <details class="home-faq__item">
-          <summary>How are teachers checked, and can a parent sit in?</summary>
-          <p>Teachers are reviewed before they join the schedule. A parent may sit with the child during a live class.</p>
+          <summary data-i18n="faq_q9">How are teachers checked, and can a parent sit in?</summary>
+          <p data-i18n="faq_a9">Teachers are reviewed before they join the schedule. A parent may sit with the child during a live class.</p>
         </details>
         <details class="home-faq__item">
-          <summary>How do we pay?</summary>
-          <p>Pay from any country by scanning the MariBank QR on the Credits page. We will confirm any other payment methods before launch.</p>
+          <summary data-i18n="faq_q10">How do we pay?</summary>
+          <p data-i18n="faq_a10">Pay from any country by scanning the MariBank QR on the Credits page. We will confirm any other payment methods before launch.</p>
         </details>
         <details class="home-faq__item">
-          <summary>What is the cancellation and refund policy?</summary>
-          <p>The exact cancellation window and refund rule are still being confirmed. We will confirm this before launch.</p>
+          <summary data-i18n="faq_q11">What is the cancellation and refund policy?</summary>
+          <p data-i18n="faq_a11">The exact cancellation window and refund rule are still being confirmed. We will confirm this before launch.</p>
         </details>
         <details class="home-faq__item">
-          <summary>What's the difference between the free lesson and a live class?</summary>
-          <p>The free lesson is a short interactive lesson on the site after the assessment. A live class is 25 minutes with a teacher, booked after you choose a plan.</p>
+          <summary data-i18n="faq_q12">What's the difference between the free lesson and a live class?</summary>
+          <p data-i18n="faq_a12">The free lesson is a short interactive lesson on the site after the assessment. A live class is 25 minutes with a teacher, booked after you choose a plan.</p>
         </details>
         <details class="home-faq__item">
-          <summary>Is the free lesson really free?</summary>
-          <p>Yes. The assessment and the free interactive lesson do not need a card. A live class is a separate paid plan.</p>
+          <summary data-i18n="faq_q13">Is the free lesson really free?</summary>
+          <p data-i18n="faq_a13">Yes. The assessment and the free interactive lesson do not need a card. A live class is a separate paid plan.</p>
         </details>
       </div>
-      <p class="home-faq__more"><a href="/site-faq.html">See all FAQs</a></p>
+      <p class="home-faq__more"><a href="/site-faq.html" data-i18n="faq_more">See all FAQs</a></p>
     </section>
 
     <section class="section home-final-cta" id="final-cta" aria-labelledby="final-cta-title">
-      <h2 class="section-title" id="final-cta-title">Ready to see your child's level?</h2>
-      <p class="home-final-cta__note">The quiz is free. No card needed.</p>
+      <h2 class="section-title" id="final-cta-title" data-i18n="final_title">Ready to see your child's level?</h2>
+      <p class="home-final-cta__note" data-i18n="final_note">The quiz is free. No card needed.</p>
       <p class="home-final-cta__cta">
-        <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-track="final_cta">Take Free Assessment</a>
+        <a href="/student-assessment.html?guest=1" class="cta-btn primary" data-i18n="final_cta" data-track="final_cta">Take Free Assessment</a>
       </p>
     </section>
 
@@ -711,10 +708,10 @@
     <footer class="footer site-footer">
       <div class="site-footer__inner">
         <div class="site-footer__brand">
-          <a href="/" class="site-footer__logo" aria-label="RemoEdPH home">
+          <a href="/" class="site-footer__logo" data-i18n-aria-label="home_aria">
             <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="140" height="44" />
           </a>
-          <p class="site-footer__tagline">Live English for ages 3–6</p>
+          <p class="site-footer__tagline" data-i18n="footer_tag">Live English for ages 3–6</p>
           <a class="site-footer__contact" href="mailto:remoedph@gmail.com">remoedph@gmail.com</a>
           <div class="site-footer__chats" id="site-footer-chats"></div>
           <a
@@ -722,40 +719,40 @@
             href="https://www.facebook.com/remoed"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="RemoEdPH on Facebook"
+            data-i18n-aria-label="footer_fb_aria"
           >
             <i class="fa-brands fa-facebook" aria-hidden="true"></i>
-            <span>Facebook</span>
+            <span data-i18n="footer_fb">Facebook</span>
           </a>
         </div>
-        <nav class="site-footer__col" aria-label="Learn">
-          <h3 class="site-footer__heading">Learn</h3>
-          <a href="/">Home</a>
-          <a href="/about">About RemoEd</a>
-          <a href="#assessment">Free Assessment</a>
-          <a href="#plans">Plans</a>
-          <a href="/teachers">Our Teachers</a>
-          <a href="/site-faq.html">FAQ</a>
+        <nav class="site-footer__col" data-i18n-aria-label="footer_learn">
+          <h3 class="site-footer__heading" data-i18n="footer_learn">Learn</h3>
+          <a href="/" data-i18n="footer_home">Home</a>
+          <a href="/about" data-i18n="footer_about">About RemoEd</a>
+          <a href="#assessment" data-i18n="footer_assess">Free Assessment</a>
+          <a href="#plans" data-i18n="nav_plans">Plans</a>
+          <a href="/teachers" data-i18n="nav_teachers">Our Teachers</a>
+          <a href="/site-faq.html" data-i18n="nav_faq">FAQ</a>
         </nav>
-        <nav class="site-footer__col" aria-label="Apply">
-          <h3 class="site-footer__heading">Apply Now</h3>
-          <a href="/application-form">Apply to Teach</a>
-          <a href="/affiliate-apply.html">Apply for Affiliates</a>
+        <nav class="site-footer__col" data-i18n-aria-label="footer_apply">
+          <h3 class="site-footer__heading" data-i18n="footer_apply">Apply Now</h3>
+          <a href="/application-form" data-i18n="footer_teach">Apply to Teach</a>
+          <a href="/affiliate-apply.html" data-i18n="footer_aff">Apply for Affiliates</a>
         </nav>
-        <nav class="site-footer__col" aria-label="Account">
-          <h3 class="site-footer__heading">Account</h3>
-          <a href="/login/">Login</a>
-          <a href="#assessment">Register</a>
-          <a href="/affiliate-login.html">Affiliate Portal</a>
+        <nav class="site-footer__col" data-i18n-aria-label="footer_account">
+          <h3 class="site-footer__heading" data-i18n="footer_account">Account</h3>
+          <a href="/login/" data-i18n="nav_login">Login</a>
+          <a href="#assessment" data-i18n="footer_register">Register</a>
+          <a href="/affiliate-login.html" data-i18n="footer_portal">Affiliate Portal</a>
         </nav>
-        <nav class="site-footer__col" aria-label="Legal">
-          <h3 class="site-footer__heading">Legal</h3>
-          <a href="/site-privacy.html">Privacy Policy</a>
-          <a href="/legal/student-privacy">Student privacy</a>
-          <a href="/legal/terms">Terms</a>
+        <nav class="site-footer__col" data-i18n-aria-label="footer_legal">
+          <h3 class="site-footer__heading" data-i18n="footer_legal">Legal</h3>
+          <a href="/site-privacy.html" data-i18n="footer_privacy">Privacy Policy</a>
+          <a href="/legal/student-privacy" data-i18n="footer_student">Student privacy</a>
+          <a href="/legal/terms" data-i18n="footer_terms">Terms</a>
         </nav>
       </div>
-      <p class="site-footer__copy">&copy; <span id="footer-year">2026</span> RemoEdPH. All rights reserved.</p>
+      <p class="site-footer__copy">&copy; <span id="footer-year">2026</span> RemoEdPH. <span data-i18n="footer_copy">All rights reserved.</span></p>
     </footer>
 
     <!-- Sign Up Modal -->
@@ -805,8 +802,8 @@
     <script src="/js/landing-config.js?v=landing-7"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
-    <script src="/js/plan-pricing.js?v=pricing-4"></script>
-    <script src="/js/plan-currency-converter.js?v=fx-4"></script>
+    <script src="/js/plan-pricing.js?v=pricing-6"></script>
+    <script src="/js/plan-currency-converter.js?v=fx-6"></script>
     <script>
       let selectedPlan = "";
       let EXCHANGE_RATE_USED = 60.03;
@@ -1145,45 +1142,8 @@
           }
         });
     </script>
-    <script src="/js/site-i18n.js?v=landing-quiz-2"></script>
-    <script>
-      (function () {
-        function writeCookie(lang) {
-          var host = location.hostname;
-          var expired = "Thu, 01 Jan 1970 00:00:00 GMT";
-          var clear = ["path=/", "path=/;domain=" + host];
-          if (host.indexOf(".") !== -1) clear.push("path=/;domain=." + host);
-          clear.forEach(function (part) {
-            document.cookie = "googtrans=;expires=" + expired + ";" + part;
-          });
-          if (!lang || lang === "en") return;
-          var value = "/en/" + lang;
-          document.cookie = "googtrans=" + value + ";path=/";
-          document.cookie = "googtrans=" + value + ";path=/;domain=" + host;
-          if (host.indexOf(".") !== -1) {
-            document.cookie = "googtrans=" + value + ";path=/;domain=." + host;
-          }
-        }
-        var lang = window.SiteI18n && SiteI18n.getLang ? SiteI18n.getLang() : "en";
-        writeCookie(lang);
-        window.addEventListener("sitei18n:languagechanged", function (ev) {
-          writeCookie(ev.detail && ev.detail.lang);
-          location.reload();
-        });
-        if (lang && lang !== "en") {
-          window.googleTranslateElementInit = function () {
-            new google.translate.TranslateElement({ pageLanguage: "en", autoDisplay: false }, "google_translate_element");
-          };
-          var holder = document.createElement("div");
-          holder.id = "google_translate_element";
-          holder.className = "visually-hidden";
-          document.body.appendChild(holder);
-          var script = document.createElement("script");
-          script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-          document.body.appendChild(script);
-        }
-      })();
-    </script>
+    <script src="/js/home-strings.js?v=home-lang-2"></script>
+    <script src="/js/site-i18n.js?v=home-lang-2"></script>
     <script>
       SiteI18n.init();
       (function () {
@@ -1199,7 +1159,13 @@
           if (!btn || !links) return;
           links.classList.toggle("is-open", open);
           btn.setAttribute("aria-expanded", open ? "true" : "false");
-          btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+          var menuLabel = open ? "Close menu" : "Open menu";
+          if (window.SiteI18n && SiteI18n.t) {
+            var menuKey = open ? "nav_close" : "nav_open";
+            var translated = SiteI18n.t(menuKey);
+            if (translated && translated !== menuKey) menuLabel = translated;
+          }
+          btn.setAttribute("aria-label", menuLabel);
           document.body.classList.toggle("nav-menu-open", open);
         }
 
@@ -1228,7 +1194,9 @@
         function buildLang() {
           if (!select || !langList) return;
           langList.textContent = "";
+          var homeLangs = { en: 1, tl: 1, "zh-CN": 1, ja: 1, ko: 1, vi: 1, th: 1, ar: 1, es: 1 };
           Array.prototype.forEach.call(select.options, function (opt) {
+            if (!homeLangs[opt.value]) return;
             var item = document.createElement("li");
             item.setAttribute("role", "option");
             item.tabIndex = -1;
@@ -1246,9 +1214,11 @@
           });
           if (langCode) langCode.textContent = shortCode(select.value);
           var selected = select.options[select.selectedIndex];
+          var langWord = (window.SiteI18n && SiteI18n.t) ? SiteI18n.t("lang_label") : "Language";
+          if (!langWord || langWord === "lang_label") langWord = "Language";
           langBtn.setAttribute(
             "aria-label",
-            "Language: " + (selected ? selected.textContent : shortCode(select.value))
+            langWord + ": " + (selected ? selected.textContent : shortCode(select.value))
           );
         }
 
@@ -1293,7 +1263,10 @@
 
         if (langBtn && select && langList) {
           buildLang();
-          window.addEventListener("sitei18n:languagechanged", buildLang);
+          window.addEventListener("sitei18n:languagechanged", function () {
+            buildLang();
+            if (btn) setMenu(btn.getAttribute("aria-expanded") === "true");
+          });
           langBtn.addEventListener("click", function (event) {
             event.stopPropagation();
             if (langList.hidden) openLang();
@@ -1441,19 +1414,26 @@
         function landingCfg() {
           return window.RemoEdLanding || {};
         }
+        function tr(key, fallback) {
+          if (window.SiteI18n && SiteI18n.t) {
+            var value = SiteI18n.t(key);
+            if (value && value !== key) return value;
+          }
+          return fallback;
+        }
         function applyLandingCopy() {
           var cfg = landingCfg();
           var angles = cfg.headlineAngles || {};
           var angle = "";
           try { angle = new URLSearchParams(window.location.search).get("angle") || ""; } catch (e) {}
-          var title = angles[angle] || angles.default || "";
+          var title = (angle && angles[angle]) ? angles[angle] : tr("hero_title", angles.default || "");
           var titleEl = document.getElementById("hero-title");
           var leadEl = document.getElementById("hero-lead");
           if (title && titleEl) titleEl.textContent = title;
-          if (cfg.subcopy && leadEl) leadEl.textContent = cfg.subcopy;
-          var primary = cfg.primaryCta || "Take the Free Assessment";
-          var secondary = cfg.secondaryCta || "See How Live Classes Work";
-          var lesson = cfg.lessonCta || "Try a free lesson";
+          if (leadEl) leadEl.textContent = tr("hero_lead", cfg.subcopy || "");
+          var primary = tr("hero_cta", cfg.primaryCta || "Take the Free Assessment");
+          var secondary = tr("hero_secondary", cfg.secondaryCta || "See How Live Classes Work");
+          var lesson = tr("hero_lesson", cfg.lessonCta || "Try a free lesson");
           var url = cfg.assessmentUrl || "/student-assessment.html?guest=1";
           ["hero-primary-cta", "how-primary-cta", "nav-primary-cta", "home-sticky-cta"].forEach(function (id) {
             var el = document.getElementById(id);
@@ -1501,7 +1481,7 @@
             var zoom = document.createElement("button");
             zoom.type = "button";
             zoom.className = "home-media__zoom";
-            zoom.setAttribute("aria-label", "View larger: " + img.alt);
+            zoom.setAttribute("aria-label", tr("view_larger", "View larger") + ": " + img.alt);
             zoom.appendChild(img);
             zoom.addEventListener("click", function () {
               openShotLightbox(url, img.alt);
@@ -1528,10 +1508,11 @@
             box.id = "home-shot-lightbox";
             box.className = "home-shot-lightbox";
             box.hidden = true;
+            var closeLabel = tr("lightbox_close", "Close");
             box.innerHTML =
-              '<button type="button" class="home-shot-lightbox__backdrop" aria-label="Close"></button>' +
+              '<button type="button" class="home-shot-lightbox__backdrop" data-i18n-aria-label="lightbox_close" aria-label="' + closeLabel + '"></button>' +
               '<figure class="home-shot-lightbox__frame">' +
-              '<button type="button" class="home-shot-lightbox__close" aria-label="Close">Close</button>' +
+              '<button type="button" class="home-shot-lightbox__close" data-i18n="lightbox_close" data-i18n-aria-label="lightbox_close">' + closeLabel + '</button>' +
               '<img alt="">' +
               "</figure>";
             document.body.appendChild(box);
@@ -1579,7 +1560,9 @@
             var card = document.createElement("div");
             card.className = "home-media__shot";
             track.appendChild(card);
-            fillMediaSlot(card, shot.src, "", shot.alt || "RemoEd");
+            var altKey = "shot_alt_" + (track.children.length);
+            var alt = tr(altKey, shot.alt || "RemoEd");
+            fillMediaSlot(card, shot.src, "", alt);
           });
           carousel.hidden = false;
           function stepSize() {
@@ -1598,7 +1581,7 @@
             var size = stepSize() || 1;
             var start = Math.round(viewport.scrollLeft / size) + 1;
             var end = Math.min(shots.length, start + visibleCount() - 1);
-            count.textContent = start + (end > start ? "–" + end : "") + " of " + shots.length;
+            count.textContent = start + (end > start ? "–" + end : "") + " " + tr("shot_of", "of") + " " + shots.length;
           }
           function move(direction) {
             viewport.scrollBy({ left: direction * stepSize(), behavior: "smooth" });
@@ -1619,7 +1602,7 @@
         function applyMediaAndTrust() {
           var cfg = landingCfg();
           var media = cfg.media || {};
-          fillMediaSlot(document.getElementById("live-class-video"), media.videoUrl || "", "Class video coming");
+          fillMediaSlot(document.getElementById("live-class-video"), media.videoUrl || "", tr("video_coming", "Class video coming"));
           renderShotCarousel(media);
           var trust = cfg.trust || {};
           var body = document.getElementById("home-trust-body");
@@ -1690,6 +1673,10 @@
         }
         applyLandingCopy();
         applyMediaAndTrust();
+        window.addEventListener("sitei18n:languagechanged", function () {
+          applyLandingCopy();
+          applyMediaAndTrust();
+        });
         applyContact();
 
         document.addEventListener("click", function (event) {

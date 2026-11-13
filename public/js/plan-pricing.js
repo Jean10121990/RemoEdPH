@@ -12,7 +12,18 @@
     return Math.round(usd * rate * 100) / 100;
   }
 
+  var lastData = null;
+
+  function tr(key, fallback) {
+    if (window.SiteI18n && SiteI18n.t) {
+      var value = SiteI18n.t(key);
+      if (value && value !== key) return value;
+    }
+    return fallback;
+  }
+
   function renderCards(data) {
+    lastData = data;
     var rate = data.exchangeRatePhp;
     var cards = document.querySelectorAll('#plans .plan-card[data-plan]');
     Array.prototype.forEach.call(cards, function (card) {
@@ -45,11 +56,11 @@
           founderLine.appendChild(struck);
           founderLine.appendChild(document.createTextNode(' '));
         }
-        founderLine.appendChild(document.createTextNode('Founder discount: −' + php(discountPhp)));
+        founderLine.appendChild(document.createTextNode(tr('plan_founder', 'Founder discount:') + ' −' + php(discountPhp)));
       }
 
       var badge = card.querySelector('.plan-badge');
-      if (badge && p.usdFounderDiscount > 0) badge.textContent = 'Save ' + php(discountPhp);
+      if (badge && p.usdFounderDiscount > 0) badge.textContent = tr('plan_save', 'Save') + ' ' + php(discountPhp);
 
       var usdLine = card.querySelector('.plan-price-local[data-usd]');
       if (usdLine) usdLine.setAttribute('data-usd', String(p.usdTotal));
@@ -58,16 +69,17 @@
       if (period) {
         period.textContent = '';
         var strong = document.createElement('strong');
-        strong.textContent = p.lessonCredits + ' Lessons';
+        strong.textContent = p.lessonCredits + ' ' + tr('plan_lessons', 'Lessons');
         period.appendChild(strong);
         period.appendChild(document.createTextNode(
-          ' · Good for ' + p.months + (p.months === 1 ? ' month' : ' months')
+          ' · ' + tr('plan_good_for', 'Good for') + ' ' + p.months + ' ' +
+          (p.months === 1 ? tr('plan_month', 'month') : tr('plan_months', 'months'))
         ));
       }
 
       var classLine = card.querySelector('[data-price-line="class"]');
       if (classLine) {
-        classLine.textContent = p.lessonCredits + ' classes × ' + php(perClass) +
+        classLine.textContent = p.lessonCredits + ' ' + tr('plan_classes', 'classes') + ' × ' + php(perClass) +
           (p.usdFounderDiscount > 0 ? '' : ' = ' + php(p.phpTotal));
       }
 
@@ -123,6 +135,44 @@
       return data;
     })
     .catch(function () { return null; });
+
+  function translateStaticPlans() {
+    Array.prototype.forEach.call(document.querySelectorAll('#plans .plan-period'), function (period) {
+      var nums = period.textContent.match(/\d+/g);
+      if (!nums || nums.length < 2) return;
+      var lessons = nums[0];
+      var months = nums[nums.length - 1];
+      period.textContent = '';
+      var strong = document.createElement('strong');
+      strong.textContent = lessons + ' ' + tr('plan_lessons', 'Lessons');
+      period.appendChild(strong);
+      period.appendChild(document.createTextNode(
+        ' · ' + tr('plan_good_for', 'Good for') + ' ' + months + ' ' +
+        (months === '1' ? tr('plan_month', 'month') : tr('plan_months', 'months'))
+      ));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#plans [data-price-line="class"]'), function (line) {
+      var match = line.textContent.match(/^(\d+)\s+\S+\s+[×x]\s+([\s\S]+)$/);
+      if (!match) return;
+      line.textContent = match[1] + ' ' + tr('plan_classes', 'classes') + ' × ' + match[2];
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#plans [data-price-line="founder"]'), function (line) {
+      var amount = line.textContent.match(/₱[\d,]+(?:\.\d+)?/);
+      if (!amount) return;
+      line.textContent = tr('plan_founder', 'Founder discount:') + ' −' + amount[0];
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#plans .plan-badge'), function (badge) {
+      var amount = badge.textContent.match(/₱[\d,]+(?:\.\d+)?/);
+      if (!amount) return;
+      badge.textContent = tr('plan_save', 'Save') + ' ' + amount[0];
+    });
+  }
+
+  window.addEventListener('sitei18n:languagechanged', function () {
+    if (lastData) renderCards(lastData);
+    else translateStaticPlans();
+  });
+  translateStaticPlans();
 
   window.RemoEdPlanPricing = { ready: ready };
 })();

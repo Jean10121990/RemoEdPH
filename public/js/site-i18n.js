@@ -4,6 +4,7 @@
  */
 (function () {
   var STORAGE_KEY = "i18nextLng";
+  var HOME = window.RemoEdHomeStrings || { en: {} };
 
   var STRINGS = {
     en: {
@@ -281,7 +282,7 @@
 
   function packLang(code) {
     var base = optionCode(code).toLowerCase().split("-")[0];
-    if (STRINGS[base]) return base;
+    if (STRINGS[base] || (typeof HOME !== "undefined" && HOME[base])) return base;
     return "en";
   }
 
@@ -297,6 +298,11 @@
 
   function t(lang, key) {
     var L = packLang(lang);
+    if (typeof HOME !== "undefined" && HOME.en && Object.prototype.hasOwnProperty.call(HOME.en, key)) {
+      var home = HOME[L] || HOME.en;
+      if (home[key] != null) return home[key];
+      return HOME.en[key];
+    }
     var pack = STRINGS[L] || STRINGS.en;
     if (pack[key] != null) return pack[key];
     return STRINGS.en[key] != null ? STRINGS.en[key] : key;
@@ -325,6 +331,10 @@
     document.querySelectorAll("[data-i18n-aria-label]").forEach(function (el) {
       var key = el.getAttribute("data-i18n-aria-label");
       if (key) el.setAttribute("aria-label", t(L, key));
+    });
+    document.querySelectorAll("[data-i18n-alt]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n-alt");
+      if (key) el.setAttribute("alt", t(L, key));
     });
   }
 
@@ -369,6 +379,9 @@
     apply(currentLang);
     mountSwitchers();
     syncSwitchers();
+    window.dispatchEvent(
+      new CustomEvent("sitei18n:languagechanged", { detail: { lang: currentLang } }),
+    );
   }
 
   if (document.readyState === "loading") {

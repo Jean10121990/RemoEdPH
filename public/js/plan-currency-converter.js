@@ -19,7 +19,13 @@
   try { names = new Intl.DisplayNames(['en'], { type: 'currency' }); } catch (_e) {}
 
   function currencyName(code) {
-    try { return (names && names.of(code)) || code; } catch (_e) { return code; }
+    var locale = (document.documentElement.lang || "en").split("-")[0];
+    try {
+      var localNames = new Intl.DisplayNames([locale], { type: "currency" });
+      return localNames.of(code) || code;
+    } catch (_e) {
+      try { return (names && names.of(code)) || code; } catch (_e2) { return code; }
+    }
   }
 
   function format(amount, code) {
@@ -55,7 +61,12 @@
     top.concat(codes.filter(function (c) { return top.indexOf(c) === -1; })).forEach(function (code) {
       var opt = document.createElement('option');
       opt.value = code;
-      opt.textContent = code + ' — ' + currencyName(code);
+      if (code === 'USD' && window.SiteI18n && SiteI18n.t) {
+        var usdLabel = SiteI18n.t('currency_usd');
+        opt.textContent = usdLabel && usdLabel !== 'currency_usd' ? usdLabel : (code + ' — ' + currencyName(code));
+      } else {
+        opt.textContent = code + ' — ' + currencyName(code);
+      }
       select.appendChild(opt);
     });
     select.value = current !== 'PHP' && rates[current] ? current : 'USD';
@@ -81,9 +92,16 @@
           : ' Rates updated ' + d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) + '.';
       }
     }
+    function tr(key, fallback) {
+      if (window.SiteI18n && SiteI18n.t) {
+        var value = SiteI18n.t(key);
+        if (value && value !== key) return value;
+      }
+      return fallback;
+    }
     note.textContent = code === 'USD'
-      ? 'Dollar prices stay fixed. Peso amounts use the current conversion (₱' + CHECKOUT_PHP_RATE.toFixed(2) + ' per US$1).'
-      : 'Dollar prices stay fixed. The ' + code + ' line is an estimate at the current exchange rate.' + when + ' Your bank sets the final amount.';
+      ? tr('currency_note_usd', 'Dollar prices stay fixed. Peso amounts use the current conversion ({rate} per US$1).').replace('{rate}', '₱' + CHECKOUT_PHP_RATE.toFixed(2))
+      : tr('currency_note_other', 'Dollar prices stay fixed. The {code} line is an estimate at the current exchange rate.').replace('{code}', code) + when + ' ' + tr('currency_bank', 'Your bank sets the final amount.');
   }
 
   var wanted = saved();
@@ -126,6 +144,10 @@
       .catch(function () {});
   }
 
+  window.addEventListener('sitei18n:languagechanged', function () {
+    fillOptions();
+    render();
+  });
   loadRates();
   setInterval(function () {
     if (document.visibilityState === 'visible') loadRates();
