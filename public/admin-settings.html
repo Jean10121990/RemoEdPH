@@ -210,7 +210,7 @@
     </div>
 
     <script src="js/lucide-icons.js?v=help-1"></script>
-    <script src="js/site-setting-help.js?v=help-1"></script>
+    <script src="js/site-setting-help.js?v=help-2"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -370,14 +370,29 @@
                 });
                 var j = await r.json().catch(function () { return {}; });
                 if (!r.ok) {
-                    if (status) status.textContent = j.error || 'Save failed.';
-                    return;
+                    var failed = j.error || 'Save failed.';
+                    if (status) status.textContent = failed;
+                    return { title: 'Could not save', message: failed };
                 }
+                var savedTitle = j.unchanged ? 'No change' : 'Saved';
+                var savedMessage = j.unchanged
+                    ? (row && row.label ? row.label + ' is already set to that value.' : 'No change.')
+                    : (row && row.label ? row.label + ' was saved.' : 'The setting was saved.');
                 if (status) status.textContent = j.unchanged ? 'No change.' : 'Saved.';
                 await loadSiteSettings();
+                return { title: savedTitle, message: savedMessage };
             } catch (e) {
                 if (status) status.textContent = 'Network error.';
+                throw e;
             }
+        }
+
+        function formatSiteValue(row, value) {
+            if (!row) return String(value == null ? '' : value);
+            if (row.type === 'boolean') return value ? 'On' : 'Off';
+            if (row.type === 'json') return Array.isArray(value) ? value.join(', ') : String(value == null ? '' : value);
+            if (row.type === 'number' && !Number.isFinite(value)) return 'Not a number';
+            return String(value == null ? '' : value);
         }
 
         if (window.RemoedSiteHelp) RemoedSiteHelp.bind();
@@ -390,7 +405,21 @@
                     var key = save.getAttribute('data-site-save');
                     var row = (window.__siteSettings || []).filter(function (item) { return item.key === key; })[0];
                     if (!row) return;
-                    sendSiteSetting(key, '/api/admin/site-settings/' + encodeURIComponent(key), readSiteSettingValue(row));
+                    var nextValue = readSiteSettingValue(row);
+                    var help = window.RemoedSiteHelp && RemoedSiteHelp.HELP ? RemoedSiteHelp.HELP[key] : null;
+                    if (window.RemoedSiteHelp && RemoedSiteHelp.confirmSave) {
+                        RemoedSiteHelp.confirmSave({
+                            label: row.label,
+                            valueText: formatSiteValue(row, nextValue),
+                            help: help,
+                            note: row.confirm ? 'Type ' + row.key + ' in the confirm box on the page. The save is rejected without it.' : '',
+                            run: function () {
+                                return sendSiteSetting(key, '/api/admin/site-settings/' + encodeURIComponent(key), nextValue);
+                            }
+                        });
+                    } else {
+                        sendSiteSetting(key, '/api/admin/site-settings/' + encodeURIComponent(key), nextValue);
+                    }
                 } else if (restore) {
                     var restoreKey = restore.getAttribute('data-site-restore');
                     sendSiteSetting(restoreKey, '/api/admin/site-settings/' + encodeURIComponent(restoreKey) + '/restore');

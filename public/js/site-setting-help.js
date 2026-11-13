@@ -194,7 +194,17 @@
       '.site-help-pop{position:fixed;z-index:var(--z-toast,9500);max-width:min(320px,calc(100vw - 16px));padding:10px 12px;background:#fffbeb;color:#1e293b;border:1px solid #f59e0b;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.16);font-size:.84rem;line-height:1.45;}',
       '.site-help-pop strong{display:block;margin:0 0 4px;font-size:.9rem;}',
       '.site-help-pop p{margin:0;}',
-      '.site-help-pop .site-help-example{margin-top:6px;color:#9a3412;}'
+      '.site-help-pop .site-help-example{margin-top:6px;color:#9a3412;}',
+      '.site-save-dialog{position:fixed;inset:0;z-index:var(--z-modal,9000);display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.45);}',
+      '.site-save-dialog[hidden]{display:none !important;}',
+      '.site-save-dialog__card{background:#fff;color:#0f172a;border-radius:12px;max-width:440px;width:100%;padding:20px;box-shadow:0 20px 40px rgba(0,0,0,.2);}',
+      '.site-save-dialog__card h2{margin:0 0 8px;font-size:1.15rem;color:#0f172a;}',
+      '.site-save-dialog__card p{margin:0;line-height:1.45;}',
+      '.site-save-dialog__value{margin-top:8px;font-weight:700;}',
+      '.site-save-dialog__example{margin-top:8px;color:#9a3412;}',
+      '.site-save-dialog__actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}',
+      '.site-save-dialog__actions button{padding:8px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:700;}',
+      '.site-save-dialog__actions .site-save-go{background:#1ca7e7;border-color:#1ca7e7;color:#fff;}'
     ].join('');
     document.head.appendChild(style);
     pop = document.createElement('div');
@@ -304,5 +314,118 @@
     }, true);
   }
 
-  global.RemoedSiteHelp = { HELP: HELP, button: button, bind: bind, hide: hide };
+  var dialog = null;
+  var dialogGo = null;
+  var dialogCancel = null;
+  var dialogMode = '';
+
+  function ensureDialog() {
+    if (dialog) return dialog;
+    ensurePop();
+    dialog = document.createElement('div');
+    dialog.className = 'site-save-dialog';
+    dialog.hidden = true;
+    dialog.innerHTML = '<div class="site-save-dialog__card" role="dialog" aria-modal="true" aria-labelledby="site-save-dialog-title">' +
+      '<h2 id="site-save-dialog-title"></h2>' +
+      '<p id="site-save-dialog-body"></p>' +
+      '<p class="site-save-dialog__value" id="site-save-dialog-value"></p>' +
+      '<p class="site-save-dialog__example" id="site-save-dialog-example"></p>' +
+      '<div class="site-save-dialog__actions">' +
+      '<button type="button" id="site-save-cancel">Cancel</button>' +
+      '<button type="button" class="site-save-go" id="site-save-go">Save</button>' +
+      '</div></div>';
+    document.body.appendChild(dialog);
+    dialogGo = dialog.querySelector('#site-save-go');
+    dialogCancel = dialog.querySelector('#site-save-cancel');
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog && dialogMode === 'confirm') finishDialog(false);
+    });
+    dialogCancel.addEventListener('click', function () { finishDialog(false); });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && dialog && !dialog.hidden && dialogMode === 'confirm') finishDialog(false);
+      else if (event.key === 'Escape' && dialog && !dialog.hidden && dialogMode === 'message') finishDialog(true);
+    });
+    return dialog;
+  }
+
+  var finishDialog = function () {};
+
+  function fillDialog(title, body, valueText, example) {
+    dialog.querySelector('#site-save-dialog-title').textContent = title || '';
+    dialog.querySelector('#site-save-dialog-body').textContent = body || '';
+    var valueEl = dialog.querySelector('#site-save-dialog-value');
+    var exampleEl = dialog.querySelector('#site-save-dialog-example');
+    valueEl.textContent = valueText || '';
+    valueEl.hidden = !valueText;
+    exampleEl.textContent = example || '';
+    exampleEl.hidden = !example;
+  }
+
+  function closeSaveDialog() {
+    if (!dialog) return;
+    dialog.hidden = true;
+    dialogMode = '';
+    dialogGo.onclick = null;
+  }
+
+  function confirmSave(opts) {
+    opts = opts || {};
+    hide();
+    ensureDialog();
+    var help = opts.help || {};
+    dialogMode = 'confirm';
+    fillDialog(
+      'Save ' + (opts.label || 'this setting') + '?',
+      help.what || 'This updates the live setting.',
+      opts.valueText ? 'New value: ' + opts.valueText : '',
+      [help.example ? 'Example: ' + help.example : '', opts.note || ''].filter(Boolean).join(' ')
+    );
+    dialogCancel.hidden = false;
+    dialogGo.hidden = false;
+    dialogGo.disabled = false;
+    dialogGo.textContent = 'Save';
+    dialog.hidden = false;
+    dialogGo.focus();
+    return new Promise(function (resolve) {
+      var settled = false;
+      finishDialog = function (accepted) {
+        if (dialogMode === 'message') {
+          closeSaveDialog();
+          return;
+        }
+        if (dialogMode === 'busy') return;
+        if (!accepted) {
+          if (settled) return;
+          settled = true;
+          closeSaveDialog();
+          resolve(null);
+          return;
+        }
+        dialogMode = 'busy';
+        dialogCancel.hidden = true;
+        dialogGo.disabled = true;
+        dialogGo.textContent = 'Saving…';
+        Promise.resolve()
+          .then(function () { return opts.run && opts.run(); })
+          .then(function (result) {
+            result = result || { title: 'Saved', message: 'The setting was saved.' };
+            dialogMode = 'message';
+            fillDialog(result.title || 'Saved', result.message || '', '', '');
+            dialogGo.disabled = false;
+            dialogGo.textContent = 'OK';
+            dialogGo.focus();
+          })
+          .catch(function () {
+            dialogMode = 'message';
+            fillDialog('Could not save', 'Network error. The setting was not changed.', '', '');
+            dialogGo.disabled = false;
+            dialogGo.textContent = 'OK';
+            dialogGo.focus();
+          });
+      };
+      dialogGo.onclick = function () { finishDialog(true); };
+    });
+  }
+
+  global.RemoedSiteHelp = { HELP: HELP, button: button, bind: bind, hide: hide, confirmSave: confirmSave };
 })(typeof window !== 'undefined' ? window : globalThis);
