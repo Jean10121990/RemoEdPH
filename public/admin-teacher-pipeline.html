@@ -42,15 +42,8 @@
       <div class="card">
         <div class="head">
           <h1 class="title">TeacherPipeline</h1>
-          <p class="sub">Review teacher and affiliate applicants, watch demos, and decide pass/fail.</p>
+          <p class="sub">Review teacher applicants, watch demos, and decide pass/fail.</p>
         </div>
-        <label style="display:block;margin:8px 0 12px;font-weight:700;">Type
-          <select id="type-filter">
-            <option value="all">All</option>
-            <option value="teacher">Teacher</option>
-            <option value="affiliate">Affiliate</option>
-          </select>
-        </label>
         <div style="padding: 6px 0;">
           <table>
             <thead>
@@ -182,11 +175,8 @@
       bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
       try {
         const data = await api('/api/admin/teacher-pipeline/applicants');
-        const filterEl = document.getElementById('type-filter');
-        const want = filterEl ? filterEl.value : 'all';
         const rows = (data.applicants || []).filter(function (a) {
-          const t = a.applicantType === 'affiliate' ? 'affiliate' : 'teacher';
-          return want === 'all' || t === want;
+          return a.applicantType !== 'affiliate';
         });
         if (!rows.length) {
           bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">No pending applicants at this time.</td></tr>';
@@ -209,7 +199,7 @@
               : '';
           return `
           <tr>
-            <td>${a.fullName || '-'} <span style="display:inline-block;margin-left:6px;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;color:#fff;background:${a.applicantType === 'affiliate' ? '#00AEEF' : '#47BC3E'}">${a.applicantType === 'affiliate' ? 'Affiliate' : 'Teacher'}</span></td>
+            <td>${a.fullName || '-'}</td>
             <td>${a.email || '-'}</td>
             <td>${a.contactNo || '-'}</td>
             <td><span class="stage">${formatStageLabel(st)}</span>${reapply}</td>
@@ -291,18 +281,6 @@
 
         const txt = applicant?.testAnswers?.text || '';
         answerText.textContent = txt || 'No text answers.';
-        var idUrl = applicant.uploadedDocuments && applicant.uploadedDocuments.nationalId;
-        if (applicant.applicantType === 'affiliate' && idUrl && !document.getElementById('aff-id-link')) {
-          var p = document.createElement('p');
-          p.id = 'aff-id-link';
-          answerText.parentNode.appendChild(p);
-        }
-        var idEl = document.getElementById('aff-id-link');
-        if (idEl) {
-          idEl.innerHTML = applicant.applicantType === 'affiliate' && idUrl
-            ? 'National ID: <a href="' + idUrl + '" target="_blank" rel="noopener">Open ID image</a>'
-            : '';
-        }
 
         const stModal = String(applicant.currentStage || '').toLowerCase();
         const isFailed = stModal === 'failed';
@@ -448,8 +426,6 @@
     resendBtn.addEventListener('click', resendApplicant);
     if (deleteBtn) deleteBtn.addEventListener('click', deleteApplicantFromModal);
 
-    var typeFilter = document.getElementById('type-filter');
-    if (typeFilter) typeFilter.addEventListener('change', loadApplicants);
     loadApplicants();
   </script>
 </body>
