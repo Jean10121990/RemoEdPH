@@ -1606,9 +1606,14 @@ function isActivatedPipelineApplicant(applicant) {
 
 router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    const applicants = await Application.find({
-      teacherActivationStatus: { $ne: 'Active Teacher' },
-    })
+    const typeRaw = String(req.query.applicantType || '').trim().toLowerCase();
+    const query = { teacherActivationStatus: { $ne: 'Active Teacher' } };
+    if (typeRaw === 'affiliate' || typeRaw === 'teacher') {
+      query.applicantType = typeRaw;
+    } else if (typeRaw) {
+      return res.status(400).json({ success: false, error: 'applicantType must be teacher or affiliate' });
+    }
+    const applicants = await Application.find(query)
       .sort({ updatedAt: -1 })
       .lean();
 
@@ -1617,6 +1622,8 @@ router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, asy
       fullName: a.fullName || '',
       email: a.email || '',
       contactNo: a.contactNo || '',
+      referrerName: a.referrerName || '',
+      createdAt: a.createdAt || null,
       currentStage: a.currentStage || 'applied',
       status: Boolean(a.status),
       progress: toProgressPercent(a.currentStage),
@@ -4646,6 +4653,32 @@ router.get('/students-list', async (req, res) => {
   } catch (error) {
     console.error('Error getting students list:', error);
     res.status(500).json({ error: 'Error getting students list' });
+  }
+});
+
+// Approved affiliate accounts for HR User Management. Marketing create/edit stays on /affiliates.
+router.get('/affiliates-list', async (req, res) => {
+  try {
+    const Affiliate = require('./models/Affiliate');
+    const rows = await Affiliate.find({ status: 'active' })
+      .select('name email phone username status createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({
+      success: true,
+      affiliates: rows.map((a) => ({
+        id: String(a._id),
+        name: a.name || '',
+        email: a.email || '',
+        phone: a.phone || '',
+        username: a.username || '',
+        status: 'active',
+        createdAt: a.createdAt || null,
+      })),
+    });
+  } catch (error) {
+    console.error('Error getting affiliates list:', error);
+    res.status(500).json({ success: false, error: 'Error getting affiliates list' });
   }
 });
 

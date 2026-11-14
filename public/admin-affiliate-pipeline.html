@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <title>Affiliate Pipeline - Admin</title>
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3" />
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=icon-align-1">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .page-admin-teacher-pipeline .action-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .page-admin-teacher-pipeline .btn-delete {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .page-admin-teacher-pipeline .table-wrap { overflow-x: auto; padding: 6px 0; }
+    </style>
+</head>
+<body class="page-admin-teacher-pipeline page-admin-affiliate-pipeline">
+    <div class="layout">
+        <div id="admin-sidebar-root"></div>
+        <main class="content">
+            <div class="card">
+                <div class="head">
+                    <h1 class="title">Affiliate Pipeline</h1>
+                    <p class="sub">People who applied to be Independent Growth Affiliates. Pass creates their login and emails the username and password.</p>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Applicant</th>
+                                <th>Email</th>
+                                <th>Contact</th>
+                                <th>Referrer</th>
+                                <th>Applied</th>
+                                <th>Stage</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pipeline-body">
+                            <tr><td colspan="7" class="muted" style="padding: 18px;">Loading applicants...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-backdrop" id="review-modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-name">
+            <div class="modal-head">
+                <strong id="modal-name">Applicant review</strong>
+                <button class="btn" id="close-modal" type="button">Close</button>
+            </div>
+            <div class="modal-body">
+                <div class="panel">
+                    <div class="muted">Email</div>
+                    <div id="applicant-email" style="margin-top: 8px;">—</div>
+                    <div class="muted" style="margin-top: 12px;">Contact no.</div>
+                    <div id="applicant-contact" style="margin-top: 8px;">—</div>
+                    <div class="muted" style="margin-top: 12px;">Referrer's name</div>
+                    <div id="applicant-referrer" style="margin-top: 8px;">—</div>
+                </div>
+                <div class="panel">
+                    <div class="muted">English video</div>
+                    <video id="demo-video" controls style="width: 100%; margin-top: 8px; border-radius: 8px; background: #000;"></video>
+                    <a id="demo-video-link" href="#" target="_blank" rel="noopener" class="muted" style="display:block;margin-top:8px;">No English video uploaded</a>
+                </div>
+                <div class="panel">
+                    <div class="muted">National ID</div>
+                    <div id="applicant-id" style="margin-top: 8px;">No national ID uploaded.</div>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-fail" id="modal-fail" type="button">Fail</button>
+                <button class="btn btn-pass" id="modal-pass" type="button">Pass</button>
+                <button class="btn-delete" id="modal-delete" type="button">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js?v=app-shell-19"></script>
+    <script>
+        function getAdminToken() {
+            return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+                ? RemoedAdminSession.getAuthToken()
+                : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || '')) || '';
+        }
+        var userType = localStorage.getItem('userType');
+        if (userType && userType !== 'admin') {
+            window.location.href = (function () {
+                try {
+                    var p = localStorage.getItem('remoedAdminEntryPath');
+                    if (p && p.charAt(0) === '/') return p;
+                } catch (e) {}
+                return 'index.html';
+            })();
+        }
+        if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'hr-hub'); }
+
+        var bodyEl = document.getElementById('pipeline-body');
+        var modal = document.getElementById('review-modal');
+        var modalName = document.getElementById('modal-name');
+        var demoVideo = document.getElementById('demo-video');
+        var demoVideoLink = document.getElementById('demo-video-link');
+        var applicantEmail = document.getElementById('applicant-email');
+        var applicantContact = document.getElementById('applicant-contact');
+        var applicantReferrer = document.getElementById('applicant-referrer');
+        var applicantIdBox = document.getElementById('applicant-id');
+        var passBtn = document.getElementById('modal-pass');
+        var failBtn = document.getElementById('modal-fail');
+        var deleteBtn = document.getElementById('modal-delete');
+        var selectedApplicantId = null;
+        var rows = [];
+
+        function esc(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function safeUploadPath(url) {
+            var s = String(url || '').trim();
+            if (!/^\/uploads\/[A-Za-z0-9._~/-]+$/.test(s)) return '';
+            return s;
+        }
+
+        function formatStageLabel(stage) {
+            var s = (stage || 'applied').toString();
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function formatDate(value) {
+            if (!value) return '—';
+            var d = new Date(value);
+            if (isNaN(d.getTime())) return '—';
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function canDecide(stage) {
+            var s = String(stage || '').toLowerCase();
+            return s !== 'passed' && s !== 'failed';
+        }
+
+        async function api(path, options) {
+            var headers = Object.assign({}, (options && options.headers) || {});
+            var token = getAdminToken();
+            if (token) headers.Authorization = 'Bearer ' + token;
+            if (options && options.body != null && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+            var response = await fetch(path, Object.assign({}, options || {}, { headers: headers, credentials: 'include' }));
+            var json = await response.json().catch(function () { return {}; });
+            if (!response.ok) throw new Error(json.error || json.message || ('Request failed (' + response.status + ')'));
+            return json;
+        }
+
+        function rowById(id) {
+            return rows.find(function (r) { return String(r._id) === String(id); });
+        }
+
+        async function loadApplicants() {
+            bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
+            try {
+                var data = await api('/api/admin/teacher-pipeline/applicants?applicantType=affiliate');
+                rows = (data.applicants || []).filter(function (a) { return a.applicantType === 'affiliate'; });
+                if (!rows.length) {
+                    bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">No affiliate applications yet.</td></tr>';
+                    return;
+                }
+                bodyEl.innerHTML = rows.map(function (a) {
+                    var st = a.currentStage || 'applied';
+                    var decide = canDecide(st)
+                        ? '<button type="button" class="btn btn-pass" data-pass="' + esc(a._id) + '">Pass</button>'
+                          + '<button type="button" class="btn btn-fail" data-fail="' + esc(a._id) + '">Fail</button>'
+                        : '';
+                    return '<tr>'
+                        + '<td>' + esc(a.fullName || '—') + '</td>'
+                        + '<td>' + esc(a.email || '—') + '</td>'
+                        + '<td>' + esc(a.contactNo || '—') + '</td>'
+                        + '<td>' + esc(a.referrerName || '—') + '</td>'
+                        + '<td>' + esc(formatDate(a.createdAt)) + '</td>'
+                        + '<td><span class="stage">' + esc(formatStageLabel(st)) + '</span></td>'
+                        + '<td class="action-btns">'
+                        + '<button type="button" class="btn btn-review" data-review="' + esc(a._id) + '">Review</button>'
+                        + decide
+                        + '<button type="button" class="btn-delete" data-delete="' + esc(a._id) + '">Delete</button>'
+                        + '</td></tr>';
+                }).join('');
+                bodyEl.querySelectorAll('[data-review]').forEach(function (btn) {
+                    btn.addEventListener('click', function () { openReview(btn.getAttribute('data-review')); });
+                });
+                bodyEl.querySelectorAll('[data-pass]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = btn.getAttribute('data-pass');
+                        var row = rowById(id);
+                        passApplicant(id, row ? (row.fullName || row.email) : id);
+                    });
+                });
+                bodyEl.querySelectorAll('[data-fail]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = btn.getAttribute('data-fail');
+                        var row = rowById(id);
+                        failApplicant(id, row ? (row.fullName || row.email) : id);
+                    });
+                });
+                bodyEl.querySelectorAll('[data-delete]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = btn.getAttribute('data-delete');
+                        var row = rowById(id);
+                        deleteApplicant(id, row ? (row.fullName || row.email) : id);
+                    });
+                });
+            } catch (error) {
+                bodyEl.innerHTML = '<tr><td colspan="7" style="padding:18px;color:#dc2626;">' + esc(error.message) + '</td></tr>';
+            }
+        }
+
+        function setMedia(url) {
+            var path = safeUploadPath(url);
+            demoVideo.pause();
+            demoVideo.removeAttribute('src');
+            demoVideo.load();
+            if (!path) {
+                demoVideoLink.href = '#';
+                demoVideoLink.textContent = 'No English video uploaded';
+                return;
+            }
+            demoVideo.src = path;
+            demoVideoLink.href = path;
+            demoVideoLink.textContent = 'Open video in a new tab';
+        }
+
+        function setId(url) {
+            var path = safeUploadPath(url);
+            applicantIdBox.textContent = '';
+            if (!path) {
+                applicantIdBox.textContent = 'No national ID uploaded.';
+                return;
+            }
+            var link = document.createElement('a');
+            link.href = path;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = 'Open national ID';
+            applicantIdBox.appendChild(link);
+        }
+
+        async function openReview(applicantId) {
+            try {
+                var data = await api('/api/admin/teacher-pipeline/applicants/' + encodeURIComponent(applicantId));
+                var applicant = data.applicant || {};
+                if (applicant.applicantType && applicant.applicantType !== 'affiliate') {
+                    alert('This record is not an affiliate application.');
+                    return;
+                }
+                selectedApplicantId = applicant._id;
+                modalName.textContent = 'Review: ' + (applicant.fullName || applicant.email || 'Applicant');
+                applicantEmail.textContent = applicant.email || '—';
+                applicantContact.textContent = applicant.contactNo || '—';
+                applicantReferrer.textContent = String(applicant.referrerName || '').trim() || '—';
+                setMedia(applicant.demoVideoUrl || '');
+                setId(applicant.uploadedDocuments && applicant.uploadedDocuments.nationalId);
+                var stage = String(applicant.currentStage || '').toLowerCase();
+                var closed = stage === 'passed' || stage === 'failed';
+                passBtn.style.display = closed ? 'none' : '';
+                failBtn.style.display = closed ? 'none' : '';
+                modal.style.display = 'block';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            selectedApplicantId = null;
+            demoVideo.pause();
+            demoVideo.removeAttribute('src');
+            demoVideo.load();
+            passBtn.style.display = '';
+            failBtn.style.display = '';
+        }
+
+        async function passApplicant(applicantId, displayName) {
+            var label = displayName || 'this applicant';
+            if (!confirm('Pass ' + label + '? This creates their affiliate login and emails the username and password.')) return false;
+            try {
+                var result = await api('/api/admin/teacher-pipeline/applicants/' + encodeURIComponent(applicantId) + '/pass', { method: 'POST', body: '{}' });
+                var info = result.message || 'Applicant passed.';
+                if (result.temporaryPassword) info += '\n\nTemporary password (email did not send): ' + result.temporaryPassword;
+                alert(info);
+                closeModal();
+                await loadApplicants();
+                return true;
+            } catch (error) {
+                alert(error.message);
+                return false;
+            }
+        }
+
+        async function failApplicant(applicantId, displayName) {
+            var label = displayName || 'this applicant';
+            if (!confirm('Fail ' + label + '? They will be emailed that this application was not approved.')) return false;
+            try {
+                var result = await api('/api/admin/teacher-pipeline/applicants/' + encodeURIComponent(applicantId) + '/fail', { method: 'POST', body: '{}' });
+                var mailed = result.emailResult && result.emailResult.success;
+                alert(mailed ? 'Applicant marked as failed. Notification email sent.' : 'Applicant marked as failed. The email did not send.');
+                closeModal();
+                await loadApplicants();
+                return true;
+            } catch (error) {
+                alert(error.message);
+                return false;
+            }
+        }
+
+        async function deleteApplicant(applicantId, displayName) {
+            var label = displayName || 'this applicant';
+            if (!confirm('Permanently delete ' + label + ' from the affiliate pipeline? This cannot be undone.')) return false;
+            try {
+                await api('/api/admin/teacher-pipeline/applicants/' + encodeURIComponent(applicantId) + '/delete', { method: 'POST', body: '{}' });
+                closeModal();
+                await loadApplicants();
+                return true;
+            } catch (error) {
+                alert(error.message);
+                return false;
+            }
+        }
+
+        document.getElementById('close-modal').addEventListener('click', closeModal);
+        modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+        passBtn.addEventListener('click', function () {
+            if (!selectedApplicantId) return;
+            passApplicant(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''));
+        });
+        failBtn.addEventListener('click', function () {
+            if (!selectedApplicantId) return;
+            failApplicant(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''));
+        });
+        deleteBtn.addEventListener('click', function () {
+            if (!selectedApplicantId) return;
+            deleteApplicant(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''));
+        });
+        loadApplicants();
+    </script>
+</body>
+</html>

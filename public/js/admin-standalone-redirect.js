@@ -11,6 +11,7 @@
             'admin-users.html': 'admin-hr-hub.html#users',
             'admin-teacher-assessments.html': 'admin-hr-hub.html#assessments',
             'admin-teacher-pipeline.html': 'admin-hr-hub.html#pipeline',
+            'admin-affiliate-pipeline.html': 'admin-hr-hub.html#affiliate-pipeline',
             'admin-payroll.html': 'admin-accounting-hub.html#payroll',
             'admin-unique-link-commission.html': 'admin-marketing-hub.html',
             'admin-referral-leaderboard.html': 'admin-marketing-hub.html#leaderboard',

@@ -177,6 +177,7 @@
         if (path.indexOf('admin-users') !== -1) return 'users';
         if (path.indexOf('admin-teacher-assessments') !== -1) return 'teacher-assessments';
         if (path.indexOf('admin-teacher-pipeline') !== -1) return 'teacher-pipeline';
+        if (path.indexOf('admin-affiliate-pipeline') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-training') !== -1) return 'teacher-training';
         if (path.indexOf('admin-teacher-schedule') !== -1) return 'teacher-schedule';
         if (path.indexOf('admin-payroll') !== -1) return 'payroll';

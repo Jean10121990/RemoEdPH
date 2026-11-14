@@ -363,7 +363,9 @@ Full culture copy lives on `public/about.html` (`GET /about`). The homepage keep
 
 Homepage order after the hero: `#benefits`, `#how-it-works`, `#assessment`, `#our-teachers`, `#testimonials`, `#plans`, `#faq`, short `#who-we-are`, `#final-cta`.
 
-The navbar language menu (`public/js/site-i18n.js`) follows the visitor’s browser language on the first visit and remembers a later choice in `i18nextLng`. English stays as written. Any other language translates the landing page. The menu includes Filipino, Chinese, Japanese, Korean, Spanish, Portuguese, French, German, Arabic, Hindi, Indonesian, Malay, Vietnamese, Thai, Russian, Turkish, and Italian. Do not remove the menu or lock the page to English.
+The homepage language menu (`public/index.html`, `body.page-index`) offers English, Filipino, Chinese, Japanese, Korean, Vietnamese, Thai, Arabic, and Spanish. Strings live in `public/js/home-strings.js`. A choice is remembered in `i18nextLng`. There is no Google Translate cookie or reload. Login, teachers, and about keep the longer `LANG_OPTIONS` list in `public/js/site-i18n.js`. Do not put `data-i18n` on a parent that contains markup. The English CMS overlay runs after the dictionary. A `?angle=` campaign headline is not overwritten.
+
+`#hero-title` (`data-i18n="hero_title"`) types out the sentence the page already set: the dictionary, the English CMS line, or a `?angle=` headline. Script: `public/js/hero-type.js`, after `site-content.js`. Keep `data-i18n` on the `h1`. Do not wrap the words in a child element. `apply()` sets `textContent` and would erase that child. The script waits until the copy settles, sets `aria-label` to the full sentence, and adds `hero-typing` only while the caret shows. A later language or CMS write starts the typing again. `prefers-reduced-motion: reduce` shows the full line at once. The caret is `h1.hero-typing::after` in `landing-brand.css`.
 
 ### Icons, not cropped comps
 
@@ -425,7 +427,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 ## Growth program
 
 - `GET /healthz` returns 200 when Mongo answers a ping and 503 otherwise. It does not return secrets. `GET /api/health` is unchanged.
-- Affiliate apply: public `POST /api/applications/affiliate` (rate limited). Optional `referrerName` (max 120 characters) is stored on the application and shown in HR review when present. HR Pass on `applicantType: affiliate` creates the affiliate account.
+- Affiliate apply: public `POST /api/applications/affiliate` (rate limited). Optional `referrerName` (max 120 characters) is stored on the application. HR Hub → **Affiliate Pipeline** (`admin-hr-hub.html#affiliate-pipeline`, page `admin-affiliate-pipeline.html`, `nav:hr_hub`) lists those applications. The list is `GET /api/admin/teacher-pipeline/applicants?applicantType=affiliate` (admin JWT, `hr:pipeline`). Pass, fail, and delete stay on the existing teacher-pipeline routes. Pass creates the affiliate login and emails the username and password. Omitting `applicantType` still returns teacher and affiliate rows for Teacher Pipeline.
 - Growth admin API is ` /api/admin/growth/*` (admin JWT). Keys: `growth.inbox`, `growth.leads`, `growth.posts`, `growth.campaigns`, `growth.automations`, `growth.ai_settings`, `growth.reports`. `admin_assistant` may open inbox and leads only. Reports → Funnel counts **level assessments** (the same `AssessmentTrial` rows as HR Hub → Level Assessment): Assessment done, Registered (account created), Paid plan. Inquiry is only site chat / Messenger. Renewal due, At-risk, and Lost are subsets of paid accounts.
 - Public web chat: `POST /api/public/chat` (rate limited, no token). Meta webhook: `GET/POST /api/webhooks/meta` (verify token and `X-Hub-Signature-256`).
 - Brevo events: `POST /api/webhooks/brevo` (no token; stores open/click/unsubscribe only).
@@ -544,7 +546,9 @@ Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login 
 
 ## Admin HR Staff Documents + teacher NBI
 
-- HR Hub iframes (`admin-hr-hub.html`) load with `?adminEmbed=1`. Embedded pages must **not** call `AdminSidebar.render` in that mode. Teacher Training and Teacher Schedule follow the same gate as Users and Pipeline. `css/admin-hub-embed.css` hides `#admin-sidebar-root` inside `html.admin-embed`. Bump `embedVer` when those pages change.
+- HR Hub iframes (`admin-hr-hub.html`) load with `?adminEmbed=1`. Embedded pages must **not** call `AdminSidebar.render` in that mode. Teacher Training, Teacher Schedule, and Affiliate Pipeline follow the same gate as Users and Teacher Pipeline. `css/admin-hub-embed.css` hides `#admin-sidebar-root` inside `html.admin-embed`. Bump `embedVer` when those pages change.
+- HR Hub → **Affiliate Pipeline** lists affiliate applications (name, email, phone, referrer, applied date, stage). Review opens the English video and national ID. Pass, fail, and delete use the teacher-pipeline routes and do not send a teacher signup link.
+- HR Hub → User Management → **Affiliates** lists approved accounts only (`status: active`) from `GET /api/admin/affiliates-list` (admin JWT, `hr:users_view`). It does not create, edit, or show payout details. Marketing create and edit stay on `GET/POST/PATCH /api/admin/affiliates` (`mkt:affiliates_manage`).
 - Page: `public/admin-hr-documents.html` (HR Hub Documents; Super-Admin / HR).
 - Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
 - Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
@@ -941,3 +945,12 @@ The owner signed off on the system as of this date. Extend around these; do not 
 | Email letters | `email_templates` holds the six account letters (teacher account, subscription receipt, assessment results, password reset, and the two teacher-pipeline notes). A missing or empty HTML row still sends the letter in `emailService.js`. A save requires a preview of that exact letter. SMTP passwords stay in the environment. Editor: `admin-settings-email.html`. |
 | Login Facebook | `loginFacebookEnabled` defaults off. The student login page reads `GET /api/public/login-options`. Off shows Google only. On adds Facebook on that page only. The admin login stays Google. Facebook `/start` with `student_login` is refused while the switch is off. Register and teacher signup are unchanged. `gardenCreditsEnabled` off pauses new garden lesson credits. |
 | Homepage prices | The plan cards in `public/index.html` do not embed peso amounts. `plan-pricing.js` writes the server `phpTotal`. Lesson counts stay in the HTML until that script runs. Code fallbacks stay, so Spark remains 22 credits at $7 with a $0 founder discount. `tests/plan-seed-totals.test.js` fails if those totals drift. |
+| Homepage languages | The homepage menu is nine languages (English, Filipino, Chinese, Japanese, Korean, Vietnamese, Thai, Arabic, Spanish) from `public/js/home-strings.js`. No Google Translate reload. Login, teachers, and about keep the longer `LANG_OPTIONS` list. |
+| Hero headline | `#hero-title` types the sentence already on the page (`public/js/hero-type.js`). Language, English CMS, and `?angle=` headlines type again. Reduced motion shows the full line at once. The caret is `h1.hero-typing::after` in `landing-brand.css`. |
+
+## Baseline updates — 2026-11-14
+
+| Area | What shipped |
+|------|----------------|
+| Affiliate Pipeline | HR Hub tab lists people who applied to be affiliates (`admin-hr-hub.html#affiliate-pipeline`). Same application records as Teacher Pipeline, filtered with `applicantType=affiliate`. Pass creates the affiliate login. |
+| Approved affiliates | User Management → Affiliates lists active affiliate accounts (`GET /api/admin/affiliates-list`, admin JWT, `hr:users_view`). Pending and inactive accounts stay off that list. |

@@ -20,13 +20,13 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-page-header.js?v=pop-1"></script>
-        <script src="js/admin-sidebar.js?v=app-shell-18"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-19"></script>
         <script src="js/admin-hub-guard.js" data-hub="hr"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'hr-hub');</script>
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">HR Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, <strong>Staff Documents</strong>, teacher assessments, Teacher Pipeline, Teacher Training (PPT materials), and teacher schedule in one place.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, <strong>Staff Documents</strong>, teacher assessments, Teacher Pipeline, Affiliate Pipeline, Teacher Training (PPT materials), and teacher schedule in one place.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="HR Hub sections">
                     <button type="button" class="hub-tab hub-tab--active" role="tab" id="hr-tab-users" aria-selected="true" aria-controls="hr-panel-users">User Management</button>
@@ -34,6 +34,7 @@
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-assessments" aria-selected="false" aria-controls="hr-panel-assessments">Teacher Assessments</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-level" aria-selected="false" aria-controls="hr-panel-level">Level Assessment</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-pipeline" aria-selected="false" aria-controls="hr-panel-pipeline">Teacher Pipeline</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-affiliate" aria-selected="false" aria-controls="hr-panel-affiliate">Affiliate Pipeline</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-training" aria-selected="false" aria-controls="hr-panel-training">Teacher Training</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-schedule" aria-selected="false" aria-controls="hr-panel-schedule">Teacher Schedule</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-attendance" aria-selected="false" aria-controls="hr-panel-attendance">Attendance exceptions</button>
@@ -54,6 +55,9 @@
                 <div id="hr-panel-pipeline" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-pipeline" hidden>
                     <iframe id="iframe-hr-pipeline" class="hub-iframe" title="Teacher Pipeline"></iframe>
                 </div>
+                <div id="hr-panel-affiliate" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-affiliate" hidden>
+                    <iframe id="iframe-hr-affiliate" class="hub-iframe" title="Affiliate Pipeline"></iframe>
+                </div>
                 <div id="hr-panel-training" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-training" hidden>
                     <iframe id="iframe-hr-training" class="hub-iframe" title="Teacher Training"></iframe>
                 </div>
@@ -69,11 +73,12 @@
     <script>
         (function () {
             var IFRAMES = {
-                users: { id: 'iframe-hr-users', src: '/admin/admin-users.html?adminEmbed=1&embedVer=11' },
+                users: { id: 'iframe-hr-users', src: '/admin/admin-users.html?adminEmbed=1&embedVer=12' },
                 documents: { id: 'iframe-hr-documents', src: '/admin/admin-hr-documents.html?adminEmbed=1&embedVer=2' },
                 assessments: { id: 'iframe-hr-assessments', src: '/admin/admin-teacher-assessments.html?adminEmbed=1&embedVer=7' },
                 level: { id: 'iframe-hr-level', src: '/admin/admin-level-assessments.html?adminEmbed=1&embedVer=4' },
                 pipeline: { id: 'iframe-hr-pipeline', src: '/admin/admin-teacher-pipeline.html?adminEmbed=1&embedVer=5' },
+                affiliate: { id: 'iframe-hr-affiliate', src: '/admin/admin-affiliate-pipeline.html?adminEmbed=1&embedVer=1' },
                 training: { id: 'iframe-hr-training', src: '/admin/admin-teacher-training.html?adminEmbed=1&embedVer=8' },
                 schedule: { id: 'iframe-hr-schedule', src: '/admin/admin-teacher-schedule.html?adminEmbed=1&embedVer=11' },
                 attendance: { id: 'iframe-hr-attendance', src: '/admin/admin-attendance-exceptions.html?adminEmbed=1&embedVer=1' }
@@ -111,6 +116,7 @@
                     var h = tab === 'assessments' ? '#assessments'
                         : tab === 'level' ? '#level'
                         : tab === 'pipeline' ? '#pipeline'
+                        : tab === 'affiliate' ? '#affiliate-pipeline'
                         : tab === 'training' ? '#training'
                         : tab === 'schedule' ? '#schedule'
                         : tab === 'attendance' ? '#attendance'
@@ -129,6 +135,7 @@
                     { key: 'assessments', t: 'hr-tab-assessments', p: 'hr-panel-assessments' },
                     { key: 'level', t: 'hr-tab-level', p: 'hr-panel-level' },
                     { key: 'pipeline', t: 'hr-tab-pipeline', p: 'hr-panel-pipeline' },
+                    { key: 'affiliate', t: 'hr-tab-affiliate', p: 'hr-panel-affiliate' },
                     { key: 'training', t: 'hr-tab-training', p: 'hr-panel-training' },
                     { key: 'schedule', t: 'hr-tab-schedule', p: 'hr-panel-schedule' },
                     { key: 'attendance', t: 'hr-tab-attendance', p: 'hr-panel-attendance' }
@@ -158,6 +165,7 @@
                 bindTab('hr-tab-assessments', 'assessments');
                 bindTab('hr-tab-level', 'level');
                 bindTab('hr-tab-pipeline', 'pipeline');
+                bindTab('hr-tab-affiliate', 'affiliate');
                 bindTab('hr-tab-training', 'training');
                 bindTab('hr-tab-schedule', 'schedule');
                 bindTab('hr-tab-attendance', 'attendance');
@@ -166,6 +174,7 @@
                     if (h === '#assessments') showTab('assessments');
                     else if (h === '#level') showTab('level');
                     else if (h === '#pipeline') showTab('pipeline');
+                    else if (h === '#affiliate-pipeline') showTab('affiliate');
                     else if (h === '#training') showTab('training');
                     else if (h === '#schedule') showTab('schedule');
                     else if (h === '#attendance') showTab('attendance');

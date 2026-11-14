@@ -92,6 +92,7 @@
                     <button class="tab-btn active" onclick="switchTab('teachers')">👨‍🏫 Teachers</button>
                     <button class="tab-btn" onclick="switchTab('students')">👨‍🎓 Students</button>
                     <button class="tab-btn" onclick="switchTab('admins')">👨‍💼 Admins</button>
+                    <button class="tab-btn" onclick="switchTab('affiliates')">Affiliates</button>
                 </div>
                 
                 <div id="teachers-tab" class="tab-content">
@@ -170,6 +171,26 @@
                         </thead>
                         <tbody id="admins-tbody">
                             <!-- Admins will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="affiliates-tab" class="tab-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #1ca7e7;">Approved Affiliates</h3>
+                    </div>
+                    <table class="user-table" id="affiliates-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Username</th>
+                                <th>Status</th>
+                                <th>Join Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="affiliates-tbody">
                         </tbody>
                     </table>
                 </div>
@@ -476,6 +497,52 @@
                 case 'admins':
                     loadAdmins();
                     break;
+                case 'affiliates':
+                    loadAffiliates();
+                    break;
+            }
+        }
+
+        function escUserCell(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function loadAffiliates() {
+            var tbody = document.getElementById('affiliates-tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">Loading...</td></tr>';
+            try {
+                var response = await fetch('/api/admin/affiliates-list', adminApiFetchInit());
+                var raw = await response.json().catch(function () { return {}; });
+                if (response.status === 401 || response.status === 403) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + escUserCell((raw && (raw.error || raw.message)) || 'Unauthorized. Please sign in again.') + '</td></tr>';
+                    return;
+                }
+                if (!response.ok) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + escUserCell((raw && (raw.error || raw.message)) || 'Failed to load affiliates') + '</td></tr>';
+                    return;
+                }
+                var affiliates = Array.isArray(raw && raw.affiliates) ? raw.affiliates : [];
+                if (!affiliates.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No approved affiliates yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = affiliates.map(function (person) {
+                    var joined = person.createdAt ? new Date(person.createdAt).toLocaleDateString() : 'N/A';
+                    return '<tr>'
+                        + '<td>' + escUserCell(person.name || 'N/A') + '</td>'
+                        + '<td>' + escUserCell(person.email || 'N/A') + '</td>'
+                        + '<td>' + escUserCell(person.phone || 'N/A') + '</td>'
+                        + '<td>' + escUserCell(person.username || 'N/A') + '</td>'
+                        + '<td><span class="status-badge status-active">Active</span></td>'
+                        + '<td>' + escUserCell(joined) + '</td>'
+                        + '</tr>';
+                }).join('');
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + escUserCell(error.message || 'Failed to load affiliates') + '</td></tr>';
             }
         }
 

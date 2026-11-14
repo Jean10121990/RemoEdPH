@@ -45,6 +45,7 @@
         if (path.indexOf('admin-teacher-assessments') !== -1) return 'hr-hub';
         if (path.indexOf('admin-assessment-answer-key') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-pipeline') !== -1) return 'hr-hub';
+        if (path.indexOf('admin-affiliate-pipeline') !== -1) return 'hr-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-fee') !== -1) return 'admin-fee';
         if (path.indexOf('admin-marketing-hub') !== -1) return 'marketing';
