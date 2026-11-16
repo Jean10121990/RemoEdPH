@@ -2106,11 +2106,7 @@ router.post('/send-assessment-email', async (req, res) => {
       const ageBand = req.body.ageBand === '5-6' ? '5-6' : '3-4';
       const questions = await skill.questionsForBand(ageBand);
       const first = String(childName || '').trim().split(/\s+/)[0] || 'Your child';
-      skillProfile = skill.scoreSubmission(questions, req.body.skillAnswers, {
-        firstName: first,
-        ageBand,
-        wantsMoreReading: req.body.wantsMoreReading === true || req.body.wantsMoreReading === 'yes',
-      });
+      skillProfile = skill.scoreSubmission(questions, req.body.skillAnswers, skill.metaFromBody(req.body, first));
       finalCefrLevel = skillProfile.suggestedLevel;
       finalScore = null;
     }

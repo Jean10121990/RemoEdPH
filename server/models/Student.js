@@ -149,6 +149,7 @@ const studentSchema = new mongoose.Schema({
   skillAssessment: {
     ageBand: { type: String, enum: ['3-4', '5-6', ''], default: '' },
     wantsMoreReading: { type: Boolean, default: false },
+    focusSkills: { type: [String], default: undefined },
     bands: { type: mongoose.Schema.Types.Mixed, default: undefined },
     marks: { type: mongoose.Schema.Types.Mixed, default: undefined },
     headline: { type: String, default: '', maxlength: 300 },

@@ -87,6 +87,35 @@ test('equal bands say balanced, and a higher skill is named', () => {
   assert.equal(lead.suggestedFocus, 'reading');
 });
 
+test('the browser transcript is scored, and chosen skills set the focus', () => {
+  const hello = { questionId: 'h1', skill: 'speaking', kind: 'speak', sayText: 'hello', correctIndex: 0 };
+  const phrase = { questionId: 'h2', skill: 'speaking', kind: 'speak', sayText: 'I see a cat', correctIndex: 0 };
+  const heard = skill.scoreSubmission(
+    [hello, phrase, { questionId: 'h3', skill: 'speaking', kind: 'speak', sayText: 'ball', correctIndex: 0 }],
+    [
+      { questionId: 'h1', transcript: 'Hello!' },
+      { questionId: 'h2', transcript: 'I see cat' },
+      { questionId: 'h3', transcript: 'sun' },
+    ],
+    { firstName: 'Mia', ageBand: '3-4', focusSkills: ['speaking', 'reading'] }
+  );
+  assert.equal(heard.bands.speaking, skill.GROWING);
+  assert.equal(heard.wantsMoreReading, true);
+  assert.equal(heard.suggestedFocus, 'reading');
+  assert.match(heard.practiceLine, /Speaking and Reading/);
+
+  const speakingOnly = skill.scoreSubmission(
+    [hello, phrase],
+    [
+      { questionId: 'h1', transcript: 'hello' },
+      { questionId: 'h2', transcript: 'I see a cat' },
+    ],
+    { firstName: 'Mia', ageBand: '5-6', focusSkills: ['speaking'] }
+  );
+  assert.equal(speakingOnly.suggestedFocus, 'balanced');
+  assert.equal(speakingOnly.wantsMoreReading, false);
+});
+
 test('more reading time suggests Reading Focus, and age sets the level name', () => {
   const questions = [1, 2].map((n) => picture('p' + n, 'pronunciation', 0));
   const answers = questions.map((q) => ({ questionId: q.questionId, choiceIndex: 1 }));

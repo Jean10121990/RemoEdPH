@@ -124,7 +124,20 @@
     #prompt { font-size: 1.35rem; font-weight: 800; line-height: 1.4; margin: 0 0 8px; }
     .hint { color: #4a6575; margin: 0 0 8px; }
     .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
-    .choices.ratings { grid-template-columns: 1fr; }
+    .focus-picks { grid-template-columns: 1fr 1fr; }
+    .cam-wrap { display: flex; justify-content: center; margin: 8px 0 4px; }
+    .cam-wrap video {
+      width: 168px;
+      height: 168px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid var(--gold);
+      background: #e8f7fc;
+    }
+    .cam-note { text-align: center; color: #4a6575; font-size: 0.85rem; margin: 0 0 8px; }
+    .say-word { text-align: center; font-size: 2.2rem; font-weight: 800; margin: 8px 0; color: var(--ink); }
+    .heard { text-align: center; color: var(--blue-deep); font-weight: 800; min-height: 1.4em; margin: 0 0 8px; }
+    #my-turn { margin: 0 auto; display: block; }
     .pic {
       display: flex;
       flex-direction: column;
@@ -168,7 +181,7 @@
     button:focus, input:focus, select:focus { outline: 3px solid var(--gold); outline-offset: 2px; }
     [hidden] { display: none !important; }
     @media (max-width: 768px) {
-      .choices, .yesno { grid-template-columns: 1fr; }
+      .choices, .yesno, .focus-picks { grid-template-columns: 1fr; }
       .q-top { flex-wrap: wrap; }
     }
   </style>
@@ -189,11 +202,14 @@
       </select>
       <label for="child-first">Child's first name</label>
       <input id="child-first" autocomplete="given-name" maxlength="40" />
-      <p id="reading-q"><strong>Do you want more reading time in class?</strong></p>
-      <div class="yesno" role="group" aria-labelledby="reading-q">
-        <button type="button" class="choice" id="reading-yes">Yes</button>
-        <button type="button" class="choice" id="reading-no">No</button>
+      <p id="focus-q"><strong>What should we practice more? Pick any.</strong></p>
+      <div class="choices focus-picks" role="group" aria-labelledby="focus-q">
+        <button type="button" class="choice" data-skill="listening" aria-pressed="false">Listening</button>
+        <button type="button" class="choice" data-skill="speaking" aria-pressed="false">Speaking</button>
+        <button type="button" class="choice" data-skill="pronunciation" aria-pressed="false">Pronunciation</button>
+        <button type="button" class="choice" data-skill="reading" aria-pressed="false">Reading</button>
       </div>
+      <p class="hint" id="start-status" role="status"></p>
       <button type="button" class="primary" id="start-btn">Let's start</button>
     </section>
 
@@ -204,10 +220,18 @@
       </div>
       <p class="skill" id="skill-name"></p>
       <p id="prompt"></p>
-      <p class="hint" id="hint" hidden>Please do not give hints.</p>
+      <div id="speak-stage" hidden>
+        <div class="cam-wrap" id="cam-wrap" hidden>
+          <video id="cam" autoplay muted playsinline></video>
+        </div>
+        <p class="cam-note" id="cam-note" hidden>The camera is only so your child can see their face. We do not save the video.</p>
+        <p class="say-word" id="say-word"></p>
+        <p class="heard" id="heard-line" aria-live="polite"></p>
+        <button type="button" class="primary" id="my-turn">My turn</button>
+      </div>
       <div id="choices" class="choices"></div>
       <div class="actions">
-        <button type="button" class="ghost" id="play-again">Play again</button>
+        <button type="button" class="ghost" id="play-again">Hear it again</button>
         <button type="button" class="ghost" id="skip-btn">Skip</button>
       </div>
     </section>
@@ -233,12 +257,17 @@
   <script>
     (function () {
       var ageBand = '3-4';
-      var wantsMoreReading = false;
+      var focusSkills = [];
       var questions = [];
       var index = 0;
       var answers = [];
       var profile = null;
-      var audio = null;
+      var voice = null;
+      var camStream = null;
+      var camGen = 0;
+      var recognizer = null;
+      var listenGen = 0;
+      var PREFERRED = ['Samantha', 'Google US English', 'Microsoft Aria', 'Microsoft Jenny', 'Microsoft Zira', 'Karen', 'Moira'];
 
       function track(name, params) {
         if (typeof remoedTrack === 'function') remoedTrack(name, params || {});
@@ -257,19 +286,180 @@
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
       }
-      function pickReading(yes) {
-        wantsMoreReading = yes;
-        document.getElementById('reading-yes').classList.toggle('is-selected', yes);
-        document.getElementById('reading-no').classList.toggle('is-selected', !yes);
+      function pickVoice() {
+        if (!window.speechSynthesis) return;
+        var voices = window.speechSynthesis.getVoices() || [];
+        var i, j;
+        for (i = 0; i < PREFERRED.length; i += 1) {
+          for (j = 0; j < voices.length; j += 1) {
+            if (voices[j].name.indexOf(PREFERRED[i]) !== -1) { voice = voices[j]; return; }
+          }
+        }
+        voice = voices.filter(function (item) { return /^en(-|_)US/i.test(item.lang); })[0] ||
+          voices.filter(function (item) { return /^en/i.test(item.lang); })[0] || null;
       }
-      document.getElementById('reading-yes').addEventListener('click', function () { pickReading(true); });
-      document.getElementById('reading-no').addEventListener('click', function () { pickReading(false); });
-      pickReading(false);
+      if (window.speechSynthesis) {
+        pickVoice();
+        window.speechSynthesis.onvoiceschanged = pickVoice;
+      }
+      function speak(text, onend) {
+        var gen = listenGen;
+        if (!window.speechSynthesis || !text) {
+          if (onend) setTimeout(function () { if (gen === listenGen && onend) onend(); }, 300);
+          return;
+        }
+        window.speechSynthesis.cancel();
+        var utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.15;
+        if (voice) utterance.voice = voice;
+        utterance.onend = function () { if (gen === listenGen && onend) onend(); };
+        utterance.onerror = function () { if (gen === listenGen && onend) onend(); };
+        setTimeout(function () {
+          if (gen !== listenGen || !window.speechSynthesis) return;
+          window.speechSynthesis.speak(utterance);
+        }, 60);
+      }
+      function lineFor(q) {
+        if (!q) return '';
+        if (q.skill === 'listening') return q.sayText || '';
+        if (q.kind === 'speak') return q.sayText ? ('Can you say ' + q.sayText + '?') : '';
+        if (q.skill === 'reading') return 'Tap the picture for the word you see.';
+        return q.prompt || '';
+      }
+      function wordsOf(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(function (word) {
+          return word.length > 1;
+        });
+      }
+      function heardEnough(transcript, expected) {
+        var heard = wordsOf(transcript);
+        var want = wordsOf(expected);
+        if (!want.length || !heard.length) return false;
+        return want.every(function (word) { return heard.indexOf(word) !== -1; });
+      }
+      function stopMic() {
+        listenGen += 1;
+        if (recognizer) {
+          try { recognizer.onend = function () {}; recognizer.onresult = function () {}; recognizer.abort(); } catch (e) {}
+          recognizer = null;
+        }
+        if (window.speechSynthesis) {
+          try { window.speechSynthesis.cancel(); } catch (e) {}
+        }
+      }
+      function stopCamera() {
+        camGen += 1;
+        if (camStream) {
+          camStream.getTracks().forEach(function (track) { track.stop(); });
+          camStream = null;
+        }
+        var video = document.getElementById('cam');
+        if (video) video.srcObject = null;
+        var note = document.getElementById('cam-note');
+        if (note) note.hidden = true;
+      }
+      function startCamera() {
+        var wrap = document.getElementById('cam-wrap');
+        var video = document.getElementById('cam');
+        stopCamera();
+        var gen = camGen;
+        if (!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          if (wrap) wrap.hidden = true;
+          return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }).then(function (stream) {
+          if (gen !== camGen) {
+            stream.getTracks().forEach(function (track) { track.stop(); });
+            return;
+          }
+          camStream = stream;
+          video.srcObject = stream;
+          if (wrap) wrap.hidden = false;
+          var note = document.getElementById('cam-note');
+          if (note) note.hidden = false;
+          video.play().catch(function () {});
+        }).catch(function () {
+          if (wrap) wrap.hidden = true;
+        });
+      }
+      function listenFor(q, attempt) {
+        var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var heardLine = document.getElementById('heard-line');
+        if (!Rec) {
+          if (heardLine) heardLine.textContent = 'Use Chrome so we can hear you. You can skip this one.';
+          return;
+        }
+        var gen = listenGen;
+        var last = '';
+        try { recognizer = new Rec(); } catch (e) {
+          if (heardLine) heardLine.textContent = 'Use Chrome so we can hear you. You can skip this one.';
+          return;
+        }
+        recognizer.lang = 'en-US';
+        recognizer.interimResults = true;
+        recognizer.maxAlternatives = 5;
+        recognizer.onresult = function (ev) {
+          if (gen !== listenGen) return;
+          var i, j, text = '';
+          for (i = 0; i < ev.results.length; i += 1) {
+            for (j = 0; j < ev.results[i].length; j += 1) {
+              text = ev.results[i][j].transcript || text;
+              if (heardEnough(text, q.sayText)) {
+                if (heardLine) heardLine.textContent = 'Yes!';
+                stopMic();
+                choose({ transcript: String(text).slice(0, 200) });
+                return;
+              }
+            }
+          }
+          last = text;
+          if (heardLine && text) heardLine.textContent = 'I heard "' + text + '".';
+        };
+        recognizer.onerror = function () {};
+        recognizer.onend = function () {
+          if (gen !== listenGen) return;
+          if (attempt < 1) {
+            if (heardLine) heardLine.textContent = "Let's try one more time.";
+            speak('Try again. Can you say ' + q.sayText + '?', function () { listenFor(q, attempt + 1); });
+            return;
+          }
+          if (!last) {
+            if (heardLine) heardLine.textContent = "We didn't hear that. Tap My turn, or Skip.";
+            return;
+          }
+          choose({ transcript: String(last).slice(0, 200) });
+        };
+        if (heardLine) heardLine.textContent = 'Listening…';
+        try { recognizer.start(); } catch (e) {}
+      }
+      document.querySelectorAll('[data-skill]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var skill = btn.getAttribute('data-skill');
+          var at = focusSkills.indexOf(skill);
+          if (at === -1) focusSkills.push(skill);
+          else focusSkills.splice(at, 1);
+          var on = at === -1;
+          btn.classList.toggle('is-selected', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          document.getElementById('start-status').textContent = '';
+        });
+      });
 
       document.getElementById('start-btn').addEventListener('click', async function () {
         if (!firstName()) {
           document.getElementById('child-first').focus();
           return;
+        }
+        if (!focusSkills.length) {
+          document.getElementById('start-status').textContent = 'Pick at least one skill.';
+          return;
+        }
+        if (window.speechSynthesis) {
+          var unlock = new SpeechSynthesisUtterance(' ');
+          unlock.volume = 0;
+          window.speechSynthesis.speak(unlock);
         }
         ageBand = document.getElementById('age-band').value === '5-6' ? '5-6' : '3-4';
         var res = await fetch('/api/public/skill-assessment/questions?ageBand=' + ageBand);
@@ -287,44 +477,44 @@
       });
 
       function renderQuestion() {
+        stopMic();
+        stopCamera();
         var q = questions[index];
         document.getElementById('progress').textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
         document.getElementById('progress-fill').style.width = Math.round(((index + 1) / questions.length) * 100) + '%';
         var skill = String(q.skill || '');
         document.getElementById('skill-name').textContent = skill ? skill.charAt(0).toUpperCase() + skill.slice(1) : '';
         document.getElementById('prompt').textContent = q.prompt || '';
-        document.getElementById('hint').hidden = q.kind !== 'rating';
-        var play = document.getElementById('play-again');
-        play.disabled = !q.audioUrl;
-        play.onclick = function () {
-          if (!q.audioUrl) return;
-          if (audio) audio.pause();
-          audio = new Audio(q.audioUrl);
-          audio.play().catch(function () {});
-        };
+        var speaking = q.kind === 'speak';
+        document.getElementById('speak-stage').hidden = !speaking;
+        document.getElementById('play-again').onclick = function () { speak(lineFor(q)); };
         var box = document.getElementById('choices');
         box.innerHTML = '';
-        box.className = q.kind === 'rating' ? 'choices ratings' : 'choices';
-        if (q.kind === 'rating') {
-          [['clear', 'Clear'], ['needed_help', 'Needed help'], ['not_yet', 'Not yet']].forEach(function (pair) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'choice';
-            btn.textContent = pair[1];
-            btn.addEventListener('click', function () { choose({ rating: pair[0] }); });
-            box.appendChild(btn);
-          });
-        } else {
-          (q.options || []).forEach(function (label, i) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'choice pic';
-            var src = q.imageUrls && q.imageUrls[i] ? q.imageUrls[i] : '';
-            btn.innerHTML = (src ? '<img alt="" src="' + esc(src) + '">' : '') + '<span>' + esc(label) + '</span>';
-            btn.addEventListener('click', function () { choose({ choiceIndex: i }); });
-            box.appendChild(btn);
-          });
+        box.className = 'choices';
+        if (speaking) {
+          document.getElementById('say-word').textContent = q.sayText || '';
+          document.getElementById('heard-line').textContent = '';
+          startCamera();
+          document.getElementById('my-turn').onclick = function () {
+            stopMic();
+            speak(lineFor(questions[index]), function () { listenFor(questions[index], 0); });
+          };
+          speak(lineFor(q), function () { listenFor(q, 0); });
+          return;
         }
+        speak(lineFor(q));
+        (q.options || []).forEach(function (label, i) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'choice pic';
+          btn.setAttribute('aria-label', label);
+          var src = q.imageUrls && q.imageUrls[i] ? q.imageUrls[i] : '';
+          btn.innerHTML = src
+            ? '<img alt="' + esc(label) + '" src="' + esc(src) + '">'
+            : '<span>' + esc(label) + '</span>';
+          btn.addEventListener('click', function () { choose({ choiceIndex: i }); });
+          box.appendChild(btn);
+        });
       }
 
       function choose(extra) {
@@ -334,6 +524,7 @@
       }
 
       document.getElementById('skip-btn').addEventListener('click', function () {
+        stopMic();
         var q = questions[index];
         answers.push({ questionId: q.questionId, skipped: true });
         track('assessment_question_skipped', { question_id: q.questionId });
@@ -341,6 +532,8 @@
       });
 
       async function next() {
+        stopMic();
+        stopCamera();
         index += 1;
         if (index < questions.length) {
           renderQuestion();
@@ -352,7 +545,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ageBand: ageBand,
-            wantsMoreReading: wantsMoreReading,
+            focusSkills: focusSkills,
             childFirstName: firstName(),
             answers: answers
           })
@@ -377,7 +570,7 @@
           bandBox.appendChild(row);
         });
         document.getElementById('level-line').textContent = 'Suggested level: ' + (profile.suggestedLevel || '');
-        document.getElementById('focus-line').textContent = 'Suggested focus: ' + (profile.suggestedFocus === 'reading' ? 'Reading Focus' : 'Balanced');
+        document.getElementById('focus-line').textContent = (profile.practiceLine ? profile.practiceLine + ' ' : '') + 'Suggested focus: ' + (profile.suggestedFocus === 'reading' ? 'Reading Focus' : 'Balanced');
         document.getElementById('disclaimer').textContent = profile.disclaimer || '';
         show('result-step');
       }
@@ -395,7 +588,7 @@
             childName: firstName(),
             contactNumber: document.getElementById('contact-number').value,
             ageBand: ageBand,
-            wantsMoreReading: wantsMoreReading,
+            focusSkills: focusSkills,
             skillAnswers: answers
           })
         });

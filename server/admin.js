@@ -8455,6 +8455,7 @@ router.put('/skill-questions/:questionId', async (req, res) => {
     const body = req.body || {};
     const clip = (value, max) => String(value == null ? '' : value).replace(/<[^>]*>/g, '').trim().slice(0, max);
     if (body.prompt != null) row.prompt = clip(body.prompt, 500);
+    if (body.sayText != null) row.sayText = clip(body.sayText, 200);
     if (body.audioUrl != null) row.audioUrl = clip(body.audioUrl, 500);
     if (Array.isArray(body.options)) {
       row.options = body.options.slice(0, 6).map((item) => clip(item, 200));

@@ -34,11 +34,7 @@ router.post('/skill-assessment/score', scoreLimiter, async (req, res) => {
     const firstName = String(body.childFirstName || body.childName || '')
       .trim()
       .split(/\s+/)[0];
-    const profile = skill.scoreSubmission(questions, body.answers, {
-      firstName: firstName || 'Your child',
-      ageBand,
-      wantsMoreReading: body.wantsMoreReading === true || body.wantsMoreReading === 'yes',
-    });
+    const profile = skill.scoreSubmission(questions, body.answers, skill.metaFromBody(body, firstName || 'Your child'));
     res.json({
       success: true,
       firstName: firstName || 'Your child',
@@ -47,6 +43,8 @@ router.post('/skill-assessment/score', scoreLimiter, async (req, res) => {
       marks: profile.marks,
       suggestedLevel: profile.suggestedLevel,
       suggestedFocus: profile.suggestedFocus,
+      focusSkills: profile.focusSkills,
+      practiceLine: profile.practiceLine,
       disclaimer: profile.disclaimer,
     });
   } catch (err) {

@@ -4,7 +4,7 @@
     "skill": "listening",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "Listen. Tap the cat.",
+    "prompt": "Tap what you hear.",
     "audioUrl": "",
     "imageUrls": [
       "/images/play-learn/cat.png",
@@ -17,14 +17,16 @@
       "Fish"
     ],
     "correctIndex": 0,
-    "order": 1
+    "order": 1,
+    "revision": 2,
+    "sayText": "cat"
   },
   {
     "questionId": "list-3-4-2",
     "skill": "listening",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "Listen. Tap the apple.",
+    "prompt": "Tap what you hear.",
     "audioUrl": "",
     "imageUrls": [
       "/images/play-learn/banana.png",
@@ -37,14 +39,16 @@
       "Carrot"
     ],
     "correctIndex": 1,
-    "order": 2
+    "order": 2,
+    "revision": 2,
+    "sayText": "apple"
   },
   {
     "questionId": "list-3-4-3",
     "skill": "listening",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "Listen. Tap the ball.",
+    "prompt": "Tap what you hear.",
     "audioUrl": "",
     "imageUrls": [
       "/images/play-learn/hat.png",
@@ -57,14 +61,16 @@
       "Ball"
     ],
     "correctIndex": 2,
-    "order": 3
+    "order": 3,
+    "revision": 2,
+    "sayText": "ball"
   },
   {
     "questionId": "spea-3-4-1",
     "skill": "speaking",
     "ageBand": "3-4",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"hello.\" How did it go?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -73,14 +79,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 4
+    "order": 4,
+    "revision": 2,
+    "sayText": "hello"
   },
   {
     "questionId": "spea-3-4-2",
     "skill": "speaking",
     "ageBand": "3-4",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"cat.\" How did it go?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -89,14 +97,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 5
+    "order": 5,
+    "revision": 2,
+    "sayText": "cat"
   },
   {
     "questionId": "spea-3-4-3",
     "skill": "speaking",
     "ageBand": "3-4",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"ball.\" How did it go?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -105,14 +115,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 6
+    "order": 6,
+    "revision": 2,
+    "sayText": "ball"
   },
   {
     "questionId": "pron-3-4-1",
     "skill": "pronunciation",
     "ageBand": "3-4",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"sun.\" How did it sound?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -121,14 +133,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 7
+    "order": 7,
+    "revision": 2,
+    "sayText": "sun"
   },
   {
     "questionId": "pron-3-4-2",
     "skill": "pronunciation",
     "ageBand": "3-4",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"mama.\" How did it sound?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -137,14 +151,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 8
+    "order": 8,
+    "revision": 2,
+    "sayText": "mama"
   },
   {
     "questionId": "pron-3-4-3",
     "skill": "pronunciation",
     "ageBand": "3-4",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"fish.\" How did it sound?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -153,7 +169,9 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 9
+    "order": 9,
+    "revision": 2,
+    "sayText": "fish"
   },
   {
     "questionId": "read-3-4-1",
@@ -173,7 +191,9 @@
       "Duck"
     ],
     "correctIndex": 0,
-    "order": 10
+    "order": 10,
+    "revision": 2,
+    "sayText": ""
   },
   {
     "questionId": "read-3-4-2",
@@ -193,7 +213,9 @@
       "Shirt"
     ],
     "correctIndex": 1,
-    "order": 11
+    "order": 11,
+    "revision": 2,
+    "sayText": ""
   },
   {
     "questionId": "read-3-4-3",
@@ -213,14 +235,16 @@
       "Banana"
     ],
     "correctIndex": 2,
-    "order": 12
+    "order": 12,
+    "revision": 2,
+    "sayText": ""
   },
   {
     "questionId": "list-5-6-1",
     "skill": "listening",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "Listen. Tap the animal that says meow.",
+    "prompt": "Tap what you hear.",
     "audioUrl": "",
     "imageUrls": [
       "/images/play-learn/dog.png",
@@ -233,14 +257,16 @@
       "Duck"
     ],
     "correctIndex": 1,
-    "order": 13
+    "order": 13,
+    "revision": 2,
+    "sayText": "The animal that says meow."
   },
   {
     "questionId": "list-5-6-2",
     "skill": "listening",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "Listen. Tap the yellow fruit.",
+    "prompt": "Tap what you hear.",
     "audioUrl": "",
     "imageUrls": [
       "/images/play-learn/apple.png",
@@ -253,14 +279,16 @@
       "Banana"
     ],
     "correctIndex": 2,
-    "order": 14
+    "order": 14,
+    "revision": 2,
+    "sayText": "The yellow fruit."
   },
   {
     "questionId": "list-5-6-3",
     "skill": "listening",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "Listen. Tap what you wear on your head.",
+    "prompt": "Tap what you hear.",
     "audioUrl": "",
     "imageUrls": [
       "/images/play-learn/socks.png",
@@ -273,14 +301,16 @@
       "Hat"
     ],
     "correctIndex": 2,
-    "order": 15
+    "order": 15,
+    "revision": 2,
+    "sayText": "What you wear on your head."
   },
   {
     "questionId": "spea-5-6-1",
     "skill": "speaking",
     "ageBand": "5-6",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"I see a cat.\" How did it go?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -289,14 +319,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 16
+    "order": 16,
+    "revision": 2,
+    "sayText": "I see a cat"
   },
   {
     "questionId": "spea-5-6-2",
     "skill": "speaking",
     "ageBand": "5-6",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"The ball is red.\" How did it go?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -305,14 +337,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 17
+    "order": 17,
+    "revision": 2,
+    "sayText": "The ball is red"
   },
   {
     "questionId": "spea-5-6-3",
     "skill": "speaking",
     "ageBand": "5-6",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"Good morning.\" How did it go?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -321,14 +355,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 18
+    "order": 18,
+    "revision": 2,
+    "sayText": "Good morning"
   },
   {
     "questionId": "pron-5-6-1",
     "skill": "pronunciation",
     "ageBand": "5-6",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"yellow.\" How did it sound?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -337,14 +373,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 19
+    "order": 19,
+    "revision": 2,
+    "sayText": "yellow"
   },
   {
     "questionId": "pron-5-6-2",
     "skill": "pronunciation",
     "ageBand": "5-6",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"teacher.\" How did it sound?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -353,14 +391,16 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 20
+    "order": 20,
+    "revision": 2,
+    "sayText": "teacher"
   },
   {
     "questionId": "pron-5-6-3",
     "skill": "pronunciation",
     "ageBand": "5-6",
-    "kind": "rating",
-    "prompt": "Ask your child to say \"banana.\" How did it sound?",
+    "kind": "speak",
+    "prompt": "Say this with me.",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -369,7 +409,9 @@
       "Not yet"
     ],
     "correctIndex": 0,
-    "order": 21
+    "order": 21,
+    "revision": 2,
+    "sayText": "banana"
   },
   {
     "questionId": "read-5-6-1",
@@ -389,7 +431,9 @@
       "Dog"
     ],
     "correctIndex": 1,
-    "order": 22
+    "order": 22,
+    "revision": 2,
+    "sayText": ""
   },
   {
     "questionId": "read-5-6-2",
@@ -409,7 +453,9 @@
       "Socks"
     ],
     "correctIndex": 0,
-    "order": 23
+    "order": 23,
+    "revision": 2,
+    "sayText": ""
   },
   {
     "questionId": "read-5-6-3",
@@ -429,6 +475,8 @@
       "Kite"
     ],
     "correctIndex": 1,
-    "order": 24
+    "order": 24,
+    "revision": 2,
+    "sayText": ""
   }
 ]

@@ -32,9 +32,34 @@ function marksForBand(band) {
   return 0;
 }
 
+function speechWords(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 1);
+}
+
+function speechPoints(expected, transcript) {
+  const want = speechWords(expected);
+  const heard = speechWords(transcript);
+  if (!want.length) return null;
+  if (!heard.length) return 0;
+  const heardLine = heard.join(' ');
+  const wantLine = want.join(' ');
+  if (heardLine === wantLine || heardLine.includes(wantLine)) return 1;
+  const hit = want.filter((word) => heard.includes(word)).length;
+  if (hit === want.length) return 1;
+  if (hit > 0) return 0.5;
+  return 0;
+}
+
 function pointsFor(question, answer) {
   if (!question || !answer || answer.skipped === true) return null;
-  if (question.kind === 'rating') {
+  if (question.kind === 'rating' || question.kind === 'speak') {
+    if (answer.transcript != null) {
+      return speechPoints(question.sayText || '', answer.transcript);
+    }
     const rating = String(answer.rating || '')
       .trim()
       .toLowerCase()
@@ -83,15 +108,18 @@ function scoreSubmission(questions, answers, meta) {
   });
 
   const ageBand = meta && meta.ageBand === '5-6' ? '5-6' : '3-4';
-  const wantsMoreReading = !!(meta && meta.wantsMoreReading);
+  const focusSkills = focusList(meta && meta.focusSkills);
+  const wantsMoreReading = !!(meta && meta.wantsMoreReading) || focusSkills.includes('reading');
   const profile = {
     ageBand,
     wantsMoreReading,
+    focusSkills,
     bands,
     marks,
     headline: headline(meta && meta.firstName, bands),
     suggestedLevel: suggestedLevel(ageBand, bands),
     suggestedFocus: suggestedFocus(bands, wantsMoreReading),
+    practiceLine: practiceLine(focusSkills),
     disclaimer: DISCLAIMER,
     completedAt: new Date().toISOString(),
   };
@@ -124,6 +152,39 @@ function suggestedLevel(ageBand, bands) {
   return 'Saplings';
 }
 
+function focusList(value) {
+  const raw = Array.isArray(value) ? value : [];
+  const picked = [];
+  raw.forEach((item) => {
+    const skill = String(item || '').trim().toLowerCase();
+    if (SKILLS.includes(skill) && !picked.includes(skill)) picked.push(skill);
+  });
+  return picked;
+}
+
+function practiceLine(focusSkills) {
+  const picked = focusList(focusSkills);
+  if (!picked.length) return '';
+  const labels = picked.map((skill) => skill.charAt(0).toUpperCase() + skill.slice(1));
+  const joined = labels.length === 1 ? labels[0] : labels.slice(0, -1).join(', ') + ' and ' + labels[labels.length - 1];
+  return "We'll practice " + joined + ' in class.';
+}
+
+function metaFromBody(body, firstName) {
+  const source = body || {};
+  const focusSkills = focusList(source.focusSkills);
+  const wantsMoreReading =
+    source.wantsMoreReading === true ||
+    source.wantsMoreReading === 'yes' ||
+    focusSkills.includes('reading');
+  return {
+    firstName: firstName || 'Your child',
+    ageBand: source.ageBand === '5-6' ? '5-6' : '3-4',
+    wantsMoreReading,
+    focusSkills,
+  };
+}
+
 function suggestedFocus(bands, wantsMoreReading) {
   if (wantsMoreReading) return 'reading';
   const reading = bands && bands.reading;
@@ -141,6 +202,7 @@ function publicQuestion(row) {
     ageBand: row.ageBand,
     kind: row.kind,
     prompt: row.prompt || '',
+    sayText: row.sayText || '',
     audioUrl: row.audioUrl || '',
     imageUrls: Array.isArray(row.imageUrls) ? row.imageUrls.slice(0, 4) : [],
     options: Array.isArray(row.options) ? row.options.slice(0, 6) : [],
@@ -163,13 +225,15 @@ async function ensureQuestions() {
   const rows = seedRows();
   let changed = 0;
   for (const row of rows) {
-    const existing = await SkillQuestion.findOne({ questionId: row.questionId }).select('prompt').lean();
+    const existing = await SkillQuestion.findOne({ questionId: row.questionId }).select('prompt revision').lean();
     if (!existing) {
       await SkillQuestion.create(row);
       changed += 1;
       continue;
     }
-    if (String(existing.prompt || '').includes('[PLACEHOLDER]')) {
+    const stalePrompt = String(existing.prompt || '').includes('[PLACEHOLDER]');
+    const staleRevision = Number(existing.revision || 0) < Number(row.revision || 0);
+    if (stalePrompt || staleRevision) {
       await SkillQuestion.updateOne({ questionId: row.questionId }, { $set: row });
       changed += 1;
     }
@@ -197,6 +261,9 @@ module.exports = {
   headline,
   suggestedLevel,
   suggestedFocus,
+  focusList,
+  practiceLine,
+  metaFromBody,
   publicQuestion,
   seedRows,
   ensureQuestions,
