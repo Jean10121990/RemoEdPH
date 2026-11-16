@@ -210,8 +210,12 @@
             </div>
           </div>
           <div class="cim-field">
-            <span class="cim-field-label">Level</span>
+            <span class="cim-field-label">Level + focus</span>
             <span class="cim-field-value" id="class-level"></span>
+          </div>
+          <div class="cim-field cim-field--wide" id="class-skill-wrap" hidden>
+            <span class="cim-field-label">Skill check</span>
+            <span class="cim-field-value" id="class-skill-bands"></span>
           </div>
           <div class="cim-field">
             <span class="cim-field-label">Lesson</span>
@@ -339,6 +343,23 @@
             <div class="char-count">
               <span id="feedback-char-count">0</span>/1000 characters
             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="feedback-sounds">Sounds practiced</label>
+            <textarea id="feedback-sounds" rows="2" maxlength="500" placeholder="Letter sounds you practiced"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="feedback-words">Words read</label>
+            <textarea id="feedback-words" rows="2" maxlength="500" placeholder="Sight words or words you read together"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="feedback-practice">Needs more practice</label>
+            <textarea id="feedback-practice" rows="2" maxlength="500" placeholder="What to practice again"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="feedback-home-tip">5-minute home tip</label>
+            <textarea id="feedback-home-tip" rows="2" maxlength="500" placeholder="A short activity for home"></textarea>
           </div>
 
           <div id="tb-award-mount"></div>
@@ -512,6 +533,12 @@
         if (fromObj) return fromObj;
       }
       return fallback || 'Student';
+    }
+
+    function lessonFocusTag(booking) {
+      const level = booking && booking.studentLevel ? String(booking.studentLevel) : 'Level';
+      const focus = booking && String(booking.lessonFocus || '').toLowerCase() === 'reading' ? 'Reading Focus' : 'Balanced';
+      return level + ' · ' + focus;
     }
 
     function bookingStudentKey(booking) {
@@ -1141,12 +1168,19 @@
         return 'L1';
       }
 
-      function applyLevelSlotClass(slotElement, prefix) {
+      function lessonFocusTag(booking) {
+        const level = booking && booking.studentLevel ? String(booking.studentLevel) : 'Level';
+        const focus = booking && String(booking.lessonFocus || '').toLowerCase() === 'reading' ? 'Reading Focus' : 'Balanced';
+        return level + ' · ' + focus;
+      }
+
+      function applyLevelSlotClass(slotElement, prefix, booking) {
         slotElement.classList.remove('N', 'K', 'P', 'L1', 'L2', 'L3', 'L4');
         if (prefix === 'L1') slotElement.classList.add('N', 'L1');
         else if (prefix === 'L2') slotElement.classList.add('K', 'L2');
         else if (prefix === 'L3') slotElement.classList.add('P', 'L3');
         else if (prefix === 'L4') slotElement.classList.add('P', 'L4');
+        if (booking) slotElement.title = lessonFocusTag(booking);
       }
 
       function escapeSlotLabelHtml(s) {
@@ -1220,7 +1254,7 @@
             console.log('⏳ Pending teacher feedback (live session ended)');
             slotElement.classList.add('status-pending-feedback');
             indicator = getLevelBookingPrefix(booking.studentLevel);
-            applyLevelSlotClass(slotElement, indicator);
+            applyLevelSlotClass(slotElement, indicator, booking);
             const slotPassed = isBookingSlotEndPassedForTable(booking);
             if (slotPassed) {
               skipDefaultSlotLabel = true;
@@ -1335,7 +1369,7 @@
             // Default case - show as booked (teacher must manually complete or mark absent)
             console.log('📋 Marking as booked (waiting for teacher action)');
             indicator = getLevelBookingPrefix(booking.studentLevel);
-            applyLevelSlotClass(slotElement, indicator);
+            applyLevelSlotClass(slotElement, indicator, booking);
             slotElement.classList.add('booked');
             // Let CSS emboss styles own background/color (no inline overrides)
           }
@@ -1666,7 +1700,25 @@
         (booking.studentId && (booking.studentId.profilePicture || booking.studentId.photo)) ||
         '';
       queueClassStudentPhoto(rosterPic);
-      document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
+      document.getElementById('class-level').textContent = lessonFocusTag(booking);
+      const skillWrap = document.getElementById('class-skill-wrap');
+      const skillEl = document.getElementById('class-skill-bands');
+      if (skillWrap && skillEl) {
+        const skill = booking.skillAssessment;
+        const bands = skill && skill.bands;
+        if (bands) {
+          const lines = ['listening', 'speaking', 'pronunciation', 'reading'].map(function (name) {
+            const label = name.charAt(0).toUpperCase() + name.slice(1);
+            return label + ': ' + (bands[name] || 'Not enough information');
+          });
+          if (skill.headline) lines.unshift(skill.headline);
+          skillEl.textContent = lines.join(' · ');
+          skillWrap.hidden = false;
+        } else {
+          skillEl.textContent = '';
+          skillWrap.hidden = true;
+        }
+      }
       document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
       const remarkRow = document.getElementById('class-sos-remark-row');
       const remarkEl = document.getElementById('class-sos-remark');
@@ -2534,6 +2586,16 @@
         if (prefill && prefill.rating) {
             selectedRating = Number(prefill.rating) || 0;
         }
+        const readingPrefill = [
+            ['feedback-sounds', 'soundsPracticed'],
+            ['feedback-words', 'wordsRead'],
+            ['feedback-practice', 'needsMorePractice'],
+            ['feedback-home-tip', 'homeTip']
+        ];
+        readingPrefill.forEach(function (pair) {
+            const el = document.getElementById(pair[0]);
+            if (el) el.value = prefill && prefill[pair[1]] ? String(prefill[pair[1]]) : '';
+        });
         const submitBtn = document.getElementById('feedback-submit-btn');
         if (submitBtn) {
             submitBtn.textContent = window.__lcFeedbackRevise
@@ -2832,7 +2894,11 @@
                 studentId: studentId,
                 rating: selectedRating,
                 comment: comment,
-                submittedAt: new Date().toISOString()
+                submittedAt: new Date().toISOString(),
+                soundsPracticed: (document.getElementById('feedback-sounds') || {}).value || '',
+                wordsRead: (document.getElementById('feedback-words') || {}).value || '',
+                needsMorePractice: (document.getElementById('feedback-practice') || {}).value || '',
+                homeTip: (document.getElementById('feedback-home-tip') || {}).value || ''
             };
             
             const submitAbort = new AbortController();

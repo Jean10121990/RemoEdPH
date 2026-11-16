@@ -1083,13 +1083,22 @@ async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIden
         rating: teacherFeedbackDoc.rating,
         comment: teacherFeedbackDoc.comment || '',
         submittedAt: teacherFeedbackDoc.submittedAt,
+        soundsPracticed: teacherFeedbackDoc.soundsPracticed || '',
+        wordsRead: teacherFeedbackDoc.wordsRead || '',
+        needsMorePractice: teacherFeedbackDoc.needsMorePractice || '',
+        homeTip: teacherFeedbackDoc.homeTip || '',
       };
     }
 
     const teacherPayload = studentFacingTeacherFields(teacher);
 
+    const lessonFocusSvc = require('./services/lessonFocus');
+    const focus = lessonFocusSvc.normalizeLessonFocus(bookingObj.lessonFocus);
     return {
       ...bookingObj,
+      lessonFocus: focus,
+      focusLabel: lessonFocusSvc.focusLabel(focus),
+      focusLocked: lessonFocusSvc.focusLocked(bookingObj),
       teacherLogicalId: logicalTeacherId,
       teacherFeedback,
       teacherId: teacherPayload,
@@ -1111,7 +1120,7 @@ function parseHistoryLimitParam(raw) {
 
 /** Fields needed by student-booking-history.html (sort keys + table + join link). */
 const BOOKING_HISTORY_LEAN_SELECT =
-  'studentId teacherId date time dateTimeUtc lesson status classroomId finishedAt absentType';
+  'studentId teacherId date time dateTimeUtc lesson studentLevel lessonFocus status classroomId finishedAt absentType';
 
 // One query + batch enrichment for booking history page (replaces many /bookings?week= calls).
 router.get('/bookings/history', verifyToken, requireStudent, async (req, res) => {
@@ -1224,6 +1233,56 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
   } catch (err) {
     console.error('❌ Error fetching student bookings:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/lesson-focus', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const lessonFocusSvc = require('./services/lessonFocus');
+    const student = await Student.findById(req.user.studentId).select('preferredLessonFocus').lean();
+    res.json({
+      preferredLessonFocus: lessonFocusSvc.normalizeLessonFocus(student && student.preferredLessonFocus),
+      ...lessonFocusSvc.parentCopy(),
+      lockHours: lessonFocusSvc.lockHours(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load lesson focus.' });
+  }
+});
+
+router.patch('/bookings/:id/lesson-focus', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const lessonFocusSvc = require('./services/lessonFocus');
+    const { isMongoObjectId } = require('./utils/mongoObjectId');
+    const next = lessonFocusSvc.parseLessonFocus(req.body && req.body.lessonFocus, { allowEmpty: false });
+    if (!next) return res.status(400).json({ error: 'Lesson focus must be balanced or reading.' });
+    if (!isMongoObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid booking id.' });
+    const ids = collectStudentIdentifiers(req);
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    if (!ids.includes(String(booking.studentId || ''))) {
+      return res.status(403).json({ error: 'This booking is not yours.' });
+    }
+    if (lessonFocusSvc.focusLocked(booking)) {
+      return res.status(403).json({
+        error: 'This lesson focus is locked. Changes close ' + lessonFocusSvc.lockHours() + ' hours before class.',
+        code: 'LESSON_FOCUS_LOCKED',
+      });
+    }
+    booking.lessonFocus = next;
+    await booking.save();
+    if (req.user.studentId) {
+      await Student.updateOne({ _id: req.user.studentId }, { $set: { preferredLessonFocus: next } });
+    }
+    res.json({
+      success: true,
+      lessonFocus: next,
+      focusLabel: lessonFocusSvc.focusLabel(next),
+      focusLines: lessonFocusSvc.confirmationLines(booking),
+    });
+  } catch (err) {
+    console.error('lesson focus patch:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Could not update lesson focus.' });
   }
 });
 
@@ -2041,13 +2100,29 @@ router.post('/send-assessment-email', async (req, res) => {
       ? req.body.assessmentAnswers.slice(0, 10).map((n) => Number(n)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 20)
       : [];
 
+    let skillProfile = null;
+    if (Array.isArray(req.body && req.body.skillAnswers) && req.body.skillAnswers.length) {
+      const skill = require('./services/skillAssessment');
+      const ageBand = req.body.ageBand === '5-6' ? '5-6' : '3-4';
+      const questions = await skill.questionsForBand(ageBand);
+      const first = String(childName || '').trim().split(/\s+/)[0] || 'Your child';
+      skillProfile = skill.scoreSubmission(questions, req.body.skillAnswers, {
+        firstName: first,
+        ageBand,
+        wantsMoreReading: req.body.wantsMoreReading === true || req.body.wantsMoreReading === 'yes',
+      });
+      finalCefrLevel = skillProfile.suggestedLevel;
+      finalScore = null;
+    }
+
     const existingTrial = await AssessmentTrial.findOne({ parentEmail: toEmail })
       .sort({ createdAt: -1 });
     if (existingTrial) {
       if (!existingTrial.redeemedByStudentId && assessmentAnswers.length) {
         existingTrial.assessmentAnswers = assessmentAnswers;
         if (finalCefrLevel) existingTrial.cefrLevel = finalCefrLevel;
-        if (finalScore != null) existingTrial.score = Number(finalScore) || 0;
+        if (finalScore != null && !skillProfile) existingTrial.score = Number(finalScore) || 0;
+        if (skillProfile) existingTrial.skillProfile = skillProfile;
         if (contactNumber) existingTrial.contactNumber = String(contactNumber).trim();
         if (childName) existingTrial.childName = childName;
         await existingTrial.save();
@@ -2072,8 +2147,9 @@ router.post('/send-assessment-email', async (req, res) => {
       childName: childName || '',
       contactNumber: String(contactNumber || '').trim(),
       cefrLevel: finalCefrLevel || '',
-      score: Number(finalScore) || 0,
+      score: skillProfile ? 0 : Number(finalScore) || 0,
       assessmentAnswers,
+      skillProfile,
     });
 
     try {
@@ -2104,13 +2180,35 @@ router.post('/send-assessment-email', async (req, res) => {
 
     // Send email using email service
     const emailService = require('./emailService');
-    const emailResult = await emailService.sendAssessmentEmail(
-      toEmail,
-      childName,
-      finalCefrLevel || 'A1',
-      finalScore || 0,
-      registerUrl
-    );
+    let emailResult;
+    if (skillProfile) {
+      const focusName = skillProfile.suggestedFocus === 'reading' ? 'Reading Focus' : 'Balanced';
+      const lines = [
+        skillProfile.headline,
+        'Listening: ' + skillProfile.bands.listening,
+        'Speaking: ' + skillProfile.bands.speaking,
+        'Pronunciation: ' + skillProfile.bands.pronunciation,
+        'Reading: ' + skillProfile.bands.reading,
+        'Suggested level: ' + skillProfile.suggestedLevel + '.',
+        'Suggested focus: ' + focusName + '.',
+        skillProfile.disclaimer,
+        'Book the free lesson: ' + registerUrl,
+      ];
+      emailResult = await emailService.sendRawEmail(
+        toEmail,
+        "Your child's RemoEd skill check",
+        lines.map((line) => '<p>' + String(line).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</p>').join(''),
+        lines.join('\n')
+      );
+    } else {
+      emailResult = await emailService.sendAssessmentEmail(
+        toEmail,
+        childName,
+        finalCefrLevel || 'A1',
+        finalScore || 0,
+        registerUrl
+      );
+    }
     
     if (emailResult.success) {
       console.log('✅ Assessment email sent successfully');
@@ -2125,7 +2223,13 @@ router.post('/send-assessment-email', async (req, res) => {
         success: true, 
         message: 'Assessment data available. Email not configured.',
         fallback: true,
-        assessment: { cefrLevel: finalCefrLevel, score: finalScore },
+        assessment: skillProfile
+          ? {
+              suggestedLevel: skillProfile.suggestedLevel,
+              suggestedFocus: skillProfile.suggestedFocus,
+              headline: skillProfile.headline,
+            }
+          : { cefrLevel: finalCefrLevel, score: finalScore },
         trialToken: token,
       });
     }

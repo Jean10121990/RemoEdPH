@@ -1004,6 +1004,11 @@
                                 </div>
                                 <p id="lesson-teacher-notes-text" style="margin:0.5rem 0 0 0; white-space:pre-wrap; color:#451a03; font-size:0.88rem;"></p>
                             </div>
+                            <div style="margin-top:1rem; padding:0.75rem; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
+                                <strong style="color:#166534; font-size:0.85rem;">Lesson plans (time split, not a second slide deck)</strong>
+                                <p id="lesson-balanced-plan-text" style="margin:0.5rem 0 0; white-space:pre-wrap;"></p>
+                                <p id="lesson-reading-plan-text" style="margin:0.5rem 0 0; white-space:pre-wrap;"></p>
+                            </div>
                         </div>
                         <div id="lesson-edit-mode" style="display: none;">
                             <div class="form-group" style="margin-bottom: 1rem;">
@@ -1022,6 +1027,14 @@
                                 <label for="edit-teacher-notes">Teacher notes (internal)</label>
                                 <textarea id="edit-teacher-notes" class="form-control" rows="6" style="width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:6px; resize:vertical;" placeholder="Answers to expected questions, script hints… Teachers see this in Live Classroom; students do not."></textarea>
                                 <small style="color:#64748b; display:block; margin-top:0.35rem;">Shown beside Finish / Absent during live class.</small>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="edit-balanced-plan">Balanced plan</label>
+                                <textarea id="edit-balanced-plan" class="form-control" rows="4" maxlength="4000" style="width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:6px; resize:vertical;" placeholder="Short time split for a Balanced lesson"></textarea>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="edit-reading-plan">Reading Focus plan</label>
+                                <textarea id="edit-reading-plan" class="form-control" rows="4" maxlength="4000" style="width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:6px; resize:vertical;" placeholder="Short time split for Reading Focus. Leave empty to use the Balanced plan."></textarea>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
                                 <button type="button" class="upload-btn" onclick="saveLessonChanges()" id="save-lesson-btn" style="flex: 1; margin: 0;">Save Changes</button>
@@ -2475,12 +2488,26 @@
                 ? lesson.teacherNotes
                 : '(No internal teacher notes yet — click Edit to add.)';
             document.getElementById('lesson-teacher-notes-text').textContent = notesText;
+            const balancedText = lesson.balancedPlan && String(lesson.balancedPlan).trim()
+                ? 'Balanced: ' + lesson.balancedPlan
+                : 'Balanced: (no plan yet)';
+            const readingText = lesson.readingPlan && String(lesson.readingPlan).trim()
+                ? 'Reading Focus: ' + lesson.readingPlan
+                : 'Reading Focus: (empty — the classroom shows the Balanced plan)';
+            const balancedEl = document.getElementById('lesson-balanced-plan-text');
+            const readingEl = document.getElementById('lesson-reading-plan-text');
+            if (balancedEl) balancedEl.textContent = balancedText;
+            if (readingEl) readingEl.textContent = readingText;
             
             // Populate edit form fields
             document.getElementById('edit-title').value = lesson.title || '';
             document.getElementById('edit-description').value = lesson.description || '';
             document.getElementById('edit-duration').value = lesson.estimatedDuration || 30;
             document.getElementById('edit-teacher-notes').value = lesson.teacherNotes || '';
+            const balancedInput = document.getElementById('edit-balanced-plan');
+            const readingInput = document.getElementById('edit-reading-plan');
+            if (balancedInput) balancedInput.value = lesson.balancedPlan || '';
+            if (readingInput) readingInput.value = lesson.readingPlan || '';
             
             // Ensure display mode is shown
             document.getElementById('lesson-display-mode').style.display = 'block';
@@ -2504,6 +2531,10 @@
             document.getElementById('edit-description').value = currentLessonData.description || '';
             document.getElementById('edit-duration').value = currentLessonData.estimatedDuration || 30;
             document.getElementById('edit-teacher-notes').value = currentLessonData.teacherNotes || '';
+            const balancedInput = document.getElementById('edit-balanced-plan');
+            const readingInput = document.getElementById('edit-reading-plan');
+            if (balancedInput) balancedInput.value = currentLessonData.balancedPlan || '';
+            if (readingInput) readingInput.value = currentLessonData.readingPlan || '';
 
             toggleEditMode();
         }
@@ -2518,6 +2549,8 @@
             const description = document.getElementById('edit-description').value.trim();
             const estimatedDuration = parseInt(document.getElementById('edit-duration').value, 10);
             const teacherNotes = document.getElementById('edit-teacher-notes').value;
+            const balancedPlan = (document.getElementById('edit-balanced-plan') || {}).value || '';
+            const readingPlan = (document.getElementById('edit-reading-plan') || {}).value || '';
 
             if (!title) {
                 showAlert('error', 'Lesson title is required');
@@ -2550,7 +2583,9 @@
                         title,
                         description,
                         estimatedDuration,
-                        teacherNotes
+                        teacherNotes,
+                        balancedPlan,
+                        readingPlan
                     })
                 });
 
@@ -2570,6 +2605,12 @@
                 } else {
                     currentLessonData.teacherNotes = teacherNotes;
                 }
+                currentLessonData.balancedPlan = result.lesson && result.lesson.balancedPlan != null
+                    ? result.lesson.balancedPlan
+                    : balancedPlan;
+                currentLessonData.readingPlan = result.lesson && result.lesson.readingPlan != null
+                    ? result.lesson.readingPlan
+                    : readingPlan;
                 
                 // Refresh display
                 displayLessonInfo(currentLessonData);

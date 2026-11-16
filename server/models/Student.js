@@ -143,6 +143,20 @@ const studentSchema = new mongoose.Schema({
    * cleared after that class completes (credit consumed).
    */
   assessmentTrialCreditActive: { type: Boolean, default: false },
+  /** Last focus the parent chose. The booking step pre-selects it. */
+  preferredLessonFocus: { type: String, enum: ['balanced', 'reading'], default: 'balanced' },
+  /** Skill-check bands from the public assessment. No numeric score. */
+  skillAssessment: {
+    ageBand: { type: String, enum: ['3-4', '5-6', ''], default: '' },
+    wantsMoreReading: { type: Boolean, default: false },
+    bands: { type: mongoose.Schema.Types.Mixed, default: undefined },
+    marks: { type: mongoose.Schema.Types.Mixed, default: undefined },
+    headline: { type: String, default: '', maxlength: 300 },
+    suggestedLevel: { type: String, default: '', maxlength: 80 },
+    suggestedFocus: { type: String, enum: ['balanced', 'reading', ''], default: '' },
+    disclaimer: { type: String, default: '', maxlength: 300 },
+    completedAt: { type: Date, default: null },
+  },
   /** Pre-Level lessons finished on the free plan. Next bookable number is this plus one. Cap is 3. */
   freeLessonCompletedCount: { type: Number, default: 0, min: 0, max: 3 },
   /** Kept so older bookings can clear it. The free plan no longer uses a monthly lesson. */

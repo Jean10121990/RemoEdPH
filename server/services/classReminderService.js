@@ -60,8 +60,9 @@ async function sendClassStartingReminders() {
         const Student = require('../models/Student');
         const student = await Student.findOne({
           $or: [{ username: String(booking.studentId) }, { studentId: String(booking.studentId) }],
-        }).select('timeZone').lean();
+        }).select('timeZone email').lean();
         if (student && student.timeZone) booking.studentLocalZone = student.timeZone;
+        if (student && student.email) booking.__focusEmail = student.email;
       } catch (_tz) { /* keep booking zone */ }
       const delta = start.getTime() - now;
       if (delta < WINDOW_MIN_MS || delta > WINDOW_MAX_MS) continue;
@@ -79,16 +80,24 @@ async function sendClassStartingReminders() {
       );
       if (!claim) continue;
 
+      const lessonFocus = require('./lessonFocus');
+      const focusLines = lessonFocus.confirmationLines(booking);
       await notifyStudent(
         booking.studentId,
         'reminder',
-        `Your class starts soon (${when}). Please join on time.`,
+        [`Your class starts soon (${when}). Please join on time.`, ...focusLines].join(' '),
         {
           bookingId: bid,
           actionUrl: '/student-waiting-room.html?bookingId=' + encodeURIComponent(bid),
           importance: 'actionable',
         }
       );
+      lessonFocus
+        .sendFocusNote(booking.__focusEmail, 'Your RemoEd class starts soon', [
+          `Your class starts soon (${when}). Please join on time.`,
+          ...focusLines,
+        ])
+        .catch(() => {});
       await notifyTeacher(
         booking.teacherId,
         'reminder',

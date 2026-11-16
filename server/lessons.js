@@ -10,6 +10,10 @@ const mongoose = require('mongoose');
 const { body, param, validationResult } = require('express-validator');
 const router = express.Router();
 const { sanitizeTeacherNotes } = require('./utils/sanitizeHtml');
+
+function sanitizePlanText(raw) {
+  return String(raw || '').replace(/<[^>]*>/g, '').slice(0, 4000);
+}
 const Curriculum = require('./models/Curriculum');
 const Lesson = require('./models/Lesson');
 // LessonFile model removed - files are now embedded in Lesson model
@@ -602,7 +606,7 @@ router.get('/curriculum/:curriculumId/lessons', authenticateToken, async (req, r
     const { curriculumId } = req.params;
     const staff = isStaffUser(req);
     const selectFields = staff
-      ? '_id title description lessonNumber order estimatedDuration teacherNotes'
+      ? '_id title description lessonNumber order estimatedDuration teacherNotes balancedPlan readingPlan'
       : '_id title description lessonNumber order estimatedDuration';
     let lessons = await Lesson.find({ 
       curriculumId, 
@@ -612,7 +616,7 @@ router.get('/curriculum/:curriculumId/lessons', authenticateToken, async (req, r
       .select(selectFields)
       .lean();
     if (!staff) {
-      lessons = lessons.map(({ teacherNotes: _omit, ...rest }) => rest);
+      lessons = lessons.map(({ teacherNotes: _omit, balancedPlan: _plan, readingPlan: _reading, ...rest }) => rest);
     }
     res.json(lessons);
   } catch (error) {
@@ -629,7 +633,7 @@ router.get('/lesson/:lessonId', authenticateToken, async (req, res) => {
       return respondInvalidObjectId(res, 'lesson id');
     }
     const lesson = await Lesson.findById(lessonId)
-      .select('_id title description lessonNumber order estimatedDuration teacherNotes')
+      .select('_id title description lessonNumber order estimatedDuration teacherNotes balancedPlan readingPlan')
       .lean();
     if (!lesson) {
       return res.status(404).json({ error: 'Lesson not found' });
@@ -637,6 +641,8 @@ router.get('/lesson/:lessonId', authenticateToken, async (req, res) => {
     const staff = isStaffUser(req);
     if (!staff) {
       delete lesson.teacherNotes;
+      delete lesson.balancedPlan;
+      delete lesson.readingPlan;
     }
     res.json(lesson);
   } catch (error) {
@@ -724,6 +730,8 @@ router.put(
     body('description').optional().isString().isLength({ max: 20000 }),
     body('estimatedDuration').optional({ nullable: true }).isInt({ min: 5, max: 600 }),
     body('teacherNotes').optional().isString().isLength({ max: 100000 }),
+    body('balancedPlan').optional().isString().isLength({ max: 4000 }),
+    body('readingPlan').optional().isString().isLength({ max: 4000 }),
   ],
   async (req, res) => {
   try {
@@ -733,7 +741,7 @@ router.put(
     }
 
     const { lessonId } = req.params;
-    const { title, description, estimatedDuration, teacherNotes } = req.body;
+    const { title, description, estimatedDuration, teacherNotes, balancedPlan, readingPlan } = req.body;
 
     console.log(`📝 [UPDATE] Updating lesson: ${lessonId}`);
     console.log(`📝 [UPDATE] Title: ${title}`);
@@ -751,6 +759,8 @@ router.put(
     if (description !== undefined) lesson.description = description;
     if (estimatedDuration !== undefined) lesson.estimatedDuration = estimatedDuration;
     if (teacherNotes !== undefined) lesson.teacherNotes = sanitizeTeacherNotes(teacherNotes);
+    if (balancedPlan !== undefined) lesson.balancedPlan = sanitizePlanText(balancedPlan);
+    if (readingPlan !== undefined) lesson.readingPlan = sanitizePlanText(readingPlan);
 
     await lesson.save();
     console.log(`✅ [UPDATE] Lesson updated successfully: ${lessonId}`);
@@ -763,6 +773,8 @@ router.put(
         title: lesson.title,
         description: lesson.description,
         teacherNotes: lesson.teacherNotes || '',
+        balancedPlan: lesson.balancedPlan || '',
+        readingPlan: lesson.readingPlan || '',
         estimatedDuration: lesson.estimatedDuration
       }
     });

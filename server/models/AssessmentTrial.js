@@ -9,6 +9,7 @@ const assessmentTrialSchema = new mongoose.Schema(
     cefrLevel: { type: String, default: '' },
     score: { type: Number, default: 0 },
     assessmentAnswers: { type: [Number], default: [] },
+    skillProfile: { type: mongoose.Schema.Types.Mixed, default: null },
     redeemedByStudentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Student',

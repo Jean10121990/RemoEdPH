@@ -26,6 +26,10 @@ const feedbackSchema = new mongoose.Schema({
         required: false,
         maxlength: 1000
     },
+    soundsPracticed: { type: String, default: '', maxlength: 500 },
+    wordsRead: { type: String, default: '', maxlength: 500 },
+    needsMorePractice: { type: String, default: '', maxlength: 500 },
+    homeTip: { type: String, default: '', maxlength: 500 },
     submittedAt: {
         type: Date,
         default: Date.now

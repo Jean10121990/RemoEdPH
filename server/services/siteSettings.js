@@ -27,6 +27,9 @@ const CATALOG = [
   { key: 'earlyEntryMinutes', group: 'booking', type: 'number', value: 10, label: 'Early join (minutes)' },
   { key: 'classMaxMinutes', group: 'booking', type: 'number', value: 30, label: 'Class hard stop (minutes)' },
   { key: 'classLengthMinutes', group: 'booking', type: 'number', value: 25, label: 'Scheduled class length (minutes)' },
+  { key: 'lessonFocusLockHours', group: 'booking', type: 'number', value: 24, label: 'Lesson focus change cutoff (hours)' },
+  { key: 'lessonFocusBalancedText', group: 'booking', type: 'string', value: 'Listening, speaking, pronunciation, and reading in one lesson.', label: 'Balanced lesson description' },
+  { key: 'lessonFocusReadingText', group: 'booking', type: 'string', value: 'More time on letter sounds, sight words, and reading together.', label: 'Reading Focus description' },
   { key: 'creditNoticeDays', group: 'booking', type: 'json', value: [14, 7], label: 'Credit expiry notice days (14 and 7)' },
   { key: 'freePlanLessonCount', group: 'booking', type: 'number', value: 3, label: 'Free-plan lesson count' },
   { key: 'gardenMonthlyTarget', group: 'garden', type: 'number', value: 22, label: 'Garden monthly target' },
@@ -76,6 +79,9 @@ function validateValue(key, raw) {
     if (key === 'sparkFounderDiscount' && n < 0) return { ok: false, error: 'Discount cannot be negative.' };
     if (key === 'referralRewardCredits' && (!Number.isInteger(n) || n < 1 || n > 5)) {
       return { ok: false, error: 'Referral credits must be a whole number from 1 to 5.' };
+    }
+    if (key === 'lessonFocusLockHours' && (!Number.isInteger(n) || n < 1 || n > 168)) {
+      return { ok: false, error: 'Lesson focus cutoff must be a whole number of hours from 1 to 168.' };
     }
     if (key !== 'sparkFounderDiscount' && key !== 'adminFeePercent' && n <= 0) {
       return { ok: false, error: 'Value must be greater than 0.' };

@@ -138,6 +138,8 @@ async function connectWithUri(label, uri) {
     const copy = await require('./services/siteContent').seedSiteContent();
     if (copy.blocks || copy.faqs) console.log(`Site copy seeded: ${copy.blocks} block(s), ${copy.faqs} FAQ row(s).`);
     const mailSeed = await require('./emailService').seedEmailTemplates();
+    const skillSeed = await require('./services/skillAssessment').ensureQuestions();
+    if (skillSeed) console.log(`Skill questions seeded: ${skillSeed}.`);
     if (mailSeed) console.log(`Email templates seeded: ${mailSeed} new letter(s).`);
   } catch (err) {
     console.warn('Site settings seed:', err && err.message);

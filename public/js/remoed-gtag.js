@@ -24,4 +24,10 @@
 
   gtag('js', new Date());
   gtag('config', GA_ID);
+
+  global.remoedTrack = function (name, params) {
+    try {
+      if (typeof global.gtag === 'function') global.gtag('event', name, params || {});
+    } catch (e) {}
+  };
 })(typeof window !== 'undefined' ? window : this);

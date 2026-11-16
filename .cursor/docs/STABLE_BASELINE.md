@@ -955,3 +955,14 @@ The owner signed off on the system as of this date. Extend around these; do not 
 |------|----------------|
 | Affiliate Pipeline | HR Hub tab lists people who applied to be affiliates (`admin-hr-hub.html#affiliate-pipeline`). Same application records as Teacher Pipeline, filtered with `applicantType=affiliate`. Pass creates the affiliate login. |
 | Approved affiliates | User Management → Affiliates lists active affiliate accounts (`GET /api/admin/affiliates-list`, admin JWT, `hr:users_view`). Pending and inactive accounts stay off that list. |
+
+## Baseline updates — 2026-11-16
+
+| Area | What shipped |
+|------|----------------|
+| Lesson focus | A booking is `balanced` or `reading`. A missing value is balanced. Both use the same slot and 1 credit. Every open teacher can be booked. There is no reading-only teacher flag. Parents pick the focus on `student-book.html`. `preferredLessonFocus` pre-selects it next time. Changes close `lessonFocusLockHours` before class (site setting, default 24). Confirmation, the in-app reminder, and two short emails include the level and focus. Reading Focus adds “Have a picture book ready to read together.” Mail failure does not cancel the booking. |
+| Teacher materials | The class card shows “Level + focus”. The first lesson also shows the saved skill bands. Each lesson stores `balancedPlan` and `readingPlan` (a short time split, not a second slide deck). The classroom notes rail shows the matching plan. An empty Reading Focus plan shows the Balanced plan. Admin → Lessons Library edits both plans. |
+| Reading feedback | The teacher feedback modal adds sounds practiced, words read, needs more practice, and a 5-minute home tip. Parents see those lines next to the stars and comment. |
+| Skill check | Guests take 12 questions on `skill-assessment.html` (the old guest quiz redirects there). The parent picks an age band and whether they want more reading time. The server scores. Bands are Getting started, Growing, Strong, or Not enough information. The result shows marks and words, never a percent. Bands are saved on the trial and copied to the student at registration. |
+| Admin report | Site settings holds the two parent sentences and the cutoff. `admin-lesson-focus.html` counts bookings by level and focus and lists lessons that still need a Reading Focus plan. Super-Admin can edit the placeholder questions. |
+| Homepage | English hero, four learning cards, two focus cards, and the closing band. The button says “Take the free 4-minute assessment.” Other languages fall back to English for the new keys. |

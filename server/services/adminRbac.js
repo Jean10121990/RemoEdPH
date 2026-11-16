@@ -214,6 +214,7 @@ const PATH_PERMISSION_RULES = [
 /** API path patterns → required permission (for adminRoleGate augmentation) */
 const API_PATH_PERMISSION_RULES = [
   { re: /\/settings\/|\/maintenance|\/cleanup\//, key: 'system:settings' },
+  { re: /skill-questions/, key: 'nav:settings' },
   { re: /\/dispense|teachers-weekly-salaries|teacher-period-incentive|admin-fee\/dispense|admin-fee\/payroll|affiliate-payroll\/.+\/complete/, key: 'acct:payroll_dispense' },
   { re: /student-subscriptions/, key: 'acct:subscriptions_view' },
   { re: /affiliate-payroll/, key: 'acct:payroll_view' },

@@ -1987,11 +1987,11 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       student = await Student.findOne({
         $or: [{ username: sidRaw }, { email: sidRaw }],
       })
-        .select('firstName lastName nickname username profilePicture photo')
+        .select('firstName lastName nickname username profilePicture photo skillAssessment')
         .lean();
       if (!student && isMongoObjectId(sidRaw)) {
         student = await Student.findById(sidRaw)
-          .select('firstName lastName nickname username profilePicture photo')
+          .select('firstName lastName nickname username profilePicture photo skillAssessment')
           .lean();
       }
     }
@@ -2057,6 +2057,26 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       (issue) => String(issue.status || '').toLowerCase() === 'resolved'
     );
 
+    let skillAssessment = null;
+    try {
+      const earlier = await Booking.countDocuments({
+        studentId: booking.studentId,
+        _id: { $ne: booking._id },
+        status: { $nin: ['cancelled', 'Cancelled', 'cancelled_by_student_emergency'] },
+        ...(booking.dateTimeUtc ? { dateTimeUtc: { $lt: booking.dateTimeUtc } } : {}),
+      });
+      if (earlier === 0 && student && student.skillAssessment && student.skillAssessment.bands) {
+        skillAssessment = {
+          headline: student.skillAssessment.headline || '',
+          suggestedLevel: student.skillAssessment.suggestedLevel || '',
+          suggestedFocus: student.skillAssessment.suggestedFocus || '',
+          bands: student.skillAssessment.bands,
+        };
+      }
+    } catch (_skillErr) {
+      skillAssessment = null;
+    }
+
     res.json({ 
       success: true, 
       booking: {
@@ -2070,6 +2090,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         studentId: booking.studentId,
         teacherId: booking.teacherId,
         studentLevel: booking.studentLevel,
+        lessonFocus: booking.lessonFocus === 'reading' ? 'reading' : 'balanced',
         studentName: studentName,
         studentNickname: (student && student.nickname) || '',
         studentDisplayName,
@@ -2085,6 +2106,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         scheduledStartTime: getScheduledStartTime(booking),
         hasTeacherFeedback,
         feedbackSubmitted: hasTeacherFeedback,
+        skillAssessment,
       }
     });
   } catch (err) {

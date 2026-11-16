@@ -3017,3 +3017,42 @@ body.page-index .home-affiliate__actions {
     font-size: 1.05rem;
   }
 }
+
+body.page-index .learn-grid,
+body.page-index .focus-grid {
+  display: grid;
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+body.page-index .learn-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body.page-index .focus-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.page-index .learn-card,
+body.page-index .focus-card {
+  background: #fff;
+  border: 1px solid #d5e0e6;
+  border-radius: 16px;
+  padding: 16px;
+  color: #1a3a4a;
+}
+body.page-index .learn-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8f8ec;
+  color: #0b5a22;
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+body.page-index .focus-helper {
+  max-width: 720px;
+  margin: 16px auto 0;
+  text-align: center;
+  color: #1a3a4a;
+}
+@media (max-width: 768px) {
+  body.page-index .learn-grid,
+  body.page-index .focus-grid { grid-template-columns: 1fr; }
+}

@@ -331,7 +331,7 @@
                     ? `${TU.formatTime12hPhilippines(inst)} PHT`
                     : inst.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
                 const duration = calculateDuration(booking);
-                const lesson = booking.lesson || 'N/A';
+                const lesson = (booking.lesson || 'N/A') + (booking.focusLabel ? ' · ' + booking.focusLabel : '');
                 const teacherName = getTeacherName(booking);
                 
                 return `
@@ -411,6 +411,11 @@
             if (status === 'Upcoming') {
                 if (booking.classroomId) {
                     actions.push(`<a href="live-classroom.html?bookingId=${booking._id}&room=${booking.classroomId}&userType=student" class="action-link">Join</a>`);
+                }
+                if (!booking.focusLocked) {
+                    actions.push(`<button type="button" class="action-link" onclick="changeLessonFocus('${bid}')">Change focus</button>`);
+                } else {
+                    actions.push('<span class="action-link">Focus locked</span>');
                 }
             } else if (status === 'Completed' || status === 'Finished') {
                 actions.push(`<a href="student-class-table.html" class="action-link">View</a>`);
@@ -625,10 +630,56 @@
                     '<p class="feedback-modal-stars" aria-label="Rating ' + (fb.rating || 0) + ' of 5">' + stars +
                     ' <span>(' + (fb.rating || 0) + '/5)</span></p>' +
                     '<p class="feedback-modal-comment">' + escapeHtml(fb.comment || 'No written comments.') + '</p>' +
+                    readingSummary(fb) +
                     (when ? '<p class="feedback-modal-date">' + escapeHtml(when) + '</p>' : '');
             }
             modal.hidden = false;
             modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function readingSummary(fb) {
+            const rows = [
+                ['Sounds practiced', fb.soundsPracticed],
+                ['Words read', fb.wordsRead],
+                ['Needs more practice', fb.needsMorePractice],
+                ['5-minute home tip', fb.homeTip]
+            ].filter(function (row) { return row[1] && String(row[1]).trim(); });
+            if (!rows.length) return '';
+            return '<div class="feedback-modal-reading">' + rows.map(function (row) {
+                return '<p><strong>' + escapeHtml(row[0]) + ':</strong> ' + escapeHtml(row[1]) + '</p>';
+            }).join('') + '</div>';
+        }
+
+        async function changeLessonFocus(bookingId) {
+            const booking = (allBookings || []).find(function (b) {
+                return String(b._id) === String(bookingId);
+            });
+            if (!booking) return;
+            if (booking.focusLocked) {
+                alert('This lesson focus is locked.');
+                return;
+            }
+            const next = booking.lessonFocus === 'reading' ? 'balanced' : 'reading';
+            const label = next === 'reading' ? 'Reading Focus' : 'Balanced';
+            if (!confirm('Change this class to ' + label + '?')) return;
+            const token = localStorage.getItem('remoed_student_token') || localStorage.getItem('token') || '';
+            const res = await fetch('/api/student/bookings/' + encodeURIComponent(bookingId) + '/lesson-focus', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + token
+                },
+                body: JSON.stringify({ lessonFocus: next })
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                alert(data.error || 'Could not change the lesson focus.');
+                return;
+            }
+            if (typeof remoedTrack === 'function') remoedTrack('lesson_focus_selected', { value: next });
+            booking.lessonFocus = next;
+            booking.focusLabel = data.focusLabel || label;
+            applyFilters();
         }
 
         function closeFeedbackModal() {

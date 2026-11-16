@@ -26,6 +26,8 @@ const bookingSchema = new mongoose.Schema({
     ],
     default: 'Little Seeds',
   },
+  /** balanced or reading. A missing value is treated as balanced. */
+  lessonFocus: { type: String, enum: ['balanced', 'reading'], default: 'balanced' },
   paymentMethod: { type: String, default: null }, // Optional - payment handled separately
   status: { type: String, default: 'Booked' }, // Booked, pending, confirmed, completed, cancelled, cancelled_by_student_emergency, absent
   classroomId: { type: String }, // unique classroom/room ID for the live lesson

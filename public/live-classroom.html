@@ -8590,8 +8590,23 @@
           if (!res.ok) throw new Error('Failed to load lesson');
           const data = await res.json();
           const notes = data && data.teacherNotes != null ? String(data.teacherNotes).trim() : '';
+          const focus = (typeof booking !== 'undefined' && booking && String(booking.lessonFocus || '').toLowerCase() === 'reading')
+            ? 'reading'
+            : 'balanced';
+          const readingPlan = data && data.readingPlan != null ? String(data.readingPlan).trim() : '';
+          const balancedPlan = data && data.balancedPlan != null ? String(data.balancedPlan).trim() : '';
+          const parts = [];
+          if (focus === 'reading' && !readingPlan && balancedPlan) {
+            parts.push('Reading Focus plan is not ready yet. Showing the Balanced plan.');
+            parts.push(balancedPlan);
+          } else if (focus === 'reading' && readingPlan) {
+            parts.push(readingPlan);
+          } else if (balancedPlan) {
+            parts.push(balancedPlan);
+          }
+          if (notes) parts.push(notes);
           body.textContent =
-            notes ||
+            parts.join('\n\n') ||
             'No internal notes for this lesson yet. Curriculum specialists can add them in Admin → Lessons Library when editing the lesson.';
         } catch (e) {
           console.warn('Teacher notes:', e);

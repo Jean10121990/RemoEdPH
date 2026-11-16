@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/remoed-gtag.js?v=ga-2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free skill check - RemoEdPH</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" />
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: #f4f7f8; color: #1a3a4a; }
+    main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 1.8rem; line-height: 1.25; }
+    .card { background: #fff; border: 1px solid #d5e0e6; border-radius: 16px; padding: 16px; margin-top: 16px; }
+    button, .choice { min-height: 44px; font: inherit; }
+    button { cursor: pointer; }
+    .primary, .choice, .nav button { border-radius: 10px; border: 1px solid #0f6f8c; background: #fff; color: #0f3a4a; padding: 10px 14px; }
+    .primary { background: #0f6f8c; color: #fff; font-weight: 700; }
+    .primary:focus, .choice:focus, button:focus, input:focus, select:focus { outline: 3px solid #fdd835; outline-offset: 2px; }
+    .choice { display: flex; width: 100%; text-align: left; align-items: center; gap: 10px; margin-top: 8px; }
+    .choice img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #e8f7fc; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .marks { letter-spacing: 2px; font-weight: 700; }
+    label { display: block; font-weight: 700; margin-top: 12px; }
+    input, select { width: 100%; min-height: 44px; font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid #9bb0ba; box-sizing: border-box; }
+    .hint { color: #3d5560; }
+    .progress { font-weight: 700; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <p><a href="/">RemoEdPH</a></p>
+    <h1>Free skill check</h1>
+    <p class="hint">About 4 minutes. Listening, speaking, pronunciation, and reading. We show bands, not a score.</p>
+
+    <section id="start-step" class="card">
+      <label for="age-band">Child's age</label>
+      <select id="age-band">
+        <option value="3-4">3–4 years</option>
+        <option value="5-6">5–6 years</option>
+      </select>
+      <label for="child-first">Child's first name</label>
+      <input id="child-first" autocomplete="given-name" maxlength="40" />
+      <p id="reading-q" style="font-weight:700;">Do you want more reading time in class?</p>
+      <div class="row" role="group" aria-labelledby="reading-q">
+        <button type="button" class="choice" id="reading-yes">Yes</button>
+        <button type="button" class="choice" id="reading-no">No</button>
+      </div>
+      <div class="row"><button type="button" class="primary" id="start-btn">Start</button></div>
+    </section>
+
+    <section id="question-step" class="card" hidden>
+      <p class="progress" id="progress">Question 1 of 12</p>
+      <p id="prompt"></p>
+      <p class="hint" id="hint" hidden>Please do not give hints.</p>
+      <div id="choices"></div>
+      <div class="row">
+        <button type="button" id="play-again">Play again</button>
+        <button type="button" id="skip-btn">Skip</button>
+      </div>
+    </section>
+
+    <section id="result-step" class="card" hidden>
+      <h2 id="headline"></h2>
+      <div id="bands"></div>
+      <p id="level-line"></p>
+      <p id="focus-line"></p>
+      <p class="hint" id="disclaimer"></p>
+      <form id="book-form">
+        <label for="parent-email">Parent email</label>
+        <input id="parent-email" type="email" required autocomplete="email" />
+        <label for="contact-number">Contact number</label>
+        <input id="contact-number" type="tel" autocomplete="tel" />
+        <div class="row"><button type="submit" class="primary" id="book-btn">Book the free lesson</button></div>
+      </form>
+      <p id="book-status" role="status"></p>
+    </section>
+  </main>
+  <script>
+    (function () {
+      var ageBand = '3-4';
+      var wantsMoreReading = false;
+      var questions = [];
+      var index = 0;
+      var answers = [];
+      var profile = null;
+      var audio = null;
+
+      function track(name, params) {
+        if (typeof remoedTrack === 'function') remoedTrack(name, params || {});
+      }
+      function show(id) {
+        ['start-step', 'question-step', 'result-step'].forEach(function (step) {
+          document.getElementById(step).hidden = step !== id;
+        });
+      }
+      function firstName() {
+        return String(document.getElementById('child-first').value || '').trim().split(/\s+/)[0];
+      }
+      function esc(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      document.getElementById('reading-yes').addEventListener('click', function () { wantsMoreReading = true; });
+      document.getElementById('reading-no').addEventListener('click', function () { wantsMoreReading = false; });
+
+      document.getElementById('start-btn').addEventListener('click', async function () {
+        if (!firstName()) {
+          document.getElementById('child-first').focus();
+          return;
+        }
+        ageBand = document.getElementById('age-band').value === '5-6' ? '5-6' : '3-4';
+        var res = await fetch('/api/public/skill-assessment/questions?ageBand=' + ageBand);
+        var data = await res.json();
+        questions = (data.questions || []).slice(0, 12);
+        if (!questions.length) {
+          alert('The skill check is not available right now.');
+          return;
+        }
+        answers = [];
+        index = 0;
+        track('assessment_started', { age_band: ageBand });
+        show('question-step');
+        renderQuestion();
+      });
+
+      function renderQuestion() {
+        var q = questions[index];
+        document.getElementById('progress').textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
+        document.getElementById('prompt').textContent = q.prompt || '';
+        document.getElementById('hint').hidden = q.kind !== 'rating';
+        var play = document.getElementById('play-again');
+        play.disabled = !q.audioUrl;
+        play.onclick = function () {
+          if (!q.audioUrl) return;
+          if (audio) audio.pause();
+          audio = new Audio(q.audioUrl);
+          audio.play().catch(function () {});
+        };
+        var box = document.getElementById('choices');
+        box.innerHTML = '';
+        if (q.kind === 'rating') {
+          [['clear', 'Clear'], ['needed_help', 'Needed help'], ['not_yet', 'Not yet']].forEach(function (pair) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'choice';
+            btn.textContent = pair[1];
+            btn.addEventListener('click', function () { choose({ rating: pair[0] }); });
+            box.appendChild(btn);
+          });
+        } else {
+          (q.options || []).forEach(function (label, i) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'choice';
+            var img = q.imageUrls && q.imageUrls[i] ? '<img alt="" src="' + esc(q.imageUrls[i]) + '">' : '';
+            btn.innerHTML = img + '<span>' + esc(label) + '</span>';
+            btn.addEventListener('click', function () { choose({ choiceIndex: i }); });
+            box.appendChild(btn);
+          });
+        }
+      }
+
+      function choose(extra) {
+        var q = questions[index];
+        answers.push(Object.assign({ questionId: q.questionId, skipped: false }, extra));
+        next();
+      }
+
+      document.getElementById('skip-btn').addEventListener('click', function () {
+        var q = questions[index];
+        answers.push({ questionId: q.questionId, skipped: true });
+        track('assessment_question_skipped', { question_id: q.questionId });
+        next();
+      });
+
+      async function next() {
+        index += 1;
+        if (index < questions.length) {
+          renderQuestion();
+          return;
+        }
+        track('assessment_completed');
+        var res = await fetch('/api/public/skill-assessment/score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ageBand: ageBand,
+            wantsMoreReading: wantsMoreReading,
+            childFirstName: firstName(),
+            answers: answers
+          })
+        });
+        profile = await res.json();
+        if (!res.ok) {
+          alert(profile.error || 'Could not score the skill check.');
+          return;
+        }
+        track('result_viewed');
+        document.getElementById('headline').textContent = profile.headline || '';
+        var bandBox = document.getElementById('bands');
+        bandBox.innerHTML = '';
+        ['listening', 'speaking', 'pronunciation', 'reading'].forEach(function (name) {
+          var marks = profile.marks && profile.marks[name] ? profile.marks[name] : 0;
+          var label = profile.bands && profile.bands[name] ? profile.bands[name] : 'Not enough information';
+          var filled = '';
+          for (var i = 1; i <= 3; i += 1) filled += i <= marks ? '●' : '○';
+          var row = document.createElement('p');
+          row.innerHTML = '<span class="marks" aria-hidden="true">' + filled + '</span> ' + esc(name.charAt(0).toUpperCase() + name.slice(1)) + ': ' + esc(label);
+          bandBox.appendChild(row);
+        });
+        document.getElementById('level-line').textContent = 'Suggested level: ' + (profile.suggestedLevel || '');
+        document.getElementById('focus-line').textContent = 'Suggested focus: ' + (profile.suggestedFocus === 'reading' ? 'Reading Focus' : 'Balanced');
+        document.getElementById('disclaimer').textContent = profile.disclaimer || '';
+        show('result-step');
+      }
+
+      document.getElementById('book-form').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        track('book_free_lesson_clicked');
+        var status = document.getElementById('book-status');
+        status.textContent = 'Saving…';
+        var res = await fetch('/api/student/send-assessment-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parentEmail: document.getElementById('parent-email').value,
+            childName: firstName(),
+            contactNumber: document.getElementById('contact-number').value,
+            ageBand: ageBand,
+            wantsMoreReading: wantsMoreReading,
+            skillAnswers: answers
+          })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.status === 409 && data.trialToken) {
+          location.href = '/student-register.html?trial=' + encodeURIComponent(data.trialToken) + '&email=' + encodeURIComponent(document.getElementById('parent-email').value);
+          return;
+        }
+        if (!res.ok || !data.trialToken) {
+          status.textContent = data.error || data.message || 'Could not save the skill check.';
+          return;
+        }
+        location.href = '/student-register.html?trial=' + encodeURIComponent(data.trialToken) + '&email=' + encodeURIComponent(document.getElementById('parent-email').value);
+      });
+    })();
+  </script>
+</body>
+</html>

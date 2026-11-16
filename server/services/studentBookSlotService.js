@@ -120,6 +120,11 @@ async function runBookSlot(req, res) {
       assignmentMode = 'firstAvailable',
       slotId: slotIdBody,
     } = req.body;
+    const lessonFocusSvc = require('./lessonFocus');
+    const chosenLessonFocus = lessonFocusSvc.parseLessonFocus(req.body && req.body.lessonFocus);
+    if (!chosenLessonFocus) {
+      return res.status(400).json({ error: 'Lesson focus must be balanced or reading.' });
+    }
     const preferredRaw = preferredTeacherId != null && preferredTeacherId !== '' ? preferredTeacherId : teacherId;
 
     let student = await Student.findById(req.user.studentId);
@@ -403,6 +408,7 @@ async function runBookSlot(req, res) {
         lesson,
         lessonId: lessonId || null,
         studentLevel: canonicalStudentLevel,
+        lessonFocus: chosenLessonFocus,
         classroomId,
         status: 'Booked',
         isAssessmentFreeTrialBooking: false,
@@ -540,10 +546,11 @@ async function runBookSlot(req, res) {
       const studentName = studentDisplayNameForNotification(student, studentId);
       const whenLabel = bookingWhenLabelForNotification(canonicalUtc, existingSlot, timezone || 'Asia/Manila');
       try {
+        const focusLines = lessonFocusSvc.confirmationLines(booking);
         await createBookingNotification(
           chosenTeacherId,
           'booking',
-          `New class booked for ${whenLabel} with ${studentName}.`,
+          `New class booked for ${whenLabel} with ${studentName}. ${lessonFocusSvc.focusLabel(chosenLessonFocus)}.`,
           {
             bookingId: String(booking._id),
             actionUrl: '/teacher-class-table.html',
@@ -552,15 +559,27 @@ async function runBookSlot(req, res) {
         await notifyStudent(
           studentId,
           'booking',
-          `Your class is confirmed for ${whenLabel}.`,
+          [`Your class is confirmed for ${whenLabel}.`, ...focusLines].join(' '),
           {
             bookingId: String(booking._id),
             actionUrl: '/student-dashboard.html',
-            meta: { teacherId: chosenTeacherId, lesson },
+            meta: { teacherId: chosenTeacherId, lesson, lessonFocus: chosenLessonFocus },
           }
         );
+        lessonFocusSvc
+          .sendFocusNote(student.email, 'Your RemoEd class is confirmed', [
+            `Your class is confirmed for ${whenLabel}.`,
+            ...focusLines,
+          ])
+          .catch(() => {});
       } catch (notifErr) {
         console.warn('Booking notify failed:', notifErr && notifErr.message ? notifErr.message : notifErr);
+      }
+
+      try {
+        await Student.updateOne({ _id: student._id }, { $set: { preferredLessonFocus: chosenLessonFocus } });
+      } catch (_focusErr) {
+        /* the booking already has the focus */
       }
 
       try {
@@ -611,6 +630,10 @@ async function runBookSlot(req, res) {
         teacherId: chosenTeacherId,
         assignmentMode: preferredRaw ? 'preferred' : assignmentMode,
         message: 'Class booked successfully',
+        lessonFocus: chosenLessonFocus,
+        focusLabel: lessonFocusSvc.focusLabel(chosenLessonFocus),
+        studentLevel: booking.studentLevel,
+        focusLines: lessonFocusSvc.confirmationLines(booking),
         bookingMode: useTransactions ? 'transaction' : 'atomic-slot-lock',
         useTransactions,
         credits: {

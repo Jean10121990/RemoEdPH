@@ -21,6 +21,10 @@ const lessonSchema = new mongoose.Schema({
     default: '',
     maxlength: 100000,
   },
+  /** Short time split for a Balanced lesson. Not a second slide deck. */
+  balancedPlan: { type: String, default: '', maxlength: 4000 },
+  /** Short time split for Reading Focus. Empty plans fall back to Balanced. */
+  readingPlan: { type: String, default: '', maxlength: 4000 },
   lessonNumber: {
     type: Number,
     required: true

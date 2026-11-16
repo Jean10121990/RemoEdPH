@@ -748,6 +748,8 @@ app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRou
 app.use('/api/public', require('./siteContentRoutes').publicRouter);
 app.use('/api/public', require('./fxRatesRoutes'));
 app.use('/api/public', publicAssessmentRoutes);
+app.use('/api/public', require('./skillAssessmentRoutes'));
+app.use('/api/public', require('./lessonFocusRoutes'));
 app.use('/api/public', require('./routes/referralClickPublic'));
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
@@ -1622,6 +1624,10 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
             rating: teacherFeedback.rating,
             comment: teacherFeedback.comment,
             submittedAt: teacherFeedback.submittedAt,
+            soundsPracticed: teacherFeedback.soundsPracticed || '',
+            wordsRead: teacherFeedback.wordsRead || '',
+            needsMorePractice: teacherFeedback.needsMorePractice || '',
+            homeTip: teacherFeedback.homeTip || '',
           }
         : null,
     });
@@ -1638,6 +1644,13 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
 app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId, studentId, rating, comment, submittedAt } = req.body;
+    const clipReading = (value) => String(value || '').replace(/<[^>]*>/g, '').trim().slice(0, 500);
+    const readingFields = {
+      soundsPracticed: clipReading(req.body.soundsPracticed),
+      wordsRead: clipReading(req.body.wordsRead),
+      needsMorePractice: clipReading(req.body.needsMorePractice),
+      homeTip: clipReading(req.body.homeTip),
+    };
 
     if (!bookingId || !rating || rating < 1 || rating > 5) {
       return res.status(400).json({
@@ -1713,6 +1726,10 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       existingTeacherFeedback.teacherId = teacherId;
       existingTeacherFeedback.lessonDate = lessonDate;
       existingTeacherFeedback.feedbackRole = FEEDBACK_ROLE_TEACHER_TO_STUDENT;
+      existingTeacherFeedback.soundsPracticed = readingFields.soundsPracticed;
+      existingTeacherFeedback.wordsRead = readingFields.wordsRead;
+      existingTeacherFeedback.needsMorePractice = readingFields.needsMorePractice;
+      existingTeacherFeedback.homeTip = readingFields.homeTip;
       feedback = await existingTeacherFeedback.save();
       console.log('✅ Teacher feedback updated successfully');
     } else {
@@ -1725,6 +1742,7 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
         submittedAt: submittedAt || new Date(),
         lessonDate,
         feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+        ...readingFields,
       });
       await feedback.save();
       console.log('✅ Teacher feedback created successfully');
@@ -1780,6 +1798,10 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
         rating,
         comment: feedback.comment,
         submittedAt: feedback.submittedAt,
+        soundsPracticed: feedback.soundsPracticed || '',
+        wordsRead: feedback.wordsRead || '',
+        needsMorePractice: feedback.needsMorePractice || '',
+        homeTip: feedback.homeTip || '',
       },
       booking: {
         id: saved._id,

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/remoed-gtag.js?v=ga-1"></script>
+  <script src="js/security-guard.js?v=2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson focus - Admin</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" />
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .wrap { padding: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    textarea, input { width: 100%; box-sizing: border-box; font: inherit; }
+    button { min-height: 44px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div id="admin-sidebar-root"></div>
+    <main class="content wrap">
+      <div class="card">
+        <h1>Lesson focus</h1>
+        <p>Parent-facing sentences and the change cutoff are on <a href="admin-settings.html">Site settings</a>. This page counts bookings and edits the skill-check questions. It does not upload media files.</p>
+        <p id="report-summary">Loading report…</p>
+        <table id="report-table"></table>
+        <h2>Lessons missing a Reading Focus plan</h2>
+        <ul id="missing-plans"></ul>
+      </div>
+      <div class="card">
+        <h2>Skill-check questions</h2>
+        <p id="question-note"></p>
+        <div id="questions"></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/admin-session.js"></script>
+  <script src="js/admin-access-guard.js"></script>
+  <script src="js/admin-sidebar.js?v=app-shell-19"></script>
+  <script>
+    if (!window.__ADMIN_EMBED__ && window.AdminSidebar) AdminSidebar.render('admin-sidebar-root', 'settings');
+    function token() {
+      return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken && RemoedAdminSession.getAuthToken())
+        || localStorage.getItem('remoed_admin_token')
+        || localStorage.getItem('adminToken')
+        || '';
+    }
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+    async function api(url, options) {
+      var res = await fetch(url, Object.assign({
+        headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }
+      }, options || {}));
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+    async function loadReport() {
+      var data = await api('/api/admin/lesson-focus-report');
+      document.getElementById('report-summary').textContent =
+        data.total + ' bookings. Reading Focus is ' + data.reading + ' (' + data.readingShare + '%).';
+      var table = document.getElementById('report-table');
+      table.innerHTML = '<tr><th>Level</th><th>Focus</th><th>Bookings</th></tr>' + (data.byLevel || []).map(function (row) {
+        return '<tr><td>' + esc(row.level) + '</td><td>' + esc(row.focus === 'reading' ? 'Reading Focus' : 'Balanced') + '</td><td>' + esc(row.count) + '</td></tr>';
+      }).join('');
+      var list = document.getElementById('missing-plans');
+      var missing = data.lessonsMissingReadingPlan || [];
+      list.innerHTML = missing.length
+        ? missing.map(function (lesson) {
+            return '<li>Lesson ' + esc(lesson.lessonNumber) + ': ' + esc(lesson.title) + '</li>';
+          }).join('')
+        : '<li>Every lesson has a Reading Focus plan.</li>';
+    }
+    function field(label, value, kind) {
+      var control = kind === 'area'
+        ? '<textarea data-field="' + label + '">' + esc(value || '') + '</textarea>'
+        : '<input data-field="' + label + '" value="' + esc(value || '') + '">';
+      return '<label>' + esc(label) + control + '</label>';
+    }
+    async function loadQuestions() {
+      try {
+        var data = await api('/api/admin/skill-questions');
+        var host = document.getElementById('questions');
+        host.innerHTML = (data.questions || []).map(function (q) {
+          var options = (q.options || []).join('\n');
+          var images = (q.imageUrls || []).join('\n');
+          return '<form data-id="' + esc(q.questionId) + '" class="card">' +
+            '<strong>' + esc(q.ageBand) + ' · ' + esc(q.skill) + '</strong>' +
+            field('prompt', q.prompt, 'area') +
+            field('audioUrl', q.audioUrl, 'input') +
+            '<label>options (one per line)<textarea data-field="options">' + esc(options) + '</textarea></label>' +
+            '<label>image URLs (one per line)<textarea data-field="imageUrls">' + esc(images) + '</textarea></label>' +
+            field('correctIndex', q.correctIndex, 'input') +
+            '<button type="submit">Save</button></form>';
+        }).join('');
+        host.querySelectorAll('form').forEach(function (form) {
+          form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            var body = {
+              prompt: form.querySelector('[data-field="prompt"]').value,
+              audioUrl: form.querySelector('[data-field="audioUrl"]').value,
+              options: form.querySelector('[data-field="options"]').value.split('\n').map(function (line) { return line.trim(); }).filter(Boolean),
+              imageUrls: form.querySelector('[data-field="imageUrls"]').value.split('\n').map(function (line) { return line.trim(); }).filter(Boolean),
+              correctIndex: form.querySelector('[data-field="correctIndex"]').value
+            };
+            await api('/api/admin/skill-questions/' + encodeURIComponent(form.getAttribute('data-id')), {
+              method: 'PUT',
+              body: JSON.stringify(body)
+            });
+            form.querySelector('button').textContent = 'Saved';
+          });
+        });
+      } catch (err) {
+        document.getElementById('question-note').textContent = 'Question editing is for a Super-Admin. ' + err.message;
+      }
+    }
+    loadReport().catch(function (err) {
+      document.getElementById('report-summary').textContent = err.message;
+    });
+    loadQuestions();
+  </script>
+</body>
+</html>

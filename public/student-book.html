@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="/js/remoed-gtag.js?v=ga-1"></script>
+    <script src="/js/remoed-gtag.js?v=ga-2"></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1513,6 +1513,20 @@
                                         <option value="roundRobin">Round robin (fair rotation)</option>
                                     </select>
                                 </div>
+
+                                <fieldset id="lesson-focus-fieldset" style="border:1px solid #dbe3ea; border-radius:12px; padding:12px; margin:12px 0 16px;">
+                                    <legend style="font-weight:700; padding:0 6px;">Lesson focus</legend>
+                                    <p id="lesson-focus-helper" style="margin:0 0 8px; color:#475569;">Same level, same teacher, same 1 credit. You can change it before each lesson.</p>
+                                    <label class="lesson-focus-card" style="display:flex; gap:10px; align-items:center; min-height:44px; padding:10px; border:1px solid #cbd5e1; border-radius:10px; margin-top:8px; cursor:pointer;">
+                                        <input type="radio" name="lessonFocus" value="balanced" checked>
+                                        <span><strong>Balanced</strong><br><span id="lesson-focus-balanced-text">Listening, speaking, pronunciation, and reading in one lesson.</span></span>
+                                    </label>
+                                    <label class="lesson-focus-card" style="display:flex; gap:10px; align-items:center; min-height:44px; padding:10px; border:1px solid #cbd5e1; border-radius:10px; margin-top:8px; cursor:pointer;">
+                                        <input type="radio" name="lessonFocus" value="reading">
+                                        <span><strong>Reading Focus</strong><br><span id="lesson-focus-reading-text">More time on letter sounds, sight words, and reading together.</span></span>
+                                    </label>
+                                    <p id="lesson-focus-unsure" style="margin:8px 0 0; color:#475569;">Not sure? Choose Balanced. Reading is part of every lesson.</p>
+                                </fieldset>
                                 
                                 <button type="submit" class="book-btn" id="book-btn">
                                     <span id="book-btn-text">Book Class</span>
@@ -2692,7 +2706,36 @@
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
             applyStudentLevelOptions();
+            refreshLessonFocusCopy();
         }
+
+        async function refreshLessonFocusCopy() {
+            try {
+                const token = getStudentAuthToken();
+                const headers = {};
+                if (token) headers.Authorization = 'Bearer ' + token;
+                const res = await fetch('/api/student/lesson-focus', { headers });
+                if (!res.ok) return;
+                const data = await res.json();
+                const balanced = document.getElementById('lesson-focus-balanced-text');
+                const reading = document.getElementById('lesson-focus-reading-text');
+                const helper = document.getElementById('lesson-focus-helper');
+                const unsure = document.getElementById('lesson-focus-unsure');
+                if (balanced && data.balanced) balanced.textContent = data.balanced;
+                if (reading && data.reading) reading.textContent = data.reading;
+                if (helper && data.helper) helper.textContent = data.helper;
+                if (unsure && data.unsure) unsure.textContent = data.unsure;
+                const preferred = data.preferredLessonFocus === 'reading' ? 'reading' : 'balanced';
+                const input = document.querySelector('input[name="lessonFocus"][value="' + preferred + '"]');
+                if (input) input.checked = true;
+            } catch (e) {}
+        }
+
+        document.addEventListener('change', function (event) {
+            const target = event.target;
+            if (!target || target.name !== 'lessonFocus') return;
+            if (typeof remoedTrack === 'function') remoedTrack('lesson_focus_selected', { value: target.value });
+        });
         
         function closeBookingModal() {
             const modal = document.getElementById('booking-modal');
@@ -3573,7 +3616,8 @@
                     lesson: finalLessonTitle,
                     lessonId: lessonId,
                     studentLevel: studentLevel,
-                    slotId: slotMongoId
+                    slotId: slotMongoId,
+                    lessonFocus: (document.querySelector('input[name="lessonFocus"]:checked') || {}).value || 'balanced'
                 };
                 if (preferredTeacherId) {
                     requestBody.teacherId = preferredTeacherId;
@@ -3707,8 +3751,14 @@
                 const creditNote = typeof remainingCredits === 'number'
                     ? ` Remaining credits: ${remainingCredits}.`
                     : '';
+                const focusNote = Array.isArray(result.focusLines) && result.focusLines.length
+                    ? ' ' + result.focusLines.join(' ')
+                    : '';
+                if (typeof remoedTrack === 'function') {
+                    remoedTrack('booking_completed', { focus: result.lessonFocus || requestBody.lessonFocus || 'balanced' });
+                }
                 showNotification(
-                    'Booking Successful! Your class has been scheduled.' + creditNote + ' Classes are recorded for safety, quality assurance, and parent review.',
+                    'Booking Successful! Your class has been scheduled.' + focusNote + creditNote + ' Classes are recorded for safety, quality assurance, and parent review.',
                     'success'
                 );                
             } catch (error) {

@@ -1287,7 +1287,16 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
           profileSet.cefrLevel = redeem.cefrLevel;
           profileSet.leveling = redeem.cefrLevel;
         }
-        if (redeem.score != null && redeem.score !== undefined) {
+        if (redeem.skillProfile && typeof redeem.skillProfile === 'object') {
+          profileSet.skillAssessment = redeem.skillProfile;
+          const suggested = String(redeem.skillProfile.suggestedLevel || '');
+          if (['Little Seeds', 'Sprouts', 'Saplings', 'Young Stewards'].includes(suggested)) {
+            profileSet.level = suggested;
+          }
+          if (redeem.skillProfile.suggestedFocus === 'reading' || redeem.skillProfile.suggestedFocus === 'balanced') {
+            profileSet.preferredLessonFocus = redeem.skillProfile.suggestedFocus;
+          }
+        } else if (redeem.score != null && redeem.score !== undefined) {
           profileSet.assessmentScore = Number(redeem.score) || 0;
         }
         profileSet.assessmentDate = new Date();

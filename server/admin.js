@@ -8375,4 +8375,106 @@ router.post('/assess-teacher/:teacherId', verifyAdminApiAuth, requireAdmin, asyn
 
 router.use(require('./attendanceExceptionRoutes').adminRouter);
 
+router.get('/lesson-focus-report', async (req, res) => {
+  try {
+    const Booking = require('./models/Booking');
+    const Lesson = require('./models/Lesson');
+    const rows = await Booking.aggregate([
+      {
+        $match: {
+          status: { $nin: ['cancelled', 'Cancelled', 'cancelled_by_student_emergency'] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            level: { $ifNull: ['$studentLevel', 'Unknown'] },
+            focus: { $cond: [{ $eq: ['$lessonFocus', 'reading'] }, 'reading', 'balanced'] },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    let total = 0;
+    let reading = 0;
+    const byLevel = rows.map((row) => {
+      const count = row.count || 0;
+      total += count;
+      if (row._id && row._id.focus === 'reading') reading += count;
+      return {
+        level: row._id && row._id.level ? row._id.level : 'Unknown',
+        focus: row._id && row._id.focus === 'reading' ? 'reading' : 'balanced',
+        count,
+      };
+    });
+    const missingPlans = await Lesson.find({
+      isActive: { $ne: false },
+      $or: [{ readingPlan: { $exists: false } }, { readingPlan: null }, { readingPlan: '' }],
+    })
+      .select('title lessonNumber')
+      .sort({ lessonNumber: 1 })
+      .limit(200)
+      .lean();
+    res.json({
+      success: true,
+      total,
+      reading,
+      readingShare: total ? Math.round((reading / total) * 1000) / 10 : 0,
+      byLevel,
+      lessonsMissingReadingPlan: missingPlans.map((lesson) => ({
+        id: lesson._id,
+        title: lesson.title || '',
+        lessonNumber: lesson.lessonNumber,
+      })),
+    });
+  } catch (err) {
+    console.error('lesson focus report:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Could not load the lesson focus report.' });
+  }
+});
+
+router.get('/skill-questions', async (req, res) => {
+  try {
+    const skill = require('./services/skillAssessment');
+    await skill.ensureQuestions();
+    const SkillQuestion = require('./models/SkillQuestion');
+    const rows = await SkillQuestion.find().sort({ ageBand: 1, order: 1 }).lean();
+    res.json({ questions: rows });
+  } catch (err) {
+    console.error('skill questions admin:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Could not load skill questions.' });
+  }
+});
+
+router.put('/skill-questions/:questionId', async (req, res) => {
+  try {
+    const SkillQuestion = require('./models/SkillQuestion');
+    const questionId = String(req.params.questionId || '').trim();
+    const row = await SkillQuestion.findOne({ questionId });
+    if (!row) return res.status(404).json({ error: 'Question not found.' });
+    const body = req.body || {};
+    const clip = (value, max) => String(value == null ? '' : value).replace(/<[^>]*>/g, '').trim().slice(0, max);
+    if (body.prompt != null) row.prompt = clip(body.prompt, 500);
+    if (body.audioUrl != null) row.audioUrl = clip(body.audioUrl, 500);
+    if (Array.isArray(body.options)) {
+      row.options = body.options.slice(0, 6).map((item) => clip(item, 200));
+    }
+    if (Array.isArray(body.imageUrls)) {
+      row.imageUrls = body.imageUrls.slice(0, 4).map((item) => clip(item, 500));
+    }
+    if (body.correctIndex != null && body.correctIndex !== '') {
+      const idx = Number(body.correctIndex);
+      if (!Number.isInteger(idx) || idx < 0 || idx > 5) {
+        return res.status(400).json({ error: 'Correct answer must be a choice number from 0 to 5.' });
+      }
+      row.correctIndex = idx;
+    }
+    await row.save();
+    res.json({ success: true, question: row });
+  } catch (err) {
+    console.error('skill question save:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Could not save the question.' });
+  }
+});
+
 module.exports = router; 
