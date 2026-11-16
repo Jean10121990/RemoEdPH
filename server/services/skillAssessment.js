@@ -160,11 +160,21 @@ function seedRows() {
 
 async function ensureQuestions() {
   const SkillQuestion = require('../models/SkillQuestion');
-  const count = await SkillQuestion.countDocuments();
-  if (count > 0) return 0;
   const rows = seedRows();
-  await SkillQuestion.insertMany(rows, { ordered: false });
-  return rows.length;
+  let changed = 0;
+  for (const row of rows) {
+    const existing = await SkillQuestion.findOne({ questionId: row.questionId }).select('prompt').lean();
+    if (!existing) {
+      await SkillQuestion.create(row);
+      changed += 1;
+      continue;
+    }
+    if (String(existing.prompt || '').includes('[PLACEHOLDER]')) {
+      await SkillQuestion.updateOne({ questionId: row.questionId }, { $set: row });
+      changed += 1;
+    }
+  }
+  return changed;
 }
 
 async function questionsForBand(ageBand) {

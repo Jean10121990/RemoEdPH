@@ -6,33 +6,180 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Free skill check - RemoEdPH</title>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
   <style>
-    :root { color-scheme: light; }
-    body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: #f4f7f8; color: #1a3a4a; }
-    main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
-    h1 { font-size: 1.8rem; line-height: 1.25; }
-    .card { background: #fff; border: 1px solid #d5e0e6; border-radius: 16px; padding: 16px; margin-top: 16px; }
-    button, .choice { min-height: 44px; font: inherit; }
-    button { cursor: pointer; }
-    .primary, .choice, .nav button { border-radius: 10px; border: 1px solid #0f6f8c; background: #fff; color: #0f3a4a; padding: 10px 14px; }
-    .primary { background: #0f6f8c; color: #fff; font-weight: 700; }
-    .primary:focus, .choice:focus, button:focus, input:focus, select:focus { outline: 3px solid #fdd835; outline-offset: 2px; }
-    .choice { display: flex; width: 100%; text-align: left; align-items: center; gap: 10px; margin-top: 8px; }
-    .choice img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #e8f7fc; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-    .marks { letter-spacing: 2px; font-weight: 700; }
-    label { display: block; font-weight: 700; margin-top: 12px; }
-    input, select { width: 100%; min-height: 44px; font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid #9bb0ba; box-sizing: border-box; }
-    .hint { color: #3d5560; }
-    .progress { font-weight: 700; }
+    :root {
+      --blue: #1ca7e7;
+      --blue-deep: #008fc4;
+      --blue-soft: #5cb3ff;
+      --gold: #ffd700;
+      --ink: #1e3a5f;
+      --mint: #e8f8ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Nunito, "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 12%, rgba(255, 215, 0, 0.28), transparent 28%),
+        radial-gradient(circle at 92% 0%, rgba(28, 167, 231, 0.22), transparent 32%),
+        linear-gradient(180deg, #f3fbff 0%, #fffdf6 100%);
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 56px; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--blue-deep);
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .brand img { width: 42px; height: 42px; }
+    .hero {
+      background: linear-gradient(135deg, var(--blue), var(--blue-soft));
+      color: #fff;
+      text-align: center;
+      border-radius: 24px;
+      padding: 28px 22px;
+      box-shadow: 0 8px 24px rgba(28, 167, 231, 0.3);
+      border: 3px solid rgba(255, 215, 0, 0.85);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 4vw, 2.4rem); color: #fff; }
+    .hero p { margin: 0; font-size: 1.05rem; }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px 22px;
+      margin-top: 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+    label { display: block; font-weight: 800; margin: 14px 0 6px; }
+    input, select {
+      width: 100%;
+      min-height: 48px;
+      border: 3px solid #e8f4fd;
+      border-radius: 16px;
+      padding: 10px 14px;
+      font: inherit;
+      color: var(--ink);
+      background: #f8fbff;
+    }
+    .yesno { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+    button { font: inherit; cursor: pointer; }
+    .choice, .primary, .ghost {
+      min-height: 48px;
+      border-radius: 16px;
+      font-weight: 800;
+    }
+    .choice {
+      border: 3px solid #e8f4fd;
+      background: linear-gradient(135deg, #f0f8ff, #fffbf0);
+      color: var(--ink);
+      padding: 14px;
+    }
+    .choice.is-selected, .choice:hover {
+      border-color: var(--gold);
+      background: linear-gradient(135deg, var(--blue), var(--blue-soft));
+      color: #fff;
+    }
+    .primary {
+      display: block;
+      width: min(100%, 320px);
+      margin: 22px auto 0;
+      border: 3px solid var(--gold);
+      background: linear-gradient(135deg, var(--blue), var(--blue-soft));
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 999px;
+      box-shadow: 0 6px 20px rgba(28, 167, 231, 0.35);
+      font-size: 1.15rem;
+    }
+    .primary:hover { transform: translateY(-2px); }
+    .q-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .pill {
+      background: linear-gradient(135deg, var(--blue), var(--blue-soft));
+      color: #fff;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .bar { flex: 1; height: 12px; background: #e8f4fd; border-radius: 999px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--blue-soft), var(--gold)); }
+    .skill {
+      display: inline-block;
+      background: var(--mint);
+      color: #0b5a22;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    #prompt { font-size: 1.35rem; font-weight: 800; line-height: 1.4; margin: 0 0 8px; }
+    .hint { color: #4a6575; margin: 0 0 8px; }
+    .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .choices.ratings { grid-template-columns: 1fr; }
+    .pic {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 148px;
+      text-align: center;
+    }
+    .pic img { width: 96px; height: 96px; object-fit: contain; }
+    .actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; }
+    .ghost {
+      background: #fff;
+      color: var(--blue-deep);
+      border: 3px solid rgba(0, 143, 196, 0.35);
+      padding: 10px 16px;
+    }
+    .ghost:disabled { opacity: 0.45; cursor: not-allowed; }
+    .band {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(135deg, #f0f8ff, #fffbf0);
+      border: 3px solid #e8f4fd;
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-weight: 800;
+    }
+    .marks { letter-spacing: 3px; color: var(--blue-deep); }
+    .result-level {
+      text-align: center;
+      background: #e8f7fc;
+      color: var(--blue-deep);
+      border-radius: 16px;
+      padding: 14px;
+      margin: 16px 0;
+      font-weight: 800;
+    }
+    button:focus, input:focus, select:focus { outline: 3px solid var(--gold); outline-offset: 2px; }
     [hidden] { display: none !important; }
+    @media (max-width: 768px) {
+      .choices, .yesno { grid-template-columns: 1fr; }
+      .q-top { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <p><a href="/">RemoEdPH</a></p>
-    <h1>Free skill check</h1>
-    <p class="hint">About 4 minutes. Listening, speaking, pronunciation, and reading. We show bands, not a score.</p>
+  <main class="wrap">
+    <a class="brand" href="/"><img src="/images/remoed-favicon.png" alt="" /> RemoEdPH</a>
+    <header class="hero">
+      <h1>Free skill check</h1>
+      <p>About 4 minutes. Listening, speaking, pronunciation, and reading. We show bands, not a score.</p>
+    </header>
 
     <section id="start-step" class="card">
       <label for="age-band">Child's age</label>
@@ -42,37 +189,43 @@
       </select>
       <label for="child-first">Child's first name</label>
       <input id="child-first" autocomplete="given-name" maxlength="40" />
-      <p id="reading-q" style="font-weight:700;">Do you want more reading time in class?</p>
-      <div class="row" role="group" aria-labelledby="reading-q">
+      <p id="reading-q"><strong>Do you want more reading time in class?</strong></p>
+      <div class="yesno" role="group" aria-labelledby="reading-q">
         <button type="button" class="choice" id="reading-yes">Yes</button>
         <button type="button" class="choice" id="reading-no">No</button>
       </div>
-      <div class="row"><button type="button" class="primary" id="start-btn">Start</button></div>
+      <button type="button" class="primary" id="start-btn">Let's start</button>
     </section>
 
     <section id="question-step" class="card" hidden>
-      <p class="progress" id="progress">Question 1 of 12</p>
+      <div class="q-top">
+        <span class="pill" id="progress">Question 1 of 12</span>
+        <div class="bar" aria-hidden="true"><span id="progress-fill"></span></div>
+      </div>
+      <p class="skill" id="skill-name"></p>
       <p id="prompt"></p>
       <p class="hint" id="hint" hidden>Please do not give hints.</p>
-      <div id="choices"></div>
-      <div class="row">
-        <button type="button" id="play-again">Play again</button>
-        <button type="button" id="skip-btn">Skip</button>
+      <div id="choices" class="choices"></div>
+      <div class="actions">
+        <button type="button" class="ghost" id="play-again">Play again</button>
+        <button type="button" class="ghost" id="skip-btn">Skip</button>
       </div>
     </section>
 
     <section id="result-step" class="card" hidden>
       <h2 id="headline"></h2>
       <div id="bands"></div>
-      <p id="level-line"></p>
-      <p id="focus-line"></p>
+      <div class="result-level">
+        <p id="level-line"></p>
+        <p id="focus-line"></p>
+      </div>
       <p class="hint" id="disclaimer"></p>
       <form id="book-form">
         <label for="parent-email">Parent email</label>
         <input id="parent-email" type="email" required autocomplete="email" />
         <label for="contact-number">Contact number</label>
         <input id="contact-number" type="tel" autocomplete="tel" />
-        <div class="row"><button type="submit" class="primary" id="book-btn">Book the free lesson</button></div>
+        <button type="submit" class="primary" id="book-btn">Book the free lesson</button>
       </form>
       <p id="book-status" role="status"></p>
     </section>
@@ -104,9 +257,14 @@
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
       }
-
-      document.getElementById('reading-yes').addEventListener('click', function () { wantsMoreReading = true; });
-      document.getElementById('reading-no').addEventListener('click', function () { wantsMoreReading = false; });
+      function pickReading(yes) {
+        wantsMoreReading = yes;
+        document.getElementById('reading-yes').classList.toggle('is-selected', yes);
+        document.getElementById('reading-no').classList.toggle('is-selected', !yes);
+      }
+      document.getElementById('reading-yes').addEventListener('click', function () { pickReading(true); });
+      document.getElementById('reading-no').addEventListener('click', function () { pickReading(false); });
+      pickReading(false);
 
       document.getElementById('start-btn').addEventListener('click', async function () {
         if (!firstName()) {
@@ -131,6 +289,9 @@
       function renderQuestion() {
         var q = questions[index];
         document.getElementById('progress').textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
+        document.getElementById('progress-fill').style.width = Math.round(((index + 1) / questions.length) * 100) + '%';
+        var skill = String(q.skill || '');
+        document.getElementById('skill-name').textContent = skill ? skill.charAt(0).toUpperCase() + skill.slice(1) : '';
         document.getElementById('prompt').textContent = q.prompt || '';
         document.getElementById('hint').hidden = q.kind !== 'rating';
         var play = document.getElementById('play-again');
@@ -143,6 +304,7 @@
         };
         var box = document.getElementById('choices');
         box.innerHTML = '';
+        box.className = q.kind === 'rating' ? 'choices ratings' : 'choices';
         if (q.kind === 'rating') {
           [['clear', 'Clear'], ['needed_help', 'Needed help'], ['not_yet', 'Not yet']].forEach(function (pair) {
             var btn = document.createElement('button');
@@ -156,9 +318,9 @@
           (q.options || []).forEach(function (label, i) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'choice';
-            var img = q.imageUrls && q.imageUrls[i] ? '<img alt="" src="' + esc(q.imageUrls[i]) + '">' : '';
-            btn.innerHTML = img + '<span>' + esc(label) + '</span>';
+            btn.className = 'choice pic';
+            var src = q.imageUrls && q.imageUrls[i] ? q.imageUrls[i] : '';
+            btn.innerHTML = (src ? '<img alt="" src="' + esc(src) + '">' : '') + '<span>' + esc(label) + '</span>';
             btn.addEventListener('click', function () { choose({ choiceIndex: i }); });
             box.appendChild(btn);
           });
@@ -210,7 +372,8 @@
           var filled = '';
           for (var i = 1; i <= 3; i += 1) filled += i <= marks ? '●' : '○';
           var row = document.createElement('p');
-          row.innerHTML = '<span class="marks" aria-hidden="true">' + filled + '</span> ' + esc(name.charAt(0).toUpperCase() + name.slice(1)) + ': ' + esc(label);
+          row.className = 'band';
+          row.innerHTML = '<span>' + esc(name.charAt(0).toUpperCase() + name.slice(1)) + '</span><span><span class="marks" aria-hidden="true">' + filled + '</span> ' + esc(label) + '</span>';
           bandBox.appendChild(row);
         });
         document.getElementById('level-line').textContent = 'Suggested level: ' + (profile.suggestedLevel || '');

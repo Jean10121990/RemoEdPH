@@ -4,17 +4,17 @@
     "skill": "listening",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture you hear.",
+    "prompt": "Listen. Tap the cat.",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/cat.png",
+      "/images/play-learn/dog.png",
+      "/images/play-learn/fish.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Cat",
+      "Dog",
+      "Fish"
     ],
     "correctIndex": 0,
     "order": 1
@@ -24,19 +24,19 @@
     "skill": "listening",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture you hear.",
+    "prompt": "Listen. Tap the apple.",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/banana.png",
+      "/images/play-learn/apple.png",
+      "/images/play-learn/carrot.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Banana",
+      "Apple",
+      "Carrot"
     ],
-    "correctIndex": 0,
+    "correctIndex": 1,
     "order": 2
   },
   {
@@ -44,19 +44,19 @@
     "skill": "listening",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture you hear.",
+    "prompt": "Listen. Tap the ball.",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/hat.png",
+      "/images/play-learn/car.png",
+      "/images/play-learn/ball.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Hat",
+      "Car",
+      "Ball"
     ],
-    "correctIndex": 0,
+    "correctIndex": 2,
     "order": 3
   },
   {
@@ -64,7 +64,7 @@
     "skill": "speaking",
     "ageBand": "3-4",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Ask your child to say the word. How did it go?",
+    "prompt": "Ask your child to say \"hello.\" How did it go?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -80,7 +80,7 @@
     "skill": "speaking",
     "ageBand": "3-4",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Ask your child to say the word. How did it go?",
+    "prompt": "Ask your child to say \"cat.\" How did it go?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -96,7 +96,7 @@
     "skill": "speaking",
     "ageBand": "3-4",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Ask your child to say the word. How did it go?",
+    "prompt": "Ask your child to say \"ball.\" How did it go?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -112,7 +112,7 @@
     "skill": "pronunciation",
     "ageBand": "3-4",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Listen to the sound and ask your child to repeat it. How did it go?",
+    "prompt": "Ask your child to say \"sun.\" How did it sound?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -128,7 +128,7 @@
     "skill": "pronunciation",
     "ageBand": "3-4",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Listen to the sound and ask your child to repeat it. How did it go?",
+    "prompt": "Ask your child to say \"mama.\" How did it sound?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -144,7 +144,7 @@
     "skill": "pronunciation",
     "ageBand": "3-4",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Listen to the sound and ask your child to repeat it. How did it go?",
+    "prompt": "Ask your child to say \"fish.\" How did it sound?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -160,17 +160,17 @@
     "skill": "reading",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture that matches the word.",
+    "prompt": "Tap the picture for this word: dog",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/dog.png",
+      "/images/play-learn/cat.png",
+      "/images/play-learn/duck.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Dog",
+      "Cat",
+      "Duck"
     ],
     "correctIndex": 0,
     "order": 10
@@ -180,19 +180,19 @@
     "skill": "reading",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture that matches the word.",
+    "prompt": "Tap the picture for this word: hat",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/shoe.png",
+      "/images/play-learn/hat.png",
+      "/images/play-learn/shirt.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Shoe",
+      "Hat",
+      "Shirt"
     ],
-    "correctIndex": 0,
+    "correctIndex": 1,
     "order": 11
   },
   {
@@ -200,19 +200,19 @@
     "skill": "reading",
     "ageBand": "3-4",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture that matches the word.",
+    "prompt": "Tap the picture for this word: banana",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/apple.png",
+      "/images/play-learn/carrot.png",
+      "/images/play-learn/banana.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Apple",
+      "Carrot",
+      "Banana"
     ],
-    "correctIndex": 0,
+    "correctIndex": 2,
     "order": 12
   },
   {
@@ -220,19 +220,19 @@
     "skill": "listening",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture you hear.",
+    "prompt": "Listen. Tap the animal that says meow.",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/dog.png",
+      "/images/play-learn/cat.png",
+      "/images/play-learn/duck.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Dog",
+      "Cat",
+      "Duck"
     ],
-    "correctIndex": 0,
+    "correctIndex": 1,
     "order": 13
   },
   {
@@ -240,19 +240,19 @@
     "skill": "listening",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture you hear.",
+    "prompt": "Listen. Tap the yellow fruit.",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/apple.png",
+      "/images/play-learn/orange.png",
+      "/images/play-learn/banana.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Apple",
+      "Orange",
+      "Banana"
     ],
-    "correctIndex": 0,
+    "correctIndex": 2,
     "order": 14
   },
   {
@@ -260,19 +260,19 @@
     "skill": "listening",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture you hear.",
+    "prompt": "Listen. Tap what you wear on your head.",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/socks.png",
+      "/images/play-learn/shoe.png",
+      "/images/play-learn/hat.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Socks",
+      "Shoe",
+      "Hat"
     ],
-    "correctIndex": 0,
+    "correctIndex": 2,
     "order": 15
   },
   {
@@ -280,7 +280,7 @@
     "skill": "speaking",
     "ageBand": "5-6",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Ask your child to say the word. How did it go?",
+    "prompt": "Ask your child to say \"I see a cat.\" How did it go?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -296,7 +296,7 @@
     "skill": "speaking",
     "ageBand": "5-6",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Ask your child to say the word. How did it go?",
+    "prompt": "Ask your child to say \"The ball is red.\" How did it go?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -312,7 +312,7 @@
     "skill": "speaking",
     "ageBand": "5-6",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Ask your child to say the word. How did it go?",
+    "prompt": "Ask your child to say \"Good morning.\" How did it go?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -328,7 +328,7 @@
     "skill": "pronunciation",
     "ageBand": "5-6",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Listen to the sound and ask your child to repeat it. How did it go?",
+    "prompt": "Ask your child to say \"yellow.\" How did it sound?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -344,7 +344,7 @@
     "skill": "pronunciation",
     "ageBand": "5-6",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Listen to the sound and ask your child to repeat it. How did it go?",
+    "prompt": "Ask your child to say \"teacher.\" How did it sound?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -360,7 +360,7 @@
     "skill": "pronunciation",
     "ageBand": "5-6",
     "kind": "rating",
-    "prompt": "[PLACEHOLDER] Listen to the sound and ask your child to repeat it. How did it go?",
+    "prompt": "Ask your child to say \"banana.\" How did it sound?",
     "audioUrl": "",
     "imageUrls": [],
     "options": [
@@ -376,19 +376,19 @@
     "skill": "reading",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture that matches the word.",
+    "prompt": "Tap the picture for this word: fish",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/duck.png",
+      "/images/play-learn/fish.png",
+      "/images/play-learn/dog.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Duck",
+      "Fish",
+      "Dog"
     ],
-    "correctIndex": 0,
+    "correctIndex": 1,
     "order": 22
   },
   {
@@ -396,17 +396,17 @@
     "skill": "reading",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture that matches the word.",
+    "prompt": "Tap the picture for this word: shoe",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/shoe.png",
+      "/images/play-learn/hat.png",
+      "/images/play-learn/socks.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Shoe",
+      "Hat",
+      "Socks"
     ],
     "correctIndex": 0,
     "order": 23
@@ -416,19 +416,19 @@
     "skill": "reading",
     "ageBand": "5-6",
     "kind": "picture",
-    "prompt": "[PLACEHOLDER] Tap the picture that matches the word.",
+    "prompt": "Tap the picture for this word: car",
     "audioUrl": "",
     "imageUrls": [
-      "",
-      "",
-      ""
+      "/images/play-learn/ball.png",
+      "/images/play-learn/car.png",
+      "/images/play-learn/kite.png"
     ],
     "options": [
-      "[PLACEHOLDER] Picture 1",
-      "[PLACEHOLDER] Picture 2",
-      "[PLACEHOLDER] Picture 3"
+      "Ball",
+      "Car",
+      "Kite"
     ],
-    "correctIndex": 0,
+    "correctIndex": 1,
     "order": 24
   }
 ]
