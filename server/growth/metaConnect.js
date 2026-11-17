@@ -29,9 +29,9 @@ function connectUrl(adminId) {
       'pages_manage_posts',
       'pages_read_engagement',
       'pages_messaging',
-      'instagram_business_basic',
-      'instagram_business_content_publish',
+      'pages_manage_metadata',
       'business_management',
+      'leads_retrieval',
     ].join(',')
   );
   return url.toString();
