@@ -1,7 +1,10 @@
 'use strict';
 
 const Lead = require('../models/Lead');
+const Conversation = require('../models/Conversation');
+const Message = require('../models/Message');
 const { accountFor, graph } = require('./metaConnect');
+const { upsertLead } = require('./leadService');
 
 function clip(value, max) {
   return String(value == null ? '' : value).replace(/<[^>]*>/g, '').trim().slice(0, max);
@@ -108,7 +111,136 @@ function readableFacebookError(err) {
     next.code = 'NOT_CONNECTED';
     return next;
   }
+  if (/pages_messaging|pages_read_engagement|conversation/i.test(message)) {
+    const next = new Error('Facebook needs permission to read Page messages. Open Posts, click Reconnect, allow messaging, then open Messages again.');
+    next.code = 'NOT_CONNECTED';
+    return next;
+  }
   return err;
+}
+
+async function ensureMessengerThread(psid, name, when) {
+  const id = clip(psid, 80);
+  if (!id) return null;
+  let convo = await Conversation.findOne({ channel: 'messenger', externalThreadId: id });
+  const label = clip(name, 200);
+  if (!convo) {
+    const lead = await upsertLead({
+      name: label || ('Messenger ' + id.slice(-6)),
+      source: 'messenger',
+      stage: 'Inquiry',
+      phone: id,
+    });
+    convo = await Conversation.create({
+      channel: 'messenger',
+      externalThreadId: id,
+      leadId: lead && lead._id,
+      status: 'open',
+      lastMessageAt: when || new Date(),
+    });
+    return convo;
+  }
+  if (label && convo.leadId) {
+    await Lead.updateOne(
+      { _id: convo.leadId, name: { $regex: /^Messenger / } },
+      { $set: { name: label } }
+    );
+  }
+  return convo;
+}
+
+async function saveThreadMessage(convo, row, pageId) {
+  const externalId = clip(row && row.id, 200);
+  const text = clip((row && (row.message || row.snippet)) || '', 2000);
+  if (!text) return;
+  if (externalId) {
+    const dup = await Message.findOne({ conversationId: convo._id, externalId }).select('_id').lean();
+    if (dup) return;
+  }
+  const fromId = row && row.from && row.from.id ? String(row.from.id) : '';
+  const outbound = !!(fromId && pageId && fromId === String(pageId));
+  const created = row && row.created_time ? new Date(row.created_time) : new Date();
+  await Message.create({
+    conversationId: convo._id,
+    direction: outbound ? 'out' : 'in',
+    text,
+    sender: outbound ? 'human' : 'contact',
+    externalId,
+    createdAt: Number.isNaN(created.getTime()) ? new Date() : created,
+  });
+}
+
+async function syncMessengerThreads() {
+  const account = await pageAccount();
+  let threads;
+  try {
+    threads = await listAll(
+      '/' + account.externalId + '/conversations?platform=MESSENGER&fields=id,updated_time,snippet,participants',
+      account.token
+    );
+  } catch (err) {
+    throw readableFacebookError(err);
+  }
+  let synced = 0;
+  for (const thread of threads) {
+    if (!thread || !thread.id || synced >= 40) break;
+    const people = (thread.participants && thread.participants.data) || [];
+    const person = people.find((row) => row && String(row.id) !== String(account.externalId));
+    if (!person || !person.id) continue;
+    const when = thread.updated_time ? new Date(thread.updated_time) : new Date();
+    const convo = await ensureMessengerThread(person.id, person.name, when);
+    if (!convo) continue;
+    let messages = [];
+    try {
+      const detail = await graph(
+        '/' + thread.id + '?fields=messages.limit(25){id,message,from,created_time}',
+        account.token
+      );
+      messages = (detail.messages && detail.messages.data) || [];
+    } catch (_err) {
+      messages = [];
+    }
+    for (const row of messages) {
+      await saveThreadMessage(convo, row, account.externalId);
+    }
+    if (!messages.length && thread.snippet) {
+      const existing = await Message.findOne({ conversationId: convo._id }).select('_id').lean();
+      if (!existing) {
+        await saveThreadMessage(convo, {
+          message: thread.snippet,
+          from: { id: person.id },
+          created_time: thread.updated_time,
+        }, account.externalId);
+      }
+    }
+    if (when && !Number.isNaN(when.getTime()) && (!convo.lastMessageAt || when > convo.lastMessageAt)) {
+      convo.lastMessageAt = when;
+      await convo.save();
+    }
+    synced += 1;
+  }
+  return { synced };
+}
+
+async function listMessengerThreads() {
+  const rows = await Conversation.find({ channel: 'messenger' })
+    .sort({ lastMessageAt: -1 })
+    .limit(100)
+    .select('channel status lastMessageAt leadId externalThreadId')
+    .lean();
+  const leadIds = rows.map((row) => row.leadId).filter(Boolean);
+  const leads = leadIds.length
+    ? await Lead.find({ _id: { $in: leadIds } }).select('name').lean()
+    : [];
+  const names = {};
+  leads.forEach((lead) => { names[String(lead._id)] = lead.name || ''; });
+  return rows.map((row) => ({
+    _id: row._id,
+    channel: row.channel,
+    status: row.status,
+    lastMessageAt: row.lastMessageAt,
+    name: names[String(row.leadId)] || 'Facebook',
+  }));
 }
 
 async function syncFacebookLeads() {
@@ -180,4 +312,6 @@ module.exports = {
   syncFacebookLeads,
   ingestLeadgen,
   sendPageMessage,
+  syncMessengerThreads,
+  listMessengerThreads,
 };

@@ -9,7 +9,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const { accountFor } = require('./metaConnect');
 const { publishFacebook } = require('./publishPost');
-const { syncFacebookLeads, sendPageMessage } = require('./facebookPage');
+const { syncFacebookLeads, sendPageMessage, syncMessengerThreads, listMessengerThreads } = require('./facebookPage');
 
 const router = express.Router();
 
@@ -79,6 +79,17 @@ router.post('/publish-fb', requireGrowth('growth.posts'), async (req, res) => {
     await post.save().catch(() => {});
     console.error('publish facebook:', err && err.message ? err.message : err);
     res.status(502).json({ success: false, error: err.message || 'Facebook did not publish the post.' });
+  }
+});
+
+router.get('/messenger', requireGrowth('growth.inbox'), async (_req, res) => {
+  try {
+    const result = await syncMessengerThreads();
+    const conversations = await listMessengerThreads();
+    res.json({ success: true, synced: result.synced, conversations });
+  } catch (err) {
+    console.error('messenger sync:', err && err.message ? err.message : err);
+    graphError(res, err, 'Could not sync Facebook messages.');
   }
 });
 

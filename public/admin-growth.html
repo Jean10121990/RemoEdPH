@@ -157,14 +157,30 @@
       return date.toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
     }
     async function loadInbox() {
-      var data = await api('/api/admin/growth/inbox');
-      var rows = (data.conversations || []).filter(function (c) { return c.channel === 'messenger'; });
+      var note = 'Loading Facebook conversations…';
+      var rows = [];
+      try {
+        var synced = await api('/api/marketing/messenger');
+        rows = synced.conversations || [];
+        note = 'Synced ' + (synced.synced || 0) + ' Facebook conversation' + ((synced.synced === 1) ? '' : 's') + '. Page replies, including automatic replies, stay in the thread.';
+      } catch (err) {
+        note = err.message || String(err);
+        try {
+          var data = await api('/api/admin/growth/inbox');
+          rows = (data.conversations || []).filter(function (c) { return c.channel === 'messenger'; });
+        } catch (err2) {
+          fail(err2);
+          return;
+        }
+      }
       document.getElementById('app').innerHTML =
         '<h1>Messages</h1><p class="muted">Facebook Page conversations. A reply is sent to that person and saved in this thread.</p>' +
+        '<p id="fb-msg" class="muted">' + esc(note) + '</p><button type="button" id="fb-sync">Sync Facebook messages</button>' +
         '<div class="split"><div id="inbox-list">' + (rows.length ? rows.map(function (c) {
-          return '<button type="button" class="ghost" style="display:block;width:100%;text-align:left;margin-bottom:8px;" data-open="' + esc(c._id) + '"><strong>Messenger</strong> · ' + esc(c.status) + '<br><span class="muted">' + esc(when(c.lastMessageAt)) + '</span></button>';
-        }).join('') : '<p class="muted">No Page messages yet. They show up when someone messages the RemoEd Facebook Page.</p>') +
+          return '<button type="button" class="ghost" style="display:block;width:100%;text-align:left;margin-bottom:8px;" data-open="' + esc(c._id) + '"><strong>' + esc(c.name || 'Facebook') + '</strong> · ' + esc(c.status) + '<br><span class="muted">' + esc(when(c.lastMessageAt)) + '</span></button>';
+        }).join('') : '<p class="muted">No Page messages yet.</p>') +
         '</div><div><div class="thread" id="thread"><p class="muted">Choose a conversation.</p></div><textarea id="reply" rows="3" placeholder="Write a reply"></textarea><button type="button" id="send-reply" disabled>Send reply</button><p id="reply-msg" class="muted"></p></div></div>';
+      document.getElementById('fb-sync').addEventListener('click', function () { loadInbox().catch(fail); });
       var current = '';
       async function openThread(id) {
         current = id;

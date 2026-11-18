@@ -33,25 +33,34 @@ function verifyMeta(req, res) {
 }
 
 async function storeMessengerEvent(event) {
-  if (!event || (event.message && event.message.is_echo)) return;
-  const from = event.sender && event.sender.id;
-  if (!from) return;
+  if (!event) return;
+  const echo = !!(event.message && event.message.is_echo);
+  const psid = echo
+    ? (event.recipient && event.recipient.id)
+    : (event.sender && event.sender.id);
+  if (!psid) return;
   let text = '';
   let externalId = '';
-  if (event.message && event.message.text) {
-    text = event.message.text;
+  if (event.message) {
+    text = event.message.text || '';
     externalId = event.message.mid || '';
+    if (!String(text).trim() && event.message.attachments) text = 'Attachment';
   } else if (event.postback) {
     text = event.postback.title || event.postback.payload || '';
   }
   text = String(text || '').trim().slice(0, 2000);
   if (!text) return;
-  let convo = await Conversation.findOne({ channel: 'messenger', externalThreadId: from });
+  let convo = await Conversation.findOne({ channel: 'messenger', externalThreadId: String(psid) });
   if (!convo) {
-    const lead = await upsertLead({ name: 'Messenger ' + from, source: 'messenger', stage: 'Inquiry', phone: from });
+    const lead = await upsertLead({
+      name: 'Messenger ' + String(psid).slice(-6),
+      source: 'messenger',
+      stage: 'Inquiry',
+      phone: String(psid),
+    });
     convo = await Conversation.create({
       channel: 'messenger',
-      externalThreadId: from,
+      externalThreadId: String(psid),
       leadId: lead && lead._id,
       status: 'open',
     });
@@ -62,9 +71,9 @@ async function storeMessengerEvent(event) {
   }
   await Message.create({
     conversationId: convo._id,
-    direction: 'in',
+    direction: echo ? 'out' : 'in',
     text,
-    sender: 'contact',
+    sender: echo ? 'human' : 'contact',
     externalId: String(externalId).slice(0, 200),
   });
   convo.status = 'open';
