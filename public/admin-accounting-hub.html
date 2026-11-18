@@ -33,6 +33,7 @@
                     <button type="button" class="hub-tab" role="tab" id="acct-tab-admin-payroll" aria-selected="false" aria-controls="acct-panel-admin-payroll">Admin Payroll</button>
                     <button type="button" class="hub-tab" role="tab" id="acct-tab-affiliate-payroll" aria-selected="false" aria-controls="acct-panel-affiliate-payroll">Affiliate Payroll</button>
                     <button type="button" class="hub-tab" role="tab" id="acct-tab-subscriptions" aria-selected="false" aria-controls="acct-panel-subscriptions">Student Subscriptions</button>
+                    <button type="button" class="hub-tab" role="tab" id="acct-tab-money-split" aria-selected="false" aria-controls="acct-panel-money-split">Money split</button>
                 </div>
 
                 <div id="acct-panel-payroll" class="hub-panel" role="tabpanel" aria-labelledby="acct-tab-payroll">
@@ -47,6 +48,9 @@
                 <div id="acct-panel-subscriptions" class="hub-panel" role="tabpanel" aria-labelledby="acct-tab-subscriptions" hidden>
                     <iframe id="iframe-acct-subscriptions" class="hub-iframe" title="Student Subscriptions"></iframe>
                 </div>
+                <div id="acct-panel-money-split" class="hub-panel" role="tabpanel" aria-labelledby="acct-tab-money-split" hidden>
+                    <iframe id="iframe-acct-money-split" class="hub-iframe" title="Money split"></iframe>
+                </div>
             </div>
         </div>
     </div>
@@ -56,7 +60,8 @@
                 payroll: { id: 'iframe-acct-payroll', src: '/admin/admin-payroll.html?adminEmbed=1&embedVer=3' },
                 'admin-payroll': { id: 'iframe-acct-admin-payroll', src: '/admin/admin-admin-payroll.html?adminEmbed=1&embedVer=6' },
                 'affiliate-payroll': { id: 'iframe-acct-affiliate-payroll', src: '/admin/admin-affiliate-payroll.html?adminEmbed=1&embedVer=1' },
-                subscriptions: { id: 'iframe-acct-subscriptions', src: '/admin/admin-student-subscriptions.html?adminEmbed=1&embedVer=1' }
+                subscriptions: { id: 'iframe-acct-subscriptions', src: '/admin/admin-student-subscriptions.html?adminEmbed=1&embedVer=1' },
+                'money-split': { id: 'iframe-acct-money-split', src: '/admin/admin-money-split.html?adminEmbed=1&embedVer=1' }
             };
 
             function checkAuth() {
@@ -92,6 +97,7 @@
                     if (tab === 'subscriptions') h = '#subscriptions';
                     else if (tab === 'admin-payroll') h = '#admin-payroll';
                     else if (tab === 'affiliate-payroll') h = '#affiliate-payroll';
+                    else if (tab === 'money-split') h = '#money-split';
                     if (window.location.hash !== h) {
                         history.replaceState(null, '', 'admin-accounting-hub.html' + h);
                     }
@@ -111,7 +117,8 @@
                     { key: 'payroll', t: 'acct-tab-payroll', p: 'acct-panel-payroll' },
                     { key: 'admin-payroll', t: 'acct-tab-admin-payroll', p: 'acct-panel-admin-payroll' },
                     { key: 'affiliate-payroll', t: 'acct-tab-affiliate-payroll', p: 'acct-panel-affiliate-payroll' },
-                    { key: 'subscriptions', t: 'acct-tab-subscriptions', p: 'acct-panel-subscriptions' }
+                    { key: 'subscriptions', t: 'acct-tab-subscriptions', p: 'acct-panel-subscriptions' },
+                    { key: 'money-split', t: 'acct-tab-money-split', p: 'acct-panel-money-split' }
                 ];
                 map.forEach(function (row) {
                     var on = row.key === tab;
@@ -137,12 +144,14 @@
                 bindTab('acct-tab-admin-payroll', 'admin-payroll');
                 bindTab('acct-tab-affiliate-payroll', 'affiliate-payroll');
                 bindTab('acct-tab-subscriptions', 'subscriptions');
+                bindTab('acct-tab-money-split', 'money-split');
                 function applyHash() {
                     var h = window.location.hash;
                     if (h === '#commissions') showTab('commissions');
                     else if (h === '#subscriptions') showTab('subscriptions');
                     else if (h === '#admin-payroll') showTab('admin-payroll');
                     else if (h === '#affiliate-payroll') showTab('affiliate-payroll');
+                    else if (h === '#money-split') showTab('money-split');
                     else showTab('payroll');
                 }
                 applyHash();

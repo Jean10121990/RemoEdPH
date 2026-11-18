@@ -26,14 +26,14 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Marketing Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Unique link commissions, referral leaderboard, and Independent Growth Affiliates.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Marketing copy, unique link commissions, the referral leaderboard, and Independent Growth Affiliates.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="Marketing Hub sections">
-                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="mkt-tab-commissions" aria-selected="true" aria-controls="mkt-panel-commissions" data-tab="commissions">Unique Link Commissions</button>
+                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="mkt-tab-specialist" aria-selected="true" aria-controls="mkt-panel-specialist" data-tab="specialist">RemoEdPH AI Marketing Specialist</button>
+                    <button type="button" class="hub-tab" role="tab" id="mkt-tab-commissions" aria-selected="false" aria-controls="mkt-panel-commissions" data-tab="commissions">Unique Link Commissions</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-leaderboard" aria-selected="false" aria-controls="mkt-panel-leaderboard" data-tab="leaderboard">Referral Leaderboard</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-affiliates" aria-selected="false" aria-controls="mkt-panel-affiliates" data-tab="affiliates">Affiliates</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-leads" data-tab="leads">Leads</button>
-                    <button type="button" class="hub-tab" role="tab" id="mkt-tab-facebook-leads" data-tab="facebook-leads">Facebook Leads</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-posts" data-tab="posts">Posts</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-messages" data-tab="messages">Messages</button>
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-reports" data-tab="reports">Reports</button>
@@ -41,7 +41,10 @@
                     <button type="button" class="hub-tab" role="tab" id="mkt-tab-faq" data-tab="faq">FAQ</button>
                 </div>
 
-                <div id="mkt-panel-commissions" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-commissions">
+                <div id="mkt-panel-specialist" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-specialist">
+                    <iframe id="iframe-mkt-specialist" class="hub-iframe" title="RemoEdPH AI Marketing Specialist"></iframe>
+                </div>
+                <div id="mkt-panel-commissions" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-commissions" hidden>
                     <iframe id="iframe-mkt-commissions" class="hub-iframe" title="Unique Link Commissions"></iframe>
                 </div>
                 <div id="mkt-panel-leaderboard" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-leaderboard" hidden>
@@ -51,7 +54,6 @@
                     <iframe id="iframe-mkt-affiliates" class="hub-iframe" title="Affiliates"></iframe>
                 </div>
                 <div id="mkt-panel-leads" class="hub-panel" hidden><iframe id="iframe-mkt-leads" class="hub-iframe" title="Leads"></iframe></div>
-                <div id="mkt-panel-facebook-leads" class="hub-panel" hidden><iframe id="iframe-mkt-facebook-leads" class="hub-iframe" title="Facebook Leads"></iframe></div>
                 <div id="mkt-panel-posts" class="hub-panel" hidden><iframe id="iframe-mkt-posts" class="hub-iframe" title="Posts"></iframe></div>
                 <div id="mkt-panel-messages" class="hub-panel" hidden><iframe id="iframe-mkt-messages" class="hub-iframe" title="Messages"></iframe></div>
                 <div id="mkt-panel-reports" class="hub-panel" hidden><iframe id="iframe-mkt-reports" class="hub-iframe" title="Reports"></iframe></div>
@@ -63,14 +65,14 @@
     <script>
         (function () {
             var IFRAMES = {
+                specialist: { id: 'iframe-mkt-specialist', src: '/admin/admin-growth.html?tab=specialist&embedVer=1' },
                 commissions: { id: 'iframe-mkt-commissions', src: '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=3' },
                 leaderboard: { id: 'iframe-mkt-leaderboard', src: '/admin/admin-referral-leaderboard.html?adminEmbed=1&embedVer=1' },
                 affiliates: { id: 'iframe-mkt-affiliates', src: '/admin/admin-affiliates.html?adminEmbed=1&embedVer=1' },
-                leads: { id: 'iframe-mkt-leads', src: '/admin/admin-growth.html?tab=leads&embedVer=2' },
-                'facebook-leads': { id: 'iframe-mkt-facebook-leads', src: '/admin/admin-growth.html?tab=facebook-leads&embedVer=6' },
-                posts: { id: 'iframe-mkt-posts', src: '/admin/admin-growth.html?tab=posts&embedVer=6' },
+                leads: { id: 'iframe-mkt-leads', src: '/admin/admin-growth.html?tab=leads&embedVer=8' },
+                posts: { id: 'iframe-mkt-posts', src: '/admin/admin-growth.html?tab=posts&embedVer=7' },
                 messages: { id: 'iframe-mkt-messages', src: '/admin/admin-growth.html?tab=messages&embedVer=6' },
-                reports: { id: 'iframe-mkt-reports', src: '/admin/admin-growth.html?tab=reports&embedVer=4' },
+                reports: { id: 'iframe-mkt-reports', src: '/admin/admin-growth.html?tab=reports&embedVer=5' },
                 homepage: { id: 'iframe-mkt-homepage', src: '/admin/admin-homepage-content.html?adminEmbed=1' },
                 faq: { id: 'iframe-mkt-faq', src: '/admin/admin-faq-content.html?adminEmbed=1' }
             };
@@ -104,10 +106,11 @@
 
             function setHash(tab) {
                 try {
-                    var h = '#commissions';
-                    if (tab === 'leaderboard') h = '#leaderboard';
+                    var h = '#specialist';
+                    if (tab === 'commissions') h = '#commissions';
+                    else if (tab === 'leaderboard') h = '#leaderboard';
                     else if (tab === 'affiliates') h = '#affiliates';
-                    else if (tab && tab !== 'commissions') h = '#' + tab;
+                    else if (tab && tab !== 'specialist') h = '#' + tab;
                     if (window.location.hash !== h) {
                         history.replaceState(null, '', 'admin-marketing-hub.html' + h);
                     }
@@ -115,16 +118,18 @@
             }
 
             function showTab(tab) {
-                var key = 'commissions';
-                if (tab === 'leaderboard') key = 'leaderboard';
+                var key = 'specialist';
+                if (tab === 'commissions') key = 'commissions';
+                else if (tab === 'leaderboard') key = 'leaderboard';
                 else if (tab === 'affiliates') key = 'affiliates';
-                else if (['leads', 'facebook-leads', 'posts', 'messages', 'reports', 'homepage', 'faq'].indexOf(tab) >= 0) key = tab;
+                else if (tab === 'facebook-leads') key = 'leads';
+                else if (['specialist', 'leads', 'posts', 'messages', 'reports', 'homepage', 'faq'].indexOf(tab) >= 0) key = tab;
                 var map = [
+                    { key: 'specialist', t: 'mkt-tab-specialist', p: 'mkt-panel-specialist' },
                     { key: 'commissions', t: 'mkt-tab-commissions', p: 'mkt-panel-commissions' },
                     { key: 'leaderboard', t: 'mkt-tab-leaderboard', p: 'mkt-panel-leaderboard' },
                     { key: 'affiliates', t: 'mkt-tab-affiliates', p: 'mkt-panel-affiliates' },
                     { key: 'leads', t: 'mkt-tab-leads', p: 'mkt-panel-leads' },
-                    { key: 'facebook-leads', t: 'mkt-tab-facebook-leads', p: 'mkt-panel-facebook-leads' },
                     { key: 'posts', t: 'mkt-tab-posts', p: 'mkt-panel-posts' },
                     { key: 'messages', t: 'mkt-tab-messages', p: 'mkt-panel-messages' },
                     { key: 'reports', t: 'mkt-tab-reports', p: 'mkt-panel-reports' },
@@ -147,11 +152,13 @@
 
             function tabFromHash() {
                 var h = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
+                if (h === 'commissions') return 'commissions';
                 if (h === 'leaderboard') return 'leaderboard';
                 if (h === 'affiliates') return 'affiliates';
                 if (h === 'inbox' || h === 'campaigns') return 'commissions';
-                if (['leads', 'facebook-leads', 'posts', 'messages', 'reports', 'homepage', 'faq'].indexOf(h) >= 0) return h;
-                return 'commissions';
+                if (h === 'facebook-leads') return 'leads';
+                if (['specialist', 'leads', 'posts', 'messages', 'reports', 'homepage', 'faq'].indexOf(h) >= 0) return h;
+                return 'specialist';
             }
 
             document.addEventListener('DOMContentLoaded', function () {

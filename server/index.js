@@ -60,10 +60,6 @@ const app = express();
 // Reduce fingerprinting: hide Express signature header.
 app.disable('x-powered-by');
 
-// marketingAI routes
-const marketingAiRoutes = require('./routes/marketingAi');
-app.use(marketingAiRoutes);
-
 // Reverse proxies (nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
 // trust proxy is enabled when that header is present, or it throws ValidationError (see ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
 const trustProxyRaw = process.env.TRUST_PROXY;
@@ -727,8 +723,10 @@ adminApiCombined.use(require('./siteSettingsRoutes'));
 adminApiCombined.use(require('./siteContentRoutes').adminRouter);
 adminApiCombined.use(require('./classroomSosRoutes').adminSosRouter);
 adminApiCombined.use('/level-assessments', require('./routes/levelAssessments'));
+adminApiCombined.use('/money-split', require('./moneySplitRoutes'));
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
+app.use('/api/admin/marketing', noStoreProtectedResponse, require('./routes/marketingAi'));
 app.use('/api/admin/growth', noStoreProtectedResponse, require('./growth/routes'));
 app.use('/api/marketing', noStoreProtectedResponse, require('./growth/marketingRoutes'));
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);

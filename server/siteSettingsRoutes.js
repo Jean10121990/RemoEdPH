@@ -17,13 +17,31 @@ const settings = require('./services/siteSettings');
 
 const router = express.Router();
 
-router.use(
-  verifyAdminApiAuth,
-  requireAdmin,
-  requireAdminTwoFactorSatisfied,
-  requireAdminSessionValid,
-  requirePermission('nav:settings')
-);
+/** This router is mounted on all of /api/admin. Auth only its own paths. */
+function isSiteSettingsPath(p) {
+  const path = String(p || '');
+  return (
+    path === '/site-settings' ||
+    path.startsWith('/site-settings/') ||
+    path === '/email-templates' ||
+    path.startsWith('/email-templates/')
+  );
+}
+
+router.use((req, res, next) => {
+  if (!isSiteSettingsPath(req.path)) {
+    return next('router');
+  }
+  return verifyAdminApiAuth(req, res, () => {
+    requireAdmin(req, res, () => {
+      requireAdminTwoFactorSatisfied(req, res, () => {
+        requireAdminSessionValid(req, res, () => {
+          requirePermission('nav:settings')(req, res, next);
+        });
+      });
+    });
+  });
+});
 
 router.get('/site-settings', async (_req, res) => {
   try {

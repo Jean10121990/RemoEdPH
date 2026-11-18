@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/admin-standalone-redirect.js"></script>
+  <script src="js/admin-embed-init.js"></script>
+  <title>Money split - RemoEdPH Admin</title>
+  <style>
+    :root { --ink:#1a365d; --muted:#64748b; --line:#e2e8f0; --blue:#1ca7e7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Segoe UI, Arial, sans-serif; color: var(--ink); background: #f8fafc; }
+    .page { padding: 16px; }
+    h1 { margin: 0 0 4px; font-size: 1.25rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .err { color: #b91c1c; font-weight: 700; }
+    .chart { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+    .chart h2 { margin: 0 0 10px; font-size: 0.95rem; }
+    .bar-row { display: grid; grid-template-columns: 140px 1fr 72px; gap: 8px; align-items: center; margin: 6px 0; font-size: 0.85rem; }
+    .track { height: 14px; background: #e8f4fd; border-radius: 999px; overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, #1ca7e7, #0f766e); border-radius: 999px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; font-weight: 700; font-size: 0.9rem; margin-top: 8px; }
+    input { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; margin: 4px 0 8px; font: inherit; }
+    button { background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+    @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Monthly money split</h1>
+    <p class="muted">Partners 2%, growth 5%, charity 5%, buffer 5%, operations ₱6,400. Profit is what remains.</p>
+    <section class="chart">
+      <div class="split">
+        <div>
+          <label for="r-gross">Gross collected</label>
+          <input id="r-gross" type="number" min="0" value="0" />
+          <label for="r-teachers">Teacher pay</label>
+          <input id="r-teachers" type="number" min="0" value="0" />
+          <label for="r-affiliates">Affiliate pay</label>
+          <input id="r-affiliates" type="number" min="0" value="0" />
+          <button type="button" id="r-go">Update chart</button>
+          <p id="r-msg" class="muted"></p>
+        </div>
+        <div id="split-chart"></div>
+      </div>
+    </section>
+  </div>
+  <script src="js/admin-session.js"></script>
+  <script>
+    function token() {
+      try {
+        if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) {
+          var t = RemoedAdminSession.getAuthToken();
+          if (t) return t;
+        }
+      } catch (e) {}
+      return localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || '';
+    }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+    function bars(rows) {
+      var max = rows.reduce(function (m, r) { return Math.max(m, Math.abs(r.count)); }, 0);
+      return '<h2>Where gross goes</h2>' + rows.map(function (r) {
+        var pct = max ? Math.round((Math.abs(r.count) / max) * 100) : 0;
+        return '<div class="bar-row"><span>' + esc(r.name) + '</span><div class="track"><div class="fill" style="width:' + (r.count ? Math.max(pct, 4) : 0) + '%"></div></div><strong>' + r.count + '</strong></div>';
+      }).join('');
+    }
+    async function loadSplit() {
+      var msg = document.getElementById('r-msg');
+      var gross = document.getElementById('r-gross').value || '0';
+      var teachers = document.getElementById('r-teachers').value || '0';
+      var affiliates = document.getElementById('r-affiliates').value || '0';
+      msg.textContent = '';
+      msg.className = 'muted';
+      var q = '?gross=' + encodeURIComponent(gross) + '&teachers=' + encodeURIComponent(teachers) + '&affiliates=' + encodeURIComponent(affiliates);
+      var res = await fetch('/api/admin/money-split' + q, { headers: { Authorization: 'Bearer ' + token() } });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok || data.success === false) {
+        msg.textContent = data.error || data.message || 'Could not update the chart.';
+        msg.className = 'err';
+        return;
+      }
+      var split = data.split || {};
+      var rows = ['teachers', 'affiliates', 'partners', 'ops', 'growth', 'charity', 'buffer', 'profit'].map(function (name) {
+        return { name: name, count: Math.round(Number(split[name]) || 0) };
+      });
+      document.getElementById('split-chart').innerHTML = bars(rows);
+    }
+    document.getElementById('r-go').addEventListener('click', function () {
+      loadSplit().catch(function () {
+        var msg = document.getElementById('r-msg');
+        msg.textContent = 'Could not reach the server.';
+        msg.className = 'err';
+      });
+    });
+    loadSplit().catch(function () {});
+  </script>
+</body>
+</html>

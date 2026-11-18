@@ -17,6 +17,7 @@
             'admin-referral-leaderboard.html': 'admin-marketing-hub.html#leaderboard',
             'admin-affiliates.html': 'admin-marketing-hub.html#affiliates',
             'admin-student-subscriptions.html': 'admin-accounting-hub.html#subscriptions',
+            'admin-money-split.html': 'admin-accounting-hub.html#money-split',
             'admin-lessons-library.html': 'admin-qa-hub.html#library',
             'admin-incidents.html': 'admin-qa-hub.html#sos'
         };

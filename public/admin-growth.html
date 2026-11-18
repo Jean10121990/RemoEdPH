@@ -44,126 +44,7 @@
 <body>
   <div class="page" id="app">Loading…</div>
   <script src="js/admin-session.js"></script>
-  <!-- RemoEdPH AI Marketing Specialist Panel -->
-  <div class="card shadow-sm border-0 mb-4">
-    <div class="card-body p-4">
-      <h5 class="fw-bold mb-1">🤖 RemoEdPH AI Marketing Specialist</h5>
-      <p class="text-muted small mb-3">Gemini Powered</p>
-  
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Content Type</label>
-          <select id="aiContentType" class="form-select">
-            <option value="Facebook Group Post">Facebook Group Post</option>
-            <option value="Parent Email Outreach">Parent Email Outreach</option>
-            <option value="Social Media Ad Copy">Social Media Ad Copy</option>
-          </select>
-        </div>
-  
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Target Region / Country</label>
-          <select id="aiTargetMarket" class="form-select">
-            <option value="Taiwan">Taiwan</option>
-            <option value="Japan">Japan</option>
-            <option value="South Korea">South Korea</option>
-            <option value="General International (Asia)">General International (Asia)</option>
-          </select>
-        </div>
-  
-        <div class="col-md-12">
-          <label class="form-label fw-semibold">Key Topic / Highlights to Include</label>
-          <textarea id="aiTopicDetails" class="form-control" rows="3" placeholder="e.g., Highlight our free level assessment, 1-on-1 live lesson with Remo the robot, and friendly teachers."></textarea>
-        </div>
-  
-        <div class="col-md-12 d-flex justify-content-end">
-          <button id="btnGenerateAi" type="button" onclick="generateMarketingCopy()" class="btn btn-primary px-4">
-            ✨ Generate Marketing Copy
-          </button>
-        </div>
-      </div>
-  
-      <hr class="my-4">
-  
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <label class="form-label fw-bold mb-0">Generated Copy Variations</label>
-        <button id="btnCopyText" type="button" onclick="copyAiOutput()" class="btn btn-sm btn-outline-secondary">
-          📋 Copy to Clipboard
-        </button>
-      </div>
-  
-      <textarea id="aiOutputBox" class="form-control p-3 bg-light rounded" rows="8" readonly placeholder="Pumili ng options sa itaas at i-click ang 'Generate Marketing Copy' para makagawa ng custom marketing post o email reply."></textarea>
-    </div>
-  </div>
   <script>
-    // RemoEdPH AI Marketing Specialist Functions
-    async function generateMarketingCopy() {
-  const contentTypeEl = document.getElementById('aiContentType');
-  const targetMarketEl = document.getElementById('aiTargetMarket');
-  const topicDetailsEl = document.getElementById('aiTopicDetails');
-  const outputBox = document.getElementById('aiOutputBox');
-  const btn = document.getElementById('btnGenerateAi');
-
-  const topicDetails = topicDetailsEl ? topicDetailsEl.value : '';
-
-  if (!topicDetails.trim()) {
-    alert('Please enter a key topic or details for the post.');
-    return;
-  }
-
-  if (btn) {
-
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Generating...';
-  }
-  if (outputBox) {
-    outputBox.value = 'Generating marketing copy options... Please wait.';
-  }
-
-  try {
-    const res = await fetch('/api/admin/marketing/ai-generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contentType: contentTypeEl ? contentTypeEl.value : 'Facebook Group Post',
-        targetMarket: targetMarketEl ? targetMarketEl.value : 'Taiwan',
-        topicDetails: topicDetails
-      })
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      if (outputBox) outputBox.value = data.content;
-    } else {
-      if (outputBox) outputBox.value = '❌ Error: ' + (data.message || 'Failed to generate content.');
-    }
-  } catch (err) {
-    if (outputBox) outputBox.value = '❌ Network Error: Could not reach server.';
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '✨ Generate Marketing Copy';
-    }
-  }
-}
-
-function copyAiOutput() {
-  const outputBox = document.getElementById('aiOutputBox');
-  if (!outputBox || !outputBox.value.trim()) return;
-
-  navigator.clipboard.writeText(outputBox.value).then(() => {
-    const btn = document.getElementById('btnCopyText');
-    if (btn) {
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '✅ Copied!';
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-      }, 2000);
-    }
-  });
-}
     var tab = new URLSearchParams(location.search).get('tab') || 'leads';  
     function token() {
       try {
@@ -203,7 +84,16 @@ function copyAiOutput() {
       document.getElementById('app').innerHTML = '<p class="err">' + esc(err.message || err) + '</p>';
     }
 
-    async function loadLeads() {
+    function leadDetail(lead) {
+      var bits = [];
+      if (lead.email) bits.push(lead.email);
+      if (lead.phone) bits.push(lead.phone);
+      if (lead.source === 'facebook') bits.push(lead.formName || 'Facebook');
+      else if (lead.source) bits.push(lead.source);
+      return bits.join(' · ');
+    }
+    async function loadLeads(opts) {
+      opts = opts || {};
       var data = await api('/api/admin/growth/leads');
       var stages = data.stages || [];
       var leads = data.leads || [];
@@ -215,12 +105,13 @@ function copyAiOutput() {
       var sourceRows = Object.keys(sources).map(function (name) { return { name: name, count: sources[name] }; })
         .sort(function (a, b) { return b.count - a.count; });
       document.getElementById('app').innerHTML =
-        '<h1>Leads</h1><p class="muted">' + leads.length + ' people. Move a card with the stage menu.</p>' +
-        bars('Pipeline', counts, 'No leads yet. New assessments and chats land in Inquiry.') +
+        '<h1>Leads</h1><p class="muted">' + leads.length + ' people, including Facebook Page leads. Move a card with the stage menu.</p>' +
+        '<button type="button" id="fb-sync">Sync Facebook leads</button><p id="fb-msg" class="muted">' + esc(opts.syncNote || '') + '</p>' +
+        bars('Pipeline', counts, 'No leads yet. New assessments, chats, and Facebook forms land in Inquiry.') +
         bars('Where they came from', sourceRows, 'Sources appear after the first lead.') +
         '<div class="cols">' + stages.map(function (stage) {
           var cards = leads.filter(function (l) { return l.stage === stage; }).map(function (l) {
-            return '<div class="card"><strong>' + esc(l.name || l.email || 'Lead') + '</strong><br><span class="muted">' + esc(l.email || l.source || '') + '</span>' +
+            return '<div class="card"><strong>' + esc(l.name || l.email || 'Lead') + '</strong><br><span class="muted">' + esc(leadDetail(l)) + '</span>' +
               '<select data-move="' + esc(l._id) + '">' + stages.map(function (s) {
                 return '<option' + (s === l.stage ? ' selected' : '') + '>' + esc(s) + '</option>';
               }).join('') + '</select></div>';
@@ -234,10 +125,29 @@ function copyAiOutput() {
             await api('/api/admin/growth/leads/' + encodeURIComponent(sel.getAttribute('data-move')), {
               method: 'PATCH', body: JSON.stringify({ stage: sel.value })
             });
-            loadLeads().catch(fail);
+            loadLeads({ skipSync: true }).catch(fail);
           } catch (err) { fail(err); }
         });
       });
+      document.getElementById('fb-sync').addEventListener('click', function () {
+        syncFacebookLeads();
+      });
+      if (!opts.skipSync) syncFacebookLeads();
+    }
+    async function syncFacebookLeads() {
+      var btn = document.getElementById('fb-sync');
+      var msg = document.getElementById('fb-msg');
+      if (!btn || !msg) return;
+      btn.disabled = true;
+      msg.textContent = 'Syncing Facebook leads…';
+      try {
+        var synced = await api('/api/marketing/facebook-leads');
+        var note = 'Synced ' + (synced.synced || 0) + ' from ' + (synced.forms || 0) + ' form' + ((synced.forms === 1) ? '' : 's') + '.';
+        await loadLeads({ skipSync: true, syncNote: note });
+      } catch (err) {
+        msg.textContent = err.message || String(err);
+        btn.disabled = false;
+      }
     }
 
     function when(value) {
@@ -245,35 +155,6 @@ function copyAiOutput() {
       var date = new Date(value);
       if (Number.isNaN(date.getTime())) return '';
       return date.toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
-    }
-    async function loadFacebookLeads() {
-      document.getElementById('app').innerHTML =
-        '<h1>Facebook Leads</h1><p class="muted">Leads from the RemoEd Facebook Page. Sync pulls the forms, and new leads also arrive from the Page webhook.</p>' +
-        '<button type="button" id="fb-sync">Sync Facebook Leads</button><p id="fb-msg" class="muted"></p><div id="fb-table"></div>';
-      async function draw(data) {
-        var leads = data.leads || [];
-        document.getElementById('fb-msg').textContent = 'Synced ' + (data.synced || 0) + ' from ' + (data.forms || 0) + ' form' + ((data.forms === 1) ? '' : 's') + '.';
-        document.getElementById('fb-table').innerHTML = leads.length
-          ? '<table class="leads"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Form</th><th>Time</th></tr></thead><tbody>' +
-            leads.map(function (lead) {
-              return '<tr><td>' + esc(lead.name || '') + '</td><td>' + esc(lead.email || '') + '</td><td>' + esc(lead.phone || '') +
-                '</td><td>' + esc(lead.formName || lead.formId || '') + '</td><td>' + esc(when(lead.lastContactAt || lead.createdAt)) + '</td></tr>';
-            }).join('') + '</tbody></table>'
-          : '<p class="muted">No Facebook leads yet.</p>';
-      }
-      document.getElementById('fb-sync').addEventListener('click', async function () {
-        var btn = document.getElementById('fb-sync');
-        var msg = document.getElementById('fb-msg');
-        btn.disabled = true;
-        msg.textContent = 'Syncing…';
-        try {
-          draw(await api('/api/marketing/facebook-leads'));
-        } catch (err) {
-          msg.textContent = err.message || String(err);
-        }
-        btn.disabled = false;
-      });
-      document.getElementById('fb-sync').click();
     }
     async function loadInbox() {
       var data = await api('/api/admin/growth/inbox');
@@ -333,14 +214,24 @@ function copyAiOutput() {
         flash = sessionStorage.getItem('remoed_meta_connect') || '';
         if (flash) sessionStorage.removeItem('remoed_meta_connect');
       } catch (e) {}
+      var fb = accounts.filter(function (a) { return a.platform === 'facebook'; })[0] || {};
+      var fbConnected = !!fb.connected;
+      var fbNote = !social.facebookAppReady
+        ? 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.'
+        : (fbConnected
+          ? 'RemoEd PH is connected. A post you publish below goes to that Page.'
+          : 'Open Facebook as an admin of the RemoEd PH Page and allow the Page permissions. Your RemoEd email does not connect the Page by itself.');
       document.getElementById('app').innerHTML =
         '<h1>Posts</h1>' +
         (flash ? '<p class="muted">' + esc(flash) + '</p>' : '') +
         '<section class="chart"><h2>Facebook Page</h2>' +
         '<p>Facebook · ' + accountLine(accounts, 'facebook', 'not connected') + '</p>' +
-        '<div class="row-actions"><button type="button" id="meta-connect">Connect Facebook</button>' +
-        '<button type="button" class="ghost" id="meta-disconnect">Disconnect</button></div>' +
-        '<p class="muted" id="meta-note">' + (social.facebookAppReady ? 'Sign in as an admin of the RemoEd page. Facebook returns through the same login address already used by RemoEd.' : 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.') + '</p></section>' +
+        '<div class="row-actions">' +
+        (fbConnected
+          ? '<button type="button" class="ghost" id="meta-connect">Reconnect</button><button type="button" class="ghost" id="meta-disconnect">Disconnect</button>'
+          : '<button type="button" id="meta-connect">Connect Facebook</button>') +
+        '</div>' +
+        '<p class="muted" id="meta-note">' + fbNote + '</p></section>' +
         bars('Posts by status', byStatus) +
         '<section class="chart"><h2>New post</h2><textarea id="post-body" rows="4" placeholder="Write the post"></textarea>' +
         '<label>Image URL (optional, https)</label><input id="post-image" placeholder="https://…">' +
@@ -355,7 +246,8 @@ function copyAiOutput() {
             (notes ? '<br><span class="muted">' + notes + '</span>' : '') +
             '<div class="row-actions" style="margin-top:8px;"><button type="button" data-pub="' + esc(p._id) + '">Publish</button></div></div>';
         }).join('') : '<p class="muted">No posts yet.</p>');
-      document.getElementById('meta-connect').addEventListener('click', async function () {
+      var connectEl = document.getElementById('meta-connect');
+      if (connectEl) connectEl.addEventListener('click', async function () {
         var note = document.getElementById('meta-note');
         note.textContent = 'Opening Facebook…';
         try {
@@ -364,7 +256,8 @@ function copyAiOutput() {
           target.location.href = started.url;
         } catch (err) { note.textContent = err.message || String(err); }
       });
-      document.getElementById('meta-disconnect').addEventListener('click', async function () {
+      var disconnectEl = document.getElementById('meta-disconnect');
+      if (disconnectEl) disconnectEl.addEventListener('click', async function () {
         if (!window.confirm('Disconnect the Facebook Page from Marketing Hub?')) return;
         await api('/api/admin/growth/social-accounts/disconnect', { method: 'POST', body: JSON.stringify({ platform: 'facebook' }) });
         loadPosts().catch(fail);
@@ -421,35 +314,77 @@ function copyAiOutput() {
     }
 
     async function loadReports() {
-      var gross = document.getElementById('r-gross') ? document.getElementById('r-gross').value : '';
-      var teachers = document.getElementById('r-teachers') ? document.getElementById('r-teachers').value : '';
-      var affiliates = document.getElementById('r-affiliates') ? document.getElementById('r-affiliates').value : '';
-      var q = '?gross=' + encodeURIComponent(gross || '0') + '&teachers=' + encodeURIComponent(teachers || '0') + '&affiliates=' + encodeURIComponent(affiliates || '0');
-      var data = await api('/api/admin/growth/reports' + q);
+      var data = await api('/api/admin/growth/reports');
       var stages = data.stages || [];
       var sources = data.sources || [];
       var weeks = (data.weeks || []).map(function (w) { return { name: w.label, count: w.count }; });
-      var split = data.split || {};
-      var splitRows = ['teachers', 'affiliates', 'partners', 'ops', 'growth', 'charity', 'buffer', 'profit'].map(function (k) {
-        return { name: k, count: Math.round(Number(split[k]) || 0) };
-      });
       var interactiveDone = Number(data.interactiveLessonsCompleted);
       if (!isFinite(interactiveDone) || interactiveDone < 0) interactiveDone = 0;
       document.getElementById('app').innerHTML =
         '<h1>Reports</h1><p class="muted">' + esc(data.note || '') + '</p>' +
         '<p class="interactive-count"><strong>Free interactive lessons completed</strong><span>' + interactiveDone + '</span></p>' +
         bars('Funnel', stages, 'No level assessments yet. They show up here when a family finishes the quiz in HR Hub → Level Assessment.') +
-        '<div class="split">' + bars('New assessments by week', weeks) + bars('Source', sources, 'No source mix yet.') + '</div>' +
-        '<section class="chart"><h2>Monthly money split (PHP)</h2><p class="muted">Partners 2%, growth 5%, charity 5%, buffer 5%, operations ₱6,400. Profit is what remains.</p>' +
-        '<div class="split"><div><label>Gross collected</label><input id="r-gross" type="number" min="0" value="' + esc(gross || split.gross || 0) + '">' +
-        '<label>Teacher pay</label><input id="r-teachers" type="number" min="0" value="' + esc(teachers || split.teachers || 0) + '">' +
-        '<label>Affiliate pay</label><input id="r-affiliates" type="number" min="0" value="' + esc(affiliates || split.affiliates || 0) + '">' +
-        '<button type="button" id="r-go">Update chart</button></div><div id="split-chart"></div></div></section>';
-      document.getElementById('split-chart').innerHTML = bars('Where gross goes', splitRows).replace('<section class="chart">', '<div>').replace('</section>', '</div>');
-      document.getElementById('r-go').addEventListener('click', function () { loadReports().catch(fail); });
+        '<div class="split">' + bars('New assessments by week', weeks) + bars('Source', sources, 'No source mix yet.') + '</div>';
     }
 
-    var runners = { leads: loadLeads, 'facebook-leads': loadFacebookLeads, inbox: loadInbox, messages: loadInbox, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
+    function loadSpecialist() {
+      document.getElementById('app').innerHTML =
+        '<h1>RemoEdPH AI Marketing Specialist</h1><p class="muted">Draft a Facebook post, a parent email, or an ad. The copy describes live classes with real teachers.</p>' +
+        '<section class="chart"><label>Content type</label>' +
+        '<select id="aiContentType"><option>Facebook Group Post</option><option>Parent Email Outreach</option><option>Social Media Ad Copy</option></select>' +
+        '<label>Target region</label>' +
+        '<select id="aiTargetMarket"><option>Taiwan</option><option>Japan</option><option>South Korea</option><option>General International (Asia)</option></select>' +
+        '<label>Key topic</label>' +
+        '<textarea id="aiTopicDetails" rows="3" placeholder="Free level assessment, a live one-on-one class, and real teachers."></textarea>' +
+        '<div class="row-actions"><button type="button" id="btnGenerateAi">Generate marketing copy</button>' +
+        '<button type="button" class="ghost" id="btnCopyText">Copy</button></div>' +
+        '<label>Generated copy</label>' +
+        '<textarea id="aiOutputBox" rows="8" readonly placeholder="Choose a content type, add the topic, then generate."></textarea>' +
+        '<p id="ai-msg" class="muted"></p></section>';
+      document.getElementById('btnGenerateAi').addEventListener('click', async function () {
+        var btn = document.getElementById('btnGenerateAi');
+        var outputBox = document.getElementById('aiOutputBox');
+        var msg = document.getElementById('ai-msg');
+        var topicDetails = document.getElementById('aiTopicDetails').value.trim();
+        msg.textContent = '';
+        if (!topicDetails) {
+          msg.textContent = 'Add a topic first.';
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Generating…';
+        outputBox.value = '';
+        try {
+          var res = await fetch('/api/admin/marketing/ai-generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+            body: JSON.stringify({
+              contentType: document.getElementById('aiContentType').value,
+              targetMarket: document.getElementById('aiTargetMarket').value,
+              topicDetails: topicDetails
+            })
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (data.success) outputBox.value = data.content || '';
+          else msg.textContent = data.message || data.error || 'Could not generate the copy.';
+        } catch (err) {
+          msg.textContent = 'Could not reach the server.';
+        }
+        btn.disabled = false;
+        btn.textContent = 'Generate marketing copy';
+      });
+      document.getElementById('btnCopyText').addEventListener('click', function () {
+        var outputBox = document.getElementById('aiOutputBox');
+        var btn = document.getElementById('btnCopyText');
+        if (!outputBox.value.trim()) return;
+        navigator.clipboard.writeText(outputBox.value).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 2000);
+        }).catch(function () {});
+      });
+    }
+
+    var runners = { specialist: loadSpecialist, leads: loadLeads, 'facebook-leads': loadLeads, inbox: loadInbox, messages: loadInbox, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
     (runners[tab] || loadLeads)().catch(fail);
   </script>
 </body>
