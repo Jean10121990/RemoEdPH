@@ -101,9 +101,24 @@ async function pageAccount() {
   return account;
 }
 
+function readableFacebookError(err) {
+  const message = err && err.message ? String(err.message) : '';
+  if (/pages_manage_ads/i.test(message)) {
+    const next = new Error('Facebook needs permission to read lead forms. Open Posts, click Connect Facebook, allow the ads permission, then sync again.');
+    next.code = 'NOT_CONNECTED';
+    return next;
+  }
+  return err;
+}
+
 async function syncFacebookLeads() {
   const account = await pageAccount();
-  const forms = await listAll('/' + account.externalId + '/leadgen_forms?fields=id,name', account.token);
+  let forms;
+  try {
+    forms = await listAll('/' + account.externalId + '/leadgen_forms?fields=id,name', account.token);
+  } catch (err) {
+    throw readableFacebookError(err);
+  }
   let synced = 0;
   for (const form of forms) {
     if (!form || !form.id || synced >= 200) break;

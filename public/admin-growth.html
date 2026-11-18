@@ -336,11 +336,9 @@ function copyAiOutput() {
       document.getElementById('app').innerHTML =
         '<h1>Posts</h1>' +
         (flash ? '<p class="muted">' + esc(flash) + '</p>' : '') +
-        '<section class="chart"><h2>Accounts</h2>' +
+        '<section class="chart"><h2>Facebook Page</h2>' +
         '<p>Facebook · ' + accountLine(accounts, 'facebook', 'not connected') + '</p>' +
-        '<p>Instagram · ' + accountLine(accounts, 'instagram', 'not connected — link it to the Facebook Page first') + '</p>' +
-        '<p>TikTok and X · copy the post and publish it there. Automatic posting waits on their app review.</p>' +
-        '<div class="row-actions"><button type="button" id="meta-connect">Connect Facebook &amp; Instagram</button>' +
+        '<div class="row-actions"><button type="button" id="meta-connect">Connect Facebook</button>' +
         '<button type="button" class="ghost" id="meta-disconnect">Disconnect</button></div>' +
         '<p class="muted" id="meta-note">' + (social.facebookAppReady ? 'Sign in as an admin of the RemoEd page. Facebook returns through the same login address already used by RemoEd.' : 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.') + '</p></section>' +
         bars('Posts by status', byStatus) +
@@ -367,8 +365,8 @@ function copyAiOutput() {
         } catch (err) { note.textContent = err.message || String(err); }
       });
       document.getElementById('meta-disconnect').addEventListener('click', async function () {
-        if (!window.confirm('Disconnect Facebook and Instagram from Marketing Hub?')) return;
-        await api('/api/admin/growth/social-accounts/disconnect', { method: 'POST', body: JSON.stringify({ platform: 'meta' }) });
+        if (!window.confirm('Disconnect the Facebook Page from Marketing Hub?')) return;
+        await api('/api/admin/growth/social-accounts/disconnect', { method: 'POST', body: JSON.stringify({ platform: 'facebook' }) });
         loadPosts().catch(fail);
       });
       document.getElementById('post-publish').addEventListener('click', async function () {

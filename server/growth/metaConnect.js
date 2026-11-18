@@ -22,11 +22,13 @@ function connectUrl(adminId) {
   url.searchParams.set('redirect_uri', metaRedirectUri());
   url.searchParams.set('state', state);
   url.searchParams.set('response_type', 'code');
+  url.searchParams.set('auth_type', 'rerequest');
   url.searchParams.set(
     'scope',
     [
       'pages_show_list',
       'pages_manage_posts',
+      'pages_manage_ads',
       'pages_read_engagement',
       'pages_messaging',
       'pages_manage_metadata',
@@ -94,7 +96,7 @@ function pageScore(page) {
 
 async function choosePage(userToken) {
   const data = await graph(
-    '/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}',
+    '/me/accounts?fields=id,name,access_token',
     userToken
   );
   const pages = Array.isArray(data.data) ? data.data : [];
@@ -129,28 +131,12 @@ async function saveConnectedPage(page) {
     },
     { upsert: true, new: true }
   );
-  const ig = page.instagram_business_account;
-  if (ig && ig.id) {
-    await SocialAccount.findOneAndUpdate(
-      { platform: 'instagram' },
-      {
-        platform: 'instagram',
-        accountName: ig.username ? '@' + ig.username : 'Instagram',
-        externalId: String(ig.id),
-        tokenEncrypted: pageToken,
-        enabled: true,
-      },
-      { upsert: true, new: true }
-    );
-  } else {
-    await SocialAccount.updateOne(
-      { platform: 'instagram' },
-      { $set: { enabled: false, tokenEncrypted: '', externalId: '', accountName: '' } }
-    );
-  }
+  await SocialAccount.updateOne(
+    { platform: 'instagram' },
+    { $set: { enabled: false, tokenEncrypted: '', externalId: '', accountName: '' } }
+  );
   return {
     facebook: page.name || page.username || 'Facebook Page',
-    instagram: ig && ig.username ? '@' + ig.username : '',
   };
 }
 
@@ -226,9 +212,7 @@ async function completeMetaOAuth(query) {
   } catch (subErr) {
     inboxNote = ' Page messages were not subscribed: ' + (subErr.message || 'Facebook refused.');
   }
-  const line = (saved.instagram
-    ? `Connected ${saved.facebook} and Instagram ${saved.instagram}.`
-    : `Connected ${saved.facebook}. Instagram is not linked to that Page yet.`) + inboxNote;
+  const line = 'Connected ' + saved.facebook + '.' + inboxNote;
   return renderMetaPage(true, line);
 }
 
