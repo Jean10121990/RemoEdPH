@@ -30,7 +30,6 @@ function connectUrl(adminId) {
       'pages_manage_posts',
       'pages_manage_ads',
       'pages_read_engagement',
-      'pages_messaging',
       'pages_manage_metadata',
       'business_management',
       'leads_retrieval',
@@ -207,10 +206,10 @@ async function completeMetaOAuth(query) {
   try {
     await graph('/' + page.id + '/subscribed_apps', page.access_token, {
       method: 'POST',
-      body: { subscribed_fields: 'messages,messaging_postbacks,leadgen' },
+      body: { subscribed_fields: 'leadgen' },
     });
   } catch (subErr) {
-    inboxNote = ' Page messages were not subscribed: ' + (subErr.message || 'Facebook refused.');
+    inboxNote = ' Lead forms were not subscribed: ' + (subErr.message || 'Facebook refused.');
   }
   const line = 'Connected ' + saved.facebook + '.' + inboxNote;
   return renderMetaPage(true, line);

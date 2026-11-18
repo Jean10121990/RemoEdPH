@@ -232,7 +232,6 @@ const API_PATH_PERMISSION_RULES = [
   { re: /\/growth\/(posts|social)/, key: 'growth.posts' },
   { re: /\/marketing\/facebook-leads/, key: 'growth.leads' },
   { re: /\/marketing\/publish-fb/, key: 'growth.posts' },
-  { re: /\/marketing\/messenger/, key: 'growth.inbox' },
   { re: /\/growth\/campaigns/, key: 'growth.campaigns' },
   { re: /garden-credits/, key: 'nav:reports' },
   { re: /^\/user(\/|$|\?)/, key: 'hr:users_edit' },

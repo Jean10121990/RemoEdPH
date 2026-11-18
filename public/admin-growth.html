@@ -150,68 +150,6 @@
       }
     }
 
-    function when(value) {
-      if (!value) return '';
-      var date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '';
-      return date.toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
-    }
-    async function loadInbox() {
-      var note = 'Loading Facebook conversations…';
-      var rows = [];
-      try {
-        var synced = await api('/api/marketing/messenger');
-        rows = synced.conversations || [];
-        note = 'Synced ' + (synced.synced || 0) + ' Facebook conversation' + ((synced.synced === 1) ? '' : 's') + '. Page replies, including automatic replies, stay in the thread.';
-      } catch (err) {
-        note = err.message || String(err);
-        try {
-          var data = await api('/api/admin/growth/inbox');
-          rows = (data.conversations || []).filter(function (c) { return c.channel === 'messenger'; });
-        } catch (err2) {
-          fail(err2);
-          return;
-        }
-      }
-      document.getElementById('app').innerHTML =
-        '<h1>Messages</h1><p class="muted">Facebook Page conversations. A reply is sent to that person and saved in this thread.</p>' +
-        '<p id="fb-msg" class="muted">' + esc(note) + '</p><button type="button" id="fb-sync">Sync Facebook messages</button>' +
-        '<div class="split"><div id="inbox-list">' + (rows.length ? rows.map(function (c) {
-          return '<button type="button" class="ghost" style="display:block;width:100%;text-align:left;margin-bottom:8px;" data-open="' + esc(c._id) + '"><strong>' + esc(c.name || 'Facebook') + '</strong> · ' + esc(c.status) + '<br><span class="muted">' + esc(when(c.lastMessageAt)) + '</span></button>';
-        }).join('') : '<p class="muted">No Page messages yet.</p>') +
-        '</div><div><div class="thread" id="thread"><p class="muted">Choose a conversation.</p></div><textarea id="reply" rows="3" placeholder="Write a reply"></textarea><button type="button" id="send-reply" disabled>Send reply</button><p id="reply-msg" class="muted"></p></div></div>';
-      document.getElementById('fb-sync').addEventListener('click', function () { loadInbox().catch(fail); });
-      var current = '';
-      async function openThread(id) {
-        current = id;
-        document.getElementById('send-reply').disabled = false;
-        var msgs = await api('/api/admin/growth/inbox/' + encodeURIComponent(id) + '/messages');
-        var list = msgs.messages || [];
-        document.getElementById('thread').innerHTML = list.length ? list.map(function (m) {
-          return '<div class="bubble ' + (m.direction === 'out' ? 'out' : 'in') + '">' + esc(m.text) + '</div>';
-        }).join('') : '<p class="muted">No messages in this thread yet.</p>';
-      }
-      document.querySelectorAll('[data-open]').forEach(function (btn) {
-        btn.addEventListener('click', function () { openThread(btn.getAttribute('data-open')).catch(fail); });
-      });
-      document.getElementById('send-reply').addEventListener('click', async function () {
-        var text = document.getElementById('reply').value.trim();
-        if (!current || !text) return;
-        var replyMsg = document.getElementById('reply-msg');
-        replyMsg.textContent = 'Sending…';
-        try {
-          await api('/api/marketing/messenger/reply', {
-            method: 'POST', body: JSON.stringify({ conversationId: current, text: text })
-          });
-          document.getElementById('reply').value = '';
-          replyMsg.textContent = '';
-          await openThread(current);
-        } catch (err) {
-          replyMsg.textContent = err.message || String(err);
-        }
-      });
-    }
-
     function accountLine(accounts, platform, fallback) {
       var row = (accounts || []).filter(function (a) { return a.platform === platform; })[0] || {};
       if (row.connected) return '<strong>' + esc(row.accountName || platform) + '</strong> · connected';
@@ -400,7 +338,7 @@
       });
     }
 
-    var runners = { specialist: loadSpecialist, leads: loadLeads, 'facebook-leads': loadLeads, inbox: loadInbox, messages: loadInbox, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
+    var runners = { specialist: loadSpecialist, leads: loadLeads, 'facebook-leads': loadLeads, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
     (runners[tab] || loadLeads)().catch(fail);
   </script>
 </body>

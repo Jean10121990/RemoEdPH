@@ -16,7 +16,6 @@ const {
     choosePage,
     saveConnectedPage,
     readState,
-    facebookPageAuth,
     graph,
 } = require('./metaConnect');
 
@@ -83,10 +82,10 @@ router.get('/social/meta/callback', metaCallbackLimiter, async (req, res) => {
     try {
       await graph('/' + page.id + '/subscribed_apps', page.access_token, {
         method: 'POST',
-        body: { subscribed_fields: 'messages' },
+        body: { subscribed_fields: 'leadgen' },
       });
     } catch (subErr) {
-      inboxNote = ' Page messages were not subscribed: ' + (subErr.message || 'Facebook refused.');
+      inboxNote = ' Lead forms were not subscribed: ' + (subErr.message || 'Facebook refused.');
     }
     const line = (saved.instagram
       ? `Connected ${saved.facebook} and Instagram ${saved.instagram}.`
@@ -135,21 +134,6 @@ router.post('/inbox/:id/reply', requireGrowth('growth.inbox'), async (req, res) 
   const text = String((req.body && req.body.text) || '').trim();
   if (!text) return res.status(400).json({ success: false, error: 'Reply required' });
   await Message.create({ conversationId: convo._id, direction: 'out', text, sender: 'human' });
-  if (convo.channel === 'messenger' && convo.externalThreadId) {
-    const page = await facebookPageAuth();
-    if (page && page.token) {
-      const target = page.pageId ? page.pageId : 'me';
-      await fetch('https://graph.facebook.com/v21.0/' + target + '/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipient: { id: convo.externalThreadId },
-          message: { text },
-          access_token: page.token,
-        }),
-      }).catch(() => {});
-    }
-  }
   convo.status = 'open';
   convo.lastMessageAt = new Date();
   await convo.save();

@@ -32,66 +32,9 @@ function verifyMeta(req, res) {
   return res.sendStatus(403);
 }
 
-async function storeMessengerEvent(event) {
-  if (!event) return;
-  const echo = !!(event.message && event.message.is_echo);
-  const psid = echo
-    ? (event.recipient && event.recipient.id)
-    : (event.sender && event.sender.id);
-  if (!psid) return;
-  let text = '';
-  let externalId = '';
-  if (event.message) {
-    text = event.message.text || '';
-    externalId = event.message.mid || '';
-    if (!String(text).trim() && event.message.attachments) text = 'Attachment';
-  } else if (event.postback) {
-    text = event.postback.title || event.postback.payload || '';
-  }
-  text = String(text || '').trim().slice(0, 2000);
-  if (!text) return;
-  let convo = await Conversation.findOne({ channel: 'messenger', externalThreadId: String(psid) });
-  if (!convo) {
-    const lead = await upsertLead({
-      name: 'Messenger ' + String(psid).slice(-6),
-      source: 'messenger',
-      stage: 'Inquiry',
-      phone: String(psid),
-    });
-    convo = await Conversation.create({
-      channel: 'messenger',
-      externalThreadId: String(psid),
-      leadId: lead && lead._id,
-      status: 'open',
-    });
-  }
-  if (externalId) {
-    const dup = await Message.findOne({ conversationId: convo._id, externalId }).select('_id').lean();
-    if (dup) return;
-  }
-  await Message.create({
-    conversationId: convo._id,
-    direction: echo ? 'out' : 'in',
-    text,
-    sender: echo ? 'human' : 'contact',
-    externalId: String(externalId).slice(0, 200),
-  });
-  convo.status = 'open';
-  convo.lastMessageAt = new Date();
-  await convo.save();
-}
-
 async function handleMetaBody(body) {
   const entries = Array.isArray(body && body.entry) ? body.entry : [];
   for (const entry of entries) {
-    const messaging = Array.isArray(entry && entry.messaging) ? entry.messaging : [];
-    for (const event of messaging) {
-      try {
-        await storeMessengerEvent(event);
-      } catch (err) {
-        console.error('messenger webhook:', err && err.message ? err.message : err);
-      }
-    }
     const changes = Array.isArray(entry && entry.changes) ? entry.changes : [];
     for (const change of changes) {
       if (!change || change.field !== 'leadgen') continue;
