@@ -31,7 +31,10 @@
     .bubble { margin: 6px 0; padding: 8px 10px; border-radius: 10px; max-width: 80%; }
     .bubble.in { background: #e8f4fd; }
     .bubble.out { background: #ecfdf5; margin-left: auto; }
-    .row-actions { display: flex; gap: 8px; align-items: center; }
+    .row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    table.leads { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    table.leads th, table.leads td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 0.9rem; vertical-align: top; }
+    table.leads th { background: #f8fafc; font-size: 0.8rem; }
     .interactive-count { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0 0; font-size: 1rem; }
     .interactive-count strong { display: block; font-size: 0.95rem; }
     .interactive-count span { font-size: 1.75rem; font-weight: 800; color: var(--teal); }
@@ -237,15 +240,50 @@ function copyAiOutput() {
       });
     }
 
+    function when(value) {
+      if (!value) return '';
+      var date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+    }
+    async function loadFacebookLeads() {
+      document.getElementById('app').innerHTML =
+        '<h1>Facebook Leads</h1><p class="muted">Leads from the RemoEd Facebook Page. Sync pulls the forms, and new leads also arrive from the Page webhook.</p>' +
+        '<button type="button" id="fb-sync">Sync Facebook Leads</button><p id="fb-msg" class="muted"></p><div id="fb-table"></div>';
+      async function draw(data) {
+        var leads = data.leads || [];
+        document.getElementById('fb-msg').textContent = 'Synced ' + (data.synced || 0) + ' from ' + (data.forms || 0) + ' form' + ((data.forms === 1) ? '' : 's') + '.';
+        document.getElementById('fb-table').innerHTML = leads.length
+          ? '<table class="leads"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Form</th><th>Time</th></tr></thead><tbody>' +
+            leads.map(function (lead) {
+              return '<tr><td>' + esc(lead.name || '') + '</td><td>' + esc(lead.email || '') + '</td><td>' + esc(lead.phone || '') +
+                '</td><td>' + esc(lead.formName || lead.formId || '') + '</td><td>' + esc(when(lead.lastContactAt || lead.createdAt)) + '</td></tr>';
+            }).join('') + '</tbody></table>'
+          : '<p class="muted">No Facebook leads yet.</p>';
+      }
+      document.getElementById('fb-sync').addEventListener('click', async function () {
+        var btn = document.getElementById('fb-sync');
+        var msg = document.getElementById('fb-msg');
+        btn.disabled = true;
+        msg.textContent = 'Syncing…';
+        try {
+          draw(await api('/api/marketing/facebook-leads'));
+        } catch (err) {
+          msg.textContent = err.message || String(err);
+        }
+        btn.disabled = false;
+      });
+      document.getElementById('fb-sync').click();
+    }
     async function loadInbox() {
       var data = await api('/api/admin/growth/inbox');
-      var rows = data.conversations || [];
+      var rows = (data.conversations || []).filter(function (c) { return c.channel === 'messenger'; });
       document.getElementById('app').innerHTML =
-        '<h1>Inbox</h1><p class="muted">Messenger, Instagram, web chat, and email threads. A reply is saved here and sent to Messenger when that page is connected.</p>' +
+        '<h1>Messages</h1><p class="muted">Facebook Page conversations. A reply is sent to that person and saved in this thread.</p>' +
         '<div class="split"><div id="inbox-list">' + (rows.length ? rows.map(function (c) {
-          return '<button type="button" class="ghost" style="display:block;width:100%;text-align:left;margin-bottom:8px;" data-open="' + esc(c._id) + '"><strong>' + esc(c.channel) + '</strong> · ' + esc(c.status) + '<br><span class="muted">' + esc(c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '') + '</span></button>';
-        }).join('') : '<p class="muted">No conversations yet. They show up when someone messages the page or the site chat.</p>') +
-        '</div><div><div class="thread" id="thread"><p class="muted">Choose a conversation.</p></div><textarea id="reply" rows="3" placeholder="Write a reply"></textarea><button type="button" id="send-reply" disabled>Send reply</button></div></div>';
+          return '<button type="button" class="ghost" style="display:block;width:100%;text-align:left;margin-bottom:8px;" data-open="' + esc(c._id) + '"><strong>Messenger</strong> · ' + esc(c.status) + '<br><span class="muted">' + esc(when(c.lastMessageAt)) + '</span></button>';
+        }).join('') : '<p class="muted">No Page messages yet. They show up when someone messages the RemoEd Facebook Page.</p>') +
+        '</div><div><div class="thread" id="thread"><p class="muted">Choose a conversation.</p></div><textarea id="reply" rows="3" placeholder="Write a reply"></textarea><button type="button" id="send-reply" disabled>Send reply</button><p id="reply-msg" class="muted"></p></div></div>';
       var current = '';
       async function openThread(id) {
         current = id;
@@ -262,11 +300,18 @@ function copyAiOutput() {
       document.getElementById('send-reply').addEventListener('click', async function () {
         var text = document.getElementById('reply').value.trim();
         if (!current || !text) return;
-        await api('/api/admin/growth/inbox/' + encodeURIComponent(current) + '/reply', {
-          method: 'POST', body: JSON.stringify({ text: text })
-        });
-        document.getElementById('reply').value = '';
-        openThread(current).catch(fail);
+        var replyMsg = document.getElementById('reply-msg');
+        replyMsg.textContent = 'Sending…';
+        try {
+          await api('/api/marketing/messenger/reply', {
+            method: 'POST', body: JSON.stringify({ conversationId: current, text: text })
+          });
+          document.getElementById('reply').value = '';
+          replyMsg.textContent = '';
+          await openThread(current);
+        } catch (err) {
+          replyMsg.textContent = err.message || String(err);
+        }
       });
     }
 
@@ -300,11 +345,9 @@ function copyAiOutput() {
         '<p class="muted" id="meta-note">' + (social.facebookAppReady ? 'Sign in as an admin of the RemoEd page. Facebook returns through the same login address already used by RemoEd.' : 'The server still needs FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.') + '</p></section>' +
         bars('Posts by status', byStatus) +
         '<section class="chart"><h2>New post</h2><textarea id="post-body" rows="4" placeholder="Write the post"></textarea>' +
-        '<label>Public image URL (required for Instagram)</label><input id="post-image" placeholder="https://…">' +
-        '<div class="row-actions"><label><input type="checkbox" id="post-fb" checked style="width:auto;"> Facebook</label>' +
-        '<label><input type="checkbox" id="post-ig" checked style="width:auto;"> Instagram</label>' +
-        '<label><input type="checkbox" id="post-kit" style="width:auto;"> Affiliate kit</label>' +
-        '<button type="button" id="post-save">Save draft</button></div></section>' +
+        '<label>Image URL (optional, https)</label><input id="post-image" placeholder="https://…">' +
+        '<div class="row-actions"><button type="button" id="post-publish">Publish to Facebook Page</button></div>' +
+        '<p id="post-msg" class="muted"></p></section>' +
         (rows.length ? rows.map(function (p) {
           var notes = (p.results || []).map(function (r) {
             return esc(r.platform) + ': ' + esc(r.status) + (r.error ? ' — ' + esc(r.error) : '');
@@ -328,23 +371,20 @@ function copyAiOutput() {
         await api('/api/admin/growth/social-accounts/disconnect', { method: 'POST', body: JSON.stringify({ platform: 'meta' }) });
         loadPosts().catch(fail);
       });
-      document.getElementById('post-save').addEventListener('click', async function () {
+      document.getElementById('post-publish').addEventListener('click', async function () {
         var body = document.getElementById('post-body').value.trim();
-        if (!body) return;
-        var platforms = [];
-        if (document.getElementById('post-fb').checked) platforms.push('facebook');
-        if (document.getElementById('post-ig').checked) platforms.push('instagram');
-        await api('/api/admin/growth/posts', {
-          method: 'POST',
-          body: JSON.stringify({
-            body: body,
-            platforms: platforms,
-            mediaPath: document.getElementById('post-image').value.trim(),
-            affiliateKit: document.getElementById('post-kit').checked,
-            language: 'en'
-          })
-        });
-        loadPosts().catch(fail);
+        var imageUrl = document.getElementById('post-image').value.trim();
+        var msg = document.getElementById('post-msg');
+        if (!body && !imageUrl) { msg.textContent = 'Write a post or add an image.'; return; }
+        msg.textContent = 'Publishing…';
+        try {
+          var published = await api('/api/marketing/publish-fb', {
+            method: 'POST',
+            body: JSON.stringify({ text: body, imageUrl: imageUrl })
+          });
+          msg.textContent = published.id ? 'Published. ' + published.id : 'Published.';
+          loadPosts().catch(fail);
+        } catch (err) { msg.textContent = err.message || String(err); }
       });
       document.querySelectorAll('[data-pub]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
@@ -411,7 +451,7 @@ function copyAiOutput() {
       document.getElementById('r-go').addEventListener('click', function () { loadReports().catch(fail); });
     }
 
-    var runners = { leads: loadLeads, inbox: loadInbox, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
+    var runners = { leads: loadLeads, 'facebook-leads': loadFacebookLeads, inbox: loadInbox, messages: loadInbox, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };
     (runners[tab] || loadLeads)().catch(fail);
   </script>
 </body>

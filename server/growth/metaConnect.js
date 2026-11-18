@@ -221,7 +221,7 @@ async function completeMetaOAuth(query) {
   try {
     await graph('/' + page.id + '/subscribed_apps', page.access_token, {
       method: 'POST',
-      body: { subscribed_fields: 'messages' },
+      body: { subscribed_fields: 'messages,messaging_postbacks,leadgen' },
     });
   } catch (subErr) {
     inboxNote = ' Page messages were not subscribed: ' + (subErr.message || 'Facebook refused.');

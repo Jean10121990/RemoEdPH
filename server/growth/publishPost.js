@@ -79,4 +79,4 @@ async function publishPost(post) {
   return post;
 }
 
-module.exports = { publishPost };
+module.exports = { publishPost, publishFacebook };

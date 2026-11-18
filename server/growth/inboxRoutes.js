@@ -6,6 +6,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const { upsertLead } = require('./leadService');
 const { answerParent } = require('./aiAgent');
+const { ingestLeadgen } = require('./facebookPage');
 
 const metaRouter = express.Router();
 const chatRouter = express.Router();
@@ -21,7 +22,7 @@ function metaSignatureOk(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-metaRouter.get('/meta', (req, res) => {
+function verifyMeta(req, res) {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
@@ -29,28 +30,79 @@ metaRouter.get('/meta', (req, res) => {
     return res.status(200).send(challenge);
   }
   return res.sendStatus(403);
-});
+}
 
-metaRouter.post('/meta', async (req, res) => {
-  if (!metaSignatureOk(req)) return res.sendStatus(403);
-  const body = req.body || {};
-  const text = (((body.entry || [])[0] || {}).messaging || [])[0];
-  const msg = text && text.message && text.message.text;
-  const from = text && text.sender && text.sender.id;
-  if (msg && from) {
+async function storeMessengerEvent(event) {
+  if (!event || (event.message && event.message.is_echo)) return;
+  const from = event.sender && event.sender.id;
+  if (!from) return;
+  let text = '';
+  let externalId = '';
+  if (event.message && event.message.text) {
+    text = event.message.text;
+    externalId = event.message.mid || '';
+  } else if (event.postback) {
+    text = event.postback.title || event.postback.payload || '';
+  }
+  text = String(text || '').trim().slice(0, 2000);
+  if (!text) return;
+  let convo = await Conversation.findOne({ channel: 'messenger', externalThreadId: from });
+  if (!convo) {
     const lead = await upsertLead({ name: 'Messenger ' + from, source: 'messenger', stage: 'Inquiry', phone: from });
-    const convo = await Conversation.create({
+    convo = await Conversation.create({
       channel: 'messenger',
       externalThreadId: from,
       leadId: lead && lead._id,
-      status: 'ai',
+      status: 'open',
     });
-    await Message.create({ conversationId: convo._id, direction: 'in', text: msg, sender: 'contact' });
-    const answer = await answerParent(msg);
-    if (answer.handoff) convo.status = 'needs_human';
-    convo.lastMessageAt = new Date();
-    await convo.save();
-    await Message.create({ conversationId: convo._id, direction: 'out', text: answer.reply, sender: 'ai' });
+  }
+  if (externalId) {
+    const dup = await Message.findOne({ conversationId: convo._id, externalId }).select('_id').lean();
+    if (dup) return;
+  }
+  await Message.create({
+    conversationId: convo._id,
+    direction: 'in',
+    text,
+    sender: 'contact',
+    externalId: String(externalId).slice(0, 200),
+  });
+  convo.status = 'open';
+  convo.lastMessageAt = new Date();
+  await convo.save();
+}
+
+async function handleMetaBody(body) {
+  const entries = Array.isArray(body && body.entry) ? body.entry : [];
+  for (const entry of entries) {
+    const messaging = Array.isArray(entry && entry.messaging) ? entry.messaging : [];
+    for (const event of messaging) {
+      try {
+        await storeMessengerEvent(event);
+      } catch (err) {
+        console.error('messenger webhook:', err && err.message ? err.message : err);
+      }
+    }
+    const changes = Array.isArray(entry && entry.changes) ? entry.changes : [];
+    for (const change of changes) {
+      if (!change || change.field !== 'leadgen') continue;
+      try {
+        await ingestLeadgen(change.value || {});
+      } catch (err) {
+        console.error('leadgen webhook:', err && err.message ? err.message : err);
+      }
+    }
+  }
+}
+
+metaRouter.get(['/meta', '/facebook'], verifyMeta);
+
+metaRouter.post(['/meta', '/facebook'], async (req, res) => {
+  if (!metaSignatureOk(req)) return res.sendStatus(403);
+  try {
+    await handleMetaBody(req.body || {});
+  } catch (err) {
+    console.error('facebook webhook:', err && err.message ? err.message : err);
   }
   res.sendStatus(200);
 });

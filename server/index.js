@@ -730,6 +730,7 @@ adminApiCombined.use('/level-assessments', require('./routes/levelAssessments'))
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin/growth', noStoreProtectedResponse, require('./growth/routes'));
+app.use('/api/marketing', noStoreProtectedResponse, require('./growth/marketingRoutes'));
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
 app.use('/api/payments', paymentRoutes);
 const growthInbox = require('./growth/inboxRoutes');

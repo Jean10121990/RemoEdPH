@@ -21,9 +21,14 @@ const leadSchema = new mongoose.Schema(
     timeZone: { type: String, default: '' },
     source: {
       type: String,
-      enum: ['assessment', 'register', 'messenger', 'instagram', 'webchat', 'email', 'referral', 'manual'],
+      enum: ['assessment', 'register', 'messenger', 'instagram', 'webchat', 'email', 'referral', 'manual', 'facebook'],
       default: 'manual',
     },
+    /** Facebook Lead Ads id. Missing on every other lead. */
+    facebookLeadId: { type: String, unique: true, sparse: true },
+    formId: { type: String, default: '' },
+    formName: { type: String, default: '' },
+    fieldAnswers: { type: mongoose.Schema.Types.Mixed, default: undefined },
     utm: {
       source: { type: String, default: '' },
       medium: { type: String, default: '' },
