@@ -30,7 +30,6 @@ function connectUrl(adminId) {
       'pages_manage_posts',
       'pages_manage_ads',
       'pages_read_engagement',
-      'pages_messaging',
       'pages_manage_metadata',
       'business_management',
       'leads_retrieval',
@@ -151,8 +150,6 @@ async function facebookPageAuth() {
   if (row && row.tokenEncrypted && row.externalId) {
     return { token: decryptPiiString(row.tokenEncrypted), pageId: row.externalId };
   }
-  const fb = String(process.env.FB_PAGE_ACCESS_TOKEN || '').trim();
-  if (fb) return { token: fb, pageId: '' };
   const env = String(process.env.META_PAGE_ACCESS_TOKEN || '').trim();
   if (env) return { token: env, pageId: '' };
   return null;
@@ -209,7 +206,7 @@ async function completeMetaOAuth(query) {
   try {
     await graph('/' + page.id + '/subscribed_apps', page.access_token, {
       method: 'POST',
-      body: { subscribed_fields: 'leadgen,messages,messaging_postbacks' },
+      body: { subscribed_fields: 'leadgen' },
     });
   } catch (subErr) {
     inboxNote = ' Lead forms were not subscribed: ' + (subErr.message || 'Facebook refused.');

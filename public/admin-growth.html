@@ -85,14 +85,8 @@
     }
 
     function welcomeStatus(lead) {
-      var bits = [];
-      if (lead.email || lead.source === 'facebook') {
-        bits.push(lead.welcomeEmailSent ? 'Email welcome sent' : 'Email welcome not sent');
-      }
-      if (lead.messengerPsid || lead.source === 'messenger') {
-        bits.push(lead.welcomeMessengerSent ? 'Messenger welcome sent' : 'Messenger welcome not sent');
-      }
-      return bits.length ? '<br><span class="muted">' + esc(bits.join(' · ')) + '</span>' : '';
+      if (!(lead.email || lead.source === 'facebook')) return '';
+      return '<br><span class="muted">' + esc(lead.welcomeEmailSent ? 'Email welcome sent' : 'Email welcome not sent') + '</span>';
     }
     function leadDetail(lead) {
       var bits = [];
