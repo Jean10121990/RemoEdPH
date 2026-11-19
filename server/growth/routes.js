@@ -82,7 +82,7 @@ router.get('/social/meta/callback', metaCallbackLimiter, async (req, res) => {
     try {
       await graph('/' + page.id + '/subscribed_apps', page.access_token, {
         method: 'POST',
-        body: { subscribed_fields: 'leadgen' },
+        body: { subscribed_fields: 'leadgen,messages,messaging_postbacks' },
       });
     } catch (subErr) {
       inboxNote = ' Lead forms were not subscribed: ' + (subErr.message || 'Facebook refused.');

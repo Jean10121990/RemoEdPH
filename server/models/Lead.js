@@ -26,6 +26,10 @@ const leadSchema = new mongoose.Schema(
     },
     /** Facebook Lead Ads id. Missing on every other lead. */
     facebookLeadId: { type: String, unique: true, sparse: true },
+    /** Page-scoped Messenger id. Missing unless this person messaged the Page. */
+    messengerPsid: { type: String, unique: true, sparse: true },
+    welcomeMessengerSent: { type: Boolean, default: false },
+    welcomeMessengerSentAt: { type: Date, default: null },
     formId: { type: String, default: '' },
     formName: { type: String, default: '' },
     fieldAnswers: { type: mongoose.Schema.Types.Mixed, default: undefined },

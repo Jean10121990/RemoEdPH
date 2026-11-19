@@ -4,9 +4,11 @@ const express = require('express');
 const crypto = require('crypto');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Lead = require('../models/Lead');
 const { upsertLead } = require('./leadService');
 const { answerParent } = require('./aiAgent');
 const { ingestLeadgen } = require('./facebookPage');
+const { sendMessengerWelcome, messengerFirstName } = require('../services/messengerService');
 
 const metaRouter = express.Router();
 const chatRouter = express.Router();
@@ -32,9 +34,57 @@ function verifyMeta(req, res) {
   return res.sendStatus(403);
 }
 
+async function welcomeMessengerLead(psid) {
+  const id = String(psid || '').trim().slice(0, 80);
+  if (!id) return;
+  let lead = await Lead.findOne({ messengerPsid: id });
+  if (!lead) {
+    const first = await messengerFirstName(id);
+    try {
+      lead = await Lead.create({
+        messengerPsid: id,
+        source: 'messenger',
+        stage: 'Inquiry',
+        name: first,
+      });
+    } catch (err) {
+      if (!err || err.code !== 11000) throw err;
+      lead = await Lead.findOne({ messengerPsid: id });
+    }
+  }
+  if (!lead) return;
+  const claimed = await Lead.findOneAndUpdate(
+    { _id: lead._id, welcomeMessengerSent: { $ne: true } },
+    { $set: { welcomeMessengerSent: true, welcomeMessengerSentAt: new Date() } }
+  );
+  if (!claimed) return;
+  const firstName = String(lead.name || '').trim().split(/\s+/)[0];
+  try {
+    await sendMessengerWelcome({ psid: id, firstName });
+  } catch (err) {
+    await Lead.updateOne(
+      { _id: lead._id },
+      { $set: { welcomeMessengerSent: false, welcomeMessengerSentAt: null } }
+    ).catch(function () {});
+    console.error('messenger welcome:', err && err.message ? err.message : err);
+  }
+}
+
 async function handleMetaBody(body) {
   const entries = Array.isArray(body && body.entry) ? body.entry : [];
   for (const entry of entries) {
+    const messaging = Array.isArray(entry && entry.messaging) ? entry.messaging : [];
+    for (const event of messaging) {
+      if (!event || (event.message && event.message.is_echo)) continue;
+      if (!event.message && !event.postback) continue;
+      const psid = event.sender && event.sender.id;
+      if (!psid) continue;
+      try {
+        await welcomeMessengerLead(psid);
+      } catch (err) {
+        console.error('messenger webhook:', err && err.message ? err.message : err);
+      }
+    }
     const changes = Array.isArray(entry && entry.changes) ? entry.changes : [];
     for (const change of changes) {
       if (!change || change.field !== 'leadgen') continue;

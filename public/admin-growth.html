@@ -84,6 +84,16 @@
       document.getElementById('app').innerHTML = '<p class="err">' + esc(err.message || err) + '</p>';
     }
 
+    function welcomeStatus(lead) {
+      var bits = [];
+      if (lead.email || lead.source === 'facebook') {
+        bits.push(lead.welcomeEmailSent ? 'Email welcome sent' : 'Email welcome not sent');
+      }
+      if (lead.messengerPsid || lead.source === 'messenger') {
+        bits.push(lead.welcomeMessengerSent ? 'Messenger welcome sent' : 'Messenger welcome not sent');
+      }
+      return bits.length ? '<br><span class="muted">' + esc(bits.join(' · ')) + '</span>' : '';
+    }
     function leadDetail(lead) {
       var bits = [];
       if (lead.email) bits.push(lead.email);
@@ -112,6 +122,7 @@
         '<div class="cols">' + stages.map(function (stage) {
           var cards = leads.filter(function (l) { return l.stage === stage; }).map(function (l) {
             return '<div class="card"><strong>' + esc(l.name || l.email || 'Lead') + '</strong><br><span class="muted">' + esc(leadDetail(l)) + '</span>' +
+              welcomeStatus(l) +
               '<select data-move="' + esc(l._id) + '">' + stages.map(function (s) {
                 return '<option' + (s === l.stage ? ' selected' : '') + '>' + esc(s) + '</option>';
               }).join('') + '</select></div>';
