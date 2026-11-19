@@ -42,6 +42,8 @@ const leadSchema = new mongoose.Schema(
     ownerAdminId: { type: String, default: '' },
     notes: [{ text: String, at: { type: Date, default: Date.now }, by: String }],
     lastContactAt: { type: Date, default: null },
+    welcomeEmailSent: { type: Boolean, default: false },
+    welcomeEmailSentAt: { type: Date, default: null },
     reminderSent: {
       h24: { type: Date, default: null },
       d3: { type: Date, default: null },

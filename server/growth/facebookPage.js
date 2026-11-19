@@ -2,6 +2,7 @@
 
 const Lead = require('../models/Lead');
 const { accountFor, graph } = require('./metaConnect');
+const { sendLeadWelcomeEmail } = require('../emailService');
 
 function clip(value, max) {
   return String(value == null ? '' : value).replace(/<[^>]*>/g, '').trim().slice(0, max);
@@ -56,7 +57,7 @@ async function saveFacebookLead(fields) {
   const when = fields.createdTime instanceof Date && !Number.isNaN(fields.createdTime.getTime())
     ? fields.createdTime
     : new Date();
-  return Lead.findOneAndUpdate(
+  const saved = await Lead.findOneAndUpdate(
     { facebookLeadId },
     {
       $set: {
@@ -74,6 +75,35 @@ async function saveFacebookLead(fields) {
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  await sendFacebookWelcome(saved);
+  return saved;
+}
+
+async function sendFacebookWelcome(lead) {
+  if (!lead || lead.source !== 'facebook') return;
+  const email = String(lead.email || '').trim();
+  if (!email || email.indexOf('@') < 1) return;
+  const claimed = await Lead.findOneAndUpdate(
+    { _id: lead._id, welcomeEmailSent: { $ne: true } },
+    { $set: { welcomeEmailSent: true, welcomeEmailSentAt: new Date() } }
+  );
+  if (!claimed) return;
+  try {
+    const result = await sendLeadWelcomeEmail({ name: lead.name, email });
+    if (!result || result.success !== true) {
+      await Lead.updateOne(
+        { _id: lead._id },
+        { $set: { welcomeEmailSent: false, welcomeEmailSentAt: null } }
+      );
+      console.error('facebook welcome email:', (result && result.error) || 'not sent');
+    }
+  } catch (err) {
+    await Lead.updateOne(
+      { _id: lead._id },
+      { $set: { welcomeEmailSent: false, welcomeEmailSentAt: null } }
+    ).catch(function () {});
+    console.error('facebook welcome email:', err && err.message ? err.message : err);
+  }
 }
 
 async function listAll(path, token) {

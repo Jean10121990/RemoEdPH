@@ -185,12 +185,15 @@ async function sendViaSmtp(mailOptions) {
   }
 
   async function attemptSend() {
-    const from = activeSmtpProfile.from;
+    const user = String((activeSmtpProfile.auth && activeSmtpProfile.auth.user) || '').trim().toLowerCase();
+    const supportTeamFrom = mailOptions.useSupportTeamFrom && user === HOSTINGER_MAILBOX
+      ? '"RemoEd PH Team" <support@remoedph.com>'
+      : '';
+    const from = supportTeamFrom || activeSmtpProfile.from;
+    const payload = Object.assign({}, mailOptions);
+    delete payload.useSupportTeamFrom;
     console.log('Attempting to send as:', from);
-    const info = await transporter.sendMail({
-      ...mailOptions,
-      from,
-    });
+    const info = await transporter.sendMail(Object.assign(payload, { from }));
     return { success: true, messageId: info.messageId, provider: activeSmtpProfileId };
   }
 
@@ -746,11 +749,13 @@ async function sendEmailViaMailgun(to, subject, html, text) {
   const mailgunDomain = process.env.MAILGUN_DOMAIN;
   const mailgunUrl = `https://api.mailgun.net/v3/${mailgunDomain}/messages`;
   const form = new FormData();
-  form.append('from', SMTP_FROM_LITERAL);
+  const extras = arguments[4] || {};
+  form.append('from', extras.from || SMTP_FROM_LITERAL);
   form.append('to', to);
   form.append('subject', subject);
   form.append('text', text);
   form.append('html', html);
+  if (extras.replyTo) form.append('h:Reply-To', extras.replyTo);
   
   try {
     const response = await axios.post(mailgunUrl, form, {
@@ -889,6 +894,87 @@ async function sendRawEmail(to, subject, html, text) {
   } catch (error) {
     const errorMessage = error.message || String(error);
     console.error('❌ sendRawEmail failed:', errorMessage.replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***'));
+    return { success: false, error: errorMessage };
+  }
+}
+
+const LEAD_WELCOME_SUBJECT = 'Welcome to RemoEd PH — Next Steps for Your Child\'s Reading Journey';
+const LEAD_WELCOME_ASSESSMENT = 'https://remoedph.com/index.html?ref=06REM0TR3L#assessment';
+
+function leadWelcomeFirstName(name) {
+  const first = String(name || '').trim().split(/\s+/)[0];
+  return first || 'Parent';
+}
+
+function leadWelcomeBodies(firstName) {
+  const text = [
+    'Dear ' + firstName + ',',
+    '',
+    'Thank you for completing our Kids Habit and Check form and expressing interest in RemoEd PH. We are pleased to welcome you and your child to our learning community.',
+    '',
+    'At RemoEd PH, we provide 1-on-1 English education for children ages 6 to 12, rooted in Christian values and character development. Because your primary goal is to strengthen your child\'s reading skills, our curriculum is tailored to guide them step by step.',
+    '',
+    'To get started:',
+    '',
+    '1. Free Assessment & Trial Lessons: Complete our brief Free Assessment at ' + LEAD_WELCOME_ASSESSMENT + ', then create an account to unlock your free trial lessons.',
+    '2. Student Referral Program: Once enrolled, you will also have access to our Student Referral Program to earn commissions when referring other families.',
+    '',
+    'If you have any questions, please reply directly to this email (support@remoedph.com) or reach us via WhatsApp/Zalo at +639168712529. We look forward to working with you and your child.',
+    '',
+    'Warm regards,',
+    '',
+    'RemoEd PH Team',
+    'support@remoedph.com',
+  ].join('\n');
+  const safe = escapeHtml(firstName);
+  const html = [
+    '<p>Dear ' + safe + ',</p>',
+    '<p>Thank you for completing our Kids Habit and Check form and expressing interest in RemoEd PH. We are pleased to welcome you and your child to our learning community.</p>',
+    '<p>At RemoEd PH, we provide 1-on-1 English education for children ages 6 to 12, rooted in Christian values and character development. Because your primary goal is to strengthen your child\'s reading skills, our curriculum is tailored to guide them step by step.</p>',
+    '<p>To get started:</p>',
+    '<ol>',
+    '<li>Free Assessment &amp; Trial Lessons: Complete our brief Free Assessment at <a href="' + LEAD_WELCOME_ASSESSMENT + '">' + LEAD_WELCOME_ASSESSMENT + '</a>, then create an account to unlock your free trial lessons.</li>',
+    '<li>Student Referral Program: Once enrolled, you will also have access to our Student Referral Program to earn commissions when referring other families.</li>',
+    '</ol>',
+    '<p>If you have any questions, please reply directly to this email (support@remoedph.com) or reach us via WhatsApp/Zalo at +639168712529. We look forward to working with you and your child.</p>',
+    '<p>Warm regards,</p>',
+    '<p>RemoEd PH Team<br>support@remoedph.com</p>',
+  ].join('');
+  return { text, html };
+}
+
+async function sendLeadWelcomeEmail(input) {
+  try {
+    const target = String((input && input.email) || '').trim();
+    if (!target || target.indexOf('@') < 1) {
+      return { success: false, error: 'Missing recipient' };
+    }
+    if (!isEmailConfigured) {
+      return { success: false, error: 'Email service not configured.', fallback: true };
+    }
+    const bodies = leadWelcomeBodies(leadWelcomeFirstName(input && input.name));
+    const replyTo = 'support@remoedph.com';
+    if (activeEmailService === 'mailgun') {
+      return await sendEmailViaMailgun(target, LEAD_WELCOME_SUBJECT, bodies.html, bodies.text, {
+        from: '"RemoEd PH Team" <support@remoedph.com>',
+        replyTo,
+      });
+    }
+    if (activeEmailService === 'smtp') {
+      const info = await smtpSendMail({
+        to: target,
+        subject: LEAD_WELCOME_SUBJECT,
+        html: bodies.html,
+        text: bodies.text,
+        replyTo,
+        useSupportTeamFrom: true,
+      });
+      return { success: true, messageId: info.messageId };
+    }
+    return { success: false, error: 'No email service configured' };
+  } catch (error) {
+    const errorMessage = error.message || String(error);
+    console.error('sendLeadWelcomeEmail failed:', errorMessage.replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***'));
     return { success: false, error: errorMessage };
   }
 }
@@ -1727,6 +1813,7 @@ module.exports = {
   sendNotificationDigestEmail,
   sendEmail,
   sendRawEmail,
+  sendLeadWelcomeEmail,
   getEmailConfigStatus,
   seedEmailTemplates,
   buildSeedBodies,
