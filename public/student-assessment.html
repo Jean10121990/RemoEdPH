@@ -10,7 +10,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=2"></script>
     <script src="/js/landing-config.js?v=landing-1"></script>
-    <script src="/js/landing-track.js?v=landing-1"></script>
+    <script src="/js/cookie-consent.js?v=consent-1"></script>
+    <script src="/js/landing-track.js?v=landing-2"></script>
     <script src="js/referral-tracking.js?v=ref-3"></script>
     <title>My Level Assessment - RemoEdPH</title>
 <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
@@ -375,8 +376,16 @@
                     <p class="quiz-pass-hint">At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.</p>
                 </div>
                 <label class="quiz-consent">
+                    <input type="checkbox" id="quiz-terms" required>
+                    <span>I am the parent or guardian and I accept the <a href="/site-terms.html" target="_blank" rel="noopener">Terms of Service</a>.</span>
+                </label>
+                <label class="quiz-consent">
                     <input type="checkbox" id="quiz-privacy" required>
                     <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>.</span>
+                </label>
+                <label class="quiz-consent">
+                    <input type="checkbox" id="quiz-parental" required>
+                    <span>I am the parent or guardian and I consent to RemoEd PH processing my child's information for live 1-on-1 lessons.</span>
                 </label>
                 <div class="post-assessment-modal__actions">
                     <button type="submit" class="pam-btn-primary" id="quiz-save-btn">Save Results &amp; Try Free Interactive Games</button>
@@ -1057,7 +1066,9 @@
             var names = splitChildName(document.getElementById('quiz-child-name').value);
             var email = String(document.getElementById('quiz-parent-email').value || '').trim().toLowerCase();
             var password = document.getElementById('quiz-password').value || '';
+            var terms = document.getElementById('quiz-terms');
             var privacy = document.getElementById('quiz-privacy');
+            var parental = document.getElementById('quiz-parental');
             if (!names) {
                 quizFormError("Enter the child's name.");
                 return;
@@ -1070,8 +1081,8 @@
                 quizFormError('Use at least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.');
                 return;
             }
-            if (!privacy || !privacy.checked) {
-                quizFormError('A parent or guardian must accept the Student Privacy and Recording Policy.');
+            if (!terms || !terms.checked || !privacy || !privacy.checked || !parental || !parental.checked) {
+                quizFormError('A parent or guardian must accept the Terms of Service, the Student Privacy and Recording Policy, and parental consent.');
                 return;
             }
             var btn = document.getElementById('quiz-save-btn');
@@ -1127,7 +1138,9 @@
                             parentEmail: email,
                             referralCode: localStorage.getItem('referralCode') || '',
                             assessmentTrialToken: trialToken || undefined,
-                            privacyConsentAccepted: true
+                            termsAccepted: true,
+                            privacyConsentAccepted: true,
+                            parentalConsentAccepted: true
                         })
                     });
                     var regBody = await regResponse.json().catch(function () { return {}; });

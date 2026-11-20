@@ -1,5 +1,6 @@
 /** Current parent privacy and recording policy. A new string forces the checkbox again. */
-const PRIVACY_CONSENT_VERSION = '2026-10-01';
+const PRIVACY_CONSENT_VERSION = '2026-11-20';
+const PARENTAL_CONSENT_VERSION = PRIVACY_CONSENT_VERSION;
 const CONSENT_SOURCES = ['register', 'booking', 'checkout', 'profile'];
 
 function clientIp(req) {
@@ -48,6 +49,7 @@ function consentRequiredBody() {
 
 module.exports = {
   PRIVACY_CONSENT_VERSION,
+  PARENTAL_CONSENT_VERSION,
   clientIp,
   hasCurrentConsent,
   consentRecord,

@@ -209,6 +209,8 @@ async function buildAuthUrl(req, provider, query) {
     trialToken: String(query.trialToken || query.trial || '').trim() || null,
     inviteToken: String(query.inviteToken || query.invitation || '').trim() || null,
     privacyConsentAccepted: query.privacyConsentAccepted === true || query.privacyConsentAccepted === 'true',
+    termsAccepted: query.termsAccepted === true || query.termsAccepted === 'true',
+    parentalConsentAccepted: query.parentalConsentAccepted === true || query.parentalConsentAccepted === 'true',
     marketingConsent: query.marketingConsent === true || query.marketingConsent === 'true',
     rememberMe: query.rememberMe === true || query.rememberMe === 'true',
     firstName: String(query.firstName || '').trim().slice(0, 80) || null,
@@ -227,11 +229,25 @@ async function buildAuthUrl(req, provider, query) {
         'Finish the level assessment first, then register with the same email from your Claim Free Trial link.'
       );
     }
+    if (!statePayload.termsAccepted) {
+      throw new OAuthError(
+        400,
+        'CONSENT_REQUIRED',
+        'A parent or guardian must accept the Terms of Service before creating an account.'
+      );
+    }
     if (!statePayload.privacyConsentAccepted) {
       throw new OAuthError(
         400,
         'CONSENT_REQUIRED',
         'A parent or guardian must accept the Student Privacy and Recording Policy before creating an account.'
+      );
+    }
+    if (!statePayload.parentalConsentAccepted) {
+      throw new OAuthError(
+        400,
+        'CONSENT_REQUIRED',
+        'A parent or guardian must consent to processing the child\'s information before creating an account.'
       );
     }
   }
@@ -466,6 +482,9 @@ async function createStudentFromOAuth(req, profile, state) {
     lastName,
     privacyConsentVersion: PRIVACY_CONSENT_VERSION,
     privacyConsentAcceptedAt: now,
+    parentalConsentGiven: true,
+    parentalConsentTimestamp: now,
+    consentPolicyVersion: PRIVACY_CONSENT_VERSION,
     marketingConsent: marketingOn,
     marketingConsentAt: marketingOn ? now : null,
   };

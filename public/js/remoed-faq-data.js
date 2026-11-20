@@ -197,7 +197,10 @@
             q: 'What is the cancellation and refund policy?',
             keywords: ['cancel', 'refund', 'cancellation'],
             weight: 3,
-            a: 'The exact cancellation window and refund rule are still being confirmed. We will confirm this before launch.',
+            a:
+              'A completed 25-minute live lesson is non-refundable. Cancel or reschedule free at least 24 hours before class time in Philippine time (UTC+8). A later cancel or a no-show uses the credit. A tutor absence or a verified platform failure restores the credit or moves the class at no charge.\n\n' +
+              'Credits last for the plan: Spark 1 month, Steady 3, Scholar 6, Summit 12. One 3-month extension is available after a parent progress check-in call.\n\n' +
+              'When Korean law governs the purchase, a parent may request a refund within 7 days: full if no lesson was used, otherwise pro-rata for unused credits. Outside that window, a refund is only for repeated, documented RemoEd PH failures that rescheduling cannot resolve. The full text is on the Terms of Service page.',
           },
           {
             id: 'free-lesson-vs-class',

@@ -367,8 +367,20 @@
         </div>
         <div class="field">
           <label style="display:flex; gap:8px; align-items:flex-start; font-weight:600;">
+            <input type="checkbox" id="terms-consent" style="margin-top:4px;">
+            <span>I am the parent or guardian and I accept the <a href="/site-terms.html" target="_blank" rel="noopener">Terms of Service</a>.</span>
+          </label>
+        </div>
+        <div class="field">
+          <label style="display:flex; gap:8px; align-items:flex-start; font-weight:600;">
             <input type="checkbox" id="privacy-consent" style="margin-top:4px;">
-            <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>. Classes are recorded for safety, quality assurance, and parent review.</span>
+            <span>I am the parent or guardian and I accept the <a href="/legal/student-privacy" target="_blank" rel="noopener">Student Privacy and Recording Policy</a>. Classes are recorded for safety and quality assurance, and recordings are deleted after 7 days.</span>
+          </label>
+        </div>
+        <div class="field">
+          <label style="display:flex; gap:8px; align-items:flex-start; font-weight:600;">
+            <input type="checkbox" id="parental-consent" style="margin-top:4px;">
+            <span>I am the parent or guardian and I consent to RemoEd PH processing my child's information for live 1-on-1 lessons.</span>
           </label>
         </div>
         <div class="field">
@@ -582,13 +594,21 @@
       validatePassword(e.target.value);
     });
 
-    const privacyToggle = document.getElementById('privacy-consent');
-    const registerBtn = document.getElementById('register-btn');
-    if (privacyToggle && registerBtn) {
-      privacyToggle.addEventListener('change', function () {
-        registerBtn.disabled = !privacyToggle.checked;
-      });
+    function consentsChecked() {
+      const terms = document.getElementById('terms-consent');
+      const privacy = document.getElementById('privacy-consent');
+      const parental = document.getElementById('parental-consent');
+      return !!(terms && terms.checked && privacy && privacy.checked && parental && parental.checked);
     }
+    const registerBtn = document.getElementById('register-btn');
+    ['terms-consent', 'privacy-consent', 'parental-consent'].forEach(function (id) {
+      const box = document.getElementById(id);
+      if (box && registerBtn) {
+        box.addEventListener('change', function () {
+          registerBtn.disabled = !consentsChecked();
+        });
+      }
+    });
     document.getElementById('student-register-form').onsubmit = async function (e) {
       e.preventDefault();
       const firstName = document.getElementById('student-register-first-name').value.trim();
@@ -633,9 +653,8 @@
       }
       userEl.setCustomValidity('');
 
-      const privacyBox = document.getElementById('privacy-consent');
-      if (!privacyBox || !privacyBox.checked) {
-        errorDiv.textContent = 'A parent or guardian must accept the Student Privacy and Recording Policy.';
+      if (!consentsChecked()) {
+        errorDiv.textContent = 'A parent or guardian must accept the Terms of Service, the Student Privacy and Recording Policy, and parental consent.';
         errorDiv.className = 'register-error';
         errorDiv.style.display = 'block';
         return;
@@ -663,7 +682,9 @@
             referralCode: localStorage.getItem('referralCode') || '',
             timeZone: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila'),
             assessmentTrialToken: urlTrialToken || undefined,
+            termsAccepted: true,
             privacyConsentAccepted: true,
+            parentalConsentAccepted: true,
             marketingConsent: !!(document.getElementById('marketing-consent') && document.getElementById('marketing-consent').checked)
           })
         });
@@ -786,7 +807,7 @@
       RemoEdOAuth.mountButtons('remoed-oauth-register', {
         title: trial ? 'Or register with' : 'Social registration',
         hint: trial
-          ? 'Use the same Google/Facebook email as your assessment. Privacy policy must be accepted first.'
+          ? 'Use the same Google/Facebook email as your assessment. Terms, privacy, and parental consent must be accepted first.'
           : 'Take the level assessment and open Claim Free Trial from your email before using Google or Facebook.',
         beforeStart: function () {
           if (!trial) {
@@ -798,11 +819,13 @@
             }
             return false;
           }
+          var terms = document.getElementById('terms-consent');
           var privacy = document.getElementById('privacy-consent');
-          if (!privacy || !privacy.checked) {
+          var parental = document.getElementById('parental-consent');
+          if (!terms || !terms.checked || !privacy || !privacy.checked || !parental || !parental.checked) {
             if (errEl) {
               errEl.textContent =
-                'A parent or guardian must accept the Student Privacy and Recording Policy before continuing.';
+                'A parent or guardian must accept the Terms of Service, the Student Privacy and Recording Policy, and parental consent before continuing.';
               errEl.className = 'register-error';
               errEl.style.display = 'block';
             }
@@ -814,7 +837,9 @@
           return {
             intent: 'student_register',
             trialToken: trial,
+            termsAccepted: 'true',
             privacyConsentAccepted: 'true',
+            parentalConsentAccepted: 'true',
             marketingConsent:
               document.getElementById('marketing-consent') &&
               document.getElementById('marketing-consent').checked

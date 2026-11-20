@@ -822,12 +822,36 @@ router.post('/admin/classroom-recordings/purge-expired', ...adminRecordingAuthCh
   }
 });
 
+/** Open safety or dispute tickets keep that booking's recording until the ticket closes. */
+async function heldBookingIds(recordings) {
+  const ids = [...new Set(recordings.map((r) => String(r.bookingId || '').trim()).filter(Boolean))];
+  if (!ids.length) return new Set();
+  const IssueReport = require('./models/IssueReport');
+  const IncidentReport = require('./models/IncidentReport');
+  const objectIds = ids.filter((id) => /^[a-f0-9]{24}$/i.test(id));
+  const [issues, incidents] = await Promise.all([
+    IssueReport.find({ bookingId: { $in: ids }, status: { $in: ['pending', 'reviewed'] } }).select('bookingId').lean(),
+    objectIds.length
+      ? IncidentReport.find({
+          bookingId: { $in: objectIds },
+          status: { $nin: ['withdrawn', 'resolved'] },
+        }).select('bookingId').lean()
+      : [],
+  ]);
+  const hold = new Set();
+  issues.forEach((row) => hold.add(String(row.bookingId)));
+  incidents.forEach((row) => hold.add(String(row.bookingId)));
+  return hold;
+}
+
 /** Delete files older than expiresAt (call from cron or admin) */
 async function purgeExpiredClassroomRecordings() {
   const now = new Date();
   const expired = await ClassroomRecording.find({ expiresAt: { $lt: now } }).lean();
+  const hold = await heldBookingIds(expired);
   let removed = 0;
   for (const r of expired) {
+    if (hold.has(String(r.bookingId || ''))) continue;
     try {
       await deleteRecordingStorage(r);
       await ClassroomRecording.deleteOne({ _id: r._id });

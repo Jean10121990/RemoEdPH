@@ -41,7 +41,7 @@ const CATALOG = [
   { key: 'gardenCreditsEnabled', group: 'flags', type: 'boolean', value: true, label: 'Garden lesson credits (off pauses rewards)' },
   { key: 'minShareAge', group: 'garden', type: 'number', value: 13, label: 'Minimum share age' },
   { key: 'loginFacebookEnabled', group: 'flags', type: 'boolean', value: false, label: 'Facebook on the login page' },
-  { key: 'privacyConsentVersion', group: 'legal', type: 'string', value: '2026-10-01', label: 'Privacy consent version', confirm: true },
+  { key: 'privacyConsentVersion', group: 'legal', type: 'string', value: '2026-11-20', label: 'Privacy consent version', confirm: true },
   { key: 'supportEmail', group: 'brand', type: 'string', value: 'support@remoedph.com', label: 'Support email' },
   { key: 'facebookUrl', group: 'brand', type: 'string', value: 'https://www.facebook.com/remoed', label: 'Facebook page URL' },
 ];

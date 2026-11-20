@@ -236,9 +236,26 @@ async function seedFaq() {
   return rows.length;
 }
 
+async function refreshUnconfirmedCancelFaq() {
+  const data = readFaqFile();
+  let answer = '';
+  (data && data.sections || []).forEach((section) => {
+    (section.items || []).forEach((item) => {
+      if (item.id === 'cancel-refund') answer = String(item.a || '').slice(0, 8000);
+    });
+  });
+  if (!answer) return 0;
+  const result = await FaqEntry.updateOne(
+    { sourceId: 'cancel-refund', locale: 'en', answer: /still being confirmed/ },
+    { $set: { answer } }
+  );
+  return result.modifiedCount || 0;
+}
+
 async function seedSiteContent() {
   const blocks = await seedPageBlocks();
   const faqs = await seedFaq();
+  await refreshUnconfirmedCancelFaq();
   await loadSnapshot();
   return { blocks, faqs };
 }

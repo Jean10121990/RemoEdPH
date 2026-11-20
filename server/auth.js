@@ -1124,11 +1124,25 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       message: 'Student first name and last name are required',
     });
   }
+  if (req.body.termsAccepted !== true) {
+    return res.status(400).json({
+      success: false,
+      code: 'CONSENT_REQUIRED',
+      message: 'A parent or guardian must accept the Terms of Service before creating an account.',
+    });
+  }
   if (req.body.privacyConsentAccepted !== true) {
     return res.status(400).json({
       success: false,
       code: 'CONSENT_REQUIRED',
       message: 'A parent or guardian must accept the Student Privacy and Recording Policy before creating an account.',
+    });
+  }
+  if (req.body.parentalConsentAccepted !== true) {
+    return res.status(400).json({
+      success: false,
+      code: 'CONSENT_REQUIRED',
+      message: 'A parent or guardian must consent to processing the child\'s information before creating an account.',
     });
   }
 
@@ -1257,7 +1271,7 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
 
     // Free plan is 3 Pre-Level lessons, in order. Do not grant a welcome credit or trial flags.
     const now = new Date();
-    const { PRIVACY_CONSENT_VERSION, consentRecord } = require('./config/privacyConsent');
+    const { PRIVACY_CONSENT_VERSION, PARENTAL_CONSENT_VERSION, consentRecord } = require('./config/privacyConsent');
     const marketingOn = req.body.marketingConsent === true;
     const profileSet = {
       isSubscribed: false,
@@ -1270,6 +1284,9 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       lastName: safeLastName,
       privacyConsentVersion: PRIVACY_CONSENT_VERSION,
       privacyConsentAcceptedAt: now,
+      parentalConsentGiven: true,
+      parentalConsentTimestamp: now,
+      consentPolicyVersion: PARENTAL_CONSENT_VERSION,
       marketingConsent: marketingOn,
       marketingConsentAt: marketingOn ? now : null,
     };

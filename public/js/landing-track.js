@@ -1,6 +1,8 @@
 /**
  * Stores ad click ids for this visit and fires Meta events when a pixel id is set.
- * Does not load Facebook when metaPixelId is empty. Does not fire Schedule.
+ * The public homepage keeps its previous pixel behavior. Other pages wait for cookie Accept.
+ * Does not load Facebook when metaPixelId is empty.
+ * Does not fire Schedule. Event calls carry no child or account fields.
  */
 (function () {
   var cfg = window.RemoEdLanding || {};
@@ -34,6 +36,45 @@
     return /^\d{5,20}$/.test(id) ? id : "";
   }
 
+  function portalTokenPresent() {
+    try {
+      return !!(
+        localStorage.getItem("remoed_student_token") ||
+        localStorage.getItem("remoed_teacher_token") ||
+        localStorage.getItem("remoed_admin_token") ||
+        localStorage.getItem("remoed_affiliate_token")
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function blockedPath() {
+    var path = String(window.location.pathname || "").toLowerCase();
+    if (path.indexOf("student-assessment") !== -1) return false;
+    return /\/(live-classroom|student-|teacher-|admin-|whiteboard|video-room|practice-room|waiting-room)/.test(path);
+  }
+
+  function consentAccepted() {
+    try {
+      return localStorage.getItem("remoed_cookie_consent") === "accepted";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isLandingHome() {
+    var path = String(window.location.pathname || "/").toLowerCase();
+    if (path.length > 1 && path.charAt(path.length - 1) === "/") path = path.slice(0, -1);
+    return path === "" || path === "/" || path === "/index.html";
+  }
+
+  function pixelAllowed() {
+    if (!pixelId()) return false;
+    if (isLandingHome()) return true;
+    return !blockedPath() && !portalTokenPresent() && consentAccepted();
+  }
+
   function loadPixel(id) {
     if (window.fbq) return;
     var n = (window.fbq = function () {
@@ -55,13 +96,22 @@
   }
 
   function track(eventName) {
-    if (!pixelId() || typeof window.fbq !== "function") return;
+    if (!pixelAllowed() || typeof window.fbq !== "function") return;
+    if (eventName !== "Lead" && eventName !== "CompleteRegistration" && eventName !== "ViewContent" && eventName !== "PageView") return;
     window.fbq("track", eventName);
   }
 
+  function maybeLoad() {
+    if (!pixelAllowed()) return;
+    loadPixel(pixelId());
+  }
+
   capture();
-  var id = pixelId();
-  if (id) loadPixel(id);
+  maybeLoad();
+  window.addEventListener("remoed:cookie-consent", function () {
+    maybeLoad();
+    if (document.body && document.body.classList.contains("page-index")) track("ViewContent");
+  });
 
   window.RemoEdLandingTrack = {
     attr: function () {

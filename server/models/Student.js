@@ -171,6 +171,10 @@ const studentSchema = new mongoose.Schema({
   planModeOverride: { type: String, enum: ['free', 'paid'], default: undefined },
   /** Latest accepted Student Privacy and Recording Policy version. */
   privacyConsentVersion: { type: String, default: '' },
+  /** Separate parent consent to process the child's information for live lessons. */
+  parentalConsentGiven: { type: Boolean, default: false },
+  parentalConsentTimestamp: { type: Date, default: null },
+  consentPolicyVersion: { type: String, default: '' },
   privacyConsentAcceptedAt: { type: Date, default: null },
   privacyConsents: [
     {
