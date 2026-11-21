@@ -4,7 +4,7 @@
  */
 window.RemoEdLanding = {
   demoClassEnabled: false,
-  metaPixelId: "",
+  metaPixelId: "1450527273952773",
   primaryCta: "Take the Free Assessment",
   secondaryCta: "See How Live Classes Work",
   lessonCta: "Try a free lesson",
