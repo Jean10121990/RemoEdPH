@@ -570,7 +570,7 @@
           bandBox.appendChild(row);
         });
         document.getElementById('level-line').textContent = 'Suggested level: ' + (profile.suggestedLevel || '');
-        document.getElementById('focus-line').textContent = (profile.practiceLine ? profile.practiceLine + ' ' : '') + 'Suggested focus: ' + (profile.suggestedFocus === 'reading' ? 'Reading Focus' : 'Balanced');
+        document.getElementById('focus-line').textContent = (profile.practiceLine ? profile.practiceLine + ' ' : '') + 'Suggested focus: ' + (profile.suggestedFocus === 'reading' ? 'Skills-based' : 'Balanced');
         document.getElementById('disclaimer').textContent = profile.disclaimer || '';
         show('result-step');
       }

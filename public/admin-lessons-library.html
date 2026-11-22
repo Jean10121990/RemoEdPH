@@ -1033,8 +1033,8 @@
                                 <textarea id="edit-balanced-plan" class="form-control" rows="4" maxlength="4000" style="width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:6px; resize:vertical;" placeholder="Short time split for a Balanced lesson"></textarea>
                             </div>
                             <div class="form-group" style="margin-bottom: 1rem;">
-                                <label for="edit-reading-plan">Reading Focus plan</label>
-                                <textarea id="edit-reading-plan" class="form-control" rows="4" maxlength="4000" style="width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:6px; resize:vertical;" placeholder="Short time split for Reading Focus. Leave empty to use the Balanced plan."></textarea>
+                                <label for="edit-reading-plan">Skills-based plan</label>
+                                <textarea id="edit-reading-plan" class="form-control" rows="4" maxlength="4000" style="width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:6px; resize:vertical;" placeholder="Short time split for Skills-based. Leave empty to use the Balanced plan."></textarea>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
                                 <button type="button" class="upload-btn" onclick="saveLessonChanges()" id="save-lesson-btn" style="flex: 1; margin: 0;">Save Changes</button>
@@ -2492,8 +2492,8 @@
                 ? 'Balanced: ' + lesson.balancedPlan
                 : 'Balanced: (no plan yet)';
             const readingText = lesson.readingPlan && String(lesson.readingPlan).trim()
-                ? 'Reading Focus: ' + lesson.readingPlan
-                : 'Reading Focus: (empty — the classroom shows the Balanced plan)';
+                ? 'Skills-based: ' + lesson.readingPlan
+                : 'Skills-based: (empty — the classroom shows the Balanced plan)';
             const balancedEl = document.getElementById('lesson-balanced-plan-text');
             const readingEl = document.getElementById('lesson-reading-plan-text');
             if (balancedEl) balancedEl.textContent = balancedText;

@@ -5,10 +5,11 @@
 const { readSetting } = require('./siteSettings');
 
 const DEFAULT_BALANCED = 'Listening, speaking, pronunciation, and reading in one lesson.';
-const DEFAULT_READING = 'More time on letter sounds, sight words, and reading together.';
+const OLD_READING = 'More time on letter sounds, sight words, and reading together.';
+const DEFAULT_READING = 'More time on the skill your child needs, such as listening, speaking, vocabulary, or reading.';
 const HELPER = 'Same level, same teacher, same 1 credit. You can change it before each lesson.';
-const UNSURE = 'Not sure? Choose Balanced. Reading is part of every lesson.';
-const READING_TIP = 'Have a picture book ready to read together.';
+const UNSURE = 'Not sure? Choose Balanced. Every lesson still practices the skills.';
+const READING_TIP = 'The teacher spends more time on the skill your child is building.';
 
 function parseLessonFocus(value, options) {
   const allowEmpty = !options || options.allowEmpty !== false;
@@ -23,7 +24,7 @@ function normalizeLessonFocus(value) {
 }
 
 function focusLabel(value) {
-  return normalizeLessonFocus(value) === 'reading' ? 'Reading Focus' : 'Balanced';
+  return normalizeLessonFocus(value) === 'reading' ? 'Skills-based' : 'Balanced';
 }
 
 function lockHours() {
@@ -52,7 +53,7 @@ function parentCopy() {
     const savedBalanced = readSetting('lessonFocusBalancedText');
     const savedReading = readSetting('lessonFocusReadingText');
     if (savedBalanced) balanced = String(savedBalanced);
-    if (savedReading) reading = String(savedReading);
+    if (savedReading && String(savedReading).trim() !== OLD_READING) reading = String(savedReading);
   } catch (_err) {
     /* catalog defaults */
   }

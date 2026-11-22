@@ -537,7 +537,7 @@
 
     function lessonFocusTag(booking) {
       const level = booking && booking.studentLevel ? String(booking.studentLevel) : 'Level';
-      const focus = booking && String(booking.lessonFocus || '').toLowerCase() === 'reading' ? 'Reading Focus' : 'Balanced';
+      const focus = booking && String(booking.lessonFocus || '').toLowerCase() === 'reading' ? 'Skills-based' : 'Balanced';
       return level + ' · ' + focus;
     }
 
@@ -1170,7 +1170,7 @@
 
       function lessonFocusTag(booking) {
         const level = booking && booking.studentLevel ? String(booking.studentLevel) : 'Level';
-        const focus = booking && String(booking.lessonFocus || '').toLowerCase() === 'reading' ? 'Reading Focus' : 'Balanced';
+        const focus = booking && String(booking.lessonFocus || '').toLowerCase() === 'reading' ? 'Skills-based' : 'Balanced';
         return level + ' · ' + focus;
       }
 

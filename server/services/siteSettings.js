@@ -30,7 +30,7 @@ const CATALOG = [
   { key: 'classLengthMinutes', group: 'booking', type: 'number', value: 25, label: 'Scheduled class length (minutes)' },
   { key: 'lessonFocusLockHours', group: 'booking', type: 'number', value: 24, label: 'Lesson focus change cutoff (hours)' },
   { key: 'lessonFocusBalancedText', group: 'booking', type: 'string', value: 'Listening, speaking, pronunciation, and reading in one lesson.', label: 'Balanced lesson description' },
-  { key: 'lessonFocusReadingText', group: 'booking', type: 'string', value: 'More time on letter sounds, sight words, and reading together.', label: 'Reading Focus description' },
+  { key: 'lessonFocusReadingText', group: 'booking', type: 'string', value: 'More time on the skill your child needs, such as listening, speaking, vocabulary, or reading.', label: 'Skills-based lesson description' },
   { key: 'creditNoticeDays', group: 'booking', type: 'json', value: [14, 7], label: 'Credit expiry notice days (14 and 7)' },
   { key: 'freePlanLessonCount', group: 'booking', type: 'number', value: 3, label: 'Free-plan lesson count' },
   { key: 'gardenMonthlyTarget', group: 'garden', type: 'number', value: 22, label: 'Garden monthly target' },
@@ -135,6 +135,13 @@ const PREVIOUS_COMMISSION = {
 
 function normalizeCommission(key, value) {
   const spec = BY_KEY[key];
+  if (
+    key === 'lessonFocusReadingText' &&
+    spec &&
+    String(value || '').trim() === 'More time on letter sounds, sight words, and reading together.'
+  ) {
+    return spec.value;
+  }
   const previous = PREVIOUS_COMMISSION[key];
   if (!spec || !previous) return value;
   const n = Number(value);

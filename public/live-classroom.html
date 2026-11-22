@@ -8597,7 +8597,7 @@
           const balancedPlan = data && data.balancedPlan != null ? String(data.balancedPlan).trim() : '';
           const parts = [];
           if (focus === 'reading' && !readingPlan && balancedPlan) {
-            parts.push('Reading Focus plan is not ready yet. Showing the Balanced plan.');
+            parts.push('Skills-based plan is not ready yet. Showing the Balanced plan.');
             parts.push(balancedPlan);
           } else if (focus === 'reading' && readingPlan) {
             parts.push(readingPlan);

@@ -27,7 +27,7 @@
         <p>Parent-facing sentences and the change cutoff are on <a href="admin-settings.html">Site settings</a>. This page counts bookings and edits the skill-check questions. It does not upload media files.</p>
         <p id="report-summary">Loading report…</p>
         <table id="report-table"></table>
-        <h2>Lessons missing a Reading Focus plan</h2>
+        <h2>Lessons missing a Skills-based plan</h2>
         <ul id="missing-plans"></ul>
       </div>
       <div class="card">
@@ -65,10 +65,10 @@
     async function loadReport() {
       var data = await api('/api/admin/lesson-focus-report');
       document.getElementById('report-summary').textContent =
-        data.total + ' bookings. Reading Focus is ' + data.reading + ' (' + data.readingShare + '%).';
+        data.total + ' bookings. Skills-based is ' + data.reading + ' (' + data.readingShare + '%).';
       var table = document.getElementById('report-table');
       table.innerHTML = '<tr><th>Level</th><th>Focus</th><th>Bookings</th></tr>' + (data.byLevel || []).map(function (row) {
-        return '<tr><td>' + esc(row.level) + '</td><td>' + esc(row.focus === 'reading' ? 'Reading Focus' : 'Balanced') + '</td><td>' + esc(row.count) + '</td></tr>';
+        return '<tr><td>' + esc(row.level) + '</td><td>' + esc(row.focus === 'reading' ? 'Skills-based' : 'Balanced') + '</td><td>' + esc(row.count) + '</td></tr>';
       }).join('');
       var list = document.getElementById('missing-plans');
       var missing = data.lessonsMissingReadingPlan || [];
@@ -76,7 +76,7 @@
         ? missing.map(function (lesson) {
             return '<li>Lesson ' + esc(lesson.lessonNumber) + ': ' + esc(lesson.title) + '</li>';
           }).join('')
-        : '<li>Every lesson has a Reading Focus plan.</li>';
+        : '<li>Every lesson has a Skills-based plan.</li>';
     }
     function field(label, value, kind) {
       var control = kind === 'area'

@@ -2178,7 +2178,7 @@ router.post('/send-assessment-email', async (req, res) => {
     const emailService = require('./emailService');
     let emailResult;
     if (skillProfile) {
-      const focusName = skillProfile.suggestedFocus === 'reading' ? 'Reading Focus' : 'Balanced';
+      const focusName = skillProfile.suggestedFocus === 'reading' ? 'Skills-based' : 'Balanced';
       const lines = [
         skillProfile.headline,
         'Listening: ' + skillProfile.bands.listening,

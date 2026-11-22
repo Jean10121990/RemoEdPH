@@ -165,7 +165,7 @@
     },
     lessonFocusLockHours: {
       title: 'Lesson focus change cutoff',
-      what: 'How many hours before class a parent can still switch Balanced and Reading Focus. Inside this window the choice stays locked. The class still costs 1 credit either way.',
+      what: 'How many hours before class a parent can still switch Balanced and Skills-based. Inside this window the choice stays locked. The class still costs 1 credit either way.',
       example: '24 means a parent can change the focus until 24 hours before the class.'
     },
     lessonFocusBalancedText: {
@@ -174,9 +174,9 @@
       example: 'Listening, speaking, pronunciation, and reading in one lesson.'
     },
     lessonFocusReadingText: {
-      title: 'Reading Focus description',
-      what: 'The sentence parents see on the Reading Focus card when they book. It is also used in the confirmation.',
-      example: 'More time on letter sounds, sight words, and reading together.'
+      title: 'Skills-based description',
+      what: 'The sentence parents see on the Skills-based card when they book. It is also used in the confirmation.',
+      example: 'More time on the skill your child needs, such as listening, speaking, vocabulary, or reading.'
     }
   };
 

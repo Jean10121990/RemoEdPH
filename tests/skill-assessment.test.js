@@ -116,7 +116,7 @@ test('the browser transcript is scored, and chosen skills set the focus', () => 
   assert.equal(speakingOnly.wantsMoreReading, false);
 });
 
-test('more reading time suggests Reading Focus, and age sets the level name', () => {
+test('more reading time suggests the skills-based focus, and age sets the level name', () => {
   const questions = [1, 2].map((n) => picture('p' + n, 'pronunciation', 0));
   const answers = questions.map((q) => ({ questionId: q.questionId, choiceIndex: 1 }));
   const young = skill.scoreSubmission(questions, answers, {

@@ -660,7 +660,7 @@
                 return;
             }
             const next = booking.lessonFocus === 'reading' ? 'balanced' : 'reading';
-            const label = next === 'reading' ? 'Reading Focus' : 'Balanced';
+            const label = next === 'reading' ? 'Skills-based' : 'Balanced';
             if (!confirm('Change this class to ' + label + '?')) return;
             const token = localStorage.getItem('remoed_student_token') || localStorage.getItem('token') || '';
             const res = await fetch('/api/student/bookings/' + encodeURIComponent(bookingId) + '/lesson-focus', {
