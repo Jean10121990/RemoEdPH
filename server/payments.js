@@ -108,9 +108,16 @@ async function currentPhpRate() {
   return EXCHANGE_RATE_PHP;
 }
 
+/** Checkout charges this many pesos per paid month. 1 / 3 / 6 / 12 months. */
+const PHP_PER_MONTH = 7700;
 /** Fallback when the settings cache is empty. Seeded values are $7 and $21. */
 const USD_PER_CLASS = 7;
 const FOUNDER_DISCOUNT_PER_MONTH = 21;
+
+function phpPerMonth() {
+  const n = Number(readSetting('phpPerMonth'));
+  return Number.isFinite(n) && n > 0 ? n : PHP_PER_MONTH;
+}
 
 function usdPerClass() {
   const n = Number(readSetting('usdPerClass'));
@@ -141,16 +148,14 @@ function computePlanTotals(planId, rate) {
 
   const lessonCredits = row.credits;
   const months = row.months;
-  const perClass = usdPerClass();
-  const usdList = Number((lessonCredits * perClass).toFixed(2));
-  // Seeded Spark discount is $0, so checkout stays $154 until a Super-Admin changes it.
-  const usdFounderDiscount =
-    planKey === 'spark'
-      ? Number(sparkFounderDiscount().toFixed(2))
-      : Number((founderDiscountPerMonth() * months).toFixed(2));
-  const usdTotal = Number(Math.max(0, usdList - usdFounderDiscount).toFixed(2));
   const phpRate = Number(rate) > 0 ? Number(rate) : EXCHANGE_RATE_PHP;
-  const phpTotal = Number((usdTotal * phpRate).toFixed(2));
+  const monthPrice = phpPerMonth();
+  const phpTotal = Number((monthPrice * months).toFixed(2));
+  const usdTotal = Number((phpTotal / phpRate).toFixed(2));
+  const usdList = usdTotal;
+  const usdFounderDiscount = 0;
+  const perClass = lessonCredits > 0 ? Number((usdTotal / lessonCredits).toFixed(2)) : 0;
+  const phpPerClass = lessonCredits > 0 ? Number((phpTotal / lessonCredits).toFixed(2)) : 0;
   const amountCentavos = Math.round(phpTotal * 100);
 
   return {
@@ -161,6 +166,8 @@ function computePlanTotals(planId, rate) {
     validityMonths: row.validityMonths,
     lessonCredits,
     credits: lessonCredits,
+    phpPerMonth: monthPrice,
+    phpPerClass,
     usdPerClass: perClass,
     usdList,
     usdFounderDiscount,
@@ -422,6 +429,8 @@ router.get('/plans', async (req, res) => {
       months: t.months,
       validityMonths: t.validityMonths,
       lessonCredits: t.lessonCredits,
+      phpPerMonth: t.phpPerMonth,
+      phpPerClass: t.phpPerClass,
       usdPerClass: t.usdPerClass,
       usdList: t.usdList,
       usdFounderDiscount: t.usdFounderDiscount,
@@ -433,6 +442,7 @@ router.get('/plans', async (req, res) => {
   res.json({
     success: true,
     exchangeRatePhp: rate,
+    phpPerMonth: phpPerMonth(),
     usdPerClass: usdPerClass(),
     founderDiscountPerMonth: founderDiscountPerMonth(),
     plans,

@@ -5,11 +5,11 @@
  * PayMongo and webhooks must use this only for credit counts / durations.
  * Never accept credit amounts from the client.
  *
- * Pricing (server/payments.js): $7/class; Founder Discount $21 × months (spark = $0).
- * spark  Starter  — 22 lessons, $154, 1 month
- * steady Progress — 66 lessons, $399, Save $63, 3 months
- * scholar Mastery — 132 lessons, $798, Save $126, 6 months
- * summit Ultimate — 264 lessons, $1,596, Save $252, 12 months
+ * Pricing (server/payments.js): ₱7,700 per month. No founder discount.
+ * spark  Starter  — 22 lessons, ₱7,700, 1 month
+ * steady Progress — 66 lessons, ₱23,100, 3 months
+ * scholar Mastery — 132 lessons, ₱46,200, 6 months
+ * summit Ultimate — 264 lessons, ₱92,400, 12 months
  */
 
 const { readSetting } = require('../services/siteSettings');

@@ -6275,7 +6275,7 @@ router.post('/user', async (req, res) => {
           );
         }
         
-        let nt = 180;
+        let nt = 200;
         let nc1 = false;
         let nc2 = false;
         let nc3 = false;
@@ -6284,7 +6284,9 @@ router.post('/user', async (req, res) => {
             ? parseInt(bodyPayoutTierBase, 10)
             : null;
         if (pbCreate === 83) {
-          nt = 180;
+          nt = 200;
+        } else if (pbCreate === 180 || pbCreate === 330) {
+          nt = 200;
         } else if (pbCreate != null && PAYOUT_TIER_VALUES.includes(pbCreate)) {
           nt = pbCreate;
           nc1 = !!bodyPayoutCred1;
@@ -6643,7 +6645,8 @@ router.put('/user/:userId', async (req, res) => {
     if (userType === 'teacher') {
       if (firstName !== undefined) user.firstName = firstName;
       if (lastName !== undefined) user.lastName = lastName;
-      const tb = payoutTierBase != null ? parseInt(payoutTierBase, 10) : null;
+      const tbRaw = payoutTierBase != null ? parseInt(payoutTierBase, 10) : null;
+      const tb = tbRaw === 180 || tbRaw === 330 ? 200 : tbRaw;
       if (tb != null && PAYOUT_TIER_VALUES.includes(tb)) {
         user.payoutTierBase = tb;
         user.payoutCred1 = !!payoutCred1;

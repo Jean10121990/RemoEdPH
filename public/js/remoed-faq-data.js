@@ -241,10 +241,10 @@
             weight: 5,
             a:
               'RemoEd offers four flexible learning bundles (prices in USD; checkout may show PHP estimates):\n\n' +
-              '• **RemoSpark (Starter)** — **1 month** · **22 lessons** · **$154.00**\n' +
-              '• **RemoSteady (Progress)** — **3 months** · **66 lessons** · **$399.00**\n' +
-              '• **RemoScholar (Mastery)** — **6 months** · **132 lessons** · **$798.00**\n' +
-              '• **RemoSummit (Ultimate)** — **12 months** · **264 lessons** · **$1,596.00**\n\n' +
+              '• **RemoSpark (Starter)** — **1 month** · **22 lessons** · **₱7,700**\n' +
+              '• **RemoSteady (Progress)** — **3 months** · **66 lessons** · **₱23,100**\n' +
+              '• **RemoScholar (Mastery)** — **6 months** · **132 lessons** · **₱46,200**\n' +
+              '• **RemoSummit (Ultimate)** — **12 months** · **264 lessons** · **₱92,400**\n\n' +
               'If lessons are still unfinished at the end, a parent can ask the teacher for one **3-month extension** after a video call about the student\'s progress.\n\n' +
               'Families can review live plan cards on the RemoEd home page (#plans) or during student registration.',
           },

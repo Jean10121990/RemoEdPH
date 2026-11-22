@@ -538,7 +538,7 @@
         <select id="plan-currency" aria-describedby="plan-currency-note">
           <option value="USD" data-i18n="currency_usd">USD — US Dollar</option>
         </select>
-        <p class="plan-currency-note" id="plan-currency-note" data-i18n="currency_note" aria-live="polite">Dollar prices stay fixed. Peso amounts follow the current conversion.</p>
+        <p class="plan-currency-note" id="plan-currency-note" data-i18n="currency_note" aria-live="polite">Peso prices stay fixed. Other currencies are estimates.</p>
       </div>
       <div class="plans-grid">
         <div class="plan-card plan-spark" data-plan="spark">
@@ -558,7 +558,7 @@
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_spark_bundle">Starter Bundle</div>
-          <div class="plan-price-local" data-usd="154">$154.00 USD</div>
+          <div class="plan-price-local" data-usd="128.27">$128.27 USD</div>
           <div class="plan-period"><strong>22 Lessons</strong> · Good for 1 month</div>
           <p class="plan-tagline" data-i18n="plan_spark_tag">Spark their curiosity.</p>
           <ul class="plan-features">
@@ -573,7 +573,6 @@
         </div>
 
         <div class="plan-card plan-steady plan-popular" data-plan="steady">
-          <div class="plan-badge">Save</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-steady-boy.png"
@@ -590,12 +589,11 @@
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_steady_bundle">Progress Bundle</div>
-          <div class="plan-price-local" data-usd="399">$399.00 USD</div>
+          <div class="plan-price-local" data-usd="384.81">$384.81 USD</div>
           <div class="plan-period"><strong>66 Lessons</strong> · Good for 3 months</div>
           <p class="plan-tagline" data-i18n="plan_steady_tag">Building a routine.</p>
           <ul class="plan-features">
             <li data-price-line="class">66 classes</li>
-            <li data-price-line="founder">Founder discount:</li>
             <li data-i18n="plan_credit_3">3 months of classes. Credits last for those months.</li>
             <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li data-i18n="plan_print">Digital print outs</li>
@@ -607,7 +605,6 @@
 
         <div class="plan-card plan-scholar plan-recommended" data-plan="scholar">
           <div class="plan-recommended-ribbon" data-i18n="plan_recommended">Recommended</div>
-          <div class="plan-badge">Save</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-scholar-sophia.png"
@@ -624,12 +621,11 @@
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_scholar_bundle">Mastery Bundle</div>
-          <div class="plan-price-local" data-usd="798">$798.00 USD</div>
+          <div class="plan-price-local" data-usd="769.62">$769.62 USD</div>
           <div class="plan-period"><strong>132 Lessons</strong> · Good for 6 months</div>
           <p class="plan-tagline" data-i18n="plan_scholar_tag">Mastering the basics.</p>
           <ul class="plan-features">
             <li data-price-line="class">132 classes</li>
-            <li data-price-line="founder">Founder discount:</li>
             <li data-i18n="plan_credit_6">6 months of classes. Credits last for those months.</li>
             <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li data-i18n="plan_report">Mid-term progress report</li>
@@ -640,7 +636,6 @@
         </div>
 
         <div class="plan-card plan-summit" data-plan="summit">
-          <div class="plan-badge">Save</div>
           <div class="plan-icon plan-icon--character">
             <img
               src="/images/plan-characters/plan-summit-sophia.png"
@@ -657,12 +652,11 @@
             <p class="plan-exact" data-price-role="exact" hidden></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_summit_bundle">Ultimate Bundle</div>
-          <div class="plan-price-local" data-usd="1596">$1,596.00 USD</div>
+          <div class="plan-price-local" data-usd="1539.23">$1,539.23 USD</div>
           <div class="plan-period"><strong>264 Lessons</strong> · Good for 12 months</div>
           <p class="plan-tagline" data-i18n="plan_summit_tag">Reaching the peak.</p>
           <ul class="plan-features">
             <li data-price-line="class">264 classes</li>
-            <li data-price-line="founder">Founder discount:</li>
             <li data-i18n="plan_credit_12">12 months of classes. Credits last for those months.</li>
             <li data-i18n="plan_extend">Unfinished lessons: parents can ask for a 3-month extension.</li>
             <li data-i18n="plan_cert">End-of-year certificate</li>
@@ -839,17 +833,17 @@
     <script src="/js/landing-config.js?v=landing-8"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
-    <script src="/js/plan-pricing.js?v=pricing-6"></script>
-    <script src="/js/plan-currency-converter.js?v=fx-6"></script>
+    <script src="/js/plan-pricing.js?v=pricing-7"></script>
+    <script src="/js/plan-currency-converter.js?v=fx-7"></script>
     <script>
       let selectedPlan = "";
       let EXCHANGE_RATE_USED = 60.03;
       /** Fallback until GET /api/payments/plans loads (public/js/plan-pricing.js); the server is the source of truth. */
       const PLAN_PRICING = {
-        spark: { name: "RemoSpark Plan", months: 1, validityMonths: 1, lessonCredits: 22, usdList: 154.0, usdFounderDiscount: 0, usdTotal: 154.0 },
-        steady: { name: "RemoSteady Plan", months: 3, validityMonths: 3, lessonCredits: 66, usdList: 462.0, usdFounderDiscount: 63.0, usdTotal: 399.0 },
-        scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 6, lessonCredits: 132, usdList: 924.0, usdFounderDiscount: 126.0, usdTotal: 798.0 },
-        summit: { name: "RemoSummit Plan", months: 12, validityMonths: 12, lessonCredits: 264, usdList: 1848.0, usdFounderDiscount: 252.0, usdTotal: 1596.0 },
+        spark: { name: "RemoSpark Plan", months: 1, validityMonths: 1, lessonCredits: 22, phpTotal: 7700, usdList: 128.27, usdFounderDiscount: 0, usdTotal: 128.27 },
+        steady: { name: "RemoSteady Plan", months: 3, validityMonths: 3, lessonCredits: 66, phpTotal: 23100, usdList: 384.81, usdFounderDiscount: 0, usdTotal: 384.81 },
+        scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 6, lessonCredits: 132, phpTotal: 46200, usdList: 769.62, usdFounderDiscount: 0, usdTotal: 769.62 },
+        summit: { name: "RemoSummit Plan", months: 12, validityMonths: 12, lessonCredits: 264, phpTotal: 92400, usdList: 1539.23, usdFounderDiscount: 0, usdTotal: 1539.23 },
       };
       if (window.RemoEdPlanPricing) {
         window.RemoEdPlanPricing.ready.then(function (data) {
@@ -866,6 +860,7 @@
               usdList: p.usdList,
               usdFounderDiscount: p.usdFounderDiscount,
               usdTotal: p.usdTotal,
+              phpTotal: p.phpTotal,
             });
           });
         });
@@ -905,7 +900,9 @@
         const config = PLAN_PRICING[plan];
         if (!config) return null;
         const usdTotal = Number(Number(config.usdTotal).toFixed(2));
-        const phpEstimate = Number((usdTotal * EXCHANGE_RATE_USED).toFixed(2));
+        const phpEstimate = Number(config.phpTotal) > 0
+          ? Number(Number(config.phpTotal).toFixed(2))
+          : Number((usdTotal * EXCHANGE_RATE_USED).toFixed(2));
         return { usdTotal, phpEstimate };
       }
 
@@ -1179,7 +1176,7 @@
           }
         });
     </script>
-    <script src="/js/home-strings.js?v=home-lang-2"></script>
+    <script src="/js/home-strings.js?v=home-lang-3"></script>
     <script src="/js/site-i18n.js?v=home-lang-2"></script>
     <script src="/js/site-content.js?v=content-2"></script>
     <script src="/js/hero-type.js?v=type-1"></script>

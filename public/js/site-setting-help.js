@@ -3,6 +3,11 @@
   'use strict';
 
   var HELP = {
+    phpPerMonth: {
+      title: 'Plan price per month',
+      what: 'The peso price of one month. A 3-month plan is this times 3, a 6-month plan times 6, and a 12-month plan times 12.',
+      example: '7700 charges ₱7,700, ₱23,100, ₱46,200, and ₱92,400.'
+    },
     creditsPerMonth: {
       title: 'Credits per month',
       what: 'How many lessons one month of a plan includes. Longer plans multiply this number by their months.',
@@ -10,18 +15,18 @@
     },
     usdPerClass: {
       title: 'USD per class',
-      what: 'The dollar price of one lesson before any founder discount. Checkout multiplies this by the lesson count.',
-      example: '7 means Spark is 22 × $7 = $154 before a Spark discount.'
+      what: 'A leftover dollar figure. Checkout charges the peso monthly price instead.',
+      example: 'Checkout uses the peso monthly price, not this dollar figure.'
     },
     founderDiscountPerMonth: {
       title: 'Founder discount per month',
-      what: 'Dollars taken off each month of Steady, Scholar, and Summit. Spark does not use this number.',
-      example: '21 on a 3-month plan saves $63, so $462 becomes $399.'
+      what: 'Not subtracted from the plan. The price is ₱7,700 times 1, 3, 6, or 12 months.',
+      example: 'Plan price is ₱7,700 times the months. This discount is not subtracted.'
     },
     sparkFounderDiscount: {
       title: 'Spark founder discount',
       what: 'Dollars taken off the Spark plan only. Leave it at 0 to keep Spark at the full lesson price.',
-      example: '0 keeps Spark at $154. A value of 10 would make Spark $144.'
+      example: '0 leaves the 1-month plan at ₱7,700.'
     },
     adminFeePercent: {
       title: 'Admin fee percent',
@@ -36,27 +41,27 @@
     commissionSpark: {
       title: 'Unique Link commission, Spark',
       what: 'The one-time peso amount a referrer earns when someone buys Spark through their link. The 2% monthly share is separate.',
-      example: '1000 pays the referrer ₱1,000 for that Spark signup.'
+      example: '500 pays the referrer ₱500 once, for any plan length.'
     },
     commissionSteady: {
       title: 'Unique Link commission, Steady',
       what: 'The one-time peso amount a referrer earns when someone buys Steady through their link.',
-      example: '1500 pays the referrer ₱1,500 for that Steady signup.'
+      example: '500 pays the referrer ₱500 once, for a 3-month plan too.'
     },
     commissionScholar: {
       title: 'Unique Link commission, Scholar',
       what: 'The one-time peso amount a referrer earns when someone buys Scholar through their link.',
-      example: '2000 pays the referrer ₱2,000 for that Scholar signup.'
+      example: '500 pays the referrer ₱500 once, for a 6-month plan too.'
     },
     commissionSummit: {
       title: 'Unique Link commission, Summit',
       what: 'The one-time peso amount a referrer earns when someone buys Summit through their link.',
-      example: '2500 pays the referrer ₱2,500 for that Summit signup.'
+      example: '500 pays the referrer ₱500 once, for a 12-month plan too.'
     },
     payoutPaidHourly: {
       title: 'Paid tier hourly rates',
-      what: 'The four hourly teaching rates in pesos. These numbers are the tier codes. This is not the fallback global rate. The list must include 180.',
-      example: '180, 230, 280. A 25-minute class at 180 pays ₱75.'
+      what: 'The three hourly teaching rates in pesos. These numbers are the tier codes. This is not the fallback global rate. The list must include 200.',
+      example: '200, 230, 280. A 25-minute class at 200 pays ₱83.33.'
     },
     payoutCredentialAddon: {
       title: 'Credential add-on',
@@ -86,7 +91,7 @@
     classLengthMinutes: {
       title: 'Scheduled class length',
       what: 'The lesson length used for teacher pay. Payout is the hourly tier times this length divided by 60.',
-      example: '25 at tier 180 pays 180 × 25 / 60 = ₱75.'
+      example: '25 at tier 200 pays 200 × 25 / 60 = ₱83.33.'
     },
     creditNoticeDays: {
       title: 'Credit expiry notice days',

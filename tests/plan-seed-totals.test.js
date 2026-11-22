@@ -14,35 +14,35 @@ function catalogValue(key) {
   return row.value;
 }
 
-test('seeded Spark is 22 credits at $7 with a $0 founder discount', () => {
+test('seeded plans charge ₱7,700 per month', () => {
   assert.equal(catalogValue('creditsPerMonth'), 22);
-  assert.equal(catalogValue('usdPerClass'), 7);
-  assert.equal(catalogValue('founderDiscountPerMonth'), 21);
-  assert.equal(catalogValue('sparkFounderDiscount'), 0);
+  assert.equal(catalogValue('phpPerMonth'), 7700);
   assert.equal(CREDITS_PER_MONTH, 22);
   assert.equal(creditsPerMonth(), 22);
 
   const spark = payments.computePlanTotals('spark', RATE);
   assert.equal(spark.lessonCredits, 22);
-  assert.equal(spark.usdPerClass, 7);
+  assert.equal(spark.phpPerMonth, 7700);
+  assert.equal(spark.phpPerClass, 350);
   assert.equal(spark.usdFounderDiscount, 0);
-  assert.equal(spark.usdTotal, 154);
-  assert.equal(spark.phpTotal, 9244.62);
-  assert.equal(spark.amountCentavos, 924462);
+  assert.equal(spark.phpTotal, 7700);
+  assert.equal(spark.amountCentavos, 770000);
+  assert.equal(spark.usdTotal, Number((7700 / RATE).toFixed(2)));
 });
 
-test('seeded plan pesos match checkout at the 60.03 fallback rate', () => {
+test('longer plans are ₱7,700 times the months', () => {
   const expected = {
-    steady: { credits: 66, usd: 399, php: 23951.97 },
-    scholar: { credits: 132, usd: 798, php: 47903.94 },
-    summit: { credits: 264, usd: 1596, php: 95807.88 },
+    steady: { credits: 66, months: 3, php: 23100 },
+    scholar: { credits: 132, months: 6, php: 46200 },
+    summit: { credits: 264, months: 12, php: 92400 },
   };
   Object.entries(expected).forEach(([id, row]) => {
     const totals = payments.computePlanTotals(id, RATE);
     assert.equal(totals.lessonCredits, row.credits, id);
-    assert.equal(totals.usdTotal, row.usd, id);
     assert.equal(totals.phpTotal, row.php, id);
-    assert.equal(totals.amountCentavos, Math.round(row.php * 100), id);
+    assert.equal(totals.phpPerClass, 350, id);
+    assert.equal(totals.amountCentavos, row.php * 100, id);
+    assert.equal(totals.usdTotal, Number((row.php / RATE).toFixed(2)), id);
   });
 });
 

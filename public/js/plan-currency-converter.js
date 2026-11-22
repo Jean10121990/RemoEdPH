@@ -100,8 +100,8 @@
       return fallback;
     }
     note.textContent = code === 'USD'
-      ? tr('currency_note_usd', 'Dollar prices stay fixed. Peso amounts use the current conversion ({rate} per US$1).').replace('{rate}', '₱' + CHECKOUT_PHP_RATE.toFixed(2))
-      : tr('currency_note_other', 'Dollar prices stay fixed. The {code} line is an estimate at the current exchange rate.').replace('{code}', code) + when + ' ' + tr('currency_bank', 'Your bank sets the final amount.');
+      ? tr('currency_note_usd', 'Peso prices stay fixed. The dollar line uses the current conversion ({rate} per US$1).').replace('{rate}', '₱' + CHECKOUT_PHP_RATE.toFixed(2))
+      : tr('currency_note_other', 'Peso prices stay fixed. The {code} line is an estimate at the current exchange rate.').replace('{code}', code) + when + ' ' + tr('currency_bank', 'Your bank sets the final amount.');
   }
 
   var wanted = saved();

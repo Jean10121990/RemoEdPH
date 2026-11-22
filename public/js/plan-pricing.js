@@ -29,7 +29,7 @@
     Array.prototype.forEach.call(cards, function (card) {
       var p = data.plans[card.getAttribute('data-plan')];
       if (!p) return;
-      var perClass = toPhp(p.usdPerClass, rate);
+      var perClass = Number(p.phpPerClass) > 0 ? Number(p.phpPerClass) : toPhp(p.usdPerClass, rate);
       var discountPhp = toPhp(p.usdFounderDiscount, rate);
 
       var exact = Number(p.phpTotal);
@@ -48,6 +48,7 @@
       var listPhp = Number(p.phpList);
       if (!(listPhp > 0) && Number(p.usdList) > 0) listPhp = toPhp(p.usdList, rate);
       var founderLine = card.querySelector('[data-price-line="founder"]');
+      if (founderLine && !(p.usdFounderDiscount > 0)) founderLine.textContent = '';
       if (founderLine && p.usdFounderDiscount > 0) {
         founderLine.textContent = '';
         if (listPhp > exact) {
@@ -60,7 +61,14 @@
       }
 
       var badge = card.querySelector('.plan-badge');
-      if (badge && p.usdFounderDiscount > 0) badge.textContent = tr('plan_save', 'Save') + ' ' + php(discountPhp);
+      if (badge) {
+        if (p.usdFounderDiscount > 0) {
+          badge.hidden = false;
+          badge.textContent = tr('plan_save', 'Save') + ' ' + php(discountPhp);
+        } else {
+          badge.hidden = true;
+        }
+      }
 
       var usdLine = card.querySelector('.plan-price-local[data-usd]');
       if (usdLine) usdLine.setAttribute('data-usd', String(p.usdTotal));
@@ -80,7 +88,7 @@
       var classLine = card.querySelector('[data-price-line="class"]');
       if (classLine) {
         classLine.textContent = p.lessonCredits + ' ' + tr('plan_classes', 'classes') + ' × ' + php(perClass) +
-          (p.usdFounderDiscount > 0 ? '' : ' = ' + php(p.phpTotal));
+          (p.usdFounderDiscount > 0 ? '' : ' = ' + php(Math.round(Number(p.phpTotal))));
       }
 
     });

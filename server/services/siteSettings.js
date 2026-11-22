@@ -11,16 +11,17 @@ const TTL_MS = 5 * 60 * 1000;
 /** Today's code constants. The October audit's 40-minute class and 10/5/2 notices are stale. */
 const CATALOG = [
   { key: 'creditsPerMonth', group: 'pricing', type: 'number', value: 22, label: 'Credits per month', confirm: true },
-  { key: 'usdPerClass', group: 'pricing', type: 'number', value: 7, label: 'USD per class', confirm: true },
+  { key: 'phpPerMonth', group: 'pricing', type: 'number', value: 7700, label: 'Plan price per month (PHP). Charged as this times 1, 3, 6, or 12.', confirm: true },
+  { key: 'usdPerClass', group: 'pricing', type: 'number', value: 7, label: 'USD per class (not the checkout price)', confirm: true },
   { key: 'founderDiscountPerMonth', group: 'pricing', type: 'number', value: 21, label: 'Founder discount per month (USD)', confirm: true },
   { key: 'sparkFounderDiscount', group: 'pricing', type: 'number', value: 0, label: 'Spark founder discount (USD)', confirm: true },
   { key: 'adminFeePercent', group: 'pricing', type: 'number', value: 2, label: 'Admin fee percent', confirm: true },
   { key: 'referralRewardCredits', group: 'pricing', type: 'number', value: 3, label: 'Referral reward credits' },
-  { key: 'commissionSpark', group: 'pricing', type: 'number', value: 1000, label: 'Unique Link commission, Spark (PHP)', confirm: true },
-  { key: 'commissionSteady', group: 'pricing', type: 'number', value: 1500, label: 'Unique Link commission, Steady (PHP)', confirm: true },
-  { key: 'commissionScholar', group: 'pricing', type: 'number', value: 2000, label: 'Unique Link commission, Scholar (PHP)', confirm: true },
-  { key: 'commissionSummit', group: 'pricing', type: 'number', value: 2500, label: 'Unique Link commission, Summit (PHP)', confirm: true },
-  { key: 'payoutPaidHourly', group: 'pricing', type: 'json', value: [180, 230, 280], label: 'Paid tier hourly rates (PHP). Not the fallback global rate.', confirm: true },
+  { key: 'commissionSpark', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionSteady', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionScholar', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionSummit', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'payoutPaidHourly', group: 'pricing', type: 'json', value: [200, 230, 280], label: 'Paid tier hourly rates (PHP). Not the fallback global rate.', confirm: true },
   { key: 'payoutCredentialAddon', group: 'pricing', type: 'number', value: 10, label: 'Credential add-on (PHP per hour)', confirm: true },
   { key: 'payoutTrialRate', group: 'pricing', type: 'number', value: 45, label: 'Free-trial class rate (PHP, flat)', confirm: true },
   { key: 'emergencyCancelMinutes', group: 'booking', type: 'number', value: 30, label: 'Emergency cancel window (minutes)' },
@@ -111,9 +112,9 @@ function validateValue(key, raw) {
           .map((part) => Number(String(part).trim()))
           .filter((n) => Number.isFinite(n));
     if (key === 'payoutPaidHourly') {
-      const tiers = list.filter((n) => Number.isInteger(n) && n > 0 && n !== 330);
-      if (!tiers.includes(180) || tiers.length < 3) {
-        return { ok: false, error: 'Keep 180 and two other whole hourly rates, separated by commas.' };
+      const tiers = [...new Set(list.filter((n) => Number.isInteger(n) && n > 0 && n !== 330).map((n) => (n === 180 ? 200 : n)))];
+      if (!tiers.includes(200) || tiers.length < 3) {
+        return { ok: false, error: 'Keep 200 and two other whole hourly rates, separated by commas.' };
       }
       return { ok: true, value: tiers };
     }
@@ -125,15 +126,42 @@ function validateValue(key, raw) {
   return { ok: false, error: 'Unsupported type.' };
 }
 
+const PREVIOUS_COMMISSION = {
+  commissionSpark: [1000],
+  commissionSteady: [1500, 1000],
+  commissionScholar: [2000, 1500],
+  commissionSummit: [2500, 2000],
+};
+
+function normalizeCommission(key, value) {
+  const spec = BY_KEY[key];
+  const previous = PREVIOUS_COMMISSION[key];
+  if (!spec || !previous) return value;
+  const n = Number(value);
+  if (previous.indexOf(n) >= 0) return spec.value;
+  return Number.isFinite(n) ? n : spec.value;
+}
+
+function normalizePaidTiers(value) {
+  if (!Array.isArray(value)) return [200, 230, 280];
+  const tiers = [...new Set(value.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n !== 330).map((n) => (n === 180 ? 200 : n)))];
+  return tiers.includes(200) ? tiers : [200, 230, 280];
+}
+
 function publicRow(row) {
   const spec = BY_KEY[row.key] || {};
+  const value = row.key === 'payoutPaidHourly'
+    ? normalizePaidTiers(row.value)
+    : normalizeCommission(row.key, row.value);
   return {
     key: row.key,
     group: row.group,
     type: row.type,
     label: spec.label || row.label || row.key,
-    value: row.value,
-    defaultValue: row.defaultValue,
+    value: value,
+    defaultValue: row.key === 'payoutPaidHourly'
+      ? normalizePaidTiers(row.defaultValue)
+      : normalizeCommission(row.key, row.defaultValue),
     confirm: !!spec.confirm,
     updatedBy: row.updatedBy || '',
     updatedAt: row.updatedAt || null,
@@ -192,7 +220,9 @@ async function getSetting(key) {
   if (!spec) return undefined;
   const snap = await ensureFresh();
   const row = snap[key];
-  return row ? row.value : spec.value;
+  const value = row ? row.value : spec.value;
+  if (key === 'payoutPaidHourly') return normalizePaidTiers(value);
+  return normalizeCommission(key, value);
 }
 
 /** Sync read for checkout and booking. Missing or unloaded cache uses the catalog constant. */
@@ -203,8 +233,11 @@ function readSetting(key) {
     loadSnapshot().catch(() => {});
   }
   const row = snapshot && snapshot[key];
-  if (!row || row.value == null || row.value === '') return spec.value;
-  return row.value;
+  if (!row || row.value == null || row.value === '') {
+    return key === 'payoutPaidHourly' ? normalizePaidTiers(spec.value) : normalizeCommission(key, spec.value);
+  }
+  if (key === 'payoutPaidHourly') return normalizePaidTiers(row.value);
+  return normalizeCommission(key, row.value);
 }
 
 function needsConfirm(key) {

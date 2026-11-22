@@ -287,7 +287,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr style="background:#eff6ff; border-bottom:1px solid #dbeafe;"><td style="padding:10px 12px;"><strong>Tier 1: Newbie Teacher</strong> (4-yr Grad No EXP OR 2-yrs ESL/ESL Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
+                                    <tr style="background:#eff6ff; border-bottom:1px solid #dbeafe;"><td style="padding:10px 12px;"><strong>Tier 1: Newbie Teacher</strong> (4-yr Grad No EXP OR 2-yrs ESL/ESL Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱200</td></tr>
                                     <tr style="background:#f0fdf4; border-bottom:1px solid #bbf7d0;"><td style="padding:10px 12px;"><strong>Tier 2: Junior Teacher</strong> (4-yr Grad (English Major))</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
                                     <tr style="background:#fffbeb;"><td style="padding:10px 12px;"><strong>Tier 3: Senior Teacher and Trainer</strong> (4-yr Grad and atleast 3 yrs ESL/Teaching/BPO Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
                                 </tbody>
@@ -297,7 +297,7 @@
                         <div style="margin-bottom:14px;">
                             <label for="career-payout-tier-base" style="display:block; font-weight:600; color:#334155; font-size:0.88rem; margin-bottom:6px;">Your tier (base pay)</label>
                             <select id="career-payout-tier-base" class="form-input" style="max-width:100%; opacity:0.92;" disabled aria-label="Professional tier base hourly pay (set by admin)">
-                                <option value="180" style="background:#eff6ff;">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
+                                <option value="200" style="background:#eff6ff;">Tier 1 — ₱200/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
                                 <option value="230" style="background:#f0fdf4;">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
                                 <option value="280" style="background:#fffbeb;">Tier 3 — ₱280/hr — Senior Teacher and Trainer (4-yr Grad)</option>
                             </select>
@@ -345,7 +345,7 @@
 
                         <div style="background:#f1f5f9; border-radius:8px; padding:12px; border:1px solid #e2e8f0;">
                             <div style="font-size:0.75rem; font-weight:600; color:#64748b; margin-bottom:2px;">Total hourly rate</div>
-                            <div style="font-size:0.95rem; font-weight:700; color:#334155; margin-bottom:8px;"><span id="career-payout-display-hourly">₱180</span></div>
+                            <div style="font-size:0.95rem; font-weight:700; color:#334155; margin-bottom:8px;"><span id="career-payout-display-hourly">₱200</span></div>
                             <div style="font-size:0.78rem; font-weight:700; color:#0f172a; margin-bottom:2px;">Rate per 25-min class</div>
                             <div style="font-size:1.12rem; font-weight:800; color:#0f172a; line-height:1.2;"><span id="career-payout-display-25">₱90</span></div>
                         </div>
@@ -540,7 +540,7 @@
 
         function growthPointsFromPayoutTierBase(tierBase) {
             const t = parseInt(tierBase, 10);
-            if (t === 180) return 25;
+            if (t === 180 || t === 200) return 25;
             if (t === 230) return 30;
             if (t === 280) return 40;
             return 25;
@@ -551,14 +551,14 @@
             const t = parseInt(tierBase, 10);
             if (t === 230) return 'Cultivator';
             if (t === 280) return 'Steward Mentor';
-            if (t === 180) return 'Seedling Educator';
+            if (t === 180 || t === 200) return 'Seedling Educator';
             return 'Seedling Educator';
         }
 
         /** Tier + creds mirror server profile (via RemoedTeacherPayout after ensureInitialized). */
         function getPayoutSettingsForGrowth() {
             if (typeof RemoedTeacherPayout === 'undefined') {
-                return { tierBase: 180, c1: false, c2: false, c3: false };
+                return { tierBase: 200, c1: false, c2: false, c3: false };
             }
             var saved = RemoedTeacherPayout.load();
             if (saved) return RemoedTeacherPayout.normalize(saved);
@@ -590,8 +590,9 @@
 
         function careerPayoutReadForm() {
             const sel = document.getElementById('career-payout-tier-base');
-            let tierBase = sel ? parseInt(sel.value, 10) : 180;
-            if (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.TIER_VALUES.indexOf(tierBase) < 0) tierBase = 180;
+            let tierBase = sel ? parseInt(sel.value, 10) : 200;
+            if (tierBase === 180) tierBase = 200;
+            if (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.TIER_VALUES.indexOf(tierBase) < 0) tierBase = 200;
             return {
                 tierBase: tierBase,
                 c1: !!(document.getElementById('career-payout-cred-1') && document.getElementById('career-payout-cred-1').checked),

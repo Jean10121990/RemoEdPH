@@ -1,7 +1,8 @@
 /**
  * Teacher/admin referral attribution + commission.
  * Pending row on signup; commission when the student pays for a plan, tiered by plan
- * (₱1,000 / ₱1,500 / ₱2,000 / ₱2,500 — see referralCommissionTiers.js).
+ * (₱500 once for every plan length — see referralCommissionTiers.js).
+ * Affiliates also earn 2% of the monthly price for each paid month.
  */
 const Teacher = require('../models/Teacher');
 const Admin = require('../models/Admin');

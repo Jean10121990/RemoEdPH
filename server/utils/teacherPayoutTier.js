@@ -1,29 +1,34 @@
 'use strict';
 
 /**
- * Paid tiers (per hour): ₱180 / ₱230 / ₱280.
- * Per 25-min class = round2(hourly × 25 / 60) → ₱75.00 / ₱95.83 / ₱116.67
+ * Paid tiers (per hour): ₱200 / ₱230 / ₱280.
+ * Per 25-min class = round2(hourly × 25 / 60) → ₱83.33 / ₱95.83 / ₱116.67
  * before credential add-ons (+₱10/hr each).
  *
  * Code 83 is a legacy Free Trial rate (₱45 / 25 min). It stays payable and bookable
  * for teachers already stored as 83. New assignments use the three paid tiers only.
- * The former Tier 4 rate (₱330) is not a tier. A stored 330 is paid as Tier 1.
+ * A stored 180 or 330 is Tier 1 at ₱200.
  */
 const { readSetting } = require('../services/siteSettings');
 
 const FREE_TRIAL_TIER_BASE = 83;
 const FREE_TRIAL_RATE_PER_25MIN = 45;
-const PAID_TIER_VALUES = [180, 230, 280];
+const PAID_TIER_VALUES = [200, 230, 280];
+const FORMER_TIER1_BASE = 180;
 const REMOVED_TIER_BASE = 330;
 const TIER_VALUES = [FREE_TRIAL_TIER_BASE, ...PAID_TIER_VALUES];
 
 function paidTierValues() {
   const raw = readSetting('payoutPaidHourly');
   const list = Array.isArray(raw)
-    ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n !== REMOVED_TIER_BASE)
+    ? raw
+        .map(Number)
+        .filter((n) => Number.isInteger(n) && n > 0 && n !== REMOVED_TIER_BASE)
+        .map((n) => (n === FORMER_TIER1_BASE ? 200 : n))
     : [];
-  if (!list.includes(180)) return PAID_TIER_VALUES.slice();
-  return list;
+  const unique = [...new Set(list)];
+  if (!unique.includes(200)) return PAID_TIER_VALUES.slice();
+  return unique;
 }
 
 function classLengthMinutes() {
@@ -59,7 +64,7 @@ function isFreeTrialTier(tierBase) {
  */
 function payableTierBase(tierBase) {
   const n = Number(tierBase);
-  if (n === REMOVED_TIER_BASE) return 180;
+  if (n === REMOVED_TIER_BASE || n === FORMER_TIER1_BASE) return 200;
   return n;
 }
 
@@ -67,7 +72,7 @@ function computeRatePer25Min(tierBase, c1, c2, c3) {
   if (isFreeTrialTier(tierBase)) return trialRatePerClass();
   const bases = paidTierValues();
   const raw = payableTierBase(tierBase);
-  const tb = bases.includes(raw) ? raw : 180;
+  const tb = bases.includes(raw) ? raw : 200;
   const n = (c1 ? 1 : 0) + (c2 ? 1 : 0) + (c3 ? 1 : 0);
   const totalHourly = tb + n * credentialAddonPhp();
   return round2((totalHourly * classLengthMinutes()) / 60);
@@ -77,7 +82,7 @@ function computeRatePer25Min(tierBase, c1, c2, c3) {
 function derivePayoutFromHourlyRate25(ratePer25) {
   const r = Number(ratePer25);
   if (!isFinite(r) || r <= 0) {
-    return { payoutTierBase: 180, payoutCred1: false, payoutCred2: false, payoutCred3: false };
+    return { payoutTierBase: 200, payoutCred1: false, payoutCred2: false, payoutCred3: false };
   }
   if (Math.abs(r - trialRatePerClass()) < 0.005) {
     return {
@@ -105,7 +110,7 @@ function derivePayoutFromHourlyRate25(ratePer25) {
       };
     }
   }
-  return { payoutTierBase: 180, payoutCred1: false, payoutCred2: false, payoutCred3: false };
+  return { payoutTierBase: 200, payoutCred1: false, payoutCred2: false, payoutCred3: false };
 }
 
 /** Merge DB document with effective payout fields for API responses. */
@@ -113,11 +118,10 @@ function effectivePayoutFields(doc) {
   if (!doc || typeof doc !== 'object') return doc;
   const o =
     typeof doc.toObject === 'function' ? doc.toObject() : Object.assign({}, doc);
-  const hasStored =
-    o.payoutTierBase != null &&
-    tierValues().includes(Number(o.payoutTierBase));
+  const storedBase = o.payoutTierBase != null ? payableTierBase(o.payoutTierBase) : null;
+  const hasStored = storedBase != null && tierValues().includes(storedBase);
   if (hasStored) {
-    o.payoutTierBase = Number(o.payoutTierBase);
+    o.payoutTierBase = storedBase;
     o.payoutCred1 = !!o.payoutCred1;
     o.payoutCred2 = !!o.payoutCred2;
     o.payoutCred3 = !!o.payoutCred3;
@@ -150,8 +154,8 @@ function isFreeTrialTeacher(teacher) {
 
 /** Class rate actually paid. Tier (including Free Trial) wins over a stale hourlyRate. */
 function ratePer25FromTeacher(teacher, fallback) {
-  const base = teacher && Number(teacher.payoutTierBase);
-  if (teacher && (tierValues().includes(base) || base === REMOVED_TIER_BASE)) {
+  const base = teacher && payableTierBase(teacher.payoutTierBase);
+  if (teacher && tierValues().includes(base)) {
     return computeRatePer25Min(
       base,
       teacher.payoutCred1,

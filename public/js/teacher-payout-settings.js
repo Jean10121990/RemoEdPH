@@ -9,17 +9,18 @@
   // 83 is the stored code for the Free Trial tier (before Tier 1): flat per-25-min rate, no credential add-ons.
   var FREE_TRIAL_TIER_BASE = 83;
   var FREE_TRIAL_RATE_PER_25MIN = 45;
-  var TIER_VALUES = [FREE_TRIAL_TIER_BASE, 180, 230, 280];
+  var TIER_VALUES = [FREE_TRIAL_TIER_BASE, 200, 230, 280];
 
   function defaultSettings() {
-    return { tierBase: 180, c1: false, c2: false, c3: false };
+    return { tierBase: 200, c1: false, c2: false, c3: false };
   }
 
   function normalizeSettings(s) {
     var d = defaultSettings();
     if (!s || typeof s !== 'object') return d;
     var tb = parseInt(s.tierBase, 10);
-    d.tierBase = TIER_VALUES.indexOf(tb) >= 0 ? tb : 180;
+    if (tb === 180) tb = 200;
+    d.tierBase = TIER_VALUES.indexOf(tb) >= 0 ? tb : 200;
     var isTrial = d.tierBase === FREE_TRIAL_TIER_BASE;
     d.c1 = isTrial ? false : !!s.c1;
     d.c2 = isTrial ? false : !!s.c2;
@@ -98,7 +99,8 @@
   function applyFromServerProfile(profile) {
     if (!profile || typeof profile !== 'object') return false;
     var tb = parseInt(profile.payoutTierBase, 10);
-    if (TIER_VALUES.indexOf(tb) < 0) tb = 180;
+    if (tb === 180) tb = 200;
+    if (TIER_VALUES.indexOf(tb) < 0) tb = 200;
     save({
       tierBase: tb,
       c1: !!profile.payoutCred1,

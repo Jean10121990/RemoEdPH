@@ -81,18 +81,18 @@
           <div class="checkout-plan-picker">
             <label for="refill-plan-select">Choose a learning plan</label>
             <select id="refill-plan-select" aria-describedby="checkout-breakdown">
-              <option value="spark">RemoSpark — Starter — 22 lessons — $154.00</option>
-              <option value="steady">RemoSteady — Progress — 66 lessons — $399.00 (Save $63)</option>
-              <option value="scholar">RemoScholar — Mastery — 132 lessons — $798.00 (Save $126)</option>
-              <option value="summit">RemoSummit — Ultimate — 264 lessons — $1,596.00 (Save $252)</option>
+              <option value="spark">RemoSpark — Starter — 22 lessons — ₱7,700</option>
+              <option value="steady">RemoSteady — Progress — 66 lessons — ₱23,100</option>
+              <option value="scholar">RemoScholar — Mastery — 132 lessons — ₱46,200</option>
+              <option value="summit">RemoSummit — Ultimate — 264 lessons — ₱92,400</option>
             </select>
           </div>
 
           <div id="checkout-breakdown" class="checkout-breakdown">
             <div class="checkout-plan-title" id="checkout-plan-name">RemoSpark — Starter Bundle</div>
-            <div class="checkout-line"><span id="checkout-line-classes">22 classes × $7.00</span><span id="checkout-line-list">$154.00</span></div>
-            <div class="checkout-line checkout-line-discount"><span id="checkout-line-discount-label">Founder Discount</span><span id="checkout-line-discount">—</span></div>
-            <div class="checkout-line checkout-line-total"><span>Total due</span><span id="checkout-total-usd">$154.00 USD</span></div>
+            <div class="checkout-line"><span id="checkout-line-classes">22 classes × ₱350.00</span><span id="checkout-line-list">₱7,700.00</span></div>
+            <div class="checkout-line checkout-line-discount" id="checkout-discount-row" hidden><span id="checkout-line-discount-label">Founder Discount</span><span id="checkout-line-discount">—</span></div>
+            <div class="checkout-line checkout-line-total"><span>Total due</span><span id="checkout-total-usd">₱7,700.00</span></div>
             <div class="checkout-php" id="checkout-total-php">Pay the exact peso amount shown here.</div>
             <div class="checkout-validity" id="checkout-validity">Valid for 1 month</div>
           </div>
@@ -249,36 +249,44 @@
         lessons: 22,
         months: 1,
         validityMonths: 1,
-        usdList: 154,
+        phpTotal: 7700,
+        phpPerClass: 350,
+        usdList: 128.27,
         usdDiscount: 0,
-        usdTotal: 154
+        usdTotal: 128.27
       },
       steady: {
         name: 'RemoSteady — Progress Bundle',
         lessons: 66,
         months: 3,
         validityMonths: 3,
-        usdList: 462,
-        usdDiscount: 63,
-        usdTotal: 399
+        phpTotal: 23100,
+        phpPerClass: 350,
+        usdList: 384.81,
+        usdDiscount: 0,
+        usdTotal: 384.81
       },
       scholar: {
         name: 'RemoScholar — Mastery Bundle',
         lessons: 132,
         months: 6,
         validityMonths: 6,
-        usdList: 924,
-        usdDiscount: 126,
-        usdTotal: 798
+        phpTotal: 46200,
+        phpPerClass: 350,
+        usdList: 769.62,
+        usdDiscount: 0,
+        usdTotal: 769.62
       },
       summit: {
         name: 'RemoSummit — Ultimate Bundle',
         lessons: 264,
         months: 12,
         validityMonths: 12,
-        usdList: 1848,
-        usdDiscount: 252,
-        usdTotal: 1596
+        phpTotal: 92400,
+        phpPerClass: 350,
+        usdList: 1539.23,
+        usdDiscount: 0,
+        usdTotal: 1539.23
       }
     };
     /* Fallback above; GET /api/payments/plans (plan-pricing.js) replaces it with the checkout totals. */
@@ -296,6 +304,8 @@
           row.months = p.months;
           row.validityMonths = p.validityMonths;
           row.usdPerClass = p.usdPerClass;
+          row.phpTotal = p.phpTotal;
+          row.phpPerClass = p.phpPerClass;
           row.usdList = p.usdList;
           row.usdDiscount = p.usdFounderDiscount;
           row.usdTotal = p.usdTotal;
@@ -326,16 +336,19 @@
       var phpEl = document.getElementById('checkout-total-php');
       var validEl = document.getElementById('checkout-validity');
       if (nameEl) nameEl.textContent = plan.name;
-      if (classesEl) classesEl.textContent = plan.lessons + ' classes × ' + formatUsd(plan.usdPerClass);
-      if (listEl) listEl.textContent = formatUsd(plan.usdList);
+      var classPrice = plan.phpPerClass > 0 ? ('₱' + Number(plan.phpPerClass).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : formatUsd(plan.usdPerClass);
+      var listPrice = plan.phpTotal > 0 ? ('₱' + Number(plan.phpTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : formatUsd(plan.usdList);
+      if (classesEl) classesEl.textContent = plan.lessons + ' classes × ' + classPrice;
+      if (listEl) listEl.textContent = listPrice;
+      var discRow = document.getElementById('checkout-discount-row');
       if (plan.usdDiscount > 0) {
+        if (discRow) discRow.hidden = false;
         if (discLabel) discLabel.textContent = 'Founder Discount (−' + formatUsd(plan.usdDiscount / plan.months).replace('.00', '') + '/mo × ' + plan.months + ')';
         if (discEl) discEl.textContent = '−' + formatUsd(plan.usdDiscount);
-      } else {
-        if (discLabel) discLabel.textContent = 'Founder Discount';
-        if (discEl) discEl.textContent = '—';
+      } else if (discRow) {
+        discRow.hidden = true;
       }
-      if (totalEl) totalEl.textContent = formatUsd(plan.usdTotal) + ' USD';
+      if (totalEl) totalEl.textContent = plan.phpTotal > 0 ? listPrice : (formatUsd(plan.usdTotal) + ' USD');
       if (phpEl && !qrOverride) phpEl.textContent = formatPhpEst(plan.usdTotal);
       if (validEl) validEl.textContent = 'Valid for ' + plan.validityMonths + ' Months';
       loadPlanQuote(sel.value);
