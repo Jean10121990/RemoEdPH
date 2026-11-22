@@ -256,7 +256,6 @@
                             <option value="180">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
                             <option value="230">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
                             <option value="280">Tier 3 — ₱280/hr — Senior Teacher and Trainer (4-yr Grad)</option>
-                            <option value="330">Tier 4 — ₱330/hr — Head Teacher and Teaching Quality (4-yr Grad with at least 2 yrs EXP + LET)</option>
                         </select>
                         <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 6px;">Specialized credentials (+₱10/hr each)</div>
                         <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #fff;">
@@ -368,7 +367,7 @@
         function adminTeacherRatePreviewUpdate() {
             var tierEl = document.getElementById('admin-payout-tier-base');
             var tier = tierEl ? parseInt(tierEl.value, 10) : 180;
-            if (![83, 180, 230, 280, 330].includes(tier)) tier = 180;
+            if (![83, 180, 230, 280].includes(tier)) tier = 180;
             var line = document.getElementById('admin-teacher-rate-preview-line');
             if (tierEl && tierEl.dataset.savedTier === '83' && tierEl.dataset.tierTouched !== '1') {
                 if (line) line.textContent = 'Total hourly: ₱90 · Per 25-min class: ₱45 (no add-ons)';
@@ -901,7 +900,7 @@
                     if (tierSel) {
                         tierSel.dataset.savedTier = tb;
                         tierSel.dataset.tierTouched = '';
-                        tierSel.value = ['180', '230', '280', '330'].indexOf(tb) >= 0 ? tb : '180';
+                        tierSel.value = ['180', '230', '280'].indexOf(tb) >= 0 ? tb : '180';
                     }
                     var u1 = document.getElementById('admin-payout-cred-1');
                     var u2 = document.getElementById('admin-payout-cred-2');

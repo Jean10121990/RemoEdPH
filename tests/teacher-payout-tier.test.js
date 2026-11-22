@@ -3,11 +3,11 @@ const assert = require('node:assert/strict');
 const { computeRatePer25Min, PAID_TIER_VALUES } = require('../server/utils/teacherPayoutTier');
 
 test('paid tiers use hourly × 25/60 rounded to cents', () => {
-  assert.deepEqual(PAID_TIER_VALUES, [180, 230, 280, 330]);
+  assert.deepEqual(PAID_TIER_VALUES, [180, 230, 280]);
   assert.equal(computeRatePer25Min(180, false, false, false), 75);
   assert.equal(computeRatePer25Min(230, false, false, false), 95.83);
   assert.equal(computeRatePer25Min(280, false, false, false), 116.67);
-  assert.equal(computeRatePer25Min(330, false, false, false), 137.5);
+  assert.equal(computeRatePer25Min(330, false, false, false), 75);
 });
 
 test('legacy free-trial code 83 stays ₱45 and is not a new assignment rate', () => {

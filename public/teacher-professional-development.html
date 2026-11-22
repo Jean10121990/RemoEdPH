@@ -276,7 +276,7 @@
 
                     <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(15,23,42,0.06);">
                         <div style="font-weight:700; color:#0f172a; font-size:1.05rem; margin-bottom:6px;">💰 Payout rate</div>
-                        <p style="color:#64748b; font-size:0.88rem; margin:0 0 14px 0;">Your <strong>professional tier</strong> and <strong>credential add-ons</strong> are set by <strong>RemoEd HR / admin</strong> and apply to your <strong>Teaching Fee</strong> (per 25-minute class = half of your total hourly rate). This section is for reference only—you cannot change your rate here. <strong>Growth Points</strong> use this tier (25 / 30 / 40 / 40 by tier), <strong>+10</strong> per credential below, plus <strong>loyalty</strong> from your hire date (see meter above).</p>
+                        <p style="color:#64748b; font-size:0.88rem; margin:0 0 14px 0;">Your <strong>professional tier</strong> and <strong>credential add-ons</strong> are set by <strong>RemoEd HR / admin</strong> and apply to your <strong>Teaching Fee</strong> (per 25-minute class = half of your total hourly rate). This section is for reference only—you cannot change your rate here. <strong>Growth Points</strong> use this tier (25 / 30 / 40 by tier), <strong>+10</strong> per credential below, plus <strong>loyalty</strong> from your hire date (see meter above).</p>
 
                         <div style="overflow-x:auto; margin-bottom:14px; border:1px solid #e2e8f0; border-radius:8px;">
                             <table style="width:100%; border-collapse:collapse; font-size:0.84rem; color:#334155;">
@@ -289,8 +289,7 @@
                                 <tbody>
                                     <tr style="background:#eff6ff; border-bottom:1px solid #dbeafe;"><td style="padding:10px 12px;"><strong>Tier 1: Newbie Teacher</strong> (4-yr Grad No EXP OR 2-yrs ESL/ESL Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
                                     <tr style="background:#f0fdf4; border-bottom:1px solid #bbf7d0;"><td style="padding:10px 12px;"><strong>Tier 2: Junior Teacher</strong> (4-yr Grad (English Major))</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
-                                    <tr style="background:#fffbeb; border-bottom:1px solid #fde68a;"><td style="padding:10px 12px;"><strong>Tier 3: Senior Teacher and Trainer</strong> (4-yr Grad and atleast 3 yrs ESL/Teaching/BPO Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
-                                    <tr style="background:#f5f3ff;"><td style="padding:10px 12px;"><strong>Tier 4: Head Teacher and Teaching Quality</strong> (4-yr Grad with at least 5 yrs EXP + LET)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱330</td></tr>
+                                    <tr style="background:#fffbeb;"><td style="padding:10px 12px;"><strong>Tier 3: Senior Teacher and Trainer</strong> (4-yr Grad and atleast 3 yrs ESL/Teaching/BPO Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -301,7 +300,6 @@
                                 <option value="180" style="background:#eff6ff;">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
                                 <option value="230" style="background:#f0fdf4;">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
                                 <option value="280" style="background:#fffbeb;">Tier 3 — ₱280/hr — Senior Teacher and Trainer (4-yr Grad)</option>
-                                <option value="330" style="background:#f5f3ff;">Tier 4 — ₱330/hr — Head Teacher and Teaching Quality (4-yr Grad with at least 2 yrs EXP + LET)</option>
                             </select>
                         </div>
 
@@ -545,7 +543,6 @@
             if (t === 180) return 25;
             if (t === 230) return 30;
             if (t === 280) return 40;
-            if (t === 330) return 40;
             return 25;
         }
 
@@ -554,7 +551,6 @@
             const t = parseInt(tierBase, 10);
             if (t === 230) return 'Cultivator';
             if (t === 280) return 'Steward Mentor';
-            if (t === 330) return 'Legacy Guide';
             if (t === 180) return 'Seedling Educator';
             return 'Seedling Educator';
         }

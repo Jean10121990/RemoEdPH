@@ -101,7 +101,7 @@ Impact is what happens if the value is wrong in production. Audit = store who ch
 | S27 | USD per class | `server/payments.js` lines 100–102 | `$7` | Pricing | Setting | Super Admin | Monthly | High | Yes | P0 | M |
 | S28 | Founder discount | `server/payments.js` lines 100–123 | `$21` per month; spark discount is `$0` so list stays `$154` | Pricing | Setting | Super Admin | Monthly | High | Yes | P0 | M |
 | S29 | FX fallback | `server/payments.js` line 98 | `EXCHANGE_RATE_PHP` or `60.03`. Stays in the environment. Not an admin field | Secrets | Secret | Nobody in the CMS | Rarely | High | No | P0 | S |
-| S30 | Teacher payout tiers | `server/utils/teacherPayoutTier.js` lines 11–28 | Trial code 83 = ₱45 / 25 min. Bases 180, 230, 280, 330 PHP/hr. +₱10/hr per credential. 25-min = hourly / 2 | Pricing | Collection | Super Admin | Rarely | High | Yes | P0 | L |
+| S30 | Teacher payout tiers | `server/utils/teacherPayoutTier.js` lines 11–28 | Trial code 83 = ₱45 / 25 min. Bases 180, 230, 280 PHP/hr. +₱10/hr per credential. 25-min = hourly / 2 | Pricing | Collection | Super Admin | Rarely | High | Yes | P0 | L |
 | S31 | Fallback class rate | `server/models/GlobalSettings.js` lines 4–8; `Teacher.js` hourlyRate default 100 | `globalRate` default 100. **Already in the database.** | Pricing | Setting | Super Admin | Monthly | High | Yes | P0 | S |
 | S32 | Unique-link commission | `server/utils/referralCommissionTiers.js` lines 11–16 | spark ₱1,000, steady ₱1,500, scholar ₱2,000, summit ₱2,500. Unknown plan uses ₱1,000 | Pricing | Collection | Super Admin | Monthly | High | Yes | P0 | M |
 | S33 | Admin fee percent | `server/adminFeeRoutes.js` line 38 | `COMMISSION_RATE = 2` | Pricing | Setting | Super Admin | Rarely | High | Yes | P0 | S |

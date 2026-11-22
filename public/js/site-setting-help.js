@@ -56,7 +56,7 @@
     payoutPaidHourly: {
       title: 'Paid tier hourly rates',
       what: 'The four hourly teaching rates in pesos. These numbers are the tier codes. This is not the fallback global rate. The list must include 180.',
-      example: '180, 230, 280, 330. A 25-minute class at 180 pays ₱75.'
+      example: '180, 230, 280. A 25-minute class at 180 pays ₱75.'
     },
     payoutCredentialAddon: {
       title: 'Credential add-on',

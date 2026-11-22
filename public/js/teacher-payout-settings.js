@@ -9,7 +9,7 @@
   // 83 is the stored code for the Free Trial tier (before Tier 1): flat per-25-min rate, no credential add-ons.
   var FREE_TRIAL_TIER_BASE = 83;
   var FREE_TRIAL_RATE_PER_25MIN = 45;
-  var TIER_VALUES = [FREE_TRIAL_TIER_BASE, 180, 230, 280, 330];
+  var TIER_VALUES = [FREE_TRIAL_TIER_BASE, 180, 230, 280];
 
   function defaultSettings() {
     return { tierBase: 180, c1: false, c2: false, c3: false };

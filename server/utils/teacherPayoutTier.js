@@ -1,23 +1,27 @@
 'use strict';
 
 /**
- * Paid tiers (per hour): ₱180 / ₱230 / ₱280 / ₱330.
- * Per 25-min class = round2(hourly × 25 / 60) → ₱75.00 / ₱95.83 / ₱116.67 / ₱137.50
+ * Paid tiers (per hour): ₱180 / ₱230 / ₱280.
+ * Per 25-min class = round2(hourly × 25 / 60) → ₱75.00 / ₱95.83 / ₱116.67
  * before credential add-ons (+₱10/hr each).
  *
  * Code 83 is a legacy Free Trial rate (₱45 / 25 min). It stays payable and bookable
- * for teachers already stored as 83. New assignments use the four paid tiers only.
+ * for teachers already stored as 83. New assignments use the three paid tiers only.
+ * The former Tier 4 rate (₱330) is not a tier. A stored 330 is paid as Tier 1.
  */
 const { readSetting } = require('../services/siteSettings');
 
 const FREE_TRIAL_TIER_BASE = 83;
 const FREE_TRIAL_RATE_PER_25MIN = 45;
-const PAID_TIER_VALUES = [180, 230, 280, 330];
+const PAID_TIER_VALUES = [180, 230, 280];
+const REMOVED_TIER_BASE = 330;
 const TIER_VALUES = [FREE_TRIAL_TIER_BASE, ...PAID_TIER_VALUES];
 
 function paidTierValues() {
   const raw = readSetting('payoutPaidHourly');
-  const list = Array.isArray(raw) ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+  const list = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n !== REMOVED_TIER_BASE)
+    : [];
   if (!list.includes(180)) return PAID_TIER_VALUES.slice();
   return list;
 }
@@ -53,10 +57,17 @@ function isFreeTrialTier(tierBase) {
  * 25-minute class rate (PHP) from base tier + credential add-ons (+₱10/hr each).
  * Paid tiers: round2(hourly × 25 / 60). Legacy Free Trial code 83 stays a flat ₱45.
  */
+function payableTierBase(tierBase) {
+  const n = Number(tierBase);
+  if (n === REMOVED_TIER_BASE) return 180;
+  return n;
+}
+
 function computeRatePer25Min(tierBase, c1, c2, c3) {
   if (isFreeTrialTier(tierBase)) return trialRatePerClass();
   const bases = paidTierValues();
-  const tb = bases.includes(Number(tierBase)) ? Number(tierBase) : 180;
+  const raw = payableTierBase(tierBase);
+  const tb = bases.includes(raw) ? raw : 180;
   const n = (c1 ? 1 : 0) + (c2 ? 1 : 0) + (c3 ? 1 : 0);
   const totalHourly = tb + n * credentialAddonPhp();
   return round2((totalHourly * classLengthMinutes()) / 60);
@@ -139,9 +150,10 @@ function isFreeTrialTeacher(teacher) {
 
 /** Class rate actually paid. Tier (including Free Trial) wins over a stale hourlyRate. */
 function ratePer25FromTeacher(teacher, fallback) {
-  if (teacher && tierValues().includes(Number(teacher.payoutTierBase))) {
+  const base = teacher && Number(teacher.payoutTierBase);
+  if (teacher && (tierValues().includes(base) || base === REMOVED_TIER_BASE)) {
     return computeRatePer25Min(
-      teacher.payoutTierBase,
+      base,
       teacher.payoutCred1,
       teacher.payoutCred2,
       teacher.payoutCred3

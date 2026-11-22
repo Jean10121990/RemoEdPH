@@ -20,7 +20,7 @@ const CATALOG = [
   { key: 'commissionSteady', group: 'pricing', type: 'number', value: 1500, label: 'Unique Link commission, Steady (PHP)', confirm: true },
   { key: 'commissionScholar', group: 'pricing', type: 'number', value: 2000, label: 'Unique Link commission, Scholar (PHP)', confirm: true },
   { key: 'commissionSummit', group: 'pricing', type: 'number', value: 2500, label: 'Unique Link commission, Summit (PHP)', confirm: true },
-  { key: 'payoutPaidHourly', group: 'pricing', type: 'json', value: [180, 230, 280, 330], label: 'Paid tier hourly rates (PHP). Not the fallback global rate.', confirm: true },
+  { key: 'payoutPaidHourly', group: 'pricing', type: 'json', value: [180, 230, 280], label: 'Paid tier hourly rates (PHP). Not the fallback global rate.', confirm: true },
   { key: 'payoutCredentialAddon', group: 'pricing', type: 'number', value: 10, label: 'Credential add-on (PHP per hour)', confirm: true },
   { key: 'payoutTrialRate', group: 'pricing', type: 'number', value: 45, label: 'Free-trial class rate (PHP, flat)', confirm: true },
   { key: 'emergencyCancelMinutes', group: 'booking', type: 'number', value: 30, label: 'Emergency cancel window (minutes)' },
@@ -111,9 +111,9 @@ function validateValue(key, raw) {
           .map((part) => Number(String(part).trim()))
           .filter((n) => Number.isFinite(n));
     if (key === 'payoutPaidHourly') {
-      const tiers = list.filter((n) => Number.isInteger(n) && n > 0);
-      if (!tiers.includes(180) || tiers.length < 4) {
-        return { ok: false, error: 'Keep 180 and three other whole hourly rates, separated by commas.' };
+      const tiers = list.filter((n) => Number.isInteger(n) && n > 0 && n !== 330);
+      if (!tiers.includes(180) || tiers.length < 3) {
+        return { ok: false, error: 'Keep 180 and two other whole hourly rates, separated by commas.' };
       }
       return { ok: true, value: tiers };
     }
