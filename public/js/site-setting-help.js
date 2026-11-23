@@ -4,9 +4,9 @@
 
   var HELP = {
     phpPerMonth: {
-      title: 'Plan price per month',
-      what: 'The peso price of one month. A 3-month plan is this times 3, a 6-month plan times 6, and a 12-month plan times 12.',
-      example: '7700 charges ₱7,700, ₱23,100, ₱46,200, and ₱92,400.'
+      title: 'Stored 1-month list price',
+      what: 'Checkout does not multiply this by 3, 6, or 12. Plans charge ₱350, ₱340, ₱330, and ₱320 per class.',
+      example: '22 × ₱350 = ₱7,700. 66 × ₱340 = ₱22,440. 132 × ₱330 = ₱43,560. 264 × ₱320 = ₱84,480.'
     },
     creditsPerMonth: {
       title: 'Credits per month',
@@ -20,8 +20,8 @@
     },
     founderDiscountPerMonth: {
       title: 'Founder discount per month',
-      what: 'Not subtracted from the plan. The price is ₱7,700 times 1, 3, 6, or 12 months.',
-      example: 'Plan price is ₱7,700 times the months. This discount is not subtracted.'
+      what: 'Not subtracted from the plan. Checkout charges ₱350, ₱340, ₱330, and ₱320 per class.',
+      example: 'The 3-month plan is ₱22,440. This discount is not subtracted.'
     },
     sparkFounderDiscount: {
       title: 'Spark founder discount',

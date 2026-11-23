@@ -158,7 +158,7 @@
     />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/css/password-toggle.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-35" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-36" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
 
@@ -574,6 +574,7 @@
             <div class="plan-name">RemoSpark</div>
             <div class="plan-price"></div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
+            <p class="plan-save" data-price-role="save"></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_spark_bundle">Starter Bundle</div>
           <div class="plan-price-local" data-usd="128.27">$128.27 USD</div>
@@ -606,9 +607,10 @@
             <div class="plan-name">RemoSteady</div>
             <div class="plan-price"></div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
+            <p class="plan-save" data-price-role="save"></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_steady_bundle">Progress Bundle</div>
-          <div class="plan-price-local" data-usd="384.81">$384.81 USD</div>
+          <div class="plan-price-local" data-usd="373.81">$373.81 USD</div>
           <div class="plan-period"><strong>66 Lessons</strong> · Good for 3 months</div>
           <p class="plan-tagline" data-i18n="plan_steady_tag">Building a routine.</p>
           <ul class="plan-features">
@@ -640,9 +642,10 @@
             <div class="plan-name">RemoScholar</div>
             <div class="plan-price"></div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
+            <p class="plan-save" data-price-role="save"></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_scholar_bundle">Mastery Bundle</div>
-          <div class="plan-price-local" data-usd="769.62">$769.62 USD</div>
+          <div class="plan-price-local" data-usd="725.64">$725.64 USD</div>
           <div class="plan-period"><strong>132 Lessons</strong> · Good for 6 months</div>
           <p class="plan-tagline" data-i18n="plan_scholar_tag">Mastering the basics.</p>
           <ul class="plan-features">
@@ -673,9 +676,10 @@
             <div class="plan-name">RemoSummit</div>
             <div class="plan-price"></div>
             <p class="plan-exact" data-price-role="exact" hidden></p>
+            <p class="plan-save" data-price-role="save"></p>
           </div>
           <div class="plan-bundle" data-i18n="plan_summit_bundle">Ultimate Bundle</div>
-          <div class="plan-price-local" data-usd="1539.23">$1,539.23 USD</div>
+          <div class="plan-price-local" data-usd="1407.30">$1,407.30 USD</div>
           <div class="plan-period"><strong>264 Lessons</strong> · Good for 12 months</div>
           <p class="plan-tagline" data-i18n="plan_summit_tag">Reaching the peak.</p>
           <ul class="plan-features">
@@ -871,7 +875,7 @@
     <script src="/js/landing-config.js?v=landing-8"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
-    <script src="/js/plan-pricing.js?v=pricing-7"></script>
+    <script src="/js/plan-pricing.js?v=pricing-8"></script>
     <script src="/js/plan-currency-converter.js?v=fx-7"></script>
     <script>
       let selectedPlan = "";
@@ -879,9 +883,9 @@
       /** Fallback until GET /api/payments/plans loads (public/js/plan-pricing.js); the server is the source of truth. */
       const PLAN_PRICING = {
         spark: { name: "RemoSpark Plan", months: 1, validityMonths: 1, lessonCredits: 22, phpTotal: 7700, usdList: 128.27, usdFounderDiscount: 0, usdTotal: 128.27 },
-        steady: { name: "RemoSteady Plan", months: 3, validityMonths: 3, lessonCredits: 66, phpTotal: 23100, usdList: 384.81, usdFounderDiscount: 0, usdTotal: 384.81 },
-        scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 6, lessonCredits: 132, phpTotal: 46200, usdList: 769.62, usdFounderDiscount: 0, usdTotal: 769.62 },
-        summit: { name: "RemoSummit Plan", months: 12, validityMonths: 12, lessonCredits: 264, phpTotal: 92400, usdList: 1539.23, usdFounderDiscount: 0, usdTotal: 1539.23 },
+        steady: { name: "RemoSteady Plan", months: 3, validityMonths: 3, lessonCredits: 66, phpTotal: 22440, usdList: 373.81, usdFounderDiscount: 0, usdTotal: 373.81 },
+        scholar: { name: "RemoScholar Plan", months: 6, validityMonths: 6, lessonCredits: 132, phpTotal: 43560, usdList: 725.64, usdFounderDiscount: 0, usdTotal: 725.64 },
+        summit: { name: "RemoSummit Plan", months: 12, validityMonths: 12, lessonCredits: 264, phpTotal: 84480, usdList: 1407.30, usdFounderDiscount: 0, usdTotal: 1407.30 },
       };
       if (window.RemoEdPlanPricing) {
         window.RemoEdPlanPricing.ready.then(function (data) {
@@ -1214,7 +1218,7 @@
           }
         });
     </script>
-    <script src="/js/home-strings.js?v=home-lang-7"></script>
+    <script src="/js/home-strings.js?v=home-lang-8"></script>
     <script src="/js/site-i18n.js?v=home-lang-2"></script>
     <script src="/js/site-content.js?v=content-2"></script>
     <script src="/js/hero-type.js?v=type-1"></script>

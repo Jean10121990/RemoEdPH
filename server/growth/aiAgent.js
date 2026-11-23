@@ -4,7 +4,7 @@ const AiKnowledge = require('../models/AiKnowledge');
 
 const RULES = [
   { test: /refund|complaint|human|agent/i, handoff: true, reply: 'I will ask a RemoEd person to continue this chat.' },
-  { test: /plan|price|cost|how much/i, reply: 'Plans are 1, 3, 6, or 12 months at ₱7,700 per month. RemoSpark is 22 lessons for ₱7,700. Assessment: https://remoedph.com/#assessment' },
+  { test: /plan|price|cost|how much/i, reply: 'Plans are 22 classes at ₱350 (₱7,700), 66 at ₱340 (₱22,440), 132 at ₱330 (₱43,560), and 264 at ₱320 (₱84,480). Assessment: https://remoedph.com/#assessment' },
   { test: /assess/i, reply: 'Start the free assessment: https://remoedph.com/#assessment' },
 ];
 

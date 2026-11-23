@@ -1814,6 +1814,14 @@ body.page-index #plans .plan-icon.plan-icon--character img {
 }
 
 /* Scholar: Recommended top-left; Save badge top-right — must not overlap */
+body.page-index #plans .plan-save {
+  min-height: 1.35em;
+  margin: 4px 0 0;
+  color: #1b7a3a;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
 body.page-index #plans .plan-badge {
   z-index: 7;
 }

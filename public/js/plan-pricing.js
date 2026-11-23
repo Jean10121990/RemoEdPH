@@ -8,6 +8,10 @@
     return '₱' + Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function phpWhole(amount) {
+    return '₱' + Math.round(Number(amount)).toLocaleString('en-PH');
+  }
+
   function toPhp(usd, rate) {
     return Math.round(usd * rate * 100) / 100;
   }
@@ -91,6 +95,15 @@
           (p.usdFounderDiscount > 0 ? '' : ' = ' + php(Math.round(Number(p.phpTotal))));
       }
 
+      var saveEl = card.querySelector('[data-price-role="save"]');
+      if (saveEl) {
+        var save = Number(p.phpSave) || 0;
+        var perMonth = Math.round(Number(p.phpPerMonth));
+        saveEl.textContent = save > 0
+          ? tr('plan_save', 'Save') + ' ' + phpWhole(save) + ' · ' + phpWhole(perMonth) + '/mo'
+          : '';
+      }
+
     });
   }
 
@@ -111,6 +124,12 @@
     usdTotal: function (p) { return usd2(p.usdTotal) + ' USD'; },
     phpTotal: function (p) { return php(p.phpTotal); },
     usdClassLine: function (p) { return p.lessonCredits + ' classes × ' + usd2(p.usdPerClass); },
+    phpClassLine: function (p) { return p.lessonCredits + ' classes × ' + php(p.phpPerClass); },
+    phpSaveLabel: function (p) {
+      var save = Number(p.phpSave) || 0;
+      if (!(save > 0)) return '';
+      return tr('plan_save', 'Save') + ' ' + phpWhole(save) + ' · ' + phpWhole(p.phpPerMonth) + '/mo';
+    },
     usdFounder: function (p) { return 'Founder Discount −' + usd(p.usdFounderDiscount); },
     usdSave: function (p) { return 'Save ' + usd(p.usdFounderDiscount); },
     lessonsValid: function (p) { return p.lessonCredits + ' Lessons · Valid for ' + p.validityMonths + ' Months'; },

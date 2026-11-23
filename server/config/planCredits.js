@@ -5,11 +5,11 @@
  * PayMongo and webhooks must use this only for credit counts / durations.
  * Never accept credit amounts from the client.
  *
- * Pricing (server/payments.js): ₱7,700 per month. No founder discount.
+ * Pricing (server/payments.js): ₱350, ₱340, ₱330, and ₱320 per class. No founder discount.
  * spark  Starter  — 22 lessons, ₱7,700, 1 month
- * steady Progress — 66 lessons, ₱23,100, 3 months
- * scholar Mastery — 132 lessons, ₱46,200, 6 months
- * summit Ultimate — 264 lessons, ₱92,400, 12 months
+ * steady Progress — 66 lessons, ₱22,440, 3 months
+ * scholar Mastery — 132 lessons, ₱43,560, 6 months
+ * summit Ultimate — 264 lessons, ₱84,480, 12 months
  */
 
 const { readSetting } = require('../services/siteSettings');

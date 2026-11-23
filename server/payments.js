@@ -108,8 +108,15 @@ async function currentPhpRate() {
   return EXCHANGE_RATE_PHP;
 }
 
-/** Checkout charges this many pesos per paid month. 1 / 3 / 6 / 12 months. */
+/** 1-month list price. Longer plans step down by ₱10 per class. Not phpPerMonth × months. */
 const PHP_PER_MONTH = 7700;
+const LIST_PHP_PER_CLASS = 350;
+const PHP_PER_CLASS_BY_PLAN = {
+  spark: 350,
+  steady: 340,
+  scholar: 330,
+  summit: 320,
+};
 /** Fallback when the settings cache is empty. Seeded values are $7 and $21. */
 const USD_PER_CLASS = 7;
 const FOUNDER_DISCOUNT_PER_MONTH = 21;
@@ -149,13 +156,15 @@ function computePlanTotals(planId, rate) {
   const lessonCredits = row.credits;
   const months = row.months;
   const phpRate = Number(rate) > 0 ? Number(rate) : EXCHANGE_RATE_PHP;
-  const monthPrice = phpPerMonth();
-  const phpTotal = Number((monthPrice * months).toFixed(2));
+  const phpPerClass = PHP_PER_CLASS_BY_PLAN[planKey] || LIST_PHP_PER_CLASS;
+  const phpTotal = Number((phpPerClass * lessonCredits).toFixed(2));
+  const monthPrice = months > 0 ? Number((phpTotal / months).toFixed(2)) : 0;
+  const phpList = Number((LIST_PHP_PER_CLASS * lessonCredits).toFixed(2));
+  const phpSave = Number((phpList - phpTotal).toFixed(2));
   const usdTotal = Number((phpTotal / phpRate).toFixed(2));
   const usdList = usdTotal;
   const usdFounderDiscount = 0;
   const perClass = lessonCredits > 0 ? Number((usdTotal / lessonCredits).toFixed(2)) : 0;
-  const phpPerClass = lessonCredits > 0 ? Number((phpTotal / lessonCredits).toFixed(2)) : 0;
   const amountCentavos = Math.round(phpTotal * 100);
 
   return {
@@ -168,6 +177,8 @@ function computePlanTotals(planId, rate) {
     credits: lessonCredits,
     phpPerMonth: monthPrice,
     phpPerClass,
+    phpList,
+    phpSave,
     usdPerClass: perClass,
     usdList,
     usdFounderDiscount,
@@ -436,7 +447,8 @@ router.get('/plans', async (req, res) => {
       usdFounderDiscount: t.usdFounderDiscount,
       usdTotal: t.usdTotal,
       phpTotal: t.phpTotal,
-      phpList: Number((t.usdList * rate).toFixed(2)),
+      phpList: t.phpList,
+      phpSave: t.phpSave,
     }));
   res.set('Cache-Control', 'no-store');
   res.json({

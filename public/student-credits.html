@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
   <script src="timezone-utils.js"></script>
   <script src="js/user-session.js?v=wrong-pin-1"></script>
-  <script src="js/plan-pricing.js?v=pricing-1"></script>
+  <script src="js/plan-pricing.js?v=pricing-8"></script>
 </head>
 <body class="student-portal page-student-credits">
   <div class="remoed-main">
@@ -82,9 +82,9 @@
             <label for="refill-plan-select">Choose a learning plan</label>
             <select id="refill-plan-select" aria-describedby="checkout-breakdown">
               <option value="spark">RemoSpark — Starter — 22 lessons — ₱7,700</option>
-              <option value="steady">RemoSteady — Progress — 66 lessons — ₱23,100</option>
-              <option value="scholar">RemoScholar — Mastery — 132 lessons — ₱46,200</option>
-              <option value="summit">RemoSummit — Ultimate — 264 lessons — ₱92,400</option>
+              <option value="steady">RemoSteady — Progress — 66 lessons — ₱22,440</option>
+              <option value="scholar">RemoScholar — Mastery — 132 lessons — ₱43,560</option>
+              <option value="summit">RemoSummit — Ultimate — 264 lessons — ₱84,480</option>
             </select>
           </div>
 
@@ -260,33 +260,33 @@
         lessons: 66,
         months: 3,
         validityMonths: 3,
-        phpTotal: 23100,
-        phpPerClass: 350,
-        usdList: 384.81,
+        phpTotal: 22440,
+        phpPerClass: 340,
+        usdList: 373.81,
         usdDiscount: 0,
-        usdTotal: 384.81
+        usdTotal: 373.81
       },
       scholar: {
         name: 'RemoScholar — Mastery Bundle',
         lessons: 132,
         months: 6,
         validityMonths: 6,
-        phpTotal: 46200,
-        phpPerClass: 350,
-        usdList: 769.62,
+        phpTotal: 43560,
+        phpPerClass: 330,
+        usdList: 725.64,
         usdDiscount: 0,
-        usdTotal: 769.62
+        usdTotal: 725.64
       },
       summit: {
         name: 'RemoSummit — Ultimate Bundle',
         lessons: 264,
         months: 12,
         validityMonths: 12,
-        phpTotal: 92400,
-        phpPerClass: 350,
-        usdList: 1539.23,
+        phpTotal: 84480,
+        phpPerClass: 320,
+        usdList: 1407.30,
         usdDiscount: 0,
-        usdTotal: 1539.23
+        usdTotal: 1407.30
       }
     };
     /* Fallback above; GET /api/payments/plans (plan-pricing.js) replaces it with the checkout totals. */
@@ -309,6 +309,11 @@
           row.usdList = p.usdList;
           row.usdDiscount = p.usdFounderDiscount;
           row.usdTotal = p.usdTotal;
+          var opt = document.querySelector('#refill-plan-select option[value="' + id + '"]');
+          if (opt) {
+            opt.textContent = p.planName + ' — ' + String(p.bundleName || '').replace(/ Bundle$/, '')
+              + ' — ' + p.lessonCredits + ' lessons — ₱' + Math.round(Number(p.phpTotal)).toLocaleString('en-PH');
+          }
         });
         if (document.getElementById('refill-plan-select')) updateCheckoutBreakdown();
       });

@@ -14,7 +14,7 @@ function catalogValue(key) {
   return row.value;
 }
 
-test('seeded plans charge ₱7,700 per month', () => {
+test('spark charges 22 classes at ₱350', () => {
   assert.equal(catalogValue('creditsPerMonth'), 22);
   assert.equal(catalogValue('phpPerMonth'), 7700);
   assert.equal(CREDITS_PER_MONTH, 22);
@@ -22,26 +22,31 @@ test('seeded plans charge ₱7,700 per month', () => {
 
   const spark = payments.computePlanTotals('spark', RATE);
   assert.equal(spark.lessonCredits, 22);
-  assert.equal(spark.phpPerMonth, 7700);
   assert.equal(spark.phpPerClass, 350);
+  assert.equal(spark.phpPerMonth, 7700);
+  assert.equal(spark.phpSave, 0);
   assert.equal(spark.usdFounderDiscount, 0);
   assert.equal(spark.phpTotal, 7700);
   assert.equal(spark.amountCentavos, 770000);
   assert.equal(spark.usdTotal, Number((7700 / RATE).toFixed(2)));
 });
 
-test('longer plans are ₱7,700 times the months', () => {
+test('longer plans step down by ₱10 per class', () => {
   const expected = {
-    steady: { credits: 66, months: 3, php: 23100 },
-    scholar: { credits: 132, months: 6, php: 46200 },
-    summit: { credits: 264, months: 12, php: 92400 },
+    steady: { credits: 66, months: 3, perClass: 340, php: 22440, perMonth: 7480, save: 660 },
+    scholar: { credits: 132, months: 6, perClass: 330, php: 43560, perMonth: 7260, save: 2640 },
+    summit: { credits: 264, months: 12, perClass: 320, php: 84480, perMonth: 7040, save: 7920 },
   };
   Object.entries(expected).forEach(([id, row]) => {
     const totals = payments.computePlanTotals(id, RATE);
     assert.equal(totals.lessonCredits, row.credits, id);
+    assert.equal(totals.months, row.months, id);
+    assert.equal(totals.phpPerClass, row.perClass, id);
+    assert.equal(totals.phpPerMonth, row.perMonth, id);
+    assert.equal(totals.phpSave, row.save, id);
     assert.equal(totals.phpTotal, row.php, id);
-    assert.equal(totals.phpPerClass, 350, id);
     assert.equal(totals.amountCentavos, row.php * 100, id);
+    assert.equal(totals.usdFounderDiscount, 0, id);
     assert.equal(totals.usdTotal, Number((row.php / RATE).toFixed(2)), id);
   });
 });
@@ -51,8 +56,10 @@ test('homepage cards do not carry a second peso price', () => {
   const plans = html.slice(html.indexOf('id="plans"'), html.indexOf('id="faq"'));
   assert.doesNotMatch(plans, /₱\s*[\d,]/);
   assert.equal((plans.match(/class="plan-price"/g) || []).length, 4);
+  assert.equal((plans.match(/data-price-role="save"/g) || []).length, 4);
   assert.doesNotMatch(plans, /class="plan-price"[^>]*>[^<]*\d/);
   const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'plan-pricing.js'), 'utf8');
   assert.match(script, /price\.textContent = '₱' \+ rounded\.toLocaleString/);
   assert.match(script, /Number\(p\.phpTotal\)/);
+  assert.match(script, /Number\(p\.phpSave\)/);
 });

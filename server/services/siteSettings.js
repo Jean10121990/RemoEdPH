@@ -11,7 +11,7 @@ const TTL_MS = 5 * 60 * 1000;
 /** Today's code constants. The October audit's 40-minute class and 10/5/2 notices are stale. */
 const CATALOG = [
   { key: 'creditsPerMonth', group: 'pricing', type: 'number', value: 22, label: 'Credits per month', confirm: true },
-  { key: 'phpPerMonth', group: 'pricing', type: 'number', value: 7700, label: 'Plan price per month (PHP). Charged as this times 1, 3, 6, or 12.', confirm: true },
+  { key: 'phpPerMonth', group: 'pricing', type: 'number', value: 7700, label: 'Stored 1-month list price (PHP). Checkout uses ₱350, ₱340, ₱330, and ₱320 per class.', confirm: true },
   { key: 'usdPerClass', group: 'pricing', type: 'number', value: 7, label: 'USD per class (not the checkout price)', confirm: true },
   { key: 'founderDiscountPerMonth', group: 'pricing', type: 'number', value: 21, label: 'Founder discount per month (USD)', confirm: true },
   { key: 'sparkFounderDiscount', group: 'pricing', type: 'number', value: 0, label: 'Spark founder discount (USD)', confirm: true },
