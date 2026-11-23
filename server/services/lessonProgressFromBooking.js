@@ -119,6 +119,11 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
       sourceType: 'lesson',
       sourceId: String(lessonId._id || lessonId),
     });
+    try {
+      await require('./levelLessonReward').maybeGrantLevelLessonReward(booking);
+    } catch (rewardErr) {
+      console.warn('level lesson reward:', rewardErr && rewardErr.message);
+    }
   }
 
   return { progress, ecoDrop };

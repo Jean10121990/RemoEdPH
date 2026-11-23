@@ -544,17 +544,14 @@ router.post('/qr-claim', qrClaimLimiter, requireVerifyStudent, async (req, res) 
     });
 
     // Persist attribution on the student if claim carried a code and student had none.
-    if (!referralFromStudent && (referralFromBody || claim.referralCode)) {
+    if (!referralFromStudent && !student.referredByStudentId && (referralFromBody || claim.referralCode)) {
       try {
-        const {
-          resolveReferralOwner,
-          applyReferralFields,
-        } = require('./utils/awardReferralCommission');
-        const owner = await resolveReferralOwner(referralFromBody || claim.referralCode);
-        if (owner) {
-          applyReferralFields(student, owner);
-          await student.save();
-        }
+        const studentReferral = require('./services/studentReferralService');
+        const attached = await studentReferral.attachInboundReferral(
+          student,
+          referralFromBody || claim.referralCode
+        );
+        if (attached.kind) await student.save();
       } catch (refAttachErr) {
         console.warn('[payments/qr-claim] referral attach failed:', refAttachErr.message || refAttachErr);
       }

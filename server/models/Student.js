@@ -272,6 +272,12 @@ const studentSchema = new mongoose.Schema({
   referredByStudentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
   showBadgesOnProfile: { type: Boolean, default: true },
   pendingReferralWins: { type: [Number], default: [] },
+  /** One free lesson after the 10th completed class of a curriculum level. Cap is 5. */
+  levelLessonRewards: [{
+    level: { type: String, required: true },
+    credits: { type: Number, default: 1 },
+    grantedAt: { type: Date, default: Date.now },
+  }],
   /**
    * In-app notification preferences (student).
    * quietHours* uses Asia/Manila wall-clock hours (0–23).

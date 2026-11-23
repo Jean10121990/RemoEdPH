@@ -1,9 +1,9 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Student = require('../models/Student');
-const { buildCreditLot } = require('./creditLots');
 const StudentReferralReward = require('../models/StudentReferralReward');
 const StudentReferralBadge = require('../models/StudentReferralBadge');
+const { buildCreditLot } = require('./creditLots');
 const {
   referralRewardCredits,
   REFERRAL_BADGES,
@@ -77,6 +77,16 @@ async function attachReferrer(studentDoc, rawCode) {
   return true;
 }
 
+/** Parent share codes win over a teacher, admin, or affiliate code with the same text. */
+async function attachInboundReferral(studentDoc, rawCode) {
+  if (await attachReferrer(studentDoc, rawCode)) return { kind: 'parent' };
+  const { resolveReferralOwner, applyReferralFields } = require('../utils/awardReferralCommission');
+  const owner = await resolveReferralOwner(rawCode);
+  if (!owner) return { kind: '' };
+  applyReferralFields(studentDoc, owner);
+  return { kind: owner.ownerType };
+}
+
 async function ensureShareCode(studentId) {
   const student = await Student.findById(studentId).select('shareCode');
   if (!student) return '';
@@ -120,6 +130,7 @@ async function applyRewardInSession(session, referred, paymentId) {
         referredUserId: referred._id,
         paymentId: String(paymentId || ''),
         creditsAwarded,
+        bonusPhp: 0,
       },
     ],
     { session }
@@ -207,21 +218,23 @@ async function reverseStudentReferralReward(paymentId) {
     await session.withTransaction(async () => {
       const locked = await StudentReferralReward.findOne({ _id: reward._id, reversedAt: null }).session(session);
       if (!locked) return;
+      const credits = Number(locked.creditsAwarded) || 0;
+      if (credits > 0) {
       const referrer = await Student.findById(locked.referrerId).session(session);
       if (!referrer) return;
-      const next = Math.max(0, Number(referrer && referrer.creditBalance) - locked.creditsAwarded);
+      const next = Math.max(0, Number(referrer && referrer.creditBalance) - credits);
       const lotPaymentId = 'referral:' + String(locked._id);
       if (referrer && Array.isArray(referrer.creditLots)) {
         const lot = referrer.creditLots.find((row) => row && row.paymentId === lotPaymentId);
         if (lot) {
-          lot.creditsRemaining = Math.max(0, Number(lot.creditsRemaining || 0) - locked.creditsAwarded);
+          lot.creditsRemaining = Math.max(0, Number(lot.creditsRemaining || 0) - credits);
         }
         referrer.creditBalance = next;
         referrer.creditHistory = referrer.creditHistory || [];
         referrer.creditHistory.push({
           date: new Date(),
           plan: 'Referral reward reversed',
-          credits: -locked.creditsAwarded,
+          credits: -credits,
           amountPaid: 0,
           paymentId: locked.paymentId,
           entryType: 'adjustment',
@@ -237,7 +250,7 @@ async function reverseStudentReferralReward(paymentId) {
               creditHistory: {
                 date: new Date(),
                 plan: 'Referral reward reversed',
-                credits: -locked.creditsAwarded,
+                credits: -credits,
                 amountPaid: 0,
                 paymentId: locked.paymentId,
                 entryType: 'adjustment',
@@ -247,6 +260,7 @@ async function reverseStudentReferralReward(paymentId) {
           },
           { session }
         );
+      }
       }
       locked.reversedAt = new Date();
       await locked.save({ session });
@@ -283,13 +297,17 @@ async function getDashboard(studentId) {
       email: maskEmail(s.email || s.parentEmail),
       status: reward ? 'Purchased' : 'Signed up',
       creditsWon: reward ? reward.creditsAwarded : null,
+      rewardLabel: reward
+        ? reward.creditsAwarded + (Number(reward.creditsAwarded) === 1 ? ' free lesson' : ' free lessons')
+        : null,
       createdAt: s.createdAt,
     };
   });
   return {
     code,
     link: appOrigin() + '/signup?ref=' + encodeURIComponent(code),
-    shareText: 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns ' + referralRewardCredits() + ' free lessons.',
+    headline: 'Share the joy of speaking English. When a friend starts a plan, you earn 1 free lesson with a live teacher.',
+    shareText: 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns 1 free lesson.',
     stats: {
       linkClicks,
       signups: signups.length,
@@ -408,6 +426,7 @@ function renderPublicProfile(profile) {
 
 module.exports = {
   attachReferrer,
+  attachInboundReferral,
   ensureShareCode,
   awardOnFirstPaidPlan,
   reverseStudentReferralReward,

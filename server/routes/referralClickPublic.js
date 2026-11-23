@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { recordReferralClick } = require('../services/referralLinkClicks');
+const { recordReferralClick, resolveReferralCodeOwner } = require('../services/referralLinkClicks');
 
 const router = express.Router();
 
@@ -14,6 +14,26 @@ const clickLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests. Try again later.' },
+});
+
+function publicReferralKind(owner) {
+  if (!owner) return '';
+  if (owner.ownerType === 'student') return 'parent';
+  if (owner.ownerType === 'teacher' || owner.ownerType === 'admin' || owner.ownerType === 'affiliate') {
+    return owner.ownerType;
+  }
+  return '';
+}
+
+router.get('/referral-kind', clickLimiter, async (req, res) => {
+  try {
+    const code = req.query && req.query.code;
+    const owner = await resolveReferralCodeOwner(code);
+    return res.json({ success: true, kind: publicReferralKind(owner) });
+  } catch (err) {
+    console.error('GET /api/public/referral-kind:', err);
+    return res.status(500).json({ success: false, error: 'Could not read referral' });
+  }
 });
 
 router.post('/referral-click', clickLimiter, async (req, res) => {

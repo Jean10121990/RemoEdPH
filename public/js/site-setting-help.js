@@ -35,8 +35,8 @@
     },
     referralRewardCredits: {
       title: 'Referral reward credits',
-      what: 'Lesson credits a student receives after a successful student-to-student referral. The server keeps this between 1 and 5.',
-      example: '3 adds 3 lesson credits to the referring student.'
+      what: 'Lesson credits a parent receives after a friend starts a paid plan. New rewards are 1 free lesson.',
+      example: '1 adds 1 lesson credit to the referring parent.'
     },
     commissionSpark: {
       title: 'Unique Link commission, Spark',

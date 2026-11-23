@@ -316,7 +316,7 @@
     for (i = 0; i < birds; i++) {
       html += '<img class="vg-bug vg-bird vg-bird-' + (i + 1) + '" src="/images/garden/ambient-bird.svg" alt="">';
     }
-    if (amb.rainbow) {
+    if (amb.rainbow || tree.fruitReward) {
       html += '<img class="vg-blossom vg-blossom-1" src="/images/garden/ambient-blossom.svg" alt="">';
       html += '<img class="vg-fruit" src="/images/garden/ambient-fruit.svg" alt="">';
     }

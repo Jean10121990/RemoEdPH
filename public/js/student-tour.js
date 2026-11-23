@@ -87,7 +87,7 @@
         element: '[data-nav="referrals"]',
         title: 'Refer & Earn',
         content:
-          'Share your link. When a friend starts a plan, you earn 3 free lessons. Open the My Badges tab on that page for your trophy cabinet, progress reports, and referral badges.',
+          'Share your link. When a friend starts a plan, you earn 1 free lesson. Open the My Badges tab on that page for your trophy cabinet, progress reports, and referral badges.',
         position: 'right',
       },
       {

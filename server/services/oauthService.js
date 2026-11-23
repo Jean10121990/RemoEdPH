@@ -453,16 +453,12 @@ async function createStudentFromOAuth(req, profile, state) {
   const referralCode = String(state.referralCode || '').trim();
   if (referralCode) {
     try {
-      const { resolveReferralOwner, applyReferralFields, recordReferralSignup } = require('../utils/awardReferralCommission');
-      const owner = await resolveReferralOwner(referralCode);
-      if (owner) {
-        applyReferralFields(student, owner);
+      const { recordReferralSignup } = require('../utils/awardReferralCommission');
+      const studentReferral = require('./studentReferralService');
+      const attached = await studentReferral.attachInboundReferral(student, referralCode);
+      if (attached.kind) {
         await student.save();
-        await recordReferralSignup(student);
-      } else {
-        const studentReferral = require('./studentReferralService');
-        const attached = await studentReferral.attachReferrer(student, referralCode);
-        if (attached) await student.save();
+        if (attached.kind !== 'parent') await recordReferralSignup(student);
       }
     } catch (refErr) {
       console.warn('Referral attach failed during OAuth register:', refErr.message);

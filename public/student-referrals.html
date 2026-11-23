@@ -69,7 +69,7 @@
     <div class="card">
       <h1>Refer &amp; Earn</h1>
       <div class="ref-banner">
-        <p class="quote">Share the joy of speaking English. When a friend starts a plan, you earn 3 free lessons with a live teacher.</p>
+        <p class="quote">Share the joy of speaking English. When a friend starts a plan, you earn 1 free lesson with a live teacher.</p>
         <p class="more">They get one-on-one classes. You keep learning — and you can unlock referral badges along the way.</p>
       </div>
       <div class="link-row">
@@ -90,7 +90,7 @@
     <div class="card">
       <h2>Your referrals</h2>
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Credits won</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Free lessons</th></tr></thead>
         <tbody id="ref-rows"><tr><td colspan="4">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -131,7 +131,7 @@
   </div>
   </div>
   <script src="js/student-badges.js?v=refer-badges-1"></script>
-  <script src="js/student-sidebar.js?v=parent-pin-wrong-1"></script>
+  <script src="js/student-sidebar.js?v=parent-referral-credit"></script>
   <script>
     (function () {
       if (window.StudentSidebar) StudentSidebar.render('student-sidebar-root', 'referrals');
@@ -149,7 +149,7 @@
           return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
         });
       }
-      var shareText = 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns 3 free lessons.';
+      var shareText = 'Join me on RemoEdPH for live one-on-one English classes. Each successful referral earns 1 free lesson.';
       var sbCabinetLoaded = false;
       var sbBadgeFilter = 'ALL';
       var sbCabinetData = null;
@@ -306,6 +306,10 @@
         .then(function (data) {
           if (!data || !data.success) throw new Error('load');
           shareText = data.shareText || shareText;
+          if (data.headline) {
+            var quote = document.querySelector('.ref-banner .quote');
+            if (quote) quote.textContent = data.headline;
+          }
           document.getElementById('ref-link').value = data.link || '';
           paintShares(data.link || '');
           var st = data.stats || {};
@@ -318,7 +322,7 @@
           document.getElementById('ref-rows').innerHTML = rows.length
             ? rows.map(function (row) {
                 return '<tr><td>' + esc(row.name) + '</td><td>' + esc(row.email) + '</td><td>' + esc(row.status) + '</td><td>' +
-                  (row.creditsWon == null ? '—' : esc(row.creditsWon)) + '</td></tr>';
+                  (row.rewardLabel ? esc(row.rewardLabel) : '—') + '</td></tr>';
               }).join('')
             : '<tr><td colspan="4">No referrals yet.</td></tr>';
           document.getElementById('ref-badges').innerHTML = (data.badges || []).map(function (b) {

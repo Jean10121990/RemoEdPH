@@ -555,12 +555,25 @@
         }
       }
       try {
-        const ref = localStorage.getItem('referralCode');
+        const ref = (urlParamsReg.get('ref') || localStorage.getItem('referralCode') || '').trim();
         if (ref) {
           const chip = document.getElementById('referral-chip');
+          function referralChipLabel(kind) {
+            if (kind === 'parent') return 'Parent referral applied: ';
+            if (kind === 'teacher') return 'Teacher referral applied: ';
+            if (kind === 'affiliate') return 'Affiliate referral applied: ';
+            if (kind === 'admin') return 'RemoEd referral applied: ';
+            return 'Referral applied: ';
+          }
           if (chip) {
             chip.style.display = 'block';
-            chip.textContent = 'Teacher referral applied: ' + ref;
+            chip.textContent = referralChipLabel('') + ref;
+            fetch('/api/public/referral-kind?code=' + encodeURIComponent(ref))
+              .then(function (res) { return res.json(); })
+              .then(function (data) {
+                chip.textContent = referralChipLabel(data && data.kind) + ref;
+              })
+              .catch(function () {});
           }
         }
       } catch (e) { /* ignore */ }

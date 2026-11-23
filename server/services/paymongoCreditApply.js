@@ -250,16 +250,15 @@ async function applyExistingStudentPurchase({
   try {
     // Prefer live student referral fields; fall back to pending.referralCode from checkout.
     let studentForRef = await Student.findById(student._id);
-    if (studentForRef && !studentForRef.referralCode && pending.referralCode) {
-      const {
-        resolveReferralOwner,
-        applyReferralFields,
-      } = require('../utils/awardReferralCommission');
-      const owner = await resolveReferralOwner(pending.referralCode);
-      if (owner) {
-        applyReferralFields(studentForRef, owner);
-        await studentForRef.save();
-      }
+    if (
+      studentForRef &&
+      !studentForRef.referralCode &&
+      !studentForRef.referredByStudentId &&
+      pending.referralCode
+    ) {
+      const studentReferral = require('./studentReferralService');
+      const attached = await studentReferral.attachInboundReferral(studentForRef, pending.referralCode);
+      if (attached.kind) await studentForRef.save();
     }
     const { awardReferralCommissionOnPayment } = require('../utils/awardReferralCommission');
     await awardReferralCommissionOnPayment(studentForRef || student, {

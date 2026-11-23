@@ -1225,22 +1225,13 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       })(),
     });
 
-    // Attach referral if provided (teacher referral link)
+    // Parent share codes are attached before teacher, admin, or affiliate codes.
     if (referralCode && String(referralCode).trim()) {
       const code = String(referralCode).trim();
       try {
-        const {
-          resolveReferralOwner,
-          applyReferralFields,
-        } = require('./utils/awardReferralCommission');
-        const owner = await resolveReferralOwner(code);
-        if (owner) applyReferralFields(student, owner);
-        else {
-          const studentReferral = require('./services/studentReferralService');
-          await studentReferral.attachReferrer(student, code);
-        }
+        const studentReferral = require('./services/studentReferralService');
+        await studentReferral.attachInboundReferral(student, code);
       } catch (e) {
-        // Don't fail registration if referral lookup fails
         console.warn('Referral lookup failed during student registration:', e.message);
       }
     }

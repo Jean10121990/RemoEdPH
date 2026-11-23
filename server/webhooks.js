@@ -379,17 +379,11 @@ async function handlePaymongoWebhook(req, res) {
       if (applyResult.duplicate) {
         console.log('ℹ️ [PAYMONGO WEBHOOK] Duplicate webhook ignored, payment already processed for student', existing._id);
         try {
-          const {
-            resolveReferralOwner,
-            applyReferralFields,
-            awardReferralCommissionOnPayment,
-          } = require('./utils/awardReferralCommission');
-          if (!existing.referralCode && pending.referralCode) {
-            const owner = await resolveReferralOwner(pending.referralCode);
-            if (owner) {
-              applyReferralFields(existing, owner);
-              await existing.save();
-            }
+          const { awardReferralCommissionOnPayment } = require('./utils/awardReferralCommission');
+          if (!existing.referralCode && !existing.referredByStudentId && pending.referralCode) {
+            const studentReferral = require('./services/studentReferralService');
+            const attached = await studentReferral.attachInboundReferral(existing, pending.referralCode);
+            if (attached.kind) await existing.save();
           }
           await awardReferralCommissionOnPayment(existing, {
             amountPaid: Number(pending.amount || 0) || 0,
@@ -490,18 +484,10 @@ async function handlePaymongoWebhook(req, res) {
     });
 
     try {
-      const {
-        resolveReferralOwner,
-        applyReferralFields,
-      } = require('./utils/awardReferralCommission');
       const pendingRef = String(pending.referralCode || metadata.referralCode || '').trim();
       if (pendingRef) {
-        const owner = await resolveReferralOwner(pendingRef);
-        if (owner) applyReferralFields(student, owner);
-        else {
-          const studentReferral = require('./services/studentReferralService');
-          await studentReferral.attachReferrer(student, pendingRef);
-        }
+        const studentReferral = require('./services/studentReferralService');
+        await studentReferral.attachInboundReferral(student, pendingRef);
       }
     } catch (refAttachErr) {
       console.warn('[PAYMONGO WEBHOOK] Referral attach failed:', refAttachErr.message);

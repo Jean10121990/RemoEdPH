@@ -57,6 +57,9 @@ function createGardenRouter({ garden, care, rewards, parent, shares, auth, isLoc
       const data = await garden.getCurrent(studentId, now);
       if (rewards && rewards.remindExpiring) await rewards.remindExpiring(studentId, now);
       const rewardPreview = rewards && rewards.previewForTree ? await rewards.previewForTree(studentId, data.tree) : null;
+      if (data.tree && req.student && Array.isArray(req.student.levelLessonRewards) && req.student.levelLessonRewards.length) {
+        data.tree.fruitReward = true;
+      }
       res.json({
         success: true,
         locked: !!isLocked(req),
