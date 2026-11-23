@@ -2220,14 +2220,17 @@
         });
 
       // --- Media constraints (fast load / lower bandwidth) ---
+      // Prefer 360p. Never ask the camera above 480p. The sender then steps 300–650 kbps.
       const IDEAL_CAM_WIDTH = 640;
-      const IDEAL_CAM_HEIGHT = 480;
+      const IDEAL_CAM_HEIGHT = 360;
+      const MAX_CAM_WIDTH = 640;
+      const MAX_CAM_HEIGHT = 480;
       const IDEAL_CAM_FPS = 15;
 
       function buildVideoConstraintsSd() {
         return {
-          width: { ideal: IDEAL_CAM_WIDTH },
-          height: { ideal: IDEAL_CAM_HEIGHT },
+          width: { ideal: IDEAL_CAM_WIDTH, max: MAX_CAM_WIDTH },
+          height: { ideal: IDEAL_CAM_HEIGHT, max: MAX_CAM_HEIGHT },
           frameRate: { ideal: IDEAL_CAM_FPS, max: 24 },
           facingMode: 'user'
         };
@@ -2306,25 +2309,112 @@
         });
       }
 
-      // Cap the webcam upload (640x480 @ 15 fps looks fine at this rate). On a weak uplink, especially
-      // while the QA recording is also uploading, an uncapped sender hogs the line and the call
-      // freezes. The browser still lowers it further when the network needs.
-      const CAMERA_MAX_BITRATE_BPS = 500000;
-      async function limitCameraSenderBitrate() {
+      // Webcam upload stays inside 300–650 kbps. Start at 500. A poor link steps down
+      // before audio is squeezed. Screen share is not capped here.
+      const CAMERA_BITRATE_START_BPS = 500000;
+      const CAMERA_BITRATE_HIGH_BPS = 650000;
+      const CAMERA_BITRATE_LOW_BPS = 300000;
+      let cameraSenderTuneTimer = null;
+      let cameraSenderApplied = '';
+      let mediaPathReported = false;
+
+      function stopCameraSenderTune() {
+        if (cameraSenderTuneTimer) {
+          clearInterval(cameraSenderTuneTimer);
+          cameraSenderTuneTimer = null;
+        }
+        cameraSenderApplied = '';
+      }
+
+      function cameraSenderTarget(lossFraction, availableBps, hasStats) {
+        const poor = lossFraction > 0.05 || (availableBps != null && Number.isFinite(availableBps) && availableBps < 400000);
+        const healthy = hasStats && lossFraction < 0.01 && (availableBps == null || availableBps > 800000);
+        if (poor) return { maxBitrate: CAMERA_BITRATE_LOW_BPS, scaleResolutionDownBy: 1.5 };
+        if (healthy) return { maxBitrate: CAMERA_BITRATE_HIGH_BPS, scaleResolutionDownBy: 1 };
+        return { maxBitrate: CAMERA_BITRATE_START_BPS, scaleResolutionDownBy: 1 };
+      }
+
+      async function tuneCameraSender() {
         try {
-          if (!peerConnection || !localStream) return;
+          if (!peerConnection || peerConnection.connectionState === 'closed') {
+            stopCameraSenderTune();
+            return;
+          }
+          if (!localStream) return;
+          const audioTrack = localStream.getAudioTracks && localStream.getAudioTracks()[0];
+          if (audioTrack) {
+            const audioSender = peerConnection.getSenders().find((s) => s.track === audioTrack);
+            if (audioSender && typeof audioSender.getParameters === 'function') {
+              const audioParams = audioSender.getParameters();
+              if (!audioParams.encodings || !audioParams.encodings.length) audioParams.encodings = [{}];
+              if (audioParams.encodings[0].priority !== 'high') {
+                audioParams.encodings[0].priority = 'high';
+                audioParams.encodings[0].networkPriority = 'high';
+                await audioSender.setParameters(audioParams);
+              }
+            }
+          }
           const camTrack = localStream.getVideoTracks && localStream.getVideoTracks()[0];
-          if (!camTrack) return;
-          const sender = peerConnection.getSenders().find((s) => s.track === camTrack);
-          if (!sender || typeof sender.getParameters !== 'function') return;
+          if (!camTrack || isDisplayCaptureTrack(camTrack)) return;
+          const sender = peerConnection.getSenders().find((s) => s.track && s.track.kind === 'video' && !isDisplayCaptureTrack(s.track));
+          if (!sender || typeof sender.getParameters !== 'function' || typeof peerConnection.getStats !== 'function') return;
+
+          let lossFraction = 0;
+          let availableBps = null;
+          let pathKind = '';
+          let hasStats = false;
+          const stats = await peerConnection.getStats();
+          stats.forEach((report) => {
+            if (report.type === 'remote-inbound-rtp' && report.kind === 'video') {
+              hasStats = true;
+              if (typeof report.fractionLost === 'number') {
+                const fraction = report.fractionLost > 1 ? report.fractionLost / 256 : report.fractionLost;
+                lossFraction = Math.max(lossFraction, fraction);
+              } else if (report.packetsLost) {
+                const total = report.packetsLost + (report.packetsReceived || 0);
+                if (total > 0) lossFraction = Math.max(lossFraction, report.packetsLost / total);
+              }
+            }
+            if (report.type === 'transport' && report.selectedCandidatePairId) {
+              const pair = stats.get(report.selectedCandidatePairId);
+              if (pair && pair.availableOutgoingBitrate != null) {
+                hasStats = true;
+                availableBps = pair.availableOutgoingBitrate;
+              }
+              const local = pair && stats.get(pair.localCandidateId);
+              const remote = pair && stats.get(pair.remoteCandidateId);
+              const localType = local && local.candidateType;
+              const remoteType = remote && remote.candidateType;
+              if (localType === 'relay' || remoteType === 'relay') pathKind = 'relay';
+              else if (localType || remoteType) pathKind = 'direct';
+            }
+          });
+          if (!mediaPathReported && pathKind && socket && room) {
+            mediaPathReported = true;
+            socket.emit('media-path', { room: room, path: pathKind });
+          }
+
+          const target = cameraSenderTarget(lossFraction, availableBps, hasStats);
+          const signature = target.maxBitrate + ':' + target.scaleResolutionDownBy;
+          if (signature === cameraSenderApplied) return;
           const params = sender.getParameters();
           if (!params.encodings || !params.encodings.length) params.encodings = [{}];
-          if (params.encodings[0].maxBitrate === CAMERA_MAX_BITRATE_BPS) return;
-          params.encodings[0].maxBitrate = CAMERA_MAX_BITRATE_BPS;
+          params.degradationPreference = 'balanced';
+          params.encodings[0].maxBitrate = target.maxBitrate;
+          params.encodings[0].scaleResolutionDownBy = target.scaleResolutionDownBy;
+          params.encodings[0].priority = 'low';
+          params.encodings[0].networkPriority = 'low';
           await sender.setParameters(params);
+          cameraSenderApplied = signature;
         } catch (_e) {
           /* not supported or not ready: keep browser defaults */
         }
+      }
+
+      function limitCameraSenderBitrate() {
+        tuneCameraSender();
+        if (cameraSenderTuneTimer) return;
+        cameraSenderTuneTimer = setInterval(tuneCameraSender, 5000);
       }
 
       function renegotiatePeerConnection(reason) {
@@ -2979,6 +3069,7 @@
           console.log('🔗 Peer connection state:', state, 'userType:', userType);
           
           if (state === 'failed' || state === 'disconnected') {
+            stopCameraSenderTune();
             console.warn('⚠️ Connection failed/disconnected');
             // Keep the camera tile (black) so both sides still see the other person is in class.
             if (typeof holdPeerVideoForWeakSignal === 'function') holdPeerVideoForWeakSignal();

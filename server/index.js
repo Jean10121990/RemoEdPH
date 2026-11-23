@@ -2432,6 +2432,19 @@ async function disconnectIfClassroomUnauthenticated(socket, room) {
   return true;
 }
 
+function logClassroomLoad(reason, roomId) {
+    const rooms = new Set();
+    let participants = 0;
+    for (const session of userSessions.values()) {
+        if (!session || !session.room) continue;
+        rooms.add(String(session.room));
+        participants += 1;
+    }
+    console.log(
+        `[class-capacity] ${reason} room=${roomId || '-'} activeRooms=${rooms.size} participants=${participants}`
+    );
+}
+
 // Socket.IO signaling server functionality
 io.on('connection', socket => {
     console.log('🔌 New client connected:', socket.id);
@@ -2579,6 +2592,7 @@ io.on('connection', socket => {
         console.log(`  - username: ${socket.username}`);
         
         socket.join(room);
+        logClassroomLoad('join', room);
         const savedSlide = roomPresentationSlide.get(room);
         if (savedSlide && String(userType || '').toLowerCase() !== 'teacher') {
             socket.emit('presentation-slide-changed', savedSlide);
@@ -2757,6 +2771,7 @@ io.on('connection', socket => {
         signalingMessages.get(room).push(message);
         
         console.log(`🏁 Class finished message stored for room ${room}`);
+        logClassroomLoad('class-finished', room);
     });
 
     // Handle join-room event (for compatibility with client)
@@ -2812,6 +2827,7 @@ io.on('connection', socket => {
         console.log(`  - username: ${socket.username}`);
         
         socket.join(room);
+        logClassroomLoad('join', room);
         const savedSlide = roomPresentationSlide.get(room);
         if (savedSlide && String(userType || '').toLowerCase() !== 'teacher') {
             socket.emit('presentation-slide-changed', savedSlide);
@@ -3154,6 +3170,15 @@ io.on('connection', socket => {
         } catch (_cleanErr) {}
         pendingClassroomSettingsBySocket.delete(socket.id);
         userSessions.delete(socket.id);
+        logClassroomLoad('leave', (userInfo && userInfo.room) || socket.room);
+    });
+
+    socket.on('media-path', (data) => {
+        const info = userSessions.get(socket.id);
+        const roomId = info && info.room;
+        if (!roomId) return;
+        const pathKind = data && data.path === 'relay' ? 'relay' : 'direct';
+        console.log(`[class-capacity] media-path path=${pathKind} room=${roomId}`);
     });
     
     // Presentation events

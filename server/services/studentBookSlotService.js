@@ -25,6 +25,7 @@ const {
   getCandidateTeachersForSlotUtc,
 } = require('./teacherSlotResolve');
 const { normalizeId } = require('../utils/normalizeId');
+const { guardClassStart } = require('../config/classCapacity');
 
 /** Teacher-facing notification text — many students have empty first/last until profile is completed. */
 function studentDisplayNameForNotification(studentDoc, usernameFallback) {
@@ -242,6 +243,7 @@ async function runBookSlot(req, res) {
       return res.status(orderGate.status || 400).json(orderGate.body);
     }
     // No per-day class cap (removed at the owner's request).
+    // A same-start ceiling may refuse this new booking. It never turns away a class already booked.
 
     const slotIdTrim = slotIdBody != null ? String(slotIdBody).trim() : '';
     if (!slotIdTrim) {
@@ -318,11 +320,33 @@ async function runBookSlot(req, res) {
       return res.status(400).json({ error: 'Assigned teacher record not found' });
     }
     const utcInstant = new Date(canonicalUtc);
+    const bookingZone = timezone || (student && student.studentLocalZone) || 'Asia/Manila';
+
+    async function refuseIfStartWindowFull() {
+      return guardClassStart({
+        instant: canonicalUtc,
+        zone: bookingZone,
+        Booking,
+        findOpenSlots: findOpenSlotsByUtcInstant,
+      });
+    }
+
+    const startWindowFull = await refuseIfStartWindowFull();
+    if (startWindowFull) {
+      return res.status(startWindowFull.statusCode).json({
+        error: startWindowFull.message,
+        code: startWindowFull.code,
+        alternatives: startWindowFull.alternatives || [],
+      });
+    }
 
     const useTransactions =
       String(process.env.USE_TRANSACTIONS || '').toLowerCase() === 'true';
 
     async function createBookingAtomic(session) {
+      const racedFull = await refuseIfStartWindowFull();
+      if (racedFull) throw racedFull;
+
       const findOpts = { new: true };
       if (session) findOpts.session = session;
 
@@ -498,6 +522,7 @@ async function runBookSlot(req, res) {
                 error: e.message,
                 code: e.code || undefined,
                 details: e.details || undefined,
+                alternatives: e.alternatives || undefined,
               });
             }
             if (isTransactionUnsupportedError(txnErr)) {
@@ -534,6 +559,7 @@ async function runBookSlot(req, res) {
             error: e.message,
             code: e.code || undefined,
             details: e.details || undefined,
+            alternatives: e.alternatives || undefined,
           });
         }
         throw bookErr;

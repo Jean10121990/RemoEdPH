@@ -70,7 +70,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 ## 3. Socket.IO rooms follow the verified token
 
-- Classroom rooms (`join`, `join-room`) require a valid JWT on the handshake (`disconnectIfClassroomUnauthenticated` in `server/index.js`).
+- Classroom rooms (`join`, `join-room`) require a valid JWT on the handshake (`disconnectIfClassroomUnauthenticated` in `server/index.js`). A same-start booking ceiling never disconnects someone whose class is already booked. `media-path` logs `relay` or `direct` and the room id only — never candidate addresses or TURN secrets.
 - Personal rooms (`teacher-msg:`, `student-msg:`, `admin-msg:`, `notif:teacher:` / `notif:student:` / `notif:admin:`) are joined only through `resolveSocketIdentity`. The room id comes from the JWT (join payload `token` or handshake), **not** from `data.teacherId` / `data.username`.
 - Clients send their portal token in the join payload: `public/js/remoed-notifications.js`, `public/js/admin-notifications.js`, `public/teacher-messages.html`, `public/student-messages.html`.
 - New per-user socket rooms must use the same helper. Do not emit private payloads to a room a client can name freely.
