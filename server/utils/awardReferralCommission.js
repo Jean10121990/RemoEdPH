@@ -1,7 +1,7 @@
 /**
  * Teacher/admin referral attribution + commission.
  * Pending row on signup; commission when the student pays for a plan, tiered by plan
- * (₱500 once for every plan length — see referralCommissionTiers.js).
+ * (₱1,000 once for every plan length — see referralCommissionTiers.js).
  * Affiliates also earn 2% of the monthly price for each paid month.
  */
 const Teacher = require('../models/Teacher');
@@ -13,7 +13,7 @@ const PendingRegistration = require('../models/PendingRegistration');
 const AffiliateRecurringLedger = require('../models/AffiliateRecurringLedger');
 const { encryptPiiString } = require('../utils/piiCrypto');
 const { referralCommissionForPlan } = require('./referralCommissionTiers');
-const { affiliateSlugExactRe } = require('./affiliateReferralSlug');
+const { affiliateSlugMatch } = require('./affiliateReferralSlug');
 const {
   AFFILIATE_MONTHLY_PCT,
   phYyyymm,
@@ -44,11 +44,11 @@ async function resolveReferralOwner(referralCode) {
       ownerId: String(admin.username),
     };
   }
-  const slugRe = affiliateSlugExactRe(code);
-  if (slugRe) {
+  const slugMatch = affiliateSlugMatch(code);
+  if (slugMatch) {
     const affiliate = await Affiliate.findOne({
-      status: { $ne: 'inactive' },
-      $or: [{ referralSlug: slugRe }, { email: slugRe }],
+      status: { $nin: ['inactive', 'suspended'] },
+      ...slugMatch,
     }).lean();
     if (affiliate) {
       return {

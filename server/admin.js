@@ -1762,7 +1762,7 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     if (applicant.applicantType === 'affiliate') {
       const bcrypt = require('bcrypt');
       const Affiliate = require('./models/Affiliate');
-      const { buildAffiliateReferralSlug } = require('./utils/affiliateReferralSlug');
+      const { allocateAffiliateReferralSlug, ensureRandomAffiliateSlug } = require('./utils/affiliateReferralSlug');
       const { sendAffiliateCredentialsEmail } = require('./emailService');
       const tempPassword = crypto.randomBytes(9).toString('base64url');
       let affiliate = await Affiliate.findOne({ email: recipientEmail });
@@ -1772,13 +1772,14 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
           email: recipientEmail,
           phone: applicant.contactNo || '',
           username: recipientEmail,
-          referralSlug: buildAffiliateReferralSlug({ email: recipientEmail, name: applicant.fullName }),
+          referralSlug: await allocateAffiliateReferralSlug(),
           status: 'active',
         });
       }
       affiliate.status = 'active';
       affiliate.name = applicant.fullName || affiliate.name;
       affiliate.passwordHash = await bcrypt.hash(tempPassword, 12);
+      await ensureRandomAffiliateSlug(affiliate);
       const mail = await sendAffiliateCredentialsEmail({
         to: recipientEmail,
         name: affiliate.name,
@@ -2201,10 +2202,10 @@ router.get('/referrals/teachers', verifyAdminApiAuth, requireAdmin, async (req, 
       });
     }
 
-    const affiliates = await Affiliate.find({ status: { $ne: 'inactive' } })
-      .select('name email username referralSlug')
-      .lean();
+    const { ensureRandomAffiliateSlug } = require('./utils/affiliateReferralSlug');
+    const affiliates = await Affiliate.find({ status: { $nin: ['inactive', 'suspended'] } });
     for (const a of affiliates) {
+      await ensureRandomAffiliateSlug(a);
       const name = a.name || a.username || a.email || 'Affiliate';
       out.push({
         teacherId: String(a._id),
@@ -2565,11 +2566,12 @@ router.get('/referral-link/leaderboard', verifyAdminApiAuth, requireAdmin, async
 router.get('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const Affiliate = require('./models/Affiliate');
-    const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
-    const rows = await Affiliate.find({})
-      .select('name email phone username referralSlug status christianValuesBackground notes createdAt withdrawals')
-      .sort({ createdAt: -1 })
-      .lean();
+    const { enrollLinkForSlug, ensureRandomAffiliateSlug } = require('./utils/affiliateReferralSlug');
+    const docs = await Affiliate.find({}).sort({ createdAt: -1 });
+    for (const doc of docs) {
+      await ensureRandomAffiliateSlug(doc);
+    }
+    const rows = docs;
     res.json({
       success: true,
       affiliates: rows.map((a) => ({
@@ -2606,7 +2608,7 @@ router.post('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) =>
     const bcrypt = require('bcrypt');
     const Affiliate = require('./models/Affiliate');
     const {
-      buildAffiliateReferralSlug,
+      allocateAffiliateReferralSlug,
       enrollLinkForSlug,
       affiliateSlugExactRe,
     } = require('./utils/affiliateReferralSlug');
@@ -2640,21 +2642,16 @@ router.post('/affiliates', verifyAdminApiAuth, requireAdmin, async (req, res) =>
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
-    const referralSlug = buildAffiliateReferralSlug({ email, name });
-    if (!referralSlug) {
-      return res.status(400).json({ success: false, message: 'Could not build referral slug from email/name' });
+    if (email) {
+      const emailTaken = await Affiliate.findOne({ email: affiliateSlugExactRe(email) }).lean();
+      if (emailTaken) {
+        return res.status(409).json({
+          success: false,
+          message: 'An affiliate already uses this email',
+        });
+      }
     }
-
-    const slugRe = affiliateSlugExactRe(referralSlug);
-    const slugTaken = await Affiliate.findOne({
-      $or: [{ referralSlug: slugRe }, { email: slugRe }],
-    }).lean();
-    if (slugTaken) {
-      return res.status(409).json({
-        success: false,
-        message: 'An affiliate already uses this email or name for their referral link',
-      });
-    }
+    const referralSlug = await allocateAffiliateReferralSlug();
 
     const userTaken = await Affiliate.findOne({ username: usernameRaw }).lean();
     if (userTaken) {
@@ -2700,11 +2697,7 @@ router.patch('/affiliates/:id', verifyAdminApiAuth, requireAdmin, async (req, re
     const bcrypt = require('bcrypt');
     const mongoose = require('mongoose');
     const Affiliate = require('./models/Affiliate');
-    const {
-      buildAffiliateReferralSlug,
-      enrollLinkForSlug,
-      affiliateSlugExactRe,
-    } = require('./utils/affiliateReferralSlug');
+    const { enrollLinkForSlug, ensureRandomAffiliateSlug } = require('./utils/affiliateReferralSlug');
 
     const id = String(req.params.id || '');
     if (!mongoose.isValidObjectId(id)) {
@@ -2740,26 +2733,7 @@ router.patch('/affiliates/:id', verifyAdminApiAuth, requireAdmin, async (req, re
       affiliate.passwordHash = await bcrypt.hash(pw, 12);
     }
 
-    // Rebuild slug when email/name change (prefer email).
-    const nextSlug = buildAffiliateReferralSlug({
-      email: affiliate.email,
-      name: affiliate.name,
-    });
-    if (nextSlug && nextSlug !== affiliate.referralSlug) {
-      const slugRe = affiliateSlugExactRe(nextSlug);
-      const taken = await Affiliate.findOne({
-        _id: { $ne: affiliate._id },
-        $or: [{ referralSlug: slugRe }, { email: slugRe }],
-      }).lean();
-      if (taken) {
-        return res.status(409).json({
-          success: false,
-          message: 'Another affiliate already uses this email or name for their referral link',
-        });
-      }
-      affiliate.referralSlug = nextSlug;
-    }
-
+    await ensureRandomAffiliateSlug(affiliate);
     await affiliate.save();
     res.json({
       success: true,
@@ -4660,7 +4634,7 @@ router.get('/students-list', async (req, res) => {
 router.get('/affiliates-list', async (req, res) => {
   try {
     const Affiliate = require('./models/Affiliate');
-    const rows = await Affiliate.find({ status: 'active' })
+    const rows = await Affiliate.find({})
       .select('name email phone username status createdAt')
       .sort({ createdAt: -1 })
       .lean();
@@ -4672,7 +4646,7 @@ router.get('/affiliates-list', async (req, res) => {
         email: a.email || '',
         phone: a.phone || '',
         username: a.username || '',
-        status: 'active',
+        status: a.status || 'active',
         createdAt: a.createdAt || null,
       })),
     });
@@ -6146,6 +6120,11 @@ router.get('/user/:userId', async (req, res) => {
       case 'admin':
         user = await Admin.findById(userId).select('-password -passwordHash');
         break;
+      case 'affiliate':
+        user = await require('./models/Affiliate').findById(userId).select(
+          'name email phone username referralSlug status notes christianValuesBackground createdAt'
+        );
+        break;
       default:
         return res.status(400).json({ error: 'Invalid user type' });
     }
@@ -6204,6 +6183,14 @@ router.post('/user', async (req, res) => {
     if (userType === 'admin' && !username) {
       return res.status(400).json({ error: 'Username is required for admins' });
     }
+    if (userType === 'affiliate') {
+      if (!username || !email || !password || !String(req.body.name || '').trim()) {
+        return res.status(400).json({ error: 'Name, username, email, and password are required for affiliates' });
+      }
+      if (String(password).trim().length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      }
+    }
 
     // Check if email already exists
     let existingUser;
@@ -6221,6 +6208,15 @@ router.post('/user', async (req, res) => {
           orAdmin.push({ email: new RegExp(`^${emailEsc}$`, 'i') });
         }
         existingUser = await Admin.findOne({ $or: orAdmin });
+        break;
+      }
+      case 'affiliate': {
+        const Affiliate = require('./models/Affiliate');
+        const emailEsc = String(email || '').trim().toLowerCase();
+        const uname = String(username || '').trim().toLowerCase();
+        const orAffiliate = [{ username: uname }];
+        if (emailEsc) orAffiliate.push({ email: emailEsc });
+        existingUser = await Affiliate.findOne({ $or: orAffiliate });
         break;
       }
       default:
@@ -6393,6 +6389,22 @@ router.post('/user', async (req, res) => {
             passwordSetupExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           });
         }
+        break;
+      }
+      case 'affiliate': {
+        const Affiliate = require('./models/Affiliate');
+        const { allocateAffiliateReferralSlug } = require('./utils/affiliateReferralSlug');
+        const referralSlug = await allocateAffiliateReferralSlug();
+        hashedPassword = await bcrypt.hash(String(password).trim(), 12);
+        newUser = new Affiliate({
+          name: String(req.body.name || '').trim(),
+          email: String(email).trim().toLowerCase(),
+          phone: String(req.body.phone || '').trim(),
+          username: String(username).trim().toLowerCase(),
+          passwordHash: hashedPassword,
+          referralSlug,
+          status: 'active',
+        });
         break;
       }
       default:
@@ -6580,6 +6592,8 @@ router.put('/user/:userId', async (req, res) => {
       payoutCred1,
       payoutCred2,
       payoutCred3,
+      name,
+      phone,
     } = req.body;
 
     if (!userType) {
@@ -6596,6 +6610,9 @@ router.put('/user/:userId', async (req, res) => {
         break;
       case 'admin':
         user = await Admin.findById(userId);
+        break;
+      case 'affiliate':
+        user = await require('./models/Affiliate').findById(userId);
         break;
       default:
         return res.status(400).json({ error: 'Invalid user type' });
@@ -6614,7 +6631,7 @@ router.put('/user/:userId', async (req, res) => {
 
     // Update fields. Admin username stays the password login; email is the Google address.
     // Teachers sign in with email. Do not write a separate username, and do not rewrite Teacher.teacherId.
-    if (username && userType !== 'teacher') user.username = username;
+    if (username && userType !== 'teacher' && userType !== 'affiliate') user.username = username;
     if (userType === 'admin' && email !== undefined) {
       const nextEmail = String(email || '').trim().toLowerCase();
       if (nextEmail) {
@@ -6628,12 +6645,15 @@ router.put('/user/:userId', async (req, res) => {
         }
       }
       user.email = nextEmail || null;
-    } else if (email !== undefined) {
+    } else if (email !== undefined && userType !== 'affiliate') {
       user.email = email || null;
     }
     if (password) {
+      if (userType === 'affiliate' && String(password).trim().length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      }
       const h = await bcrypt.hash(password, 12);
-      if (userType === 'admin') {
+      if (userType === 'admin' || userType === 'affiliate') {
         user.passwordHash = h;
         user.password = undefined;
       } else {
@@ -6659,6 +6679,28 @@ router.put('/user/:userId', async (req, res) => {
     } else if (userType === 'student') {
       if (studentFirstName) user.firstName = studentFirstName;
       if (studentLastName) user.lastName = studentLastName;
+    } else if (userType === 'affiliate') {
+      const Affiliate = require('./models/Affiliate');
+      if (name !== undefined) {
+        const nextName = String(name || '').trim();
+        if (!nextName) return res.status(400).json({ error: 'Name is required' });
+        user.name = nextName;
+      }
+      if (phone !== undefined) user.phone = String(phone || '').trim();
+      if (username) {
+        const nextUser = String(username).trim().toLowerCase();
+        const clash = await Affiliate.findOne({ _id: { $ne: user._id }, username: nextUser }).select('_id').lean();
+        if (clash) return res.status(400).json({ error: 'Username already in use' });
+        user.username = nextUser;
+      }
+      if (email !== undefined) {
+        const nextEmail = String(email || '').trim().toLowerCase();
+        if (nextEmail) {
+          const clash = await Affiliate.findOne({ _id: { $ne: user._id }, email: nextEmail }).select('_id').lean();
+          if (clash) return res.status(400).json({ error: 'That email is already used by another affiliate.' });
+        }
+        user.email = nextEmail || null;
+      }
     } else if (userType === 'admin' && bodyAdminRolePut) {
       const roleNorm = String(bodyAdminRolePut).trim().toLowerCase();
       try {
@@ -6713,6 +6755,9 @@ router.put('/user/:userId/suspend', async (req, res) => {
       case 'admin':
         user = await Admin.findById(userId);
         break;
+      case 'affiliate':
+        user = await require('./models/Affiliate').findById(userId);
+        break;
       default:
         return res.status(400).json({ error: 'Invalid user type' });
     }
@@ -6751,6 +6796,9 @@ router.put('/user/:userId/unsuspend', async (req, res) => {
         break;
       case 'admin':
         user = await Admin.findById(userId);
+        break;
+      case 'affiliate':
+        user = await require('./models/Affiliate').findById(userId);
         break;
       default:
         return res.status(400).json({ error: 'Invalid user type' });
@@ -6820,7 +6868,7 @@ router.post('/migrate-user-statuses', async (req, res) => {
 async function findManagedUserForDelete(type, userId) {
   const id = String(userId || '').trim();
   if (!id) return null;
-  const Model = type === 'teacher' ? Teacher : type === 'student' ? Student : Admin;
+  const Model = type === 'teacher' ? Teacher : type === 'student' ? Student : type === 'affiliate' ? require('./models/Affiliate') : Admin;
   const projection = '_id username email teacherId adminRole';
   if (mongoose.isValidObjectId(id)) {
     const byId = await Model.findById(id).select(projection);
@@ -6838,7 +6886,7 @@ async function deleteAdminManagedUser(req, res) {
       .trim()
       .toLowerCase();
 
-    if (!['teacher', 'student', 'admin'].includes(type)) {
+    if (!['teacher', 'student', 'admin', 'affiliate'].includes(type)) {
       return res.status(400).json({ error: 'Invalid user type' });
     }
 
@@ -6868,7 +6916,7 @@ async function deleteAdminManagedUser(req, res) {
       }
     }
 
-    const Model = type === 'teacher' ? Teacher : type === 'student' ? Student : Admin;
+    const Model = type === 'teacher' ? Teacher : type === 'student' ? Student : type === 'affiliate' ? require('./models/Affiliate') : Admin;
     // deleteOne avoids loading multi-MB base64 document blobs that make findByIdAndDelete 500.
     const result = await Model.deleteOne({ _id: doc._id });
     if (!result || !result.deletedCount) {

@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 /**
  * Independent Growth Affiliate portal account (parallel to Student / Teacher).
- * referralSlug is email (preferred) or complete name — used in /enroll?ref=
+ * referralSlug is a random code used in /enroll?ref=
+ * Older email or name slugs stay in previousReferralSlugs so shared links still count.
  */
 const affiliateSchema = new mongoose.Schema(
   {
@@ -11,13 +12,15 @@ const affiliateSchema = new mongoose.Schema(
     phone: { type: String, default: '' },
     username: { type: String, required: true, unique: true, trim: true, lowercase: true },
     passwordHash: { type: String, default: null },
-    /** Unique human-readable ref for links (email lowercased, or trimmed full name). */
+    /** Random public code for /enroll?ref=. Not the email. */
     referralSlug: { type: String, required: true, unique: true, trim: true },
+    /** Retired email or name slugs. Old links still resolve. */
+    previousReferralSlugs: { type: [String], default: [] },
     christianValuesBackground: { type: Boolean, default: true },
     notes: { type: String, default: '' },
     status: {
       type: String,
-      enum: ['pending', 'active', 'inactive'],
+      enum: ['pending', 'active', 'inactive', 'suspended'],
       default: 'pending',
       index: true,
     },

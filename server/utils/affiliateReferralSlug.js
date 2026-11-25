@@ -1,20 +1,47 @@
 'use strict';
 
-/**
- * Build unique human-readable referral slug: prefer email, else complete name.
- */
-function buildAffiliateReferralSlug({ email, name } = {}) {
-  const em = String(email || '')
-    .trim()
-    .toLowerCase();
-  if (em && em.includes('@')) return em.slice(0, 254);
+const crypto = require('crypto');
 
-  const nm = String(name || '')
-    .trim()
-    .replace(/\s+/g, ' ');
-  if (nm) return nm.slice(0, 120);
+/** Same alphabet as student share codes: no 0/O/1/l. */
+const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
-  return '';
+function generateAffiliateReferralCode() {
+  const bytes = crypto.randomBytes(8);
+  let out = '';
+  for (let i = 0; i < 8; i += 1) out += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return out;
+}
+
+/** Older links used the email or the full name. Those stay valid after the code changes. */
+function isLegacyReferralSlug(slug) {
+  const s = String(slug || '').trim();
+  if (!s) return true;
+  return s.includes('@') || /\s/.test(s);
+}
+
+async function allocateAffiliateReferralSlug() {
+  const Affiliate = require('../models/Affiliate');
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const code = generateAffiliateReferralCode();
+    const taken = await Affiliate.findOne({ referralSlug: code }).select('_id').lean();
+    if (!taken) return code;
+  }
+  throw new Error('Could not assign a referral code');
+}
+
+async function ensureRandomAffiliateSlug(affiliate) {
+  if (!affiliate || !isLegacyReferralSlug(affiliate.referralSlug)) return affiliate;
+  const previous = Array.isArray(affiliate.previousReferralSlugs)
+    ? affiliate.previousReferralSlugs.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+  const current = String(affiliate.referralSlug || '').trim();
+  if (current && !previous.some((value) => value.toLowerCase() === current.toLowerCase())) {
+    previous.push(current);
+  }
+  affiliate.previousReferralSlugs = previous;
+  affiliate.referralSlug = await allocateAffiliateReferralSlug();
+  await affiliate.save();
+  return affiliate;
 }
 
 function escapeRegex(s) {
@@ -34,9 +61,26 @@ function enrollLinkForSlug(slug, origin = 'https://remoedph.com') {
   return `${origin}/enroll?ref=${encodeURIComponent(s)}`;
 }
 
+/** Match the current code, a retired email/name slug, or the account email. */
+function affiliateSlugMatch(raw) {
+  const slugRe = affiliateSlugExactRe(raw);
+  if (!slugRe) return null;
+  return {
+    $or: [
+      { referralSlug: slugRe },
+      { previousReferralSlugs: slugRe },
+      { email: slugRe },
+    ],
+  };
+}
+
 module.exports = {
-  buildAffiliateReferralSlug,
+  generateAffiliateReferralCode,
+  isLegacyReferralSlug,
+  allocateAffiliateReferralSlug,
+  ensureRandomAffiliateSlug,
   affiliateSlugExactRe,
+  affiliateSlugMatch,
   enrollLinkForSlug,
   escapeRegex,
 };

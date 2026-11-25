@@ -177,17 +177,24 @@
 
                 <div id="affiliates-tab" class="tab-content" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 style="margin: 0; color: #1ca7e7;">Approved Affiliates</h3>
+                        <h3 style="margin: 0; color: #1ca7e7;">Affiliates List</h3>
+                        <button class="action-btn btn-edit" onclick="addNewUser('affiliate')" title="Add Affiliate">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </button>
                     </div>
                     <table class="user-table" id="affiliates-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
+                                <th style="width:52px;">Profile</th>
                                 <th>Email</th>
+                                <th>Name</th>
                                 <th>Phone</th>
                                 <th>Username</th>
                                 <th>Status</th>
                                 <th>Join Date</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="affiliates-tbody">
@@ -301,6 +308,17 @@
                     </div>
                 </div>
                 
+                <div id="affiliate-fields" style="display: none;">
+                    <div style="margin-bottom: 15px;">
+                        <label for="affiliate-name" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Name *</label>
+                        <input type="text" id="affiliate-name" name="name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label for="affiliate-phone" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Phone</label>
+                        <input type="text" id="affiliate-phone" name="phone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                </div>
+
                 <div id="student-fields" style="display: none;">
                     <div style="margin-bottom: 15px;">
                         <label for="studentFirstName" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">First Name</label>
@@ -424,6 +442,12 @@
             window.open('/admin/admin-view-user-profile.html?type=admin&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
         }
 
+        function viewAffiliateProfile(userMongoId) {
+            var id = String(userMongoId || '').trim();
+            if (!id) return;
+            window.open('/admin/admin-view-user-profile.html?type=affiliate&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+        }
+
         // Role-based access control
         const lsPortalUserType = localStorage.getItem('userType');
         if (lsPortalUserType !== 'admin') {
@@ -513,36 +537,52 @@
 
         async function loadAffiliates() {
             var tbody = document.getElementById('affiliates-tbody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">Loading...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #888;">Loading...</td></tr>';
             try {
                 var response = await fetch('/api/admin/affiliates-list', adminApiFetchInit());
                 var raw = await response.json().catch(function () { return {}; });
                 if (response.status === 401 || response.status === 403) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + escUserCell((raw && (raw.error || raw.message)) || 'Unauthorized. Please sign in again.') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #e74c3c;">' + escUserCell((raw && (raw.error || raw.message)) || 'Unauthorized. Please sign in again.') + '</td></tr>';
                     return;
                 }
                 if (!response.ok) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + escUserCell((raw && (raw.error || raw.message)) || 'Failed to load affiliates') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #e74c3c;">' + escUserCell((raw && (raw.error || raw.message)) || 'Failed to load affiliates') + '</td></tr>';
                     return;
                 }
                 var affiliates = Array.isArray(raw && raw.affiliates) ? raw.affiliates : [];
                 if (!affiliates.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No approved affiliates yet</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #888;">No affiliates yet</td></tr>';
                     return;
                 }
                 tbody.innerHTML = affiliates.map(function (person) {
                     var joined = person.createdAt ? new Date(person.createdAt).toLocaleDateString() : 'N/A';
+                    var id = encodeURIComponent(String(person.id || ''));
+                    var status = String(person.status || 'active');
+                    var active = status === 'active';
+                    var statusLabel = status === 'suspended' ? 'Suspended' : status === 'inactive' ? 'Inactive' : status === 'pending' ? 'Pending' : 'Active';
+                    var suspendFn = active ? 'suspendUser' : 'unsuspendUser';
+                    var suspendTitle = active ? 'Suspend Affiliate' : 'Activate Affiliate';
+                    var suspendIcon = active
+                        ? '<path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>'
+                        : '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>';
                     return '<tr>'
-                        + '<td>' + escUserCell(person.name || 'N/A') + '</td>'
+                        + '<td><button type="button" class="action-btn btn-view-profile" onclick="viewAffiliateProfile(decodeURIComponent(\'' + id + '\'))" title="View Profile">'
+                        + '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>'
+                        + '</button></td>'
                         + '<td>' + escUserCell(person.email || 'N/A') + '</td>'
+                        + '<td>' + escUserCell(person.name || 'N/A') + '</td>'
                         + '<td>' + escUserCell(person.phone || 'N/A') + '</td>'
                         + '<td>' + escUserCell(person.username || 'N/A') + '</td>'
-                        + '<td><span class="status-badge status-active">Active</span></td>'
+                        + '<td><span class="status-badge ' + (active ? 'status-active' : 'status-inactive') + '">' + statusLabel + '</span></td>'
                         + '<td>' + escUserCell(joined) + '</td>'
-                        + '</tr>';
+                        + '<td style="white-space:nowrap;">'
+                        + '<button class="action-btn btn-edit" onclick="editUser(decodeURIComponent(\'' + id + '\'), \'affiliate\')" title="Edit Affiliate"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                        + '<button class="action-btn btn-suspend" onclick="' + suspendFn + '(decodeURIComponent(\'' + id + '\'), \'affiliate\')" title="' + suspendTitle + '"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' + suspendIcon + '</svg></button>'
+                        + '<button class="action-btn btn-delete" onclick="deleteUser(decodeURIComponent(\'' + id + '\'), \'affiliate\')" title="Delete Affiliate"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg></button>'
+                        + '</td></tr>';
                 }).join('');
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + escUserCell(error.message || 'Failed to load affiliates') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #e74c3c;">' + escUserCell(error.message || 'Failed to load affiliates') + '</td></tr>';
             }
         }
 
@@ -794,6 +834,9 @@
                     case 'admins':
                         loadAdmins();
                         break;
+                    case 'affiliates':
+                        loadAffiliates();
+                        break;
                 }
             }
         }
@@ -808,6 +851,8 @@
             // Show/hide fields based on user type
             document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
             document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
+            document.getElementById('affiliate-fields').style.display = userType === 'affiliate' ? 'block' : 'none';
+            document.getElementById('affiliate-name').required = userType === 'affiliate';
             document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
             document.getElementById('email').required = true;
             document.getElementById('email-label').textContent = userType === 'admin' ? 'Google email *' : 'Email *';
@@ -815,7 +860,9 @@
             document.getElementById('password-hint').textContent =
                 userType === 'admin'
                     ? 'Optional for new admins: leave blank and share the setup token so they set a password in Profile / first-time setup.'
-                    : 'Leave blank to keep current password when editing';
+                    : userType === 'affiliate'
+                        ? 'At least 8 characters. This is the affiliate login password.'
+                        : 'Leave blank to keep current password when editing';
             
             // Teachers sign in with email. There is no separate teacher id.
             if (userType === 'teacher') {
@@ -878,6 +925,8 @@
                 // Show/hide fields based on user type
                 document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
                 document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
+                document.getElementById('affiliate-fields').style.display = userType === 'affiliate' ? 'block' : 'none';
+                document.getElementById('affiliate-name').required = userType === 'affiliate';
                 document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
                 document.getElementById('email').required = true;
                 document.getElementById('email-label').textContent = userType === 'admin' ? 'Google email *' : 'Email *';
@@ -885,7 +934,9 @@
                 document.getElementById('password-hint').textContent =
                     userType === 'admin'
                         ? 'Set a new password here, or leave blank to keep the current one.'
-                        : 'Leave blank to keep current password when editing';
+                        : userType === 'affiliate'
+                            ? 'Leave blank to keep the current password. A new password needs at least 8 characters.'
+                            : 'Leave blank to keep current password when editing';
                 
                 document.getElementById('username-field').style.display = userType === 'teacher' ? 'none' : 'block';
                 document.getElementById('username').required = userType !== 'teacher';
@@ -916,6 +967,9 @@
                     document.getElementById('studentLastName').value = user.lastName || '';
                 } else if (userType === 'admin' && user.adminRole) {
                     document.getElementById('adminRole').value = user.adminRole;
+                } else if (userType === 'affiliate') {
+                    document.getElementById('affiliate-name').value = user.name || '';
+                    document.getElementById('affiliate-phone').value = user.phone || '';
                 }
                 
                 document.getElementById('user-modal').style.display = 'block';
@@ -1014,6 +1068,13 @@
             }
             if (userData.userType === 'admin' && !String(userData.password || '').trim()) {
                 delete userData.password;
+            }
+            if (userData.userType === 'affiliate' && userData.userId && !String(userData.password || '').trim()) {
+                delete userData.password;
+            }
+            if (userData.userType === 'affiliate' && String(userData.password || '').trim() && String(userData.password).trim().length < 8) {
+                alert('Password must be at least 8 characters');
+                return;
             }
             if (userData.userType !== 'admin') {
                 delete userData.adminRole;

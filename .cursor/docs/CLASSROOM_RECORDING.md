@@ -34,11 +34,21 @@ Low-quality **lesson monitoring** clips (~25 min max) so QA/admin can review tea
 - `GET /api/classroom-recording/config` — public; feature flags.
 - `POST /api/classroom-recording/session` — teacher or student JWT; starts session.
 - `PUT /api/classroom-recording/session/:id/chunk` — raw body; append chunk.
-- `POST /api/classroom-recording/session/:id/complete` — finalize metadata.
-- `GET /api/admin/classroom-recordings?date=YYYY-MM-DD` — admin JWT.
+- `POST /api/classroom-recording/session/:id/complete` — finalize metadata. The checkpoint average already on the row is marked final. This does not wait for another score.
+- `POST /api/classroom-recording/session/:id/qa-checkpoint` — teacher JWT that owns the upload, while the row is uploading. One JPEG, a short audio clip, camera on/off, and the elapsed time. Samples are not stored. At most once per 30 seconds.
+- `GET /api/classroom-recording/my-scores` — teacher JWT. Totals are the sum of the 10 category scores. Each finished class on the teacher schedule can open this score. `videoAvailable` is true only while the file is still inside the retention window.
+- `POST /api/classroom-recording/:id/preview-ticket` — teacher JWT, own recording only, and only while the video has not been purged.
+- `GET /api/classroom-recording/:id/preview?ticket=` — plays that video inline. The ticket lasts 2 minutes.
+- After `expiresAt` (default 7 days) the purge deletes the video and keeps the score row. Teachers can still open the score. An admin Delete still removes the score with the row.
+- `GET /api/admin/classroom-recordings?date=YYYY-MM-DD` — admin JWT. Each row includes the score total and whether a critical flag is open.
+- `GET /api/admin/classroom-recordings/:id/qa` — admin JWT, `qa:recordings_view`. Full breakdown.
+- `PATCH /api/admin/classroom-recordings/:id/qa` — admin JWT, `qa:analyzer_review`. Reviewer scores and flag status. The server recomputes the total.
+- `POST /api/admin/classroom-recordings/:id/qa/reanalyze` — admin JWT, `qa:analyzer_review`. Reads the saved MP4. If a reviewer already saved, the body must send `force: true`.
 - `GET /api/admin/classroom-recordings/:id/download` — admin JWT.
-- `DELETE /api/admin/classroom-recordings/:id` — admin JWT.
+- `DELETE /api/admin/classroom-recordings/:id` — admin JWT. Deletes the score with the file.
 - `POST /api/admin/classroom-recordings/purge-expired` — admin JWT.
+
+The Lesson recordings table shows the running score and an info breakdown (10 categories, critical flags, seek links once the file is MP4). `GEMINI_API_KEY` scores the slices. Without it, camera-off still flags and the total stays unscored.
 
 ## Future (optional)
 

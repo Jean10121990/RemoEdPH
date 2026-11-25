@@ -67,6 +67,116 @@
             opacity: 0.45;
             cursor: not-allowed;
         }
+        .qa-score-cell {
+            white-space: nowrap;
+        }
+        .qa-score-num {
+            font-weight: 700;
+            margin-right: 6px;
+        }
+        .qa-score-critical {
+            display: inline-block;
+            margin-right: 6px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: #b91c1c;
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .qa-score-info {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .qa-score-info svg {
+            width: 16px;
+            height: 16px;
+        }
+        .qa-score-modal {
+            position: fixed;
+            inset: 0;
+            z-index: var(--z-modal, 8000);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 24px 16px;
+            overflow-y: auto;
+        }
+        .qa-score-modal[hidden] {
+            display: none;
+        }
+        .qa-score-modal__backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+        }
+        .qa-score-modal__panel {
+            position: relative;
+            width: min(720px, 100%);
+            margin-top: 24px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+        }
+        .qa-score-modal__panel h2 {
+            margin: 0 0 8px;
+        }
+        .qa-score-modal__video {
+            width: 100%;
+            max-height: 320px;
+            background: #0f172a;
+            border-radius: 8px;
+        }
+        .qa-score-cat {
+            display: grid;
+            grid-template-columns: 1fr 72px;
+            gap: 8px;
+            padding: 10px 0;
+            border-top: 1px solid #e2e8f0;
+        }
+        .qa-score-cat label {
+            font-weight: 600;
+        }
+        .qa-score-cat input {
+            width: 72px;
+            font-size: 1rem;
+        }
+        .qa-score-cat p {
+            grid-column: 1 / -1;
+            margin: 0;
+            color: #475569;
+            font-size: 0.85rem;
+        }
+        .qa-score-flag {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .qa-score-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .qa-score-sum {
+            margin: 8px 0 0;
+            font-size: 1.15rem;
+            font-weight: 800;
+        }
     </style>
 </head>
 <body class="admin-hub-page page-admin-qa-hub page-admin-classroom-recordings page-admin-issue-management">
@@ -116,13 +226,14 @@
                                     <th>By</th>
                                     <th>Status</th>
                                     <th>Upload</th>
+                                    <th>Score</th>
                                     <th>Size</th>
                                     <th>Expires (PH time)</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody id="rec-tbody">
-                                <tr><td colspan="9" class="muted">Loading…</td></tr>
+                                <tr><td colspan="10" class="muted">Loading…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -539,6 +650,228 @@
             };
         }
 
+        var QA_INFO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+        var qaScoreState = null;
+
+        function scoreCell(rec) {
+            var qa = rec.qa || {};
+            var text = qa.total == null ? (rec.status === 'uploading' ? 'Scoring…' : '—') : (qa.total + ' / 100');
+            var badge = qa.criticalOpen ? '<span class="qa-score-critical">Critical</span>' : '';
+            return '<div class="qa-score-cell">' + badge +
+                '<span class="qa-score-num">' + esc(text) + '</span>' +
+                '<button type="button" class="qa-score-info" data-qa="' + esc(rec.id) + '" title="Score details" aria-label="Score details">' +
+                QA_INFO_SVG + '</button></div>';
+        }
+
+        function qaClock(sec) {
+            var s = Math.max(0, Math.floor(Number(sec) || 0));
+            return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        }
+
+        function closeQaScore() {
+            var modal = document.getElementById('qa-score-modal');
+            var player = document.getElementById('qa-score-player');
+            if (player) {
+                player.pause();
+                player.removeAttribute('src');
+                player.load();
+            }
+            if (modal) modal.hidden = true;
+            qaScoreState = null;
+        }
+
+        function seekQaPlayer(sec) {
+            var player = document.getElementById('qa-score-player');
+            if (!player || !player.getAttribute('src')) return;
+            player.currentTime = Math.max(0, Number(sec) || 0);
+            player.play().catch(function () {});
+        }
+
+        function renderQaScore(detail, recording) {
+            qaScoreState = { qa: detail, recording: recording };
+            var modal = document.getElementById('qa-score-modal');
+            var totalEl = document.getElementById('qa-score-total');
+            var flagsEl = document.getElementById('qa-score-flags');
+            var catsEl = document.getElementById('qa-score-cats');
+            var noteEl = document.getElementById('qa-score-player-note');
+            var msgEl = document.getElementById('qa-score-msg');
+            var reviewed = detail.reviewedBy ? ' Reviewed by ' + detail.reviewedBy + '.' : '';
+            totalEl.textContent = (detail.total == null ? 'Scoring…' : (detail.total + ' / 100')) + reviewed;
+            var flags = detail.critical || [];
+            flagsEl.innerHTML = flags.length ? flags.map(function (flag, index) {
+                return '<div class="qa-score-flag">' +
+                    '<strong>Critical</strong> ' + esc(flag.label || qaClock(flag.atSec)) + ' — ' + esc(flag.reason || flag.code) +
+                    ' <button type="button" class="btn btn-secondary" data-qa-seek="' + esc(flag.atSec) + '" style="padding:2px 8px;font-size:0.75rem;">Jump</button>' +
+                    ' <select data-qa-flag="' + index + '">' +
+                    ['open', 'confirmed', 'resolved'].map(function (status) {
+                        return '<option value="' + status + '"' + (flag.status === status ? ' selected' : '') + '>' + status + '</option>';
+                    }).join('') +
+                    '</select></div>';
+            }).join('') : '<p class="muted">No critical flags.</p>';
+            catsEl.innerHTML = (detail.categories || []).map(function (cat) {
+                var jumps = (cat.timestamps || []).map(function (sec) {
+                    return '<button type="button" class="btn btn-secondary" data-qa-seek="' + esc(sec) + '" style="padding:2px 8px;font-size:0.75rem;margin-right:4px;">' + esc(qaClock(sec)) + '</button>';
+                }).join('');
+                var value = cat.score == null ? '' : String(cat.score);
+                return '<div class="qa-score-cat">' +
+                    '<label>' + esc(cat.label) + '</label>' +
+                    '<input type="number" min="0" max="10" step="1" data-qa-key="' + esc(cat.key) + '" value="' + esc(value) + '" />' +
+                    '<p>' + esc(cat.explanation || '') + (jumps ? ' ' + jumps : '') + '</p></div>';
+            }).join('');
+            flagsEl.querySelectorAll('[data-qa-seek]').forEach(bindQaSeek);
+            catsEl.querySelectorAll('[data-qa-seek]').forEach(bindQaSeek);
+            catsEl.querySelectorAll('[data-qa-key]').forEach(function (input) {
+                input.addEventListener('input', refreshQaScoreSum);
+            });
+            refreshQaScoreSum();
+            var canPlay = recording && recording.status === 'complete' && /mp4/i.test(recording.mimeType || '');
+            noteEl.textContent = canPlay
+                ? 'Jump links move the player to that time.'
+                : 'Seeking is ready after the MP4 is saved.';
+            msgEl.textContent = '';
+            document.getElementById('qa-score-reanalyze').dataset.override = detail.override ? '1' : '0';
+            var player = document.getElementById('qa-score-player');
+            if (!canPlay && player) {
+                player.pause();
+                player.removeAttribute('src');
+            }
+            modal.hidden = false;
+            if (canPlay) attachQaPlayer(recording.id);
+        }
+
+        function refreshQaScoreSum() {
+            var inputs = document.querySelectorAll('#qa-score-cats [data-qa-key]');
+            var sum = 0;
+            var ready = inputs.length > 0;
+            inputs.forEach(function (input) {
+                var n = Number(input.value);
+                if (input.value === '' || !Number.isInteger(n) || n < 0 || n > 10) ready = false;
+                else sum += n;
+            });
+            var line = document.getElementById('qa-score-sum');
+            if (line) line.textContent = ready ? ('Total ' + sum + ' / 100') : 'Total —';
+            var totalEl = document.getElementById('qa-score-total');
+            if (totalEl && ready) {
+                var reviewed = totalEl.textContent.indexOf('Reviewed by') >= 0
+                    ? totalEl.textContent.slice(totalEl.textContent.indexOf('Reviewed by') - 1)
+                    : '';
+                totalEl.textContent = sum + ' / 100' + reviewed;
+            }
+        }
+
+        function bindQaSeek(btn) {
+            btn.addEventListener('click', function () {
+                seekQaPlayer(btn.getAttribute('data-qa-seek'));
+            });
+        }
+
+        async function attachQaPlayer(id) {
+            var player = document.getElementById('qa-score-player');
+            var token = adminAuthToken();
+            var base = '/api/admin/classroom-recordings/' + encodeURIComponent(id);
+            try {
+                var hdr = { 'Content-Type': 'application/json' };
+                if (token) hdr.Authorization = 'Bearer ' + token;
+                var r = await fetch(base + '/download-ticket', { method: 'POST', credentials: 'include', headers: hdr });
+                var j = await r.json().catch(function () { return {}; });
+                if (r.ok && j.ticket) player.src = base + '/download?ticket=' + encodeURIComponent(j.ticket);
+            } catch (e) {
+                document.getElementById('qa-score-player-note').textContent = 'The player could not load this recording.';
+            }
+        }
+
+        async function openQaScore(id) {
+            var token = adminAuthToken();
+            var hdr = {};
+            if (token) hdr.Authorization = 'Bearer ' + token;
+            var msg = document.getElementById('rec-msg');
+            try {
+                var r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id) + '/qa', {
+                    credentials: 'include',
+                    headers: hdr
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok || !j.qa) {
+                    if (msg) msg.textContent = j.message || j.error || 'Could not open the score.';
+                    return;
+                }
+                renderQaScore(j.qa, j.recording || { id: id, status: '' });
+            } catch (e) {
+                if (msg) msg.textContent = e.message || 'Could not open the score.';
+            }
+        }
+
+        async function saveQaScore() {
+            if (!qaScoreState || !qaScoreState.recording) return;
+            var msgEl = document.getElementById('qa-score-msg');
+            var categories = [];
+            var invalidScore = false;
+            document.querySelectorAll('#qa-score-cats [data-qa-key]').forEach(function (input) {
+                var n = Number(input.value);
+                if (input.value === '' || !Number.isInteger(n) || n < 0 || n > 10) invalidScore = true;
+                categories.push({ key: input.getAttribute('data-qa-key'), score: n });
+            });
+            if (invalidScore) {
+                msgEl.textContent = 'Each category score must be a whole number from 0 to 10.';
+                return;
+            }
+            var critical = (qaScoreState.qa.critical || []).map(function (flag, index) {
+                var select = document.querySelector('#qa-score-flags [data-qa-flag="' + index + '"]');
+                return { code: flag.code, atSec: flag.atSec, status: select ? select.value : flag.status };
+            });
+            var token = adminAuthToken();
+            var hdr = { 'Content-Type': 'application/json' };
+            if (token) hdr.Authorization = 'Bearer ' + token;
+            var r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(qaScoreState.recording.id) + '/qa', {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: hdr,
+                body: JSON.stringify({ categories: categories, critical: critical })
+            });
+            var j = await r.json().catch(function () { return {}; });
+            if (!r.ok) {
+                msgEl.textContent = j.message || j.error || 'Could not save the score.';
+                return;
+            }
+            renderQaScore(j.qa, qaScoreState.recording);
+            document.getElementById('qa-score-msg').textContent = 'Score saved.';
+            loadList({ silent: true });
+        }
+
+        async function reanalyzeQaScore() {
+            if (!qaScoreState || !qaScoreState.recording) return;
+            var btn = document.getElementById('qa-score-reanalyze');
+            var force = btn.dataset.override === '1';
+            if (force && !window.confirm('A reviewer already saved this score. Replace it with a new model score?')) return;
+            var msgEl = document.getElementById('qa-score-msg');
+            msgEl.textContent = 'Re-analyzing…';
+            var token = adminAuthToken();
+            var hdr = { 'Content-Type': 'application/json' };
+            if (token) hdr.Authorization = 'Bearer ' + token;
+            var r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(qaScoreState.recording.id) + '/qa/reanalyze', {
+                method: 'POST',
+                credentials: 'include',
+                headers: hdr,
+                body: JSON.stringify({ force: force })
+            });
+            var j = await r.json().catch(function () { return {}; });
+            if (r.status === 409 && !force) {
+                if (!window.confirm(j.message || 'Replace the saved score?')) {
+                    msgEl.textContent = '';
+                    return;
+                }
+                btn.dataset.override = '1';
+                return reanalyzeQaScore();
+            }
+            if (!r.ok) {
+                msgEl.textContent = j.message || j.error || 'Re-analyze failed. The saved score was left as it is.';
+                return;
+            }
+            renderQaScore(j.qa, qaScoreState.recording);
+            document.getElementById('qa-score-msg').textContent = 'Score updated.';
+            loadList({ silent: true });
+        }
+
         async function loadList(opts) {
             opts = opts || {};
             const silent = !!opts.silent;
@@ -552,7 +885,7 @@
 
             if (!silent) {
                 msg.textContent = 'Loading…';
-                tbody.innerHTML = '<tr><td colspan="9" class="muted">Loading…</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="muted">Loading…</td></tr>';
             }
 
             var url = '/api/admin/classroom-recordings?limit=300';
@@ -581,7 +914,7 @@
                     ? rows.length + ' recording(s)' + (uploading ? ' · ' + uploading + ' still uploading (live)' : '')
                     : 'No recordings for this filter.';
                 if (!rows.length) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="muted">No rows</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" class="muted">No rows</td></tr>';
                     stopRecUploadPoll();
                     return;
                 }
@@ -603,6 +936,7 @@
                         '<td>' + esc(rec.recordedByRole || '—') + '</td>' +
                         '<td><span class="' + st + '">' + esc(ready ? 'Ready' : rec.status) + '</span></td>' +
                         '<td>' + recProgressHtml(rec) + '</td>' +
+                        '<td>' + scoreCell(rec) + '</td>' +
                         '<td>' + esc(bytesLabel(rec.sizeBytes)) + '</td>' +
                         '<td>' + esc(exp) + '</td>' +
                         '<td>' +
@@ -631,6 +965,11 @@
                 tbody.querySelectorAll('[data-del]').forEach(function (btn) {
                     btn.addEventListener('click', function () {
                         deleteRec(btn.getAttribute('data-del'));
+                    });
+                });
+                tbody.querySelectorAll('[data-qa]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        openQaScore(btn.getAttribute('data-qa'));
                     });
                 });
                 if (uploading) startRecUploadPoll();
@@ -1397,6 +1736,11 @@
                     });
             });
 
+            document.getElementById('qa-score-close').addEventListener('click', closeQaScore);
+            document.getElementById('qa-score-backdrop').addEventListener('click', closeQaScore);
+            document.getElementById('qa-score-save').addEventListener('click', function () { saveQaScore(); });
+            document.getElementById('qa-score-reanalyze').addEventListener('click', function () { reanalyzeQaScore(); });
+
             function applyHash() {
                 var h = window.location.hash;
                 if (h === '#issues') showQaTab('issues');
@@ -1409,5 +1753,23 @@
         });
     </script>
 <script src="/js/currency-converter.js?v=fx-live-1" defer></script>
+<div id="qa-score-modal" class="qa-score-modal" hidden>
+    <div class="qa-score-modal__backdrop" id="qa-score-backdrop"></div>
+    <div class="qa-score-modal__panel" role="dialog" aria-modal="true" aria-labelledby="qa-score-title">
+        <h2 id="qa-score-title">Lesson score</h2>
+        <p id="qa-score-total"></p>
+        <div id="qa-score-flags"></div>
+        <video id="qa-score-player" class="qa-score-modal__video" controls playsinline></video>
+        <p id="qa-score-player-note" class="muted"></p>
+        <div id="qa-score-cats"></div>
+        <p id="qa-score-sum" class="qa-score-sum"></p>
+        <p id="qa-score-msg"></p>
+        <div class="qa-score-actions">
+            <button type="button" class="btn btn-primary" id="qa-score-save">Save</button>
+            <button type="button" class="btn btn-secondary" id="qa-score-reanalyze">Re-analyze</button>
+            <button type="button" class="btn btn-secondary" id="qa-score-close">Close</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

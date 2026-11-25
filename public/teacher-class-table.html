@@ -225,6 +225,10 @@
             <span class="cim-field-label">Lesson progress</span>
             <span class="cim-field-value" id="class-lesson-progress">—</span>
           </div>
+          <div class="cim-field cim-field--wide" id="class-lesson-score-wrap" hidden>
+            <span class="cim-field-label">Lesson score</span>
+            <div class="cim-field-value" id="class-lesson-score"></div>
+          </div>
           <div class="cim-field cim-field--wide">
             <span class="cim-field-label">Classroom ID</span>
             <span class="cim-field-value cim-field-value--id" id="classroom-id"></span>
@@ -304,6 +308,23 @@
       </div>
       <div class="remoed-modal-footer cim-footer">
         <button type="button" class="remoed-btn remoed-btn-secondary" onclick="closeClassInfo()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="teacher-recording-modal" class="remoed-modal cim-shell">
+    <div class="remoed-modal-content cim-panel">
+      <div class="remoed-modal-header cim-header">
+        <div class="cim-header-text">
+          <p class="cim-eyebrow">Finished lesson</p>
+          <h2 class="remoed-modal-title">Lesson recording</h2>
+        </div>
+        <button type="button" class="remoed-modal-close" id="teacher-recording-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="remoed-modal-body cim-body">
+        <video id="teacher-recording-video" controls playsinline style="width:100%;max-height:280px;background:#0f172a;border-radius:8px;"></video>
+        <p id="teacher-recording-note" style="margin:8px 0 12px;color:#475569;"></p>
+        <div id="teacher-recording-score"></div>
       </div>
     </div>
   </div>
@@ -488,6 +509,7 @@
     // Weekly grid variables — Luxon local week
     let slotsData = [];
     let bookingsData = [];
+    let finishedLessonScores = {};
     const teacherId = localStorage.getItem('teacherId');
 
     const RemoedTZ = window.TimezoneUtils || {};
@@ -1231,6 +1253,7 @@
         let skipDefaultSlotLabel = false;
         if (slotElement) {
           clearSlotCellContents(slotElement);
+          if (booking._id) slotElement.setAttribute('data-booking-id', String(booking._id));
           slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
           
           // Check if the class duration has passed (25 minutes after start time)
@@ -1442,6 +1465,7 @@
           );
         }
       });
+      loadFinishedLessonScores();
     }
 
 
@@ -1618,6 +1642,159 @@
       }
     }
 
+    function escapeScoreText(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function lessonScoreMarkup(score) {
+      if (!score) return 'No lesson score for this class yet.';
+      const rows = (score.categories || []).map(function (cat) {
+        const points = cat.score == null ? '—' : String(cat.score);
+        return '<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid #e2e8f0;">' +
+          '<span>' + escapeScoreText(cat.label) + '</span><strong>' + escapeScoreText(points) + '</strong></div>';
+      }).join('');
+      const rowsReady = (score.categories || []).length > 0
+        && (score.categories || []).every(function (cat) { return Number.isInteger(cat.score); });
+      const summed = rowsReady
+        ? (score.categories || []).reduce(function (sum, cat) { return sum + cat.score; }, 0)
+        : score.total;
+      const total = summed == null ? 'Scoring…' : (summed + ' / 100');
+      const flags = (score.critical || []).map(function (flag) {
+        return '<div style="color:#b91c1c;font-size:0.85rem;margin-top:4px;">Critical ' +
+          escapeScoreText(flag.label || '') + ' — ' + escapeScoreText(flag.reason || '') + '</div>';
+      }).join('');
+      return flags + rows +
+        '<div style="display:flex;justify-content:space-between;gap:12px;padding-top:8px;font-weight:800;">' +
+        '<span>Total</span><strong>' + escapeScoreText(total) + '</strong></div>';
+    }
+
+    function paintFinishedLessonScoreCells() {
+      document.querySelectorAll('td[data-booking-id]').forEach(function (cell) {
+        const id = cell.getAttribute('data-booking-id');
+        const booking = bookingsData.find(function (row) { return String(row._id) === String(id); });
+        const old = cell.querySelector('.teacher-lesson-score');
+        if (old) old.remove();
+        if (!booking || String(booking.status || '').toLowerCase() !== 'completed') return;
+        const score = finishedLessonScores[String(id)];
+        const badge = document.createElement('button');
+        badge.type = 'button';
+        badge.className = 'teacher-lesson-score';
+        badge.style.cssText = 'display:block;margin:2px auto 0;padding:2px 6px;font-size:0.72rem;font-weight:800;border:0;border-radius:6px;background:#14532d;color:#fff;cursor:pointer;';
+        badge.textContent = !score ? 'Score' : (score.total == null ? 'Scoring…' : (score.total + '/100'));
+        badge.title = score && score.videoAvailable ? 'Open the score and preview the recording' : 'Open the lesson score';
+        badge.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          openTeacherRecording(id);
+        });
+        const inner = cell.querySelector('.remoed-slot-label-inner') || cell;
+        inner.appendChild(badge);
+      });
+    }
+
+    function paintClassLessonScore(booking) {
+      const wrap = document.getElementById('class-lesson-score-wrap');
+      const el = document.getElementById('class-lesson-score');
+      if (!wrap || !el) return;
+      const finished = String(booking && booking.status || '').toLowerCase() === 'completed'
+        || !!(booking && booking.attendance && booking.attendance.classCompleted);
+      if (!finished) {
+        wrap.hidden = true;
+        el.innerHTML = '';
+        return;
+      }
+      wrap.hidden = false;
+      const bookingId = String(booking._id || '');
+      el.innerHTML = lessonScoreMarkup(finishedLessonScores[bookingId]) +
+        '<button type="button" id="class-open-recording" class="remoed-btn remoed-btn-secondary" style="margin-top:8px;">Open lesson recording</button>';
+      const openBtn = document.getElementById('class-open-recording');
+      if (openBtn) {
+        openBtn.addEventListener('click', function () { openTeacherRecording(bookingId); });
+      }
+    }
+
+    function closeTeacherRecording() {
+      const modal = document.getElementById('teacher-recording-modal');
+      const video = document.getElementById('teacher-recording-video');
+      if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+      if (modal) modal.classList.remove('show');
+    }
+
+    async function openTeacherRecording(bookingId) {
+      const score = finishedLessonScores[String(bookingId || '')] || null;
+      const modal = document.getElementById('teacher-recording-modal');
+      const note = document.getElementById('teacher-recording-note');
+      const scoreEl = document.getElementById('teacher-recording-score');
+      const video = document.getElementById('teacher-recording-video');
+      if (!modal || !note || !scoreEl || !video) return;
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.hidden = true;
+      scoreEl.innerHTML = lessonScoreMarkup(score);
+      note.textContent = 'The video stays for 7 days. Your score stays on this lesson after the video is removed.';
+      modal.classList.add('show');
+      if (!score || !score.videoAvailable || !score.recordingId) {
+        if (score && score.total != null) {
+          note.textContent = 'This recording was removed after 7 days. Your score stays here.';
+        } else if (score) {
+          note.textContent = 'The video is not ready yet. Your score will stay on this lesson after the 7 days.';
+        }
+        return;
+      }
+      try {
+        const token = resolveTeacherPortalToken();
+        const response = await fetch('/api/classroom-recording/' + encodeURIComponent(score.recordingId) + '/preview-ticket', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok || !data.ticket) {
+          note.textContent = data.message || 'This recording was removed after 7 days. Your score stays here.';
+          return;
+        }
+        video.hidden = false;
+        video.src = '/api/classroom-recording/' + encodeURIComponent(score.recordingId) + '/preview?ticket=' + encodeURIComponent(data.ticket);
+      } catch (err) {
+        note.textContent = 'The video could not be opened. Your score stays here.';
+      }
+    }
+
+    async function loadFinishedLessonScores() {
+      try {
+        const token = resolveTeacherPortalToken();
+        if (!token) return;
+        const response = await fetch('/api/classroom-recording/my-scores', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok) return;
+        finishedLessonScores = {};
+        (data.scores || []).forEach(function (row) {
+          if (row && row.bookingId) finishedLessonScores[String(row.bookingId)] = row;
+        });
+        paintFinishedLessonScoreCells();
+        if (currentBooking && document.getElementById('class-info-modal').classList.contains('show')) {
+          paintClassLessonScore(currentBooking);
+        }
+      } catch (err) {
+        console.warn('Lesson scores:', err);
+      }
+    }
+
+    const recordingClose = document.getElementById('teacher-recording-close');
+    if (recordingClose) recordingClose.addEventListener('click', closeTeacherRecording);
+
     async function showClassInfo(booking, ev) {
       currentBooking = booking;
       
@@ -1729,6 +1906,7 @@
       }
       document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
       loadClassLessonProgressStatus(booking);
+      paintClassLessonScore(booking);
       
       // Check if class management buttons should be shown
       const classManagementButtons = document.getElementById('class-management-buttons');

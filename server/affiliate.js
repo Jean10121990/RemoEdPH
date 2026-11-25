@@ -11,7 +11,7 @@ const AffiliateRecurringLedger = require('./models/AffiliateRecurringLedger');
 const Student = require('./models/Student');
 const { verifyToken } = require('./authMiddleware');
 const { getJwtSecret } = require('./config/jwtSecret');
-const { enrollLinkForSlug } = require('./utils/affiliateReferralSlug');
+const { enrollLinkForSlug, ensureRandomAffiliateSlug } = require('./utils/affiliateReferralSlug');
 const { studentLooksPaid, ensureAffiliateRecurringLedger } = require('./utils/awardReferralCommission');
 const { phYyyymm, AFFILIATE_MONTHLY_PCT, affiliatePlanMonths } = require('./utils/affiliateRecurring');
 const { sendAffiliateCredentialsEmail } = require('./emailService');
@@ -69,7 +69,9 @@ router.post('/login', async (req, res) => {
         message:
           affiliate.status === 'pending'
             ? 'Your affiliate account is pending activation.'
-            : 'Your affiliate account is inactive.',
+            : affiliate.status === 'suspended'
+              ? 'Your affiliate account is suspended.'
+              : 'Your affiliate account is inactive.',
       });
     }
 
@@ -77,6 +79,8 @@ router.post('/login', async (req, res) => {
     if (!ok) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
+
+    await ensureRandomAffiliateSlug(affiliate);
 
     // First successful sign-in: email username + password so the affiliate has a record.
     if (!affiliate.credentialsEmailedAt && affiliate.email) {
@@ -128,16 +132,23 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', verifyToken, requireAffiliate, async (req, res) => {
   try {
-    const affiliate = await Affiliate.findById(req.user.affiliateId)
-      .select('name email phone username referralSlug status christianValuesBackground')
-      .lean();
+    let affiliate = await Affiliate.findById(req.user.affiliateId);
     if (!affiliate) {
       return res.status(404).json({ success: false, message: 'Affiliate not found' });
     }
+    affiliate = await ensureRandomAffiliateSlug(affiliate);
     const origin = `${req.protocol}://${req.get('host')}` || 'https://remoedph.com';
     res.json({
       success: true,
-      affiliate,
+      affiliate: {
+        name: affiliate.name,
+        email: affiliate.email || '',
+        phone: affiliate.phone || '',
+        username: affiliate.username,
+        referralSlug: affiliate.referralSlug,
+        status: affiliate.status,
+        christianValuesBackground: !!affiliate.christianValuesBackground,
+      },
       enrollLink: enrollLinkForSlug(affiliate.referralSlug, 'https://remoedph.com'),
       enrollLinkLocal: enrollLinkForSlug(affiliate.referralSlug, origin),
     });
@@ -225,19 +236,24 @@ router.post('/change-password', verifyToken, requireAffiliate, async (req, res) 
 router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
   try {
     const affiliateId = String(req.user.affiliateId);
-    const affiliate = await Affiliate.findById(affiliateId).lean();
+    let affiliate = await Affiliate.findById(affiliateId);
     if (!affiliate || affiliate.status !== 'active') {
       return res.status(403).json({ success: false, message: 'Affiliate account not active' });
     }
+    affiliate = await ensureRandomAffiliateSlug(affiliate);
 
     const slug = String(affiliate.referralSlug || '');
-    const [referrals, clickRow, ledgerRows] = await Promise.all([
+    const clickCodes = [slug]
+      .concat(affiliate.previousReferralSlugs || [])
+      .map((value) => String(value || '').trim())
+      .filter(Boolean);
+    const [referrals, clickRows, ledgerRows] = await Promise.all([
       Referral.find({ ownerType: 'affiliate', ownerId: affiliateId })
         .sort({ updatedAt: -1 })
         .lean(),
-      slug
-        ? ReferralLinkClick.findOne({ referralCode: slug }).select('clickCount').lean()
-        : null,
+      clickCodes.length
+        ? ReferralLinkClick.find({ referralCode: { $in: clickCodes } }).select('clickCount').lean()
+        : [],
       AffiliateRecurringLedger.find({ affiliateId }).sort({ yyyymm: -1, createdAt: -1 }).lean(),
     ]);
 
@@ -339,7 +355,7 @@ router.get('/dashboard', verifyToken, requireAffiliate, async (req, res) => {
       },
       enrollLink: enrollLinkForSlug(slug, 'https://remoedph.com'),
       metrics: {
-        linkClicks: Number(clickRow && clickRow.clickCount) || 0,
+        linkClicks: (clickRows || []).reduce((sum, row) => sum + (Number(row.clickCount) || 0), 0),
         activeEnrolledStudents: activeStudents.length,
         estimatedMonthlyEarnings: Math.round((monthUpfront + monthRecurring) * 100) / 100,
         thisMonthUpfront: monthUpfront,

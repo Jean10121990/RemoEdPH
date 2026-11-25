@@ -30,6 +30,7 @@ const PERMISSION_CATALOG = [
   { key: 'qa:lessons_upload', module: 'QA Hub', label: 'Lesson Library — Upload', sortOrder: 320 },
   { key: 'qa:lessons_delete', module: 'QA Hub', label: 'Lesson Library — Delete', sortOrder: 330 },
   { key: 'qa:recordings_view', module: 'QA Hub', label: 'Class Recordings — View', sortOrder: 340 },
+  { key: 'qa:analyzer_review', module: 'QA Hub', label: 'Class Recordings — Review scores', sortOrder: 345 },
   { key: 'qa:issues_view', module: 'QA Hub', label: 'Issue Management — View', sortOrder: 350 },
   { key: 'qa:issues_manage', module: 'QA Hub', label: 'Issue Management — Manage', sortOrder: 360 },
   { key: 'incident:manage', module: 'QA Hub', label: 'Classroom SOS — Manage', sortOrder: 370 },
@@ -111,6 +112,7 @@ const ROLE_SEED_PERMISSIONS = {
     'qa:lessons_upload',
     'qa:lessons_delete',
     'qa:recordings_view',
+    'qa:analyzer_review',
     'qa:issues_view',
     'qa:issues_manage',
     'incident:manage',
@@ -313,6 +315,14 @@ async function seedAdminRbac() {
         existing.permissions.indexOf('mkt:affiliates_manage') === -1
       ) {
         await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'mkt:affiliates_manage' } });
+      }
+      if (
+        slug === 'admin_qa' &&
+        existing &&
+        Array.isArray(existing.permissions) &&
+        existing.permissions.indexOf('qa:analyzer_review') === -1
+      ) {
+        await AdminRole.updateOne({ slug }, { $addToSet: { permissions: 'qa:analyzer_review' } });
       }
       if (slug === 'admin_marketing' && existing && Array.isArray(existing.permissions)) {
         const add = ['content:homepage', 'content:faq'].filter((key) => existing.permissions.indexOf(key) === -1);

@@ -41,22 +41,22 @@
     commissionSpark: {
       title: 'Unique Link commission, Spark',
       what: 'The one-time peso amount a referrer earns when someone buys Spark through their link. The 2% monthly share is separate.',
-      example: '500 pays the referrer ₱500 once, for any plan length.'
+      example: '1000 pays the referrer ₱1,000 once, for any plan length.'
     },
     commissionSteady: {
       title: 'Unique Link commission, Steady',
       what: 'The one-time peso amount a referrer earns when someone buys Steady through their link.',
-      example: '500 pays the referrer ₱500 once, for a 3-month plan too.'
+      example: '1000 pays the referrer ₱1,000 once, for a 3-month plan too.'
     },
     commissionScholar: {
       title: 'Unique Link commission, Scholar',
       what: 'The one-time peso amount a referrer earns when someone buys Scholar through their link.',
-      example: '500 pays the referrer ₱500 once, for a 6-month plan too.'
+      example: '1000 pays the referrer ₱1,000 once, for a 6-month plan too.'
     },
     commissionSummit: {
       title: 'Unique Link commission, Summit',
       what: 'The one-time peso amount a referrer earns when someone buys Summit through their link.',
-      example: '500 pays the referrer ₱500 once, for a 12-month plan too.'
+      example: '1000 pays the referrer ₱1,000 once, for a 12-month plan too.'
     },
     payoutPaidHourly: {
       title: 'Paid tier hourly rates',

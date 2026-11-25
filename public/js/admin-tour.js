@@ -45,7 +45,7 @@
         element: '[data-nav="marketing"]',
         title: 'Marketing Hub',
         content:
-          'Unique Link Commissions and teacher referral tracking — successful enrollees, plan value, and a ₱500 one-time bonus per conversion.',
+          'Unique Link Commissions and teacher referral tracking — successful enrollees, plan value, and a ₱1,000 one-time bonus per conversion.',
         position: 'right',
       },
       {

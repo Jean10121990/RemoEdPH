@@ -3,17 +3,17 @@
 /**
  * Referral / Unique Link commission paid when a referred student buys a plan.
  * Keyed by canonical plan id (server/config/planCredits.js):
- *   ₱500 once for spark, steady, scholar, and summit. Affiliates also earn 2% of the monthly price each paid month.
+ *   ₱1,000 once for spark, steady, scholar, and summit. Affiliates also earn 2% of the monthly price each paid month.
  * Unknown or blank plan falls back to the lowest tier so a referral is never left at ₱0.
  */
 const { normalizePlanId } = require('../config/planCredits');
 const { readSetting } = require('../services/siteSettings');
 
 const REFERRAL_COMMISSION_BY_PLAN = {
-  spark: 500,
-  steady: 500,
-  scholar: 500,
-  summit: 500,
+  spark: 1000,
+  steady: 1000,
+  scholar: 1000,
+  summit: 1000,
 };
 
 const DEFAULT_REFERRAL_COMMISSION = REFERRAL_COMMISSION_BY_PLAN.spark;

@@ -17,10 +17,10 @@ const CATALOG = [
   { key: 'sparkFounderDiscount', group: 'pricing', type: 'number', value: 0, label: 'Spark founder discount (USD)', confirm: true },
   { key: 'adminFeePercent', group: 'pricing', type: 'number', value: 2, label: 'Admin fee percent', confirm: true },
   { key: 'referralRewardCredits', group: 'pricing', type: 'number', value: 3, label: 'Referral reward credits' },
-  { key: 'commissionSpark', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
-  { key: 'commissionSteady', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
-  { key: 'commissionScholar', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
-  { key: 'commissionSummit', group: 'pricing', type: 'number', value: 500, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionSpark', group: 'pricing', type: 'number', value: 1000, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionSteady', group: 'pricing', type: 'number', value: 1000, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionScholar', group: 'pricing', type: 'number', value: 1000, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
+  { key: 'commissionSummit', group: 'pricing', type: 'number', value: 1000, label: 'Unique Link one-time bonus, any plan (PHP)', confirm: true },
   { key: 'payoutPaidHourly', group: 'pricing', type: 'json', value: [200, 230, 280], label: 'Paid tier hourly rates (PHP). Not the fallback global rate.', confirm: true },
   { key: 'payoutCredentialAddon', group: 'pricing', type: 'number', value: 10, label: 'Credential add-on (PHP per hour)', confirm: true },
   { key: 'payoutTrialRate', group: 'pricing', type: 'number', value: 45, label: 'Free-trial class rate (PHP, flat)', confirm: true },
@@ -127,10 +127,10 @@ function validateValue(key, raw) {
 }
 
 const PREVIOUS_COMMISSION = {
-  commissionSpark: [1000],
-  commissionSteady: [1500, 1000],
-  commissionScholar: [2000, 1500],
-  commissionSummit: [2500, 2000],
+  commissionSpark: [500, 1500, 2000, 2500],
+  commissionSteady: [500, 1500, 2000, 2500],
+  commissionScholar: [500, 1500, 2000, 2500],
+  commissionSummit: [500, 1500, 2000, 2500],
 };
 
 function normalizeCommission(key, value) {

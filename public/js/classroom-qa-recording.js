@@ -44,7 +44,10 @@
     /** 480p canvas used only for the QA file. The student slide share stays full size. */
     qaScaleVideo: null,
     qaScaleTimer: null,
-    qaScaleStream: null
+    qaScaleStream: null,
+    qaScaleCanvas: null,
+    qaCheckpointTimer: null,
+    qaCheckpointBusy: false
   };
 
   function getParam(name) {
@@ -567,6 +570,10 @@
       clearInterval(state.tickTimer);
       state.tickTimer = null;
     }
+    if (state.qaCheckpointTimer) {
+      clearInterval(state.qaCheckpointTimer);
+      state.qaCheckpointTimer = null;
+    }
   }
 
   function evenDim(n) {
@@ -594,6 +601,7 @@
       } catch (e) {}
       state.qaScaleStream = null;
     }
+    state.qaScaleCanvas = null;
   }
 
   /**
@@ -628,6 +636,7 @@
         ctx2.drawImage(video, 0, 0, width, height);
       } catch (drawErr) {}
       state.qaScaleVideo = video;
+      state.qaScaleCanvas = canvas;
       state.qaScaleTimer = setInterval(function () {
         try {
           ctx2.drawImage(video, 0, 0, width, height);
@@ -649,6 +658,128 @@
       } catch (e) {}
       return stream;
     });
+  }
+
+  function teacherCameraOn() {
+    var video = document.getElementById('local-video');
+    if (!video || !video.srcObject || typeof video.srcObject.getVideoTracks !== 'function') return false;
+    var tracks = video.srcObject.getVideoTracks();
+    if (!tracks.length) return false;
+    var track = tracks[0];
+    return !!(track && track.enabled && track.readyState === 'live' && video.videoWidth > 0);
+  }
+
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var raw = String(reader.result || '');
+        var comma = raw.indexOf(',');
+        resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
+      };
+      reader.onerror = function () { reject(new Error('read')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function captureQaJpeg() {
+    var canvas = state.qaScaleCanvas;
+    if (!canvas || typeof canvas.toDataURL !== 'function') return '';
+    try {
+      var url = canvas.toDataURL('image/jpeg', 0.6);
+      var comma = url.indexOf(',');
+      var b64 = comma >= 0 ? url.slice(comma + 1) : '';
+      return b64.length > 900000 ? '' : b64;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function captureQaAudioClip() {
+    return new Promise(function (resolve) {
+      var stream = state.qaScaleStream;
+      if (!stream || typeof MediaRecorder === 'undefined' || typeof stream.getAudioTracks !== 'function') {
+        return resolve({ b64: '', mime: '' });
+      }
+      var tracks = stream.getAudioTracks().filter(function (track) { return track && track.readyState === 'live'; });
+      if (!tracks.length) return resolve({ b64: '', mime: '' });
+      var mime = '';
+      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mime = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm')) {
+        mime = 'audio/webm';
+      }
+      var rec;
+      try {
+        rec = mime ? new MediaRecorder(new MediaStream(tracks), { mimeType: mime }) : new MediaRecorder(new MediaStream(tracks));
+      } catch (e) {
+        return resolve({ b64: '', mime: '' });
+      }
+      var chunks = [];
+      var finished = false;
+      function finish(blob) {
+        if (finished) return;
+        finished = true;
+        if (!blob || !blob.size) return resolve({ b64: '', mime: '' });
+        blobToBase64(blob).then(function (b64) {
+          if (!b64 || b64.length > 500000) return resolve({ b64: '', mime: '' });
+          resolve({ b64: b64, mime: (rec.mimeType || mime || 'audio/webm').split(';')[0] });
+        }).catch(function () { resolve({ b64: '', mime: '' }); });
+      }
+      rec.ondataavailable = function (ev) {
+        if (ev.data && ev.data.size) chunks.push(ev.data);
+      };
+      rec.onstop = function () {
+        finish(new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' }));
+      };
+      rec.onerror = function () { finish(null); };
+      try {
+        rec.start();
+      } catch (startErr) {
+        return resolve({ b64: '', mime: '' });
+      }
+      setTimeout(function () {
+        try {
+          if (rec.state !== 'inactive') rec.stop();
+          else finish(null);
+        } catch (stopErr) {
+          finish(null);
+        }
+      }, 8000);
+    });
+  }
+
+  function sendQaCheckpoint() {
+    if (state.qaCheckpointBusy || !state.recordingId || !state.startedAt) return;
+    if (liveUserType() !== 'teacher') return;
+    var headers = authHeaders();
+    if (!headers) return;
+    state.qaCheckpointBusy = true;
+    var atSec = Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000));
+    var cameraOn = teacherCameraOn();
+    Promise.resolve()
+      .then(function () {
+        return Promise.all([captureQaJpeg(), captureQaAudioClip()]);
+      })
+      .then(function (parts) {
+        return fetch('/api/classroom-recording/session/' + encodeURIComponent(state.recordingId) + '/qa-checkpoint', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            atSec: atSec,
+            cameraOn: cameraOn,
+            jpegBase64: parts[0] || '',
+            audioBase64: (parts[1] && parts[1].b64) || '',
+            audioMime: (parts[1] && parts[1].mime) || ''
+          })
+        });
+      })
+      .catch(function (err) {
+        console.warn('QA checkpoint', err && err.message ? err.message : err);
+      })
+      .then(function () {
+        state.qaCheckpointBusy = false;
+      });
   }
 
   function teardownRecordingExtras() {
@@ -896,6 +1027,9 @@
             });
         }
 
+        if (liveUserType() === 'teacher') {
+          state.qaCheckpointTimer = setInterval(sendQaCheckpoint, 45000);
+        }
         state.tickTimer = setInterval(function () {
           if (!state.startedAt) return;
           var elapsed = (Date.now() - state.startedAt) / 1000;
