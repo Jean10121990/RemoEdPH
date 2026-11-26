@@ -19,7 +19,7 @@ const HTML_PAGES = new Set(['privacy', 'terms', 'parent-terms', 'teacher-privacy
 const TEXT = [
   ['home', 'hero_title', 'Hero title', 'Help your 3–6 year old speak English with confidence, from home'],
   ['home', 'hero_lead', 'Hero lead', 'Take the free 2-minute assessment, get your child\'s English level, and try a free interactive lesson. No card needed.'],
-  ['home', 'hero_trust', 'Hero trust line', 'Live classes are 25 minutes with a teacher. The free lesson is separate. No card needed.'],
+  ['home', 'hero_trust', 'Hero trust line', 'Try a free interactive class on the RemoEd App — no card needed. When your child is ready, a real teacher is there for a gentle 25-minute lesson.'],
   ['home', 'benefits_title', 'Why Learn at Home title', 'Why Learn at Home?'],
   ['home', 'b_safe_t', 'Safe title', 'Safe & Comfortable'],
   ['home', 'b_safe_p', 'Safe text', 'Learn in the safety and comfort of your own home. No commute needed or worry about safety!'],
