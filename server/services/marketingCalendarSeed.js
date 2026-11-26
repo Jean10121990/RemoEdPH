@@ -44,7 +44,7 @@ const OBSERVANCES = [
   { month: 12, day: 30, years: [2026, 2027], title: 'Rizal Day', topic: 'Rizal Day: learning, courage, and love of home', theme: 'heroes' },
 ];
 
-const CTA = 'remoedph.com • Free Trial on Remo App';
+const CTA = 'remoedph.com • Free Trial on RemoEd App';
 const STATUSES = ['planned', 'drafted', 'edited', 'scheduled'];
 const CONTENT_TYPES = ['facebook', 'email', 'ad'];
 

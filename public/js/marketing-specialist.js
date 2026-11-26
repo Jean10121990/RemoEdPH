@@ -87,7 +87,7 @@
         '<label>Theme</label><select id="posterTheme"></select>' +
         '<label>Headline</label><input id="posterHeadline">' +
         '<label>Subheadline or value note</label><input id="posterSub">' +
-        '<label>CTA footer</label><input id="posterCta" value="remoedph.com • Free Trial on Remo App">' +
+        '<label>CTA footer</label><input id="posterCta" value="remoedph.com • Free Trial on RemoEd App">' +
         '<canvas id="posterCanvas" width="1080" height="1080" style="width:100%;max-width:420px;height:auto;border-radius:12px;display:block;margin:8px 0;"></canvas>' +
         '<button type="button" class="ghost" id="btnPosterPng">Download PNG</button></section>' +
         '<section class="chart"><h2>Others</h2><p class="muted">Add an occasion that is not already on the calendar.</p>' +
@@ -502,7 +502,7 @@
         ctx.fillRect(0, height - 118, 1080, 118);
         ctx.fillStyle = '#ffffff';
         ctx.font = '700 28px Segoe UI, Arial, sans-serif';
-        var footer = document.getElementById('posterCta').value || 'remoedph.com • Free Trial on Remo App';
+        var footer = document.getElementById('posterCta').value || 'remoedph.com • Free Trial on RemoEd App';
         while (footer.length > 8 && ctx.measureText(footer).width > 760) footer = footer.slice(0, -2);
         ctx.fillText(footer, 48, height - 48);
         if (logoArt && logoArt.ready) {
@@ -539,7 +539,7 @@
         document.getElementById('posterTheme').value = THEMES[poster.theme] ? poster.theme : 'custom';
         document.getElementById('posterHeadline').value = poster.headline || (row ? row.title : '');
         document.getElementById('posterSub').value = poster.subheadline || '';
-        document.getElementById('posterCta').value = poster.cta || 'remoedph.com • Free Trial on Remo App';
+        document.getElementById('posterCta').value = String(poster.cta || 'remoedph.com • Free Trial on RemoEd App').replace(/Remo App/g, 'RemoEd App');
         syncEmailFields();
         drawPoster();
         paintSlots();
@@ -714,7 +714,7 @@
             : 'A child feels brave when the people at home are kind, steady, and glad they are here.');
         var body = opening + '\n\n' + heart + '\n\n' +
           'If your child is between 3 and 6, a RemoEd class is one gentle place to practice that. They sit with one real teacher for 25 minutes. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm, so a new word can come out without a crowd watching.\n\n' +
-          'Whenever your family is ready, a free trial is waiting on the Remo App at remoedph.com. There is no rush. We are simply glad to walk with you.\n\n' +
+          'Whenever your family is ready, a free trial is waiting on the RemoEd App at remoedph.com. There is no rush. We are simply glad to walk with you.\n\n' +
           'With care,\nRemoEd Support';
         return { subject: subject, body: body };
       }

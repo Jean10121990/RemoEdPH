@@ -65,7 +65,7 @@ function posterConfig(raw, fallbackHeadline) {
     theme: clamp(src.theme || 'custom', 40),
     headline: clamp(src.headline || fallbackHeadline || '', 120),
     subheadline: clamp(src.subheadline || '', 240),
-    cta: clamp(src.cta || 'remoedph.com • Free Trial on Remo App', 120),
+    cta: clamp(src.cta || 'remoedph.com • Free Trial on RemoEd App', 120),
     mascot,
   };
 }

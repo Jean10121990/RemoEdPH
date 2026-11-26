@@ -153,7 +153,7 @@ const SCENES = [
 
 const CLOSE = [
   'If your child is between 3 and 6, a RemoEd class is one gentle place to practice that. They sit with one real teacher for 25 minutes. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm, so a new word can come out without a crowd watching.',
-  'Whenever your family is ready, a free trial is waiting on the Remo App at remoedph.com. There is no rush. We are simply glad to walk with you.',
+  'Whenever your family is ready, a free trial is waiting on the RemoEd App at remoedph.com. There is no rush. We are simply glad to walk with you.',
   'With care,',
   'RemoEd Support',
 ].join('\n\n');
