@@ -31,7 +31,8 @@
     .bubble { margin: 6px 0; padding: 8px 10px; border-radius: 10px; max-width: 80%; }
     .bubble.in { background: #e8f4fd; }
     .bubble.out { background: #ecfdf5; margin-left: auto; }
-    .row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; position: relative; z-index: 2; }
+    #mkt-actions button { pointer-events: auto; }
     table.leads { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     table.leads th, table.leads td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 0.9rem; vertical-align: top; }
     table.leads th { background: #f8fafc; font-size: 0.8rem; }
@@ -51,7 +52,7 @@
 <body>
   <div class="page" id="app">Loading…</div>
   <script src="js/admin-session.js"></script>
-  <script src="js/marketing-specialist.js?v=mkt-cal-3"></script>
+  <script src="js/marketing-specialist.js?v=mkt-cal-4"></script>
   <script>
     var tab = new URLSearchParams(location.search).get('tab') || 'leads';  
     function token() {
