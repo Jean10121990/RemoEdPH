@@ -8,6 +8,20 @@ const router = express.Router();
 const TRIAL_DAYS = 7;
 const THEMES = ['fruits', 'animals', 'snacks'];
 
+function noteTrialLead(student) {
+  const email = String((student && (student.parentEmail || student.email)) || '').trim();
+  if (!email) return;
+  const { upsertLead } = require('../growth/leadService');
+  const name = [student.parentName, student.firstName, student.lastName].filter(Boolean).join(' ');
+  upsertLead({
+    email,
+    name,
+    source: 'register',
+    stage: 'Trial',
+    studentId: student._id,
+  }).catch((err) => console.warn('[lead] trial:', err && err.message ? err.message : err));
+}
+
 function requireLogin(req, res, next) {
   verifyToken(req, res, function () {
     requireStudent(req, res, next);
@@ -154,6 +168,7 @@ router.post('/', requireLogin, async (req, res) => {
       theme: theme,
       expiresAt: freshExpiry(),
     });
+    noteTrialLead(req.student);
     res.status(201).json({ trialId: String(trial._id), expiresAt: trial.expiresAt });
   } catch (err) {
     if (err && err.code === 11000) {
@@ -162,6 +177,7 @@ router.post('/', requireLogin, async (req, res) => {
         if (!existing) return res.status(409).json({ error: 'This child already used the free trial.' });
         reopen(existing, theme);
         const saved = await persist(existing);
+        noteTrialLead(req.student);
         return res.status(200).json({ trialId: String(saved._id), expiresAt: saved.expiresAt });
       } catch (saveErr) {
         console.error(saveErr);

@@ -52,7 +52,7 @@
 <body>
   <div class="page" id="app">Loading…</div>
   <script src="js/admin-session.js"></script>
-  <script src="js/marketing-specialist.js?v=mkt-cal-11"></script>
+  <script src="js/marketing-specialist.js?v=mkt-cal-12"></script>
   <script>
     var tab = new URLSearchParams(location.search).get('tab') || 'leads';  
     function token() {
@@ -95,7 +95,12 @@
 
     function welcomeStatus(lead) {
       if (!(lead.email || lead.source === 'facebook')) return '';
-      return '<br><span class="muted">' + esc(lead.welcomeEmailSent ? 'Email welcome sent' : 'Email welcome not sent') + '</span>';
+      var sent = lead.sequenceSent || {};
+      var bits = [];
+      if (sent.onboard || lead.welcomeEmailSent) bits.push('Onboarding sent');
+      if (sent.value) bits.push('Plans sent');
+      if (sent.checkin) bits.push('Check-in sent');
+      return '<br><span class="muted">' + esc(bits.length ? bits.join(' · ') : 'No sequence email yet') + '</span>';
     }
     function leadDetail(lead) {
       var bits = [];

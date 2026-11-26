@@ -4,19 +4,33 @@
  * A Monday or Thursday holiday keeps the regular post and adds the observance.
  */
 
-const REGULAR_TOPICS = [
-  'Greetings and saying hello in a live class',
-  'Phonics sounds with a real teacher',
-  'Shapes we see at home',
+const MONDAY_TOPICS = [
+  'A home activity for ages 3 to 6: greetings and kind words',
+  'Christian character at home: patience while a child tries',
+  'A short listening game a parent can play at the table',
   'Family words: Mommy, Daddy, and the people we love',
-  'A 25-minute live one-on-one class with a real teacher',
-  'Gratitude for the family God gave us',
+  'Gratitude for the family, practiced in an ordinary afternoon',
+];
+
+const THURSDAY_TOPICS = [
+  'Free interactive trial on the RemoEd App. No card. It is not a live class',
+  'Optional free level assessment for parents who want a starting level first',
+  'A parent poll: what new English word did your child try this week?',
+  'How to log back in to the RemoEd App and continue the free trial',
 ];
 
 const CSR_TOPICS = [
   'Community care: a simple feeding program for families',
   'Tree planting and caring for the earth',
-  'Family and community care close to home',
+  'Mental health support: a calm, listening afternoon for families',
+  'Waste management: small care for the neighborhood',
+  'Family Day: time together close to home',
+  'A sustainability project children can join',
+  'Rainy season outreach for families nearby',
+  "Teachers' month: thanking people who teach with care",
+  "Children's month and Students' Day: joy and play",
+  'Thanksgiving sharing around one table',
+  'A Christmas toy and book drive for children',
 ];
 
 const OBSERVANCES = [
@@ -64,9 +78,9 @@ function daysInMonth(year, month) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-function lastThursday(year, month) {
+function lastWeekday(year, month, dow) {
   for (let day = daysInMonth(year, month); day >= 1; day -= 1) {
-    if (weekday(year, month, day) === 4) return day;
+    if (weekday(year, month, day) === dow) return day;
   }
   return null;
 }
@@ -115,22 +129,27 @@ function row(year, month, day, slot, title, keyTopic, theme) {
 
 function buildMarketingCalendar() {
   const entries = [];
-  let regularIndex = 0;
+  let mondayIndex = 0;
+  let thursdayIndex = 0;
   let csrIndex = 0;
   monthsInRange().forEach(({ year, month, onlyDays }) => {
-    const csrDay = onlyDays ? null : lastThursday(year, month);
+    const csrDay = onlyDays ? null : lastWeekday(year, month, 6);
     for (let day = 1; day <= daysInMonth(year, month); day += 1) {
       if (onlyDays && onlyDays.indexOf(day) === -1) continue;
       const dow = weekday(year, month, day);
       if (dow === 1 || dow === 4) {
-        const topic = REGULAR_TOPICS[regularIndex % REGULAR_TOPICS.length];
-        regularIndex += 1;
+        const monday = dow === 1;
+        const pool = monday ? MONDAY_TOPICS : THURSDAY_TOPICS;
+        const topicIndex = monday ? mondayIndex : thursdayIndex;
+        const topic = pool[topicIndex % pool.length];
+        if (monday) mondayIndex += 1;
+        else thursdayIndex += 1;
         entries.push(row(
           year,
           month,
           day,
           'regular',
-          dow === 1 ? 'Monday class' : 'Thursday class',
+          dow === 1 ? 'Monday post' : 'Thursday post',
           topic,
           'custom'
         ));

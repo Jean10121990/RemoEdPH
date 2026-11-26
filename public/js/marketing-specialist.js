@@ -85,6 +85,7 @@
         '<section class="chart"><h2>Poster</h2>' +
         '<label>Size</label><select id="posterFormat"><option value="square">1080×1080 Square</option><option value="portrait">1080×1350 Portrait</option></select>' +
         '<label>Theme</label><select id="posterTheme"></select>' +
+        '<label>Mascot</label><select id="posterMascot"><option value="remo">Remo</option><option value="ed">Ed</option><option value="sofie">Sofie</option></select>' +
         '<label>Headline</label><input id="posterHeadline">' +
         '<label>Subheadline or value note</label><input id="posterSub">' +
         '<label>CTA footer</label><input id="posterCta" value="remoedph.com • Free Trial on RemoEd App">' +
@@ -498,6 +499,14 @@
         wrapText(ctx, document.getElementById('posterSub').value, 64, scene === 'heroes' ? 480 : 520, 560, 42, 3);
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
+        var mascotName = { remo: 'Remo', ed: 'Ed', sofie: 'Sofie' }[document.getElementById('posterMascot').value] || 'Remo';
+        ctx.font = '700 22px Segoe UI, Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.beginPath();
+        ctx.roundRect(64, height - 196, ctx.measureText(mascotName).width + 36, 44, 22);
+        ctx.fill();
+        ctx.fillStyle = '#14532d';
+        ctx.fillText(mascotName, 82, height - 167);
         ctx.fillStyle = 'rgba(12, 48, 72, 0.88)';
         ctx.fillRect(0, height - 118, 1080, 118);
         ctx.fillStyle = '#ffffff';
@@ -520,7 +529,7 @@
           headline: document.getElementById('posterHeadline').value,
           subheadline: document.getElementById('posterSub').value,
           cta: document.getElementById('posterCta').value,
-          mascot: 'remo'
+          mascot: document.getElementById('posterMascot') ? document.getElementById('posterMascot').value : 'remo'
         };
       }
 
@@ -540,6 +549,8 @@
         document.getElementById('posterHeadline').value = poster.headline || (row ? row.title : '');
         document.getElementById('posterSub').value = poster.subheadline || '';
         document.getElementById('posterCta').value = String(poster.cta || 'remoedph.com • Free Trial on RemoEd App').replace(/Remo App/g, 'RemoEd App');
+        var mascot = poster.mascot === 'ed' || poster.mascot === 'sofie' ? poster.mascot : 'remo';
+        if (document.getElementById('posterMascot')) document.getElementById('posterMascot').value = mascot;
         syncEmailFields();
         drawPoster();
         paintSlots();
@@ -665,7 +676,7 @@
       document.getElementById('mkt-next').addEventListener('click', function () {
         if (monthIndex < MONTHS.length - 1) { monthIndex += 1; paint(); }
       });
-      ['posterFormat', 'posterTheme', 'posterHeadline', 'posterSub', 'posterCta'].forEach(function (id) {
+      ['posterFormat', 'posterTheme', 'posterMascot', 'posterHeadline', 'posterSub', 'posterCta'].forEach(function (id) {
         document.getElementById(id).addEventListener('input', drawPoster);
         document.getElementById(id).addEventListener('change', drawPoster);
       });
@@ -713,7 +724,7 @@
             ? 'Today we are holding this with you: ' + theme.replace(/[:]+/g, ',') + '. A child does not need that turned into a speech. They need to feel safe, noticed, and glad they tried.'
             : 'A child feels brave when the people at home are kind, steady, and glad they are here.');
         var body = opening + '\n\n' + heart + '\n\n' +
-          'If your child is between 3 and 6, a RemoEd class is one gentle place to practice that. They sit with one real teacher for 25 minutes. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm, so a new word can come out without a crowd watching.\n\n' +
+          'If your child is between 3 and 6, the free interactive trial is on the RemoEd App. No card is needed, and it is not a live class. A live 25-minute lesson with a real teacher is on a paid plan. Remo, Ed, and Sofie keep the trial warm.\n\n' +
           'Whenever your family is ready, a free trial is waiting on the RemoEd App at remoedph.com. There is no rush. We are simply glad to walk with you.\n\n' +
           'With care,\nRemoEd Support';
         return { subject: subject, body: body };

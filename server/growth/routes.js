@@ -115,6 +115,10 @@ router.patch('/leads/:id', requireGrowth('growth.leads'), async (req, res) => {
   }
   if (req.body.note) lead.notes.push({ text: String(req.body.note), by: req.user.username || '' });
   await lead.save();
+  if (req.body.stage === 'Trial') {
+    const { queueValue } = require('./parentSequence');
+    await queueValue(lead);
+  }
   res.json({ success: true, lead });
 });
 

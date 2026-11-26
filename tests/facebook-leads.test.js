@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fb = require('../server/growth/facebookPage');
+const { letters } = require('../server/growth/parentSequence');
 
 test('facebook lead fields map name, email, phone, and form', () => {
   const fields = fb.leadFieldsFromGraph({
@@ -18,4 +19,11 @@ test('facebook lead fields map name, email, phone, and form', () => {
   assert.equal(fields.phone, '0917');
   assert.equal(fields.formId, 'form1');
   assert.equal(fields.formName, 'Free class');
+});
+
+test('the onboarding letter is for ages 3 to 6 on the RemoEd App', () => {
+  const onboard = letters('Ana').onboard;
+  assert.match(onboard.text, /ages 3 to 6/);
+  assert.match(onboard.text, /RemoEd App/);
+  assert.equal(onboard.text.includes('6 to 12'), false);
 });

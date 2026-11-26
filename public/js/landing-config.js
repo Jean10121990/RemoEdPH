@@ -5,12 +5,14 @@
 window.RemoEdLanding = {
   demoClassEnabled: false,
   metaPixelId: "1450527273952773",
-  primaryCta: "Take the Free Assessment",
-  secondaryCta: "See How Live Classes Work",
-  lessonCta: "Try a free lesson",
-  assessmentUrl: "/student-assessment.html?guest=1",
+  primaryCta: "Sign up now to get your free interactive trial class",
+  secondaryCta: "Free level assessment",
+  lessonCta: "Log in to the RemoEd App",
+  signupUrl: "/student-register.html",
+  loginUrl: "/login/",
+  assessmentUrl: "/#assessment",
   subcopy:
-    "Take the free 2-minute assessment, get your child's English level, and try a free interactive lesson. No card needed.",
+    "Sign up for a free interactive trial on the RemoEd App. No card needed. A live class with a teacher comes later, on a paid plan.",
   headlineAngles: {
     default: "Help your 3\u20136\u00a0year\u00a0old speak English with confidence, from home",
     phonics: "Your child's first English words, with a live teacher",

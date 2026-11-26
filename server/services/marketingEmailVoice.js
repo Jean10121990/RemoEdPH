@@ -152,8 +152,9 @@ const SCENES = [
 ];
 
 const CLOSE = [
-  'If your child is between 3 and 6, a RemoEd class is one gentle place to practice that. They sit with one real teacher for 25 minutes. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm, so a new word can come out without a crowd watching.',
-  'Whenever your family is ready, a free trial is waiting on the RemoEd App at remoedph.com. There is no rush. We are simply glad to walk with you.',
+  'The free interactive trial, and the level assessment if you want it, are on the RemoEd App. No card is needed. They are not a live class.',
+  'A live 25-minute one-on-one lesson with a real teacher is on a paid plan: RemoSpark, RemoSteady, RemoScholar, or RemoSummit.',
+  'Whenever your family is ready, sign up for the free trial on the RemoEd App at remoedph.com. There is no rush. We are simply glad to walk with you.',
   'With care,',
   'RemoEd Support',
 ].join('\n\n');

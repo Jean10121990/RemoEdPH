@@ -46,7 +46,15 @@ async function upsertLead(patch) {
     lead.stage = next;
   }
   lead.lastContactAt = new Date();
+  const isTrial = patch.stage === 'Trial';
   await lead.save();
+  try {
+    const { queueOnboard, queueValue } = require('./parentSequence');
+    if (lead.email) await queueOnboard(lead);
+    if (isTrial) await queueValue(lead);
+  } catch (err) {
+    console.warn('[lead] sequence email:', err && err.message ? err.message : err);
+  }
   return lead;
 }
 

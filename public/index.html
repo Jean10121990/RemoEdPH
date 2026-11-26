@@ -191,10 +191,10 @@
           <select class="site-lang-switcher" id="nav-lang-switcher" aria-label="Language" tabindex="-1"></select>
           <ul class="nav-lang__list" id="nav-lang-list" role="listbox" hidden></ul>
         </div>
-        <a href="/skill-assessment.html" class="nav-btn primary" id="nav-primary-cta" data-i18n="hero_cta" data-track="nav_cta">Take the Free Assessment</a>
+        <a href="/student-register.html" class="nav-btn primary" id="nav-primary-cta" data-i18n="hero_cta" data-track="nav_cta">Sign up now to get your free interactive trial class</a>
       </nav>
     </header>
-    <a href="/skill-assessment.html" class="home-sticky-cta" id="home-sticky-cta" hidden data-i18n="hero_cta" data-i18n-aria-label="hero_cta" data-track="sticky_cta">Take the Free Assessment</a>
+    <a href="/student-register.html" class="home-sticky-cta" id="home-sticky-cta" hidden data-i18n="hero_cta" data-i18n-aria-label="hero_cta" data-track="sticky_cta">Sign up now to get your free interactive trial class</a>
 
     <!-- Hero: full-bleed visual plane + left copy band -->
     <section class="hero japandi-hero hero-fullbleed" data-i18n-aria-label="hero_aria">
@@ -211,12 +211,12 @@
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
               <div class="assessment-cta-cluster">
-                <a href="/skill-assessment.html" class="cta-btn primary" id="hero-primary-cta" data-i18n="hero_cta" data-track="hero_cta">Take the Free Assessment</a>
-                <a href="#how-it-works" class="cta-btn secondary" id="hero-secondary-cta" data-i18n="hero_secondary" data-track="how_live_classes">See How Live Classes Work</a>
+                <a href="/student-register.html" class="cta-btn primary" id="hero-primary-cta" data-i18n="hero_cta" data-track="hero_cta">Sign up now to get your free interactive trial class</a>
+                <a href="#assessment" class="cta-btn secondary" id="hero-secondary-cta" data-i18n="hero_secondary" data-track="level_assessment">Free level assessment</a>
               </div>
-              <a href="/skill-assessment.html" class="hero-lesson-link" id="hero-lesson-cta" data-i18n="hero_lesson" data-track="free_lesson">Try a free lesson</a>
+              <a href="/login/" class="hero-lesson-link" id="hero-lesson-cta" data-i18n="hero_lesson" data-track="login">Log in to the RemoEd App</a>
             </div>
-            <p class="hero-trust" data-i18n="hero_trust">Live classes are 25 minutes with a teacher. The free lesson is separate. No card needed.</p>
+            <p class="hero-trust" data-i18n="hero_trust">No credit card required. The free interactive trial and level assessment are on the RemoEd App. A live 25-minute class with a teacher is a paid plan.</p>
           </div>
         </div>
         <div class="hero-media">
@@ -872,7 +872,7 @@
     </div>
 
     <a class="home-chat-float" id="home-chat-float" hidden>Chat</a>
-    <script src="/js/landing-config.js?v=landing-8"></script>
+    <script src="/js/landing-config.js?v=landing-9"></script>
     <script src="/js/landing-track.js?v=landing-1"></script>
     <script src="/js/referral-tracking.js?v=ref-3"></script>
     <script src="/js/plan-pricing.js?v=pricing-8"></script>
@@ -1218,7 +1218,7 @@
           }
         });
     </script>
-    <script src="/js/home-strings.js?v=home-lang-9"></script>
+    <script src="/js/home-strings.js?v=home-lang-10"></script>
     <script src="/js/site-i18n.js?v=home-lang-2"></script>
     <script src="/js/site-content.js?v=content-2"></script>
     <script src="/js/hero-type.js?v=type-1"></script>
@@ -1512,31 +1512,32 @@
           var primary = tr("hero_cta", cfg.primaryCta || "Take the Free Assessment");
           var secondary = tr("hero_secondary", cfg.secondaryCta || "See How Live Classes Work");
           var lesson = tr("hero_lesson", cfg.lessonCta || "Try a free lesson");
-          var url = cfg.assessmentUrl || "/skill-assessment.html";
+          var signupUrl = cfg.signupUrl || "/student-register.html";
+          var assessmentUrl = cfg.assessmentUrl || "/#assessment";
           ["hero-primary-cta", "how-primary-cta", "nav-primary-cta", "home-sticky-cta"].forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) return;
-            if (id !== "home-sticky-cta" || el.id === "home-sticky-cta") el.textContent = id === "home-sticky-cta" ? primary : (id.indexOf("how-") === 0 || id.indexOf("hero-") === 0 || id.indexOf("nav-") === 0 ? primary : primary);
-            if (el.tagName === "A") el.setAttribute("href", url);
+            el.textContent = primary;
+            if (el.tagName === "A") el.setAttribute("href", signupUrl);
           });
           var ageLinks = document.querySelectorAll(".home-ages__card a");
           if (ageLinks[0]) {
             ageLinks[0].textContent = primary;
-            ageLinks[0].setAttribute("href", url);
+            ageLinks[0].setAttribute("href", signupUrl);
           }
           if (ageLinks[1]) {
             ageLinks[1].textContent = lesson;
-            ageLinks[1].setAttribute("href", url);
+            ageLinks[1].setAttribute("href", cfg.loginUrl || "/login/");
           }
           var secondaryEl = document.getElementById("hero-secondary-cta");
           if (secondaryEl) {
             secondaryEl.textContent = secondary;
-            secondaryEl.setAttribute("href", "#how-it-works");
+            secondaryEl.setAttribute("href", assessmentUrl);
           }
           var lessonEl = document.getElementById("hero-lesson-cta");
           if (lessonEl) {
             lessonEl.textContent = lesson;
-            lessonEl.setAttribute("href", url);
+            lessonEl.setAttribute("href", cfg.loginUrl || "/login/");
           }
           var sticky = document.getElementById("home-sticky-cta");
           if (sticky) sticky.setAttribute("aria-label", primary);

@@ -898,8 +898,8 @@ async function sendRawEmail(to, subject, html, text) {
   }
 }
 
-const LEAD_WELCOME_SUBJECT = 'Welcome to RemoEd PH — Next Steps for Your Child\'s Reading Journey';
-const LEAD_WELCOME_ASSESSMENT = 'https://remoedph.com/index.html?ref=06REM0TR3L#assessment';
+const LEAD_WELCOME_SUBJECT = 'Your free interactive trial is ready on the RemoEd App';
+const LEAD_WELCOME_ASSESSMENT = 'https://remoedph.com/#assessment';
 
 function leadWelcomeFirstName(name) {
   const first = String(name || '').trim().split(/\s+/)[0];
@@ -908,39 +908,33 @@ function leadWelcomeFirstName(name) {
 
 function leadWelcomeBodies(firstName) {
   const text = [
-    'Dear ' + firstName + ',',
+    'Hello ' + firstName + ',',
     '',
-    'Thank you for completing our Kids Habit and Check form and expressing interest in RemoEd PH. We are pleased to welcome you and your child to our learning community.',
+    'Welcome. You can sign up and log in on the RemoEd App to start a free interactive trial class for a child ages 3 to 6. No credit card is required.',
     '',
-    'At RemoEd PH, we provide 1-on-1 English education for children ages 6 to 12, rooted in Christian values and character development. Because your primary goal is to strengthen your child\'s reading skills, our curriculum is tailored to guide them step by step.',
+    'This free trial is a gentle activity on the app. It is not a live 25-minute class with a teacher.',
     '',
-    'To get started:',
+    'If you would like a starting level first, the free level assessment is here: ' + LEAD_WELCOME_ASSESSMENT,
+    'You do not have to take it before the trial.',
     '',
-    '1. Free Assessment & Trial Lessons: Complete our brief Free Assessment at ' + LEAD_WELCOME_ASSESSMENT + ', then create an account to unlock your free trial lessons.',
-    '2. Student Referral Program: Once enrolled, you will also have access to our Student Referral Program to earn commissions when referring other families.',
+    'Sign up or log in: https://remoedph.com/student-register.html',
+    'Already registered: https://remoedph.com/login/',
     '',
-    'If you have any questions, please reply directly to this email (support@remoedph.com) or reach us via WhatsApp/Zalo at +639168712529. We look forward to working with you and your child.',
-    '',
-    'Warm regards,',
-    '',
-    'RemoEd PH Team',
+    'With care,',
+    'RemoEd Support',
     'support@remoedph.com',
   ].join('\n');
   const safe = escapeHtml(firstName);
-  const html = [
-    '<p>Dear ' + safe + ',</p>',
-    '<p>Thank you for completing our Kids Habit and Check form and expressing interest in RemoEd PH. We are pleased to welcome you and your child to our learning community.</p>',
-    '<p>At RemoEd PH, we provide 1-on-1 English education for children ages 6 to 12, rooted in Christian values and character development. Because your primary goal is to strengthen your child\'s reading skills, our curriculum is tailored to guide them step by step.</p>',
-    '<p>To get started:</p>',
-    '<ol>',
-    '<li>Free Assessment &amp; Trial Lessons: Complete our brief Free Assessment at <a href="' + LEAD_WELCOME_ASSESSMENT + '">' + LEAD_WELCOME_ASSESSMENT + '</a>, then create an account to unlock your free trial lessons.</li>',
-    '<li>Student Referral Program: Once enrolled, you will also have access to our Student Referral Program to earn commissions when referring other families.</li>',
-    '</ol>',
-    '<p>If you have any questions, please reply directly to this email (support@remoedph.com) or reach us via WhatsApp/Zalo at +639168712529. We look forward to working with you and your child.</p>',
-    '<p>Warm regards,</p>',
-    '<p>RemoEd PH Team<br>support@remoedph.com</p>',
-  ].join('');
-  return { text, html };
+  const html = text
+    .split('\n')
+    .map((line) => (line ? '<p>' + escapeHtml(line) + '</p>' : ''))
+    .join('')
+    .replace(escapeHtml(LEAD_WELCOME_ASSESSMENT), '<a href="' + LEAD_WELCOME_ASSESSMENT + '">' + LEAD_WELCOME_ASSESSMENT + '</a>');
+  return { text, html, safe };
+}
+
+async function sendParentSequenceEmail(input) {
+  return sendLeadWelcomeEmail(input);
 }
 
 async function sendLeadWelcomeEmail(input) {
@@ -952,18 +946,21 @@ async function sendLeadWelcomeEmail(input) {
     if (!isEmailConfigured) {
       return { success: false, error: 'Email service not configured.', fallback: true };
     }
-    const bodies = leadWelcomeBodies(leadWelcomeFirstName(input && input.name));
+    const bodies = input && input.text
+      ? { text: String(input.text), html: String(input.text).split('\n').map((line) => (line ? '<p>' + escapeHtml(line) + '</p>' : '')).join('') }
+      : leadWelcomeBodies(leadWelcomeFirstName(input && input.name));
+    const subject = (input && input.subject) || LEAD_WELCOME_SUBJECT;
     const replyTo = 'support@remoedph.com';
     if (activeEmailService === 'mailgun') {
-      return await sendEmailViaMailgun(target, LEAD_WELCOME_SUBJECT, bodies.html, bodies.text, {
-        from: '"RemoEd PH Team" <support@remoedph.com>',
+      return await sendEmailViaMailgun(target, subject, bodies.html, bodies.text, {
+        from: '"RemoEd Support" <support@remoedph.com>',
         replyTo,
       });
     }
     if (activeEmailService === 'smtp') {
       const info = await smtpSendMail({
         to: target,
-        subject: LEAD_WELCOME_SUBJECT,
+        subject,
         html: bodies.html,
         text: bodies.text,
         replyTo,
@@ -1933,6 +1930,7 @@ module.exports = {
   sendMarketingTestEmail,
   sendMarketingAudienceEmail,
   sendLeadWelcomeEmail,
+  sendParentSequenceEmail,
   getEmailConfigStatus,
   seedEmailTemplates,
   buildSeedBodies,

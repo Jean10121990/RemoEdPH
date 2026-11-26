@@ -44,6 +44,11 @@ const leadSchema = new mongoose.Schema(
     lastContactAt: { type: Date, default: null },
     welcomeEmailSent: { type: Boolean, default: false },
     welcomeEmailSentAt: { type: Date, default: null },
+    sequenceSent: {
+      onboard: { type: Date, default: null },
+      value: { type: Date, default: null },
+      checkin: { type: Date, default: null },
+    },
     reminderSent: {
       h24: { type: Date, default: null },
       d3: { type: Date, default: null },

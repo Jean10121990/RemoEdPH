@@ -25,11 +25,11 @@ const { warmParentLetter, letterNeedsHistory } = require('../services/marketingE
 
 const router = express.Router();
 
-const SYSTEM_INSTRUCTION = `You write marketing copy for RemoEdPH. RemoEdPH is live one-on-one English classes for children aged 3-6 with real teachers. Each class is 25 minutes. Families are in Taiwan, Japan, South Korea, and Southeast Asia.
-Sound like a real person who is glad to help. Build rapport. Be warm, friendly, alive, and professional. Help the parent or the student in a practical way. Stay wholesome, faith-honoring, and child-safe. Do not preach. Do not pressure. Do not invent prices or discounts.
-Lesson characters are Remo, Ed, Sofie, and Teacher Grace. Remo is the cute green robot.
-Describe live classes with real teachers. Do not call RemoEd AI-powered.
-Write for parents and students.`;
+const SYSTEM_INSTRUCTION = `You write marketing copy for RemoEdPH for parents of children ages 3 to 6 in Taiwan, Japan, South Korea, Southeast Asia, and the Philippines.
+The free offer is an interactive trial and an optional level assessment on the RemoEd App. No credit card. The free trial is not a live class.
+Live 25-minute one-on-one lessons with a real teacher are paid plans only: RemoSpark 22 classes at ₱350 (₱7,700), RemoSteady 66 at ₱340 (₱22,440), RemoScholar 132 at ₱330 (₱43,560), RemoSummit 264 at ₱320 (₱84,480). Do not invent another discount.
+Sound warm, friendly, professional, and wholesome. Christian values mean kindness, patience, and character. Do not preach. Do not pressure. Do not call RemoEd AI-powered.
+Lesson characters are Remo, Ed, Sofie, and Teacher Grace. Remo is the cute green robot.`;
 
 const adminChain = [
   verifyAdminApiAuth,
@@ -100,12 +100,43 @@ async function ensureYear(year) {
       { upsert: true }
     );
   }
+  const csrDates = wanted.filter((row) => row.slot === 'csr').map((row) => row.dateKey);
+  await MarketingCalendarEntry.deleteMany({
+    $and: [
+      { dateKey: { $regex: '^' + String(year) + '-' } },
+      { dateKey: { $nin: csrDates } },
+      { slot: 'csr' },
+      { status: 'planned' },
+      { generatedCopy: '' },
+      { emailBody: '' },
+    ],
+  });
 }
 
 function addEmail(set, value) {
   const email = String(value || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
   set.add(email);
+}
+
+function facebookFallback(topic) {
+  const theme = String(topic || 'a gentle start in English').trim();
+  return {
+    post: 'Hello, parents.\n\n' + theme + '\n\nIf your child is 3 to 6, you can sign up for a free interactive trial on the RemoEd App. No card is needed. It is not a live class. When you are ready for a real teacher, a live 25-minute one-on-one lesson is on a paid plan.\n\nA free level assessment is there too, if you want a starting level first: https://remoedph.com/#assessment',
+    adHeadline: 'Free interactive trial on the RemoEd App',
+    adText: 'A warm start for ages 3 to 6. Sign up for the free interactive trial. No card. Live 25-minute classes with a teacher are on a paid plan.',
+  };
+}
+
+function facebookResult(pack) {
+  const post = clamp(pack.post, 5000);
+  const adHeadline = clamp(pack.adHeadline, 120);
+  const adText = clamp(pack.adText, 2000);
+  return {
+    success: true,
+    content: 'Page post\n\n' + post + '\n\nShort ad\n' + adHeadline + '\n\n' + adText,
+    facebook: { post, ad: { headline: adHeadline, text: adText } },
+  };
 }
 
 function emailResult(email) {
@@ -340,14 +371,18 @@ router.post('/ai-generate', adminChain, async (req, res) => {
         'Open with a human hello. Picture one small true-to-life moment a child aged 3 to 6 might have.',
         'Weave the topic in with warmth. Do not paste the topic as its own sentence. Do not lecture.',
         'If the topic is a Philippine hero, holiday, or historical event, add two or three true sentences of background so a parent outside the Philippines knows who the person was, when it happened, and why the day is kept. Do not assume the reader grew up in the Philippines. Do not invent dates.',
-        'Offer one practical way a live 25-minute class with a real teacher helps. Close with a kind next step and no pressure.',
+        'The free next step is the interactive trial on the RemoEd App, not a live class. A live 25-minute lesson with a real teacher is a paid plan. Close with a kind next step and no pressure.',
         'variation is a shorter second note with the same care.',
       ].join('\n')
       : [
-        'Task: Create ' + contentType,
+        'Task: a Facebook Page post and a short ad for parents of children ages 3 to 6.',
         'Target market: ' + targetMarket,
-        'Points to include: ' + topicDetails,
-        'Write 2 variations. Each one needs a clear next step for the parent.',
+        'Key topic: ' + topicDetails,
+        'Return JSON only: {"post":"...","adHeadline":"...","adText":"..."}',
+        'post is a warm Page post. adHeadline is one line. adText is the short ad primary text.',
+        'Invite them to sign up for the free interactive trial on the RemoEd App. No card. Say the free trial is not a live class.',
+        'Mention the free level assessment only as an optional second step: https://remoedph.com/#assessment',
+        'Do not invent a price. If you mention plans, use only RemoSpark ₱350, RemoSteady ₱340, RemoScholar ₱330, and RemoSummit ₱320 per class.',
       ].join('\n');
 
     const generationConfig = format === 'email'
@@ -393,6 +428,7 @@ router.post('/ai-generate', adminChain, async (req, res) => {
 
     if (!response || !response.ok) {
       if (format === 'email') return res.json(emailResult(warmParentLetter(topicDetails)));
+      if (format !== 'email') return res.json(facebookResult(facebookFallback(topicDetails)));
       console.error('Gemini API Error:', JSON.stringify(data || { message: lastError }));
       return res.status(response ? response.status : 504).json({
         success: false,
@@ -407,6 +443,7 @@ router.post('/ai-generate', adminChain, async (req, res) => {
 
     if (!generatedText) {
       if (format === 'email') return res.json(emailResult(warmParentLetter(topicDetails)));
+      if (format !== 'email') return res.json(facebookResult(facebookFallback(topicDetails)));
       const reason = (data.promptFeedback && data.promptFeedback.blockReason)
         || (data.candidates && data.candidates[0] && data.candidates[0].finishReason);
       console.error('Gemini returned no text. Reason:', reason);
@@ -430,7 +467,13 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       return res.json(emailResult({ subject, body: emailBody, variation }));
     }
 
-    return res.json({ success: true, content: generatedText });
+    const parsed = parseModelJson(generatedText) || {};
+    const fallback = facebookFallback(topicDetails);
+    return res.json(facebookResult({
+      post: parsed.post || generatedText || fallback.post,
+      adHeadline: parsed.adHeadline || fallback.adHeadline,
+      adText: parsed.adText || fallback.adText,
+    }));
   } catch (error) {
     console.error('Error generating marketing copy:', error.message || error);
     return res.status(500).json({ success: false, message: 'Failed to generate content.' });

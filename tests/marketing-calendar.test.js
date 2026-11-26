@@ -21,10 +21,10 @@ function weekday(dateKey) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-function lastThursday(year, month) {
+function lastSaturday(year, month) {
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
   for (let day = last; day >= 1; day -= 1) {
-    if (new Date(Date.UTC(year, month - 1, day)).getUTCDay() === 4) {
+    if (new Date(Date.UTC(year, month - 1, day)).getUTCDay() === 6) {
       return year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
     }
   }
@@ -58,7 +58,7 @@ test('every Monday and Thursday has its own regular row, including holidays', ()
 test('holiday Mondays and Thursdays keep the regular post beside the observance', () => {
   assert.deepEqual(slots('2026-12-24'), ['observance', 'regular']);
   assert.equal(on('2026-12-24').find((row) => row.slot === 'observance').title, 'Christmas Eve');
-  assert.equal(on('2026-12-24').find((row) => row.slot === 'regular').title, 'Thursday class');
+  assert.equal(on('2026-12-24').find((row) => row.slot === 'regular').title, 'Thursday post');
   assert.equal(weekday('2026-12-24'), 4);
 
   assert.deepEqual(slots('2027-04-22'), ['observance', 'regular']);
@@ -73,20 +73,22 @@ test('holiday Mondays and Thursdays keep the regular post beside the observance'
   assert.equal(weekday('2027-11-01'), 1);
 });
 
-test('December 2026 rows are dry run and December 31 keeps regular plus CSR', () => {
+test('December 2026 rows are dry run and the CSR post is the last Saturday', () => {
   const december = entries.filter((row) => row.dateKey.startsWith('2026-12'));
   assert.ok(december.length > 0);
   assert.equal(december.every((row) => row.dryRun === true), true);
   assert.equal(entries.filter((row) => row.dateKey.startsWith('2027-')).every((row) => row.dryRun === false), true);
-  assert.deepEqual(slots('2026-12-31'), ['csr', 'regular']);
-  assert.equal(weekday('2026-12-31'), 4);
+  assert.deepEqual(slots('2026-12-31'), ['regular']);
+  assert.equal(weekday('2026-12-26'), 6);
+  assert.equal(on('2026-12-26').some((row) => row.slot === 'csr'), true);
 });
 
-test('March 25 keeps the regular Thursday post, Holy Week, and the March CSR post', () => {
+test('March 25 keeps the regular Thursday post and Holy Week, and CSR is the last Saturday', () => {
   assert.equal(weekday('2027-03-25'), 4);
-  assert.equal(lastThursday(2027, 3), '2027-03-25');
-  assert.deepEqual(slots('2027-03-25'), ['csr', 'observance', 'regular']);
+  assert.deepEqual(slots('2027-03-25'), ['observance', 'regular']);
   assert.equal(on('2027-03-25').find((row) => row.slot === 'observance').title, 'Holy Week');
+  assert.equal(weekday('2027-03-27'), 6);
+  assert.equal(on('2027-03-27').some((row) => row.slot === 'csr'), true);
 });
 
 test('listed holidays match those dates', () => {
@@ -136,15 +138,14 @@ test('November has Children\'s Month on November 4 and Children\'s Day on Novemb
   assert.equal(on('2027-11-20').find((row) => row.slot === 'observance').title, "Children's Day");
 });
 
-test('each month has one CSR last-Thursday beside that Thursday\'s regular post', () => {
+test('each month has one CSR post on the last Saturday', () => {
   const months = [{ year: 2026, month: 12 }];
   for (let month = 1; month <= 12; month += 1) months.push({ year: 2027, month });
   months.forEach(({ year, month }) => {
     const prefix = year + '-' + String(month).padStart(2, '0');
     const csr = entries.filter((row) => row.dateKey.startsWith(prefix) && row.slot === 'csr');
     assert.equal(csr.length, 1, prefix);
-    assert.equal(csr[0].dateKey, lastThursday(year, month));
-    assert.equal(on(csr[0].dateKey).some((row) => row.slot === 'regular'), true);
+    assert.equal(csr[0].dateKey, lastSaturday(year, month));
   });
 });
 
@@ -152,7 +153,7 @@ test('November 30 2026 is the Bonifacio Day test beside the Monday class', () =>
   assert.equal(weekday('2026-11-30'), 1);
   assert.deepEqual(slots('2026-11-30'), ['observance', 'regular']);
   assert.equal(on('2026-11-30').find((row) => row.slot === 'observance').title, 'Bonifacio Day');
-  assert.equal(on('2026-11-30').find((row) => row.slot === 'regular').title, 'Monday class');
+  assert.equal(on('2026-11-30').find((row) => row.slot === 'regular').title, 'Monday post');
   assert.equal(on('2026-11-30').every((row) => row.dryRun === true), true);
   assert.equal(entries.some((row) => row.dateKey === '2026-11-26'), false);
 });
