@@ -336,27 +336,46 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       ].join('\n');
 
     const generationConfig = format === 'email'
-      ? { responseMimeType: 'application/json', temperature: 0.4 }
-      : { temperature: 0.4 };
+      ? { temperature: 0.4, maxOutputTokens: 700 }
+      : { temperature: 0.4, maxOutputTokens: 700 };
 
     let response;
     let data;
+    let lastError = '';
     for (const model of getModels()) {
-      response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig,
-          }),
-        }
-      );
-      data = await response.json();
-      if (response.status !== 404) break;
-      console.error('Gemini model not found: ' + model);
+      const controller = new AbortController();
+      const timer = setTimeout(function () { controller.abort(); }, 18000);
+      try {
+        response = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig,
+            }),
+            signal: controller.signal,
+          }
+        );
+        data = await response.json();
+        if (response.status !== 404) break;
+        console.error('Gemini model not found: ' + model);
+      } catch (error) {
+        lastError = error && error.name === 'AbortError' ? 'timed out' : (error && error.message) || 'failed';
+        console.error('Gemini model ' + model + ' ' + lastError);
+        response = null;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    if (!response) {
+      return res.status(504).json({
+        success: false,
+        message: 'The writer took too long. Try Generate again.',
+      });
     }
 
     if (!response.ok) {

@@ -540,6 +540,38 @@
           msg(err.message || String(err));
         });
       });
+      function starterEmail(topic) {
+        var subject = String(topic || 'A note from RemoEd').trim();
+        if (subject.length > 80) subject = subject.slice(0, 77) + '...';
+        var body = 'Hello,\n\n' +
+          topic + '\n\n' +
+          'A child can sit with a real teacher for 25 minutes, one to one. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm and easy to join. It is for ages 3 to 6.\n\n' +
+          'If your family is ready, start a free trial on the Remo App at remoedph.com.\n\n' +
+          'With care,\nRemoEd Support';
+        return { subject: subject, body: body };
+      }
+
+      function applyGenerated(type, topic, data) {
+        var email = data && data.email;
+        if (type === 'email' && (!email || !email.body)) {
+          var content = data && data.content ? String(data.content).trim() : '';
+          if (content) {
+            var parts = content.split(/\n\n/);
+            email = { subject: (parts[0] || '').replace(/^subject:\s*/i, ''), body: parts.slice(1).join('\n\n') || content };
+          } else {
+            email = starterEmail(topic);
+          }
+        }
+        if (email) {
+          document.getElementById('aiEmailSubject').value = email.subject || '';
+          document.getElementById('aiEmailBody').value = email.body || '';
+          document.getElementById('aiOutputBox').value = (email.subject || '') + '\n\n' + (email.body || '');
+          syncEmailFields();
+          return;
+        }
+        document.getElementById('aiOutputBox').value = (data && data.content) || '';
+      }
+
       document.getElementById('btnGenerateAi').addEventListener('click', async function () {
         var topic = document.getElementById('aiTopicDetails').value.trim();
         msg('');
@@ -558,15 +590,19 @@
               topicDetails: topic
             })
           });
-          document.getElementById('aiOutputBox').value = data.content || '';
-          if (data.email) {
-            document.getElementById('aiEmailSubject').value = data.email.subject || '';
-            document.getElementById('aiEmailBody').value = data.email.body || '';
+          applyGenerated(type, topic, data);
+          msg(type === 'email' ? 'Email subject and body are ready.' : 'Copy is ready.');
+          if (selectedKey) {
+            try { await save('drafted'); }
+            catch (saveErr) { msg((type === 'email' ? 'Email is ready to edit. ' : '') + (saveErr.message || String(saveErr))); }
           }
-          if (selectedKey) await save('drafted');
-          else msg('Copy is ready. Choose a date to keep it.');
         } catch (err) {
-          msg(err.message || String(err));
+          if (type === 'email') {
+            applyGenerated(type, topic, null);
+            msg('The writer was slow, so a starter email is in the subject and body. Edit it, then save.');
+          } else {
+            msg(err.message || String(err));
+          }
         }
         btn.disabled = false;
         btn.textContent = 'Generate marketing copy';
