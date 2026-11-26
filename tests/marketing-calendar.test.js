@@ -4,7 +4,7 @@ const {
   buildMarketingCalendar,
   calendarWriteError,
 } = require('../server/services/marketingCalendarSeed');
-const { warmParentLetter } = require('../server/services/marketingEmailVoice');
+const { warmParentLetter, letterNeedsHistory } = require('../server/services/marketingEmailVoice');
 
 const entries = buildMarketingCalendar();
 
@@ -163,9 +163,19 @@ test('a parent email sounds like a caring note, not a pasted topic', () => {
   assert.equal(letter.subject.includes('Bonifacio Day: courage'), false);
   assert.match(letter.body, /Hello,/);
   assert.match(letter.body, /Andres Bonifacio/);
+  assert.match(letter.body, /November 30, 1863/);
+  assert.match(letter.body, /Katipunan/);
+  assert.match(letter.body, /in case this day is new to your family/);
   assert.match(letter.body, /real teacher/);
   assert.match(letter.body, /With care/);
   assert.equal(letter.body.includes('Bonifacio Day: courage and care for community'), false);
+  assert.equal(letterNeedsHistory('Bonifacio Day: courage and care for community', 'A short note with no history.'), true);
+  const rizal = warmParentLetter('Rizal Day: learning, courage, and love of home');
+  assert.match(rizal.body, /December 30, 1896/);
+  assert.match(rizal.body, /Noli Me Tangere/);
+  const independence = warmParentLetter('Independence Day: pride, kindness, and home');
+  assert.match(independence.body, /June 12, 1898/);
+  assert.match(independence.body, /Kawit/);
 });
 
 test('a bad status and a date outside the window are rejected', () => {

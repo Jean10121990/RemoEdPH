@@ -23,7 +23,7 @@
     csr: ['CSR Outreach', '#166534', '#bbf7d0'],
     custom: ['Others / Custom', '#1a365d', '#7dd3fc']
   };
-  var TYPE_LABEL = { facebook: 'Facebook Post / FB Group', email: 'Email Newsletter / Parent Email', ad: 'Social Media Ad' };
+  var TYPE_LABEL = { facebook: 'Facebook Post / FB Group', email: 'Email Newsletter / Parent Email' };
 
   function pad(n) { return n < 10 ? '0' + n : String(n); }
   function daysInMonth(year, month) { return new Date(Date.UTC(year, month, 0)).getUTCDate(); }
@@ -66,7 +66,7 @@
         '<div id="mkt-cal" class="mkt-cal"></div>' +
         '<div id="mkt-slots" class="row-actions"></div>' +
         '<section class="chart"><label>Content type</label>' +
-        '<select id="aiContentType"><option value="facebook">Facebook Post / FB Group</option><option value="email">Email Newsletter / Parent Email</option><option value="ad">Social Media Ad</option></select>' +
+        '<select id="aiContentType"><option value="facebook">Facebook Post / FB Group</option><option value="email">Email Newsletter / Parent Email</option></select>' +
         '<label>Target region</label>' +
         '<select id="aiTargetMarket"><option>Taiwan</option><option>Japan</option><option>South Korea</option><option selected>General International (Asia)</option></select>' +
         '<label>Key topic</label><textarea id="aiTopicDetails" rows="3"></textarea>' +
@@ -121,6 +121,7 @@
       }
 
       var logoArt = null;
+      var scenePhotos = {};
       function ensureLogo() {
         if (logoArt) return;
         logoArt = { ready: null };
@@ -163,16 +164,28 @@
         ctx.translate(x, y);
         ctx.fillStyle = '#fcd116';
         for (var i = 0; i < 8; i++) {
-          ctx.rotate(Math.PI / 8);
+          ctx.rotate(Math.PI / 4);
           ctx.beginPath();
           ctx.moveTo(0, 0);
-          ctx.lineTo(-radius * 0.22, -radius * 1.55);
-          ctx.lineTo(radius * 0.22, -radius * 1.55);
+          ctx.lineTo(-radius * 0.14, -radius * 2.15);
+          ctx.lineTo(radius * 0.14, -radius * 2.15);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-radius * 0.46, -radius * 1.35);
+          ctx.lineTo(-radius * 0.2, -radius * 1.22);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(radius * 0.2, -radius * 1.22);
+          ctx.lineTo(radius * 0.46, -radius * 1.35);
           ctx.closePath();
           ctx.fill();
         }
         ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -184,8 +197,9 @@
         ctx.beginPath();
         for (var i = 0; i < 5; i++) {
           var angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-          ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
           var inner = angle + Math.PI / 5;
+          if (i === 0) ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+          else ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
           ctx.lineTo(Math.cos(inner) * r * 0.42, Math.sin(inner) * r * 0.42);
         }
         ctx.closePath();
@@ -217,56 +231,197 @@
         ctx.restore();
       }
 
-      function drawHeroSilhouette(ctx, x, ground, scale) {
+      function heroKind() {
+        var headline = (document.getElementById('posterHeadline').value || '').toLowerCase();
+        var text = headline + ' ' + (document.getElementById('posterTheme').value || '');
+        if (/bonifacio/.test(text)) return 'bonifacio';
+        if (/rizal/.test(text)) return 'rizal';
+        if (/valor|bataan/.test(text)) return 'valor';
+        if (/independence/.test(text)) return 'independence';
+        return 'heroes';
+      }
+
+      function fillSilhouette(ctx) {
+        ctx.fillStyle = '#10182a';
+      }
+
+      function drawCoat(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(-18, -188);
+        ctx.lineTo(-34, -150);
+        ctx.quadraticCurveTo(-58, -120, -62, -36);
+        ctx.lineTo(-46, -8);
+        ctx.quadraticCurveTo(0, 6, 48, -8);
+        ctx.lineTo(58, -36);
+        ctx.quadraticCurveTo(52, -120, 32, -150);
+        ctx.lineTo(16, -188);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawLegs(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(-26, -16);
+        ctx.lineTo(-18, -4);
+        ctx.lineTo(-30, 8);
+        ctx.lineTo(-8, 8);
+        ctx.lineTo(-4, -16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(4, -16);
+        ctx.lineTo(10, 8);
+        ctx.lineTo(32, 8);
+        ctx.lineTo(22, -4);
+        ctx.lineTo(26, -16);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawBonifacio(ctx, x, ground, scale) {
         ctx.save();
         ctx.translate(x, ground);
         ctx.scale(scale, scale);
-        ctx.fillStyle = '#10243f';
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath();
-        ctx.ellipse(0, -168, 22, 26, 0, 0, Math.PI * 2);
+        ctx.ellipse(8, 16, 78, 12, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillRect(-46, -176, 92, 10);
+        fillSilhouette(ctx);
+        drawLegs(ctx);
+        drawCoat(ctx);
+        ctx.fillRect(-7, -206, 14, 22);
         ctx.beginPath();
-        ctx.ellipse(0, -182, 48, 12, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, -226, 16, 20, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(-34, -146);
-        ctx.lineTo(34, -146);
-        ctx.lineTo(48, -20);
-        ctx.lineTo(-48, -20);
+        ctx.moveTo(-16, -242);
+        ctx.quadraticCurveTo(0, -278, 16, -242);
         ctx.closePath();
         ctx.fill();
-        ctx.fillRect(-16, -20, 14, 78);
-        ctx.fillRect(4, -20, 14, 78);
         ctx.beginPath();
-        ctx.moveTo(20, -120);
-        ctx.lineTo(18, -70);
-        ctx.lineTo(86, -168);
-        ctx.lineTo(96, -158);
-        ctx.lineTo(28, -58);
+        ctx.ellipse(0, -244, 42, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(18, -160);
+        ctx.quadraticCurveTo(46, -210, 54, -268);
+        ctx.lineTo(66, -264);
+        ctx.quadraticCurveTo(54, -198, 30, -148);
         ctx.closePath();
         ctx.fill();
-        ctx.fillRect(78, -250, 8, 100);
+        ctx.fillRect(58, -332, 5, 72);
+        drawPhFlag(ctx, 63, -332, 78, 48);
         ctx.restore();
       }
 
+      function drawRizal(ctx, x, ground, scale) {
+        ctx.save();
+        ctx.translate(x, ground);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.beginPath();
+        ctx.ellipse(6, 16, 72, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        fillSilhouette(ctx);
+        drawLegs(ctx);
+        drawCoat(ctx);
+        ctx.fillRect(-7, -208, 14, 22);
+        ctx.beginPath();
+        ctx.ellipse(0, -228, 16, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(2, -250, 18, 6, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(-46, -92, 28, 36);
+        ctx.restore();
+      }
+
+      function drawValor(ctx, x, ground, scale) {
+        ctx.save();
+        ctx.translate(x, ground);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.beginPath();
+        ctx.ellipse(6, 16, 72, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        fillSilhouette(ctx);
+        drawLegs(ctx);
+        drawCoat(ctx);
+        ctx.fillRect(-7, -208, 14, 22);
+        ctx.beginPath();
+        ctx.ellipse(0, -228, 16, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(-20, -252, 40, 8);
+        ctx.beginPath();
+        ctx.moveTo(16, -156);
+        ctx.quadraticCurveTo(40, -200, 36, -248);
+        ctx.lineTo(48, -246);
+        ctx.quadraticCurveTo(50, -190, 28, -146);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.translate(x + 36 * scale, ground - 248 * scale);
+        drawStar(ctx, 0, 0, 16 * scale);
+        ctx.restore();
+      }
+
+      function ensureScenePhoto(name) {
+        if (scenePhotos[name]) return scenePhotos[name];
+        var img = new Image();
+        scenePhotos[name] = img;
+        img.onload = function () { drawPoster(); };
+        img.src = '/images/poster-' + name + '.jpg';
+        return img;
+      }
+
+      function drawCover(ctx, img, width, height) {
+        if (!img || !img.naturalWidth) return false;
+        var scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+        var w = img.naturalWidth * scale;
+        var h = img.naturalHeight * scale;
+        ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
+        return true;
+      }
+
       function drawScene(ctx, scene, height) {
+        if (scene === 'heroes' && heroKind() === 'bonifacio') {
+          var photo = ensureScenePhoto('bonifacio');
+          if (drawCover(ctx, photo, 1080, height)) {
+            var shade = ctx.createLinearGradient(0, 0, 0, 260);
+            shade.addColorStop(0, 'rgba(16, 28, 44, 0.42)');
+            shade.addColorStop(1, 'rgba(16, 28, 44, 0)');
+            ctx.fillStyle = shade;
+            ctx.fillRect(0, 0, 700, 260);
+            return;
+          }
+        }
         if (scene === 'heroes') {
           var sky = ctx.createLinearGradient(0, 0, 0, height);
-          sky.addColorStop(0, '#1b3a6b');
-          sky.addColorStop(0.55, '#f2c14e');
-          sky.addColorStop(1, '#8d3a2f');
+          sky.addColorStop(0, '#16325c');
+          sky.addColorStop(0.42, '#e7a23a');
+          sky.addColorStop(0.72, '#f3d48a');
+          sky.addColorStop(1, '#6e2e2a');
           ctx.fillStyle = sky;
           ctx.fillRect(0, 0, 1080, height);
-          drawPhFlag(ctx, 700, 180, 300, 190);
-          ctx.fillStyle = '#245c38';
+          ctx.fillStyle = 'rgba(255, 214, 120, 0.35)';
           ctx.beginPath();
-          ctx.ellipse(540, height - 40, 700, 180, 0, Math.PI, 0);
+          ctx.arc(180, height - 210, 90, 0, Math.PI * 2);
           ctx.fill();
-          drawHeroSilhouette(ctx, 330, height - 150, 1.7);
-          var poleFlagX = 330 + 86 * 1.7;
-          var poleFlagY = (height - 150) - 250 * 1.7;
-          drawPhFlag(ctx, poleFlagX, poleFlagY - 20, 150, 96);
+          var kind = heroKind();
+          if (kind === 'independence') drawPhFlag(ctx, 560, 210, 440, 276);
+          else drawPhFlag(ctx, 700, 150, 300, 188);
+          ctx.fillStyle = '#1f6b3a';
+          ctx.beginPath();
+          ctx.ellipse(540, height - 20, 760, 150, 0, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = '#174f2c';
+          ctx.beginPath();
+          ctx.ellipse(240, height - 10, 280, 70, 0, Math.PI, 0);
+          ctx.fill();
+          if (kind === 'rizal') drawRizal(ctx, 360, height - 150, 2.05);
+          else if (kind === 'valor') drawValor(ctx, 360, height - 150, 2.05);
+          else if (kind === 'independence') drawBonifacio(ctx, 250, height - 145, 1.7);
+          else drawBonifacio(ctx, 340, height - 150, 2.05);
           return;
         }
         var theme = THEMES[document.getElementById('posterTheme').value] || THEMES.custom;
@@ -343,11 +498,13 @@
         wrapText(ctx, document.getElementById('posterSub').value, 64, scene === 'heroes' ? 480 : 520, 560, 42, 3);
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(12, 48, 72, 0.82)';
+        ctx.fillStyle = 'rgba(12, 48, 72, 0.88)';
         ctx.fillRect(0, height - 118, 1080, 118);
         ctx.fillStyle = '#ffffff';
-        ctx.font = '700 30px Segoe UI, Arial, sans-serif';
-        ctx.fillText(document.getElementById('posterCta').value || 'remoedph.com • Free Trial on Remo App', 48, height - 48);
+        ctx.font = '700 28px Segoe UI, Arial, sans-serif';
+        var footer = document.getElementById('posterCta').value || 'remoedph.com • Free Trial on Remo App';
+        while (footer.length > 8 && ctx.measureText(footer).width > 760) footer = footer.slice(0, -2);
+        ctx.fillText(footer, 48, height - 48);
         if (logoArt && logoArt.ready) {
           var logo = logoArt.ready;
           var logoH = 92;
@@ -370,7 +527,8 @@
       function fill(row) {
         selectedKey = row ? row.dateKey : '';
         selectedSlot = row ? row.slot : '';
-        document.getElementById('aiContentType').value = row && row.contentType ? row.contentType : 'facebook';
+        var savedType = row && row.contentType === 'email' ? 'email' : 'facebook';
+        document.getElementById('aiContentType').value = savedType;
         document.getElementById('aiTargetMarket').value = (row && row.targetMarket) || 'General International (Asia)';
         document.getElementById('aiTopicDetails').value = row ? row.keyTopic || '' : '';
         document.getElementById('aiOutputBox').value = row ? row.generatedCopy || '' : '';
@@ -550,7 +708,7 @@
           ? 'Hello,\n\nHappy Bonifacio Day. I hope this finds you with your little one nearby, maybe in the middle of a small adventure that only a parent would notice.'
           : 'Hello,\n\nI hope your day has a soft place in it, the kind where a child can tell you about something small that mattered.';
         var heart = bonifacio
-          ? 'We often picture heroes as loud and far away. At home, courage is quieter. It is a child trying a new English word for the first time, sharing a smile with a friend, or looking after someone smaller. Andres Bonifacio cared for the people around him. That same care can live in an ordinary afternoon, in the way a family looks after one another.'
+          ? 'A little background, in case this day is new to your family. Andres Bonifacio was born on November 30, 1863, in Tondo, Manila. He founded the Katipunan, a secret group of ordinary Filipinos who chose to stand together for freedom from Spanish rule. The Philippines remembers him on his birthday as the Father of the Philippine Revolution.\n\nWe often picture heroes as loud and far away. At home, courage is quieter. It is a child trying a new English word for the first time, sharing a smile with a friend, or looking after someone smaller. Bonifacio believed ordinary people could care for one another and still be brave. That same care can live in an ordinary afternoon.'
           : (theme
             ? 'Today we are holding this with you: ' + theme.replace(/[:]+/g, ',') + '. A child does not need that turned into a speech. They need to feel safe, noticed, and glad they tried.'
             : 'A child feels brave when the people at home are kind, steady, and glad they are here.');

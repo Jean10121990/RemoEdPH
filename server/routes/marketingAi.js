@@ -21,7 +21,7 @@ const {
   STATUSES,
   CONTENT_TYPES,
 } = require('../services/marketingCalendarSeed');
-const { warmParentLetter } = require('../services/marketingEmailVoice');
+const { warmParentLetter, letterNeedsHistory } = require('../services/marketingEmailVoice');
 
 const router = express.Router();
 
@@ -339,6 +339,7 @@ router.post('/ai-generate', adminChain, async (req, res) => {
         'Voice: friendly, lively, caring, and professional. Build trust. Sound glad to help.',
         'Open with a human hello. Picture one small true-to-life moment a child aged 3 to 6 might have.',
         'Weave the topic in with warmth. Do not paste the topic as its own sentence. Do not lecture.',
+        'If the topic is a Philippine hero, holiday, or historical event, add two or three true sentences of background so a parent outside the Philippines knows who the person was, when it happened, and why the day is kept. Do not assume the reader grew up in the Philippines. Do not invent dates.',
         'Offer one practical way a live 25-minute class with a real teacher helps. Close with a kind next step and no pressure.',
         'variation is a shorter second note with the same care.',
       ].join('\n')
@@ -422,7 +423,9 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       const fallback = warmParentLetter(topicDetails);
       const subject = clamp(parsed.subject || fallback.subject, 200);
       let emailBody = clamp(parsed.body || '', 20000);
-      if (emailBody.length < 280 || emailBody.indexOf(topicDetails) === 0) emailBody = fallback.body;
+      if (emailBody.length < 280 || emailBody.indexOf(topicDetails) === 0 || letterNeedsHistory(topicDetails, emailBody)) {
+        return res.json(emailResult(fallback));
+      }
       const variation = clamp(parsed.variation || '', 20000);
       return res.json(emailResult({ subject, body: emailBody, variation }));
     }
