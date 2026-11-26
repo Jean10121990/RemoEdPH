@@ -228,7 +228,7 @@ const API_PATH_PERMISSION_RULES = [
   { re: /\/affiliates(\/|$|\?)/, key: 'mkt:affiliates_manage' },
   { re: /\/growth\/reports/, key: 'growth.reports' },
   { re: /\/money-split/, key: 'acct:payroll_view' },
-  { re: /\/marketing\/ai-generate/, key: 'growth.ai_settings' },
+  { re: /\/marketing\/(ai-generate|calendar)/, key: 'growth.ai_settings' },
   { re: /\/growth\/leads/, key: 'growth.leads' },
   { re: /\/growth\/(inbox|gmail)/, key: 'growth.inbox' },
   { re: /\/growth\/(posts|social)/, key: 'growth.posts' },

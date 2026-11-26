@@ -38,12 +38,20 @@
     .interactive-count { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0 0; font-size: 1rem; }
     .interactive-count strong { display: block; font-size: 0.95rem; }
     .interactive-count span { font-size: 1.75rem; font-weight: 800; color: var(--teal); }
+    .mkt-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 12px 0; }
+    .mkt-dow, .mkt-day { font-size: 0.75rem; }
+    .mkt-dow { color: var(--muted); font-weight: 700; padding: 0 4px; }
+    .mkt-day { background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; min-height: 72px; text-align: left; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+    .mkt-day strong { font-size: 0.85rem; }
+    .mkt-day span { color: var(--muted); line-height: 1.2; }
+    .mkt-day.on { outline: 3px solid var(--teal); }
     @media (max-width: 800px) { .split { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 110px 1fr 28px; } }
   </style>
 </head>
 <body>
   <div class="page" id="app">Loading…</div>
   <script src="js/admin-session.js"></script>
+  <script src="js/marketing-specialist.js?v=mkt-cal-3"></script>
   <script>
     var tab = new URLSearchParams(location.search).get('tab') || 'leads';  
     function token() {
@@ -287,60 +295,12 @@
     }
 
     function loadSpecialist() {
-      document.getElementById('app').innerHTML =
-        '<h1>RemoEdPH AI Marketing Specialist</h1><p class="muted">Draft a Facebook post, a parent email, or an ad. The copy describes live classes with real teachers.</p>' +
-        '<section class="chart"><label>Content type</label>' +
-        '<select id="aiContentType"><option>Facebook Group Post</option><option>Parent Email Outreach</option><option>Social Media Ad Copy</option></select>' +
-        '<label>Target region</label>' +
-        '<select id="aiTargetMarket"><option>Taiwan</option><option>Japan</option><option>South Korea</option><option>General International (Asia)</option></select>' +
-        '<label>Key topic</label>' +
-        '<textarea id="aiTopicDetails" rows="3" placeholder="Free level assessment, a live one-on-one class, and real teachers."></textarea>' +
-        '<div class="row-actions"><button type="button" id="btnGenerateAi">Generate marketing copy</button>' +
-        '<button type="button" class="ghost" id="btnCopyText">Copy</button></div>' +
-        '<label>Generated copy</label>' +
-        '<textarea id="aiOutputBox" rows="8" readonly placeholder="Choose a content type, add the topic, then generate."></textarea>' +
-        '<p id="ai-msg" class="muted"></p></section>';
-      document.getElementById('btnGenerateAi').addEventListener('click', async function () {
-        var btn = document.getElementById('btnGenerateAi');
-        var outputBox = document.getElementById('aiOutputBox');
-        var msg = document.getElementById('ai-msg');
-        var topicDetails = document.getElementById('aiTopicDetails').value.trim();
-        msg.textContent = '';
-        if (!topicDetails) {
-          msg.textContent = 'Add a topic first.';
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = 'Generating…';
-        outputBox.value = '';
-        try {
-          var res = await fetch('/api/admin/marketing/ai-generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-            body: JSON.stringify({
-              contentType: document.getElementById('aiContentType').value,
-              targetMarket: document.getElementById('aiTargetMarket').value,
-              topicDetails: topicDetails
-            })
-          });
-          var data = await res.json().catch(function () { return {}; });
-          if (data.success) outputBox.value = data.content || '';
-          else msg.textContent = data.message || data.error || 'Could not generate the copy.';
-        } catch (err) {
-          msg.textContent = 'Could not reach the server.';
-        }
-        btn.disabled = false;
-        btn.textContent = 'Generate marketing copy';
-      });
-      document.getElementById('btnCopyText').addEventListener('click', function () {
-        var outputBox = document.getElementById('aiOutputBox');
-        var btn = document.getElementById('btnCopyText');
-        if (!outputBox.value.trim()) return;
-        navigator.clipboard.writeText(outputBox.value).then(function () {
-          btn.textContent = 'Copied';
-          setTimeout(function () { btn.textContent = 'Copy'; }, 2000);
-        }).catch(function () {});
-      });
+      if (!window.RemoEdMarketingSpecialist) {
+        document.getElementById('app').innerHTML = '<p class="err">The marketing calendar did not load.</p>';
+        return Promise.resolve();
+      }
+      window.RemoEdMarketingSpecialist.mount(document.getElementById('app'), { token: token, esc: esc, api: api });
+      return Promise.resolve();
     }
 
     var runners = { specialist: loadSpecialist, leads: loadLeads, 'facebook-leads': loadLeads, posts: loadPosts, campaigns: loadCampaigns, reports: loadReports };

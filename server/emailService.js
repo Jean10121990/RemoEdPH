@@ -1799,6 +1799,123 @@ function sampleFileLetter(key) {
   return null;
 }
 
+const MARKETING_TEST_TO = 'jean10121990@gmail.com';
+const MARKETING_GMAIL_FALLBACK = 'remoedph@gmail.com';
+
+function marketingSupportProfile() {
+  const user = trimEnv(process.env.SUPPORT_SMTP_USER).toLowerCase();
+  const pass = normalizeSmtpPassword(process.env.SUPPORT_SMTP_PASS);
+  if (user === HOSTINGER_MAILBOX && pass && !isPlaceholderSecret(pass)) {
+    const port = parseInt(process.env.SUPPORT_SMTP_PORT || '465', 10);
+    return {
+      id: 'hostinger',
+      host: trimEnv(process.env.SUPPORT_SMTP_HOST) || 'smtp.hostinger.com',
+      port,
+      secure: port === 465,
+      requireTLS: port !== 465,
+      auth: { user: HOSTINGER_MAILBOX, pass },
+    };
+  }
+  const profileUser = hostingerProfile && String(hostingerProfile.auth.user || '').trim().toLowerCase();
+  if (profileUser === HOSTINGER_MAILBOX) return hostingerProfile;
+  return null;
+}
+
+async function sendWithProfile(profile, mail, from) {
+  const transport = createTransporterForProfile(profile);
+  await transport.verify();
+  const info = await transport.sendMail(Object.assign({}, mail, { from }));
+  return info;
+}
+
+/**
+ * Marketing test only. Tries support@remoedph.com first.
+ * Falls back to remoedph@gmail.com when that Gmail mailbox is configured.
+ * Does not change the transporter used by other product mail.
+ */
+async function sendMarketingAudienceEmail(options) {
+  const recipients = Array.from(new Set((options && options.recipients) || []))
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
+  const subject = String((options && options.subject) || '').slice(0, 200);
+  const html = String((options && options.html) || '');
+  const text = String((options && options.text) || '');
+  if (!recipients.length || !subject || (!html && !text)) {
+    return { success: false, error: 'Add an email subject, a body, and at least one recipient.' };
+  }
+
+  let profile = marketingSupportProfile();
+  let from = 'RemoEd Support <support@remoedph.com>';
+  let fromAddress = HOSTINGER_MAILBOX;
+  let provider = 'hostinger';
+  if (!profile) {
+    const gmailUser = gmailProfile && String(gmailProfile.auth.user || '').trim().toLowerCase();
+    if (gmailUser !== MARKETING_GMAIL_FALLBACK) {
+      return {
+        success: false,
+        error: 'support@remoedph.com could not send this mail, and remoedph@gmail.com is not the configured Gmail mailbox.',
+      };
+    }
+    profile = gmailProfile;
+    from = 'RemoEd Support <remoedph@gmail.com>';
+    fromAddress = MARKETING_GMAIL_FALLBACK;
+    provider = 'gmail';
+  }
+
+  let transport;
+  try {
+    transport = createTransporterForProfile(profile);
+    await transport.verify();
+  } catch (error) {
+    const message = error && error.message ? error.message : 'mailbox failed';
+    console.error('Marketing mail mailbox failed:', message.replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***'));
+    if (provider === 'hostinger') {
+      const gmailUser = gmailProfile && String(gmailProfile.auth.user || '').trim().toLowerCase();
+      if (gmailUser === MARKETING_GMAIL_FALLBACK) {
+        profile = gmailProfile;
+        from = 'RemoEd Support <remoedph@gmail.com>';
+        fromAddress = MARKETING_GMAIL_FALLBACK;
+        provider = 'gmail';
+        transport = createTransporterForProfile(profile);
+        await transport.verify();
+      } else {
+        return {
+          success: false,
+          error: 'support@remoedph.com could not send this mail, and remoedph@gmail.com is not the configured Gmail mailbox.',
+        };
+      }
+    } else {
+      return { success: false, error: 'Could not send from support@remoedph.com or remoedph@gmail.com.' };
+    }
+  }
+
+  let sent = 0;
+  let failed = 0;
+  for (const to of recipients) {
+    try {
+      await transport.sendMail({ from, to, subject, html, text, replyTo: HOSTINGER_MAILBOX });
+      sent += 1;
+    } catch (error) {
+      failed += 1;
+      const message = error && error.message ? error.message : 'send failed';
+      console.error('Marketing mail to one recipient failed:', message.replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***'));
+    }
+  }
+  if (!sent) {
+    return { success: false, error: 'Could not send from ' + fromAddress + '.', from: fromAddress, provider, sent, failed };
+  }
+  return { success: true, from: fromAddress, provider, sent, failed };
+}
+
+async function sendMarketingTestEmail(options) {
+  return sendMarketingAudienceEmail({
+    recipients: [MARKETING_TEST_TO],
+    subject: options && options.subject,
+    html: options && options.html,
+    text: options && options.text,
+  });
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
@@ -1813,6 +1930,8 @@ module.exports = {
   sendNotificationDigestEmail,
   sendEmail,
   sendRawEmail,
+  sendMarketingTestEmail,
+  sendMarketingAudienceEmail,
   sendLeadWelcomeEmail,
   getEmailConfigStatus,
   seedEmailTemplates,
