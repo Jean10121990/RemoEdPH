@@ -4,6 +4,7 @@ const {
   buildMarketingCalendar,
   calendarWriteError,
 } = require('../server/services/marketingCalendarSeed');
+const { warmParentLetter } = require('../server/services/marketingEmailVoice');
 
 const entries = buildMarketingCalendar();
 
@@ -154,6 +155,17 @@ test('November 30 2026 is the Bonifacio Day test beside the Monday class', () =>
   assert.equal(on('2026-11-30').find((row) => row.slot === 'regular').title, 'Monday class');
   assert.equal(on('2026-11-30').every((row) => row.dryRun === true), true);
   assert.equal(entries.some((row) => row.dateKey === '2026-11-26'), false);
+});
+
+test('a parent email sounds like a caring note, not a pasted topic', () => {
+  const letter = warmParentLetter('Bonifacio Day: courage and care for community');
+  assert.match(letter.subject, /courage/i);
+  assert.equal(letter.subject.includes('Bonifacio Day: courage'), false);
+  assert.match(letter.body, /Hello,/);
+  assert.match(letter.body, /Andres Bonifacio/);
+  assert.match(letter.body, /real teacher/);
+  assert.match(letter.body, /With care/);
+  assert.equal(letter.body.includes('Bonifacio Day: courage and care for community'), false);
 });
 
 test('a bad status and a date outside the window are rejected', () => {

@@ -21,6 +21,7 @@ const {
   STATUSES,
   CONTENT_TYPES,
 } = require('../services/marketingCalendarSeed');
+const { warmParentLetter } = require('../services/marketingEmailVoice');
 
 const router = express.Router();
 
@@ -40,10 +41,11 @@ const adminChain = [
 
 function getModels() {
   const models = [
-    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    'gemini-3.8-flash',
     'gemini-3.6-flash',
   ];
-  return [...new Set(models)];
+  return [...new Set(models.filter(Boolean))];
 }
 
 function clamp(value, max) {
@@ -104,6 +106,17 @@ function addEmail(set, value) {
   const email = String(value || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
   set.add(email);
+}
+
+function emailResult(email) {
+  const subject = clamp(email.subject, 200);
+  const body = clamp(email.body, 20000);
+  const variation = clamp(email.variation || '', 20000);
+  return {
+    success: true,
+    content: subject + '\n\n' + body + (variation ? '\n\n---\n' + variation : ''),
+    email: { subject, body, variation },
+  };
 }
 
 function parseModelJson(text) {
@@ -319,14 +332,15 @@ router.post('/ai-generate', adminChain, async (req, res) => {
 
     const prompt = format === 'email'
       ? [
-        'Task: Parent or student email',
+        'Task: a parent email that feels like a personal note, not a brochure.',
         'Target market: ' + targetMarket,
         'Key topic: ' + topicDetails,
-        'Return JSON only with subject, body, and variation.',
-        'subject is one clear, friendly subject line.',
-        'body is the full email. Open with a human hello, show you understand the family, and offer one practical way the live class helps.',
-        'variation is a shorter second version with the same care.',
-        'Each version needs a clear, kind next step. Sound alive and professional. Build rapport.',
+        'Return JSON only: {"subject":"...","body":"...","variation":"..."}',
+        'Voice: friendly, lively, caring, and professional. Build trust. Sound glad to help.',
+        'Open with a human hello. Picture one small true-to-life moment a child aged 3 to 6 might have.',
+        'Weave the topic in with warmth. Do not paste the topic as its own sentence. Do not lecture.',
+        'Offer one practical way a live 25-minute class with a real teacher helps. Close with a kind next step and no pressure.',
+        'variation is a shorter second note with the same care.',
       ].join('\n')
       : [
         'Task: Create ' + contentType,
@@ -360,8 +374,13 @@ router.post('/ai-generate', adminChain, async (req, res) => {
           }
         );
         data = await response.json();
-        if (response.status !== 404) break;
-        console.error('Gemini model not found: ' + model);
+        if (response.ok) break;
+        if (response.status === 404 || response.status === 429 || response.status === 503) {
+          console.error('Gemini model skipped: ' + model + ' ' + response.status);
+          response = null;
+          continue;
+        }
+        break;
       } catch (error) {
         lastError = error && error.name === 'AbortError' ? 'timed out' : (error && error.message) || 'failed';
         console.error('Gemini model ' + model + ' ' + lastError);
@@ -371,18 +390,12 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       }
     }
 
-    if (!response) {
-      return res.status(504).json({
+    if (!response || !response.ok) {
+      if (format === 'email') return res.json(emailResult(warmParentLetter(topicDetails)));
+      console.error('Gemini API Error:', JSON.stringify(data || { message: lastError }));
+      return res.status(response ? response.status : 504).json({
         success: false,
-        message: 'The writer took too long. Try Generate again.',
-      });
-    }
-
-    if (!response.ok) {
-      console.error('Gemini API Error:', JSON.stringify(data));
-      return res.status(response.status).json({
-        success: false,
-        message: (data.error && data.error.message) || 'Error response from Gemini API.',
+        message: (data && data.error && data.error.message) || 'The writer took too long. Try Generate again.',
       });
     }
 
@@ -392,6 +405,7 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       .trim();
 
     if (!generatedText) {
+      if (format === 'email') return res.json(emailResult(warmParentLetter(topicDetails)));
       const reason = (data.promptFeedback && data.promptFeedback.blockReason)
         || (data.candidates && data.candidates[0] && data.candidates[0].finishReason);
       console.error('Gemini returned no text. Reason:', reason);
@@ -405,14 +419,12 @@ router.post('/ai-generate', adminChain, async (req, res) => {
 
     if (format === 'email') {
       const parsed = parseModelJson(generatedText) || {};
-      const subject = clamp(parsed.subject || 'A note from RemoEd', 200);
-      const emailBody = clamp(parsed.body || generatedText, 20000);
+      const fallback = warmParentLetter(topicDetails);
+      const subject = clamp(parsed.subject || fallback.subject, 200);
+      let emailBody = clamp(parsed.body || '', 20000);
+      if (emailBody.length < 280 || emailBody.indexOf(topicDetails) === 0) emailBody = fallback.body;
       const variation = clamp(parsed.variation || '', 20000);
-      return res.json({
-        success: true,
-        content: subject + '\n\n' + emailBody + (variation ? '\n\n---\n' + variation : ''),
-        email: { subject, body: emailBody, variation },
-      });
+      return res.json(emailResult({ subject, body: emailBody, variation }));
     }
 
     return res.json({ success: true, content: generatedText });

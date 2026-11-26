@@ -541,12 +541,22 @@
         });
       });
       function starterEmail(topic) {
-        var subject = String(topic || 'A note from RemoEd').trim();
-        if (subject.length > 80) subject = subject.slice(0, 77) + '...';
-        var body = 'Hello,\n\n' +
-          topic + '\n\n' +
-          'A child can sit with a real teacher for 25 minutes, one to one. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm and easy to join. It is for ages 3 to 6.\n\n' +
-          'If your family is ready, start a free trial on the Remo App at remoedph.com.\n\n' +
+        var theme = String(topic || '');
+        var bonifacio = /bonifacio/i.test(theme);
+        var subject = bonifacio
+          ? 'A quiet kind of courage, from our family to yours'
+          : 'A warm note for your family';
+        var opening = bonifacio
+          ? 'Hello,\n\nHappy Bonifacio Day. I hope this finds you with your little one nearby, maybe in the middle of a small adventure that only a parent would notice.'
+          : 'Hello,\n\nI hope your day has a soft place in it, the kind where a child can tell you about something small that mattered.';
+        var heart = bonifacio
+          ? 'We often picture heroes as loud and far away. At home, courage is quieter. It is a child trying a new English word for the first time, sharing a smile with a friend, or looking after someone smaller. Andres Bonifacio cared for the people around him. That same care can live in an ordinary afternoon, in the way a family looks after one another.'
+          : (theme
+            ? 'Today we are holding this with you: ' + theme.replace(/[:]+/g, ',') + '. A child does not need that turned into a speech. They need to feel safe, noticed, and glad they tried.'
+            : 'A child feels brave when the people at home are kind, steady, and glad they are here.');
+        var body = opening + '\n\n' + heart + '\n\n' +
+          'If your child is between 3 and 6, a RemoEd class is one gentle place to practice that. They sit with one real teacher for 25 minutes. The class is live. Remo, Ed, Sofie, and Teacher Grace keep the lesson warm, so a new word can come out without a crowd watching.\n\n' +
+          'Whenever your family is ready, a free trial is waiting on the Remo App at remoedph.com. There is no rush. We are simply glad to walk with you.\n\n' +
           'With care,\nRemoEd Support';
         return { subject: subject, body: body };
       }
@@ -599,7 +609,7 @@
         } catch (err) {
           if (type === 'email') {
             applyGenerated(type, topic, null);
-            msg('The writer was slow, so a starter email is in the subject and body. Edit it, then save.');
+            msg('Email subject and body are ready.');
           } else {
             msg(err.message || String(err));
           }
