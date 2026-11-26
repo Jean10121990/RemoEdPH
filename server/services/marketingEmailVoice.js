@@ -2,6 +2,90 @@
 
 const SCENES = [
   {
+    test: /greetings and kind words/i,
+    subject: 'Kind words, practiced at home',
+    opening: 'Hello,\n\nI hope this finds you with your little one nearby, maybe practicing a hello that still comes out shy.',
+    heart: 'A greeting is a small brave thing. "Hello," "please," and "thank you" are how a child aged 3 to 6 learns that words can be kind. You can try one of them at the table today, with no rush and no quiz.',
+  },
+  {
+    test: /patience while a child tries/i,
+    subject: 'Patience, while a child tries',
+    opening: 'Hello,\n\nI hope there is a quiet minute today when your child is trying something that does not come out right the first time.',
+    heart: 'Patience is a kindness you can show without a speech. Wait for the word. Smile when it comes. Try again when it does not. A child feels brave when the person beside them is not in a hurry.',
+  },
+  {
+    test: /listening game/i,
+    subject: 'A listening game for the table',
+    opening: 'Hello,\n\nI hope the table has room for one short game, the kind a parent can play without any supplies.',
+    heart: 'Name a sound your child already knows: a knock, a spoon, a bird. Ask them to listen, then say the word. Listening is how English starts to feel like home.',
+  },
+  {
+    test: /family words/i,
+    subject: 'The names a child loves to say',
+    opening: 'Hello,\n\nI hope someone in your home gets to hear their name said with delight today.',
+    heart: 'Mommy, Daddy, and the people a child loves are often the first English words that stick. Say them slowly. Let your child try. Those names are already a lesson in belonging.',
+  },
+  {
+    test: /gratitude for the family/i,
+    subject: 'Gratitude, practiced this afternoon',
+    opening: 'Hello,\n\nI hope this afternoon has one ordinary moment you and your child can be glad for together.',
+    heart: 'Gratitude does not need a long speech to be real. A child learns it when you notice a small good thing out loud: a shared snack, a kind hand, a story told twice.',
+  },
+  {
+    test: /free interactive trial/i,
+    subject: 'A free trial, whenever you are ready',
+    opening: 'Hello,\n\nI hope this note finds you wondering what a first step could look like for your child.',
+    heart: 'There is no need to decide on a plan today. A first try can simply be a few minutes of play, with you nearby, and the feeling that English is allowed to be gentle.',
+  },
+  {
+    test: /level assessment/i,
+    subject: 'A level check, only if you want it',
+    opening: 'Hello,\n\nSome parents like to know a starting point before anything else. That is a kind way to begin.',
+    heart: 'The free level assessment is optional. It is not required before the free interactive trial, and it is not a live class. Use it only if a starting level would help your family feel ready.',
+  },
+  {
+    test: /parent poll|new english word/i,
+    subject: 'What word did your child try?',
+    opening: 'Hello,\n\nI hope your child tried one new English word this week, even if it came out crooked.',
+    heart: 'We would love to hear it. A word tried at home is already courage. There is no wrong answer. Just a parent who noticed.',
+  },
+  {
+    test: /log back in/i,
+    subject: 'You can come back whenever you like',
+    opening: 'Hello,\n\nIf you already started, I hope it is easy to find your way back.',
+    heart: 'Log in to the RemoEd App with the same email. The free interactive trial is still there. You do not have to begin again from the start.',
+  },
+  {
+    test: /feeding/i,
+    subject: 'A simple way to care for a neighbor',
+    opening: 'Hello,\n\nI hope your table has enough today, and that your child knows what it feels like to be fed with care.',
+    heart: 'A feeding program is one way a community looks after families. A child learns that kind of care at home first: sharing a snack, noticing who is hungry, and staying gentle with someone smaller.',
+  },
+  {
+    test: /waste/i,
+    subject: 'Small care for the place we live',
+    opening: 'Hello,\n\nI hope there is a small job today that you and your child can do side by side.',
+    heart: 'Waste care starts with one piece of paper, one bottle, one habit. A child does not need a lecture about the planet. They need to see a parent pick something up and be glad to help.',
+  },
+  {
+    test: /sustainability/i,
+    subject: 'Care that a child can join',
+    opening: 'Hello,\n\nI hope there is a plant, a window, or a walk your child has decided is theirs.',
+    heart: 'A sustainability project can be as small as watering a plant or using a cup again. Children learn care by doing it beside someone patient.',
+  },
+  {
+    test: /rainy season/i,
+    subject: 'A gentle note for rainy days',
+    opening: 'Hello,\n\nI hope the rain has given your family a reason to stay close, even if the day outside is grey.',
+    heart: 'Rainy season outreach is care for families nearby when the weather is hard. At home, the same care is a dry towel, a story, and a voice that stays calm.',
+  },
+  {
+    test: /thanksgiving/i,
+    subject: 'Gladness, shared around one table',
+    opening: 'Hello,\n\nI hope there is one seat at your table that already feels like it belongs to your child.',
+    heart: 'Thanksgiving sharing is not a performance. It is food passed to someone else, and a thank-you said in a voice a child can copy.',
+  },
+  {
     test: /bonifacio/i,
     marker: /Katipunan/,
     subject: 'A quiet kind of courage, from our family to yours',
@@ -92,7 +176,7 @@ const SCENES = [
     heart: 'A good teacher does not rush a young learner. They wait for the word, smile when it comes, and try again when it does not. Children remember that feeling.',
   },
   {
-    test: /children|child/i,
+    test: /children's month|children's day|students' day/i,
     marker: /National Children's Month/,
     subject: 'A celebration of the little learner in your home',
     opening: 'Hello,\n\nThis note is for the child in your house, and for you, the person who already cheers for the small wins.',
@@ -138,7 +222,7 @@ const SCENES = [
     heart: 'Caring for the world starts small. Watering a plant, picking up a toy, noticing a bird: a child learns care by doing it beside someone patient.',
   },
   {
-    test: /labor|work/i,
+    test: /labor day/i,
     subject: 'A thank-you for work done with care',
     opening: 'Hello,\n\nToday we are grateful for the people who work so a child can have a calm place to learn.',
     heart: 'Children notice effort. When they see an adult do a job with care, they learn that their own small efforts are worth something too.',
@@ -187,4 +271,50 @@ function warmParentLetter(topic) {
   };
 }
 
-module.exports = { warmParentLetter, letterNeedsHistory };
+function sentences(text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  const found = clean.match(/[^.!?]+[.!?]+/g);
+  return found ? found.map((line) => line.trim()) : (clean ? [clean] : []);
+}
+
+function shortParentPost(topic) {
+  const theme = String(topic || '').trim();
+  const scene = sceneFor(theme);
+  const letter = warmParentLetter(theme);
+  const openingSource = scene
+    ? scene.opening
+    : 'Hello,\n\nI hope your day has a soft place in it, the kind where a child can tell you about something small that mattered.';
+  const opening = sentences(openingSource.replace(/^Hello,\s*/i, '')).slice(0, 2).join(' ');
+  const hello = 'Hello,\n\n' + (opening || 'I hope this finds your family well.');
+  let context = '';
+  if (scene && scene.context) {
+    const facts = sentences(scene.context).filter((line) => !/^A little (background|of how|context)/i.test(line));
+    let kept = facts.slice(0, 2);
+    if (scene.marker) {
+      const idx = facts.findIndex((line) => scene.marker.test(line));
+      if (idx !== -1) kept = facts.slice(0, idx + 2);
+    }
+    context = kept.join(' ');
+  }
+  const heartSource = scene
+    ? scene.heart
+    : (theme
+      ? 'Today we are sitting with a simple idea: ' + theme.replace(/[:]+/g, ',').replace(/\s+/g, ' ').replace(/\.$/, '') + '. A child does not need that turned into a speech. They need to feel safe, noticed, and glad they tried.'
+      : 'A child feels brave when the people at home are kind, steady, and glad they are here.');
+  const heartLines = sentences(heartSource);
+  const heart = heartLines.slice(0, 3).join(' ');
+  const close = [
+    'The free interactive trial is on the RemoEd App. No card is needed, and it is not a live class.',
+    'A live 25-minute lesson with a real teacher is on a paid plan when your family is ready.',
+    'With care,',
+    'RemoEd Support',
+  ].join('\n\n');
+  return {
+    fromScene: !!scene,
+    post: [hello, context, heart, close].filter(Boolean).join('\n\n'),
+    adHeadline: letter.subject,
+    adText: (heartLines[0] || letter.subject) + ' The free interactive trial is on the RemoEd App. No card, and it is not a live class.',
+  };
+}
+
+module.exports = { warmParentLetter, letterNeedsHistory, shortParentPost };

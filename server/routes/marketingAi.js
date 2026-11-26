@@ -21,7 +21,7 @@ const {
   STATUSES,
   CONTENT_TYPES,
 } = require('../services/marketingCalendarSeed');
-const { warmParentLetter, letterNeedsHistory } = require('../services/marketingEmailVoice');
+const { warmParentLetter, letterNeedsHistory, shortParentPost } = require('../services/marketingEmailVoice');
 
 const router = express.Router();
 
@@ -120,12 +120,7 @@ function addEmail(set, value) {
 }
 
 function facebookFallback(topic) {
-  const theme = String(topic || 'a gentle start in English').trim();
-  return {
-    post: 'Hello, parents.\n\n' + theme + '\n\nIf your child is 3 to 6, you can sign up for a free interactive trial on the RemoEd App. No card is needed. It is not a live class. When you are ready for a real teacher, a live 25-minute one-on-one lesson is on a paid plan.\n\nA free level assessment is there too, if you want a starting level first: https://remoedph.com/#assessment',
-    adHeadline: 'Free interactive trial on the RemoEd App',
-    adText: 'A warm start for ages 3 to 6. Sign up for the free interactive trial. No card. Live 25-minute classes with a teacher are on a paid plan.',
-  };
+  return shortParentPost(topic);
 }
 
 function facebookResult(pack) {
@@ -356,38 +351,29 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Topic details are required.' });
     }
 
+    if (format !== 'email') {
+      return res.json(facebookResult(facebookFallback(topicDetails)));
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ success: false, message: 'Gemini API key is missing in server environment.' });
     }
 
-    const prompt = format === 'email'
-      ? [
-        'Task: a parent email that feels like a personal note, not a brochure.',
-        'Target market: ' + targetMarket,
-        'Key topic: ' + topicDetails,
-        'Return JSON only: {"subject":"...","body":"...","variation":"..."}',
-        'Voice: friendly, lively, caring, and professional. Build trust. Sound glad to help.',
-        'Open with a human hello. Picture one small true-to-life moment a child aged 3 to 6 might have.',
-        'Weave the topic in with warmth. Do not paste the topic as its own sentence. Do not lecture.',
-        'If the topic is a Philippine hero, holiday, or historical event, add two or three true sentences of background so a parent outside the Philippines knows who the person was, when it happened, and why the day is kept. Do not assume the reader grew up in the Philippines. Do not invent dates.',
-        'The free next step is the interactive trial on the RemoEd App, not a live class. A live 25-minute lesson with a real teacher is a paid plan. Close with a kind next step and no pressure.',
-        'variation is a shorter second note with the same care.',
-      ].join('\n')
-      : [
-        'Task: a Facebook Page post and a short ad for parents of children ages 3 to 6.',
-        'Target market: ' + targetMarket,
-        'Key topic: ' + topicDetails,
-        'Return JSON only: {"post":"...","adHeadline":"...","adText":"..."}',
-        'post is a warm Page post. adHeadline is one line. adText is the short ad primary text.',
-        'Invite them to sign up for the free interactive trial on the RemoEd App. No card. Say the free trial is not a live class.',
-        'Mention the free level assessment only as an optional second step: https://remoedph.com/#assessment',
-        'Do not invent a price. If you mention plans, use only RemoSpark ₱350, RemoSteady ₱340, RemoScholar ₱330, and RemoSummit ₱320 per class.',
-      ].join('\n');
+    const prompt = [
+      'Task: a parent email that feels like a personal note, not a brochure.',
+      'Target market: ' + targetMarket,
+      'Key topic: ' + topicDetails,
+      'Return JSON only: {"subject":"...","body":"...","variation":"..."}',
+      'Voice: friendly, lively, caring, and professional. Build trust. Sound glad to help.',
+      'Open with a human hello. Picture one small true-to-life moment a child aged 3 to 6 might have.',
+      'Weave the topic in with warmth. Do not paste the topic as its own sentence. Do not lecture.',
+      'If the topic is a Philippine hero, holiday, or historical event, add two or three true sentences of background so a parent outside the Philippines knows who the person was, when it happened, and why the day is kept. Do not assume the reader grew up in the Philippines. Do not invent dates.',
+      'The free next step is the interactive trial on the RemoEd App, not a live class. A live 25-minute lesson with a real teacher is a paid plan. Close with a kind next step and no pressure.',
+      'variation is a shorter second note with the same care.',
+    ].join('\n');
 
-    const generationConfig = format === 'email'
-      ? { temperature: 0.4, maxOutputTokens: 700 }
-      : { temperature: 0.4, maxOutputTokens: 700 };
+    const generationConfig = { temperature: 0.4, maxOutputTokens: 700 };
 
     let response;
     let data;
@@ -427,13 +413,8 @@ router.post('/ai-generate', adminChain, async (req, res) => {
     }
 
     if (!response || !response.ok) {
-      if (format === 'email') return res.json(emailResult(warmParentLetter(topicDetails)));
-      if (format !== 'email') return res.json(facebookResult(facebookFallback(topicDetails)));
       console.error('Gemini API Error:', JSON.stringify(data || { message: lastError }));
-      return res.status(response ? response.status : 504).json({
-        success: false,
-        message: (data && data.error && data.error.message) || 'The writer took too long. Try Generate again.',
-      });
+      return res.json(emailResult(warmParentLetter(topicDetails)));
     }
 
     const generatedText = ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [])
@@ -442,38 +423,21 @@ router.post('/ai-generate', adminChain, async (req, res) => {
       .trim();
 
     if (!generatedText) {
-      if (format === 'email') return res.json(emailResult(warmParentLetter(topicDetails)));
-      if (format !== 'email') return res.json(facebookResult(facebookFallback(topicDetails)));
       const reason = (data.promptFeedback && data.promptFeedback.blockReason)
         || (data.candidates && data.candidates[0] && data.candidates[0].finishReason);
       console.error('Gemini returned no text. Reason:', reason);
-      return res.status(500).json({
-        success: false,
-        message: reason
-          ? 'No content was generated (' + reason + '). Try rewording the topic.'
-          : 'No content was generated by Gemini.',
-      });
-    }
-
-    if (format === 'email') {
-      const parsed = parseModelJson(generatedText) || {};
-      const fallback = warmParentLetter(topicDetails);
-      const subject = clamp(parsed.subject || fallback.subject, 200);
-      let emailBody = clamp(parsed.body || '', 20000);
-      if (emailBody.length < 280 || emailBody.indexOf(topicDetails) === 0 || letterNeedsHistory(topicDetails, emailBody)) {
-        return res.json(emailResult(fallback));
-      }
-      const variation = clamp(parsed.variation || '', 20000);
-      return res.json(emailResult({ subject, body: emailBody, variation }));
+      return res.json(emailResult(warmParentLetter(topicDetails)));
     }
 
     const parsed = parseModelJson(generatedText) || {};
-    const fallback = facebookFallback(topicDetails);
-    return res.json(facebookResult({
-      post: parsed.post || generatedText || fallback.post,
-      adHeadline: parsed.adHeadline || fallback.adHeadline,
-      adText: parsed.adText || fallback.adText,
-    }));
+    const fallback = warmParentLetter(topicDetails);
+    const subject = clamp(parsed.subject || fallback.subject, 200);
+    let emailBody = clamp(parsed.body || '', 20000);
+    if (emailBody.length < 280 || emailBody.indexOf(topicDetails) === 0 || letterNeedsHistory(topicDetails, emailBody)) {
+      return res.json(emailResult(fallback));
+    }
+    const variation = clamp(parsed.variation || '', 20000);
+    return res.json(emailResult({ subject, body: emailBody, variation }));
   } catch (error) {
     console.error('Error generating marketing copy:', error.message || error);
     return res.status(500).json({ success: false, message: 'Failed to generate content.' });

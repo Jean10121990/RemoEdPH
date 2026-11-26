@@ -4,7 +4,7 @@ const {
   buildMarketingCalendar,
   calendarWriteError,
 } = require('../server/services/marketingCalendarSeed');
-const { warmParentLetter, letterNeedsHistory } = require('../server/services/marketingEmailVoice');
+const { warmParentLetter, letterNeedsHistory, shortParentPost } = require('../server/services/marketingEmailVoice');
 
 const entries = buildMarketingCalendar();
 
@@ -177,6 +177,41 @@ test('a parent email sounds like a caring note, not a pasted topic', () => {
   const independence = warmParentLetter('Independence Day: pride, kindness, and home');
   assert.match(independence.body, /June 12, 1898/);
   assert.match(independence.body, /Kawit/);
+});
+
+test('a Facebook post is the parent letter, shortened', () => {
+  const topic = 'Bonifacio Day: courage and care for community';
+  const letter = warmParentLetter(topic);
+  const post = shortParentPost(topic);
+  assert.equal(post.fromScene, true);
+  assert.match(post.post, /Hello,/);
+  assert.match(post.post, /Happy Bonifacio Day/);
+  assert.match(post.post, /November 30, 1863/);
+  assert.match(post.post, /Katipunan/);
+  assert.match(post.post, /trying a new English word/);
+  assert.match(post.post, /not a live class/);
+  assert.match(post.post, /With care/);
+  assert.equal(post.adHeadline, letter.subject);
+  assert.ok(post.post.length < letter.body.length);
+});
+
+test('every future post keeps the same warm parent voice', () => {
+  const monday = shortParentPost('Christian character at home: patience while a child tries');
+  const thursday = shortParentPost('Optional free level assessment for parents who want a starting level first');
+  const csr = shortParentPost('Community care: a simple feeding program for families');
+  const custom = shortParentPost('A quiet afternoon of block play');
+  [monday, thursday, csr, custom].forEach((post) => {
+    assert.match(post.post, /Hello,/);
+    assert.match(post.post, /not a live class/);
+    assert.match(post.post, /With care/);
+    assert.match(post.post, /RemoEd Support/);
+    assert.equal(post.post.includes('Katipunan'), false);
+  });
+  assert.match(monday.post, /Patience is a kindness/);
+  assert.equal(monday.post.includes("National Children's Month"), false);
+  assert.match(thursday.post, /optional/i);
+  assert.match(csr.post, /feeding/i);
+  assert.match(custom.post, /block play/);
 });
 
 test('a bad status and a date outside the window are rejected', () => {

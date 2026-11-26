@@ -130,7 +130,7 @@ Use local scripts or logs for debugging. `GET /api/debug/compression-check` retu
 
 | Date | Change |
 |------|--------|
-| 2026-11-26 | Parent sequence. Onboarding, post-trial plans, and the 72-hour check-in go only to the lead's own email from support@remoedph.com. Facebook copy generation returns a post and a short ad and does not publish. |
+| 2026-11-26 | Parent sequence. Onboarding, post-trial plans, and the 72-hour check-in go only to the lead's own email from support@remoedph.com. Facebook copy generation returns a warm parent post and a short ad for every topic and does not publish. The post is written locally. |
 | 2026-11-26 | Marketing calendar affiliates and Bonifacio test. `POST /api/admin/marketing/calendar/send-affiliates` is the same admin chain and sends only to active and pending affiliate emails. Audience counts include affiliates and still omit addresses. November 30, 2026 is allowed as the Bonifacio Day test date. |
 | 2026-11-26 | Marketing calendar. `GET/PUT /api/admin/marketing/calendar` and `GET /api/admin/marketing/calendar/audience` plus `POST /api/admin/marketing/calendar/test-email` are admin JWT, authenticator, and `growth.ai_settings`. Dates are December 2026 through December 2027. The writer is still `POST /api/admin/marketing/ai-generate`. Audience returns counts only. The test email goes only to jean10121990@gmail.com. |
 | 2026-11-20 | Parent terms and privacy. Register requires terms, recording-policy, and parental consent. Parental consent is stored on the student. The Meta pixel on the assessment page loads after cookie Accept, and its events have no child fields. The public homepage is unchanged. Lesson recordings past 7 days are kept while that booking has an open safety or dispute ticket. |
